@@ -130,6 +130,10 @@ const DB_UNAVAILABLE_CODES = new Set([
   'ER_CON_COUNT_ERROR', 'ER_SERVER_SHUTDOWN', 'ER_TOO_MANY_USER_CONNECTIONS'
 ]);
 
+function isAuthInfrastructureError(error) {
+  return error?.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE';
+}
+
 function isDbUnavailableError(error) {
   if (!error) return false;
   if (error.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') return true;
@@ -454,5 +458,6 @@ module.exports = {
   isAdminRequest,
   isUploaderOrAdmin,
   getAuthIfValid,
+  isAuthInfrastructureError,
   updateSessionAccess
 };
