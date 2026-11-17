@@ -194,9 +194,9 @@ async function validateAuthRequest(req) {
 
     // Vérification de session via MySQL avec 3 tentatives
     let hasSession = false;
-    // true dès qu'une requête aboutit (même avec 0 ligne) : on a une vraie
-    // réponse de la DB. false si toutes les tentatives ont échoué (MySQL
-    // down/restart, queue limit) → réponse indéterminée.
+    // État de la dernière tentative : une réponse SQL vide confirme l'absence
+    // de session ; une erreur ou un pool indisponible laisse l'authentification
+    // indéterminée et doit produire une indisponibilité, jamais un fail-open.
     let dbAnswered = false;
     let pool;
     try {
