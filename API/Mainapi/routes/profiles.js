@@ -9,7 +9,7 @@ const router = express.Router();
 const fsp = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 
-const { getAuthIfValid } = require('../middleware/auth');
+const { getAuthIfValid, isAuthInfrastructureError } = require('../middleware/auth');
 const { getPool } = require('../mysqlPool');
 const {
   ensureSafeProfileId,
@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
     res.status(200).json({ success: true, profiles });
   } catch (error) {
     console.error('Error getting profiles:', error);
-    if (error?.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') {
+    if (isAuthInfrastructureError(error)) {
       return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
     }
     res.status(500).json({ error: 'Failed to get profiles' });
