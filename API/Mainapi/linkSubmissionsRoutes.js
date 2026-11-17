@@ -454,7 +454,11 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
     router.get('/admin', requireAuth, requireUploaderOrAdmin, async (req, res) => {
         try {
             const { status = 'pending', media_type, search, page = 1, limit = 50 } = req.query;
-            const offset = (parseInt(page) - 1) * parseInt(limit);
+            const requestedPage = Number.parseInt(String(page), 10);
+            const requestedLimit = Number.parseInt(String(limit), 10);
+            const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+            const limitNum = Number.isSafeInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
+            const offset = (pageNum - 1) * limitNum;
 
             let whereConditions = ['1=1'];
             let whereParams = [];
@@ -486,8 +490,8 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
                 `SELECT ls.* FROM link_submissions ls
                  WHERE ${whereClause}
                  ORDER BY ls.created_at DESC
-                 LIMIT ? OFFSET ?`,
-                [...whereParams, parseInt(limit), offset]
+                 LIMIT ${limitNum} OFFSET ${offset}`,
+                whereParams
             );
 
             // Enrich with user data
