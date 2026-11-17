@@ -33,12 +33,12 @@ function isAccessKeyActive(row, now = Date.now()) {
 }
 
 async function getAccountVipState(pool, link) {
-  const userData = await readUserData(link.target_user_type, link.target_user_id);
+  const userData = await readUserData(link.target_user_type, link.target_user_id, { strict: true });
   if (!userData || typeof userData !== 'object') throw new Error('Linked account data unavailable');
   const profiles = Array.isArray(userData.profiles) ? userData.profiles : [];
   const profile = profiles.find((item) => item && item.isDefault) || profiles[0] || null;
   const profileData = profile?.id
-    ? await readProfileData(link.target_user_type, link.target_user_id, profile.id)
+    ? await readProfileData(link.target_user_type, link.target_user_id, profile.id, { strict: true })
     : null;
   const key = extractAccessCode(profileData) || extractAccessCode(userData);
   if (!key) return false;
