@@ -693,8 +693,8 @@ router.post('/links/:provider', authRateLimit, authorizeAuthWrite, ...authBodyPa
     // Retirer l'ancien rôle avant que setLink remplace la liaison. En cas
     // d'indisponibilité Discord, on conserve l'ancienne liaison intacte.
     if (provider === 'discord' && previousDiscordIds.length) {
-      const { setDiscordVipRole } = require('../utils/discordAdminRoles');
-      for (const oldDiscordId of previousDiscordIds) {
+      const { setDiscordVipRole, getConfig } = require('../utils/discordAdminRoles');
+      for (const oldDiscordId of (getConfig().vipConfigured ? previousDiscordIds : [])) {
         try {
           await setDiscordVipRole(oldDiscordId, false);
         } catch (error) {
@@ -757,8 +757,11 @@ router.delete('/links/:provider', async (req, res) => {
     // Le rôle est retiré avant la suppression SQL : si Discord échoue, la
     // liaison reste en place et l'utilisateur peut réessayer sans rôle orphelin.
     if (provider === 'discord') {
-      const { setDiscordVipRole } = require('../utils/discordAdminRoles');
-      for (const link of linkedBeforeRemoval.filter((item) => item.provider === 'discord')) {
+      const { setDiscordVipRole, getConfig } = require('../utils/discordAdminRoles');
+      const linksToClean = getConfig().vipConfigured
+        ? linkedBeforeRemoval.filter((item) => item.provider === 'discord')
+        : [];
+      for (const link of linksToClean) {
         try {
           await setDiscordVipRole(link.providerUserId, false);
         } catch (error) {
