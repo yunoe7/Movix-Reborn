@@ -598,9 +598,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
   // Create a new profile
   const createProfile = async (name: string, avatar: string, ageRestriction?: number) => {
+    let requestAuthToken: string | null = null;
     try {
       setIsLoading(true);
       const authToken = localStorage.getItem('auth_token');
+      requestAuthToken = authToken;
       if (!authToken) throw new Error('No auth token');
 
       const response = await axios.post(`${API_URL}/api/profiles`, {
@@ -627,7 +629,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       console.error('Error creating profile:', error);
       throw error;
     } finally {
-      if (localStorage.getItem('auth_token') === authToken) setIsLoading(false);
+      if (requestAuthToken && localStorage.getItem('auth_token') === requestAuthToken) setIsLoading(false);
     }
   };
 
