@@ -275,6 +275,13 @@ function startJob(job: Job) {
     scheduleQueue();
   };
   job.cancel = () => finish({ color: null, position: 'bottom-left' }, true);
+  // TMDB image hosts do not provide the CORS headers required for canvas
+  // sampling. Do not issue anonymous cross-origin image requests: they create
+  // noisy browser CORS errors. Custom previews keep their existing CORS path.
+  if (!job.preview) {
+    finish({ color: null, position: 'bottom-left' });
+    return;
+  }
   image.crossOrigin = 'anonymous';
   if (job.preview) image.referrerPolicy = 'no-referrer';
   image.decoding = 'async';
