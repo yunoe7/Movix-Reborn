@@ -113,10 +113,8 @@ export function useResumeItem() {
       generation.current += 1;
       setItem(null);
       setLoading(true);
-      window.setTimeout(() => {
-        if (localStorage.getItem('auth_token')) void reload();
-        else setLoading(false);
-      }, 600);
+      // Wait for ProfileContext hydration to emit sync_storage_updated.
+      if (!localStorage.getItem('auth_token')) setLoading(false);
     };
     const handleStorage = (event: Event) => {
       if (!(event instanceof StorageEvent) || event.key === 'continueWatching' || event.key === null) {
