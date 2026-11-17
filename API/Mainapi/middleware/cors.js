@@ -40,7 +40,7 @@ function isAllowedStaticOrigin(origin) {
     const hostname = parsedOrigin.hostname;
 
     return STATIC_ALLOWED_DOMAINS.some((domain) => (
-      hostname === domain || hostname.endsWith(\`.\${domain}\`)
+      hostname === domain || hostname.endsWith('.' + domain)
     ));
   } catch {
     return false;
