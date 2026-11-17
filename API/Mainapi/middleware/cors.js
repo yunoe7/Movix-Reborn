@@ -30,7 +30,8 @@ const STATIC_ALLOWED_DOMAINS = [
     'movix.college',
     'movix.luxe',
     'movix.dog',
-    'movix.miami'
+    'movix.miami',
+    'movix-reborn.yunoo-collab.workers.dev'
 ];
 
 function isAllowedStaticOrigin(origin) {
@@ -56,7 +57,7 @@ const corsMiddleware = cors({
     if (!origin) return callback(null, true);
 
     // Allow all localhost requests in development only
-    if (process.env.NODE_ENV !== 'production' && origin.match(/^https?:\/\/localhost(:[0-9]+)?$/)) {
+    if (process.env.NODE_ENV !== 'production' && origin.match(/^https?:\\/\\/localhost(:[0-9]+)?$/)) {
       return callback(null, true);
     }
 
