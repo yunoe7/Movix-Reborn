@@ -718,6 +718,11 @@ const appReady = (async () => {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
 
+      // Ensure the media tables exist before checking their download_links columns.
+      // renderCreateTable uses CREATE TABLE IF NOT EXISTS, preserving existing data.
+      await ensureTableGroup(pool, 'media');
+      console.log('Media tables initialized successfully');
+
       // Ensure download_links JSON column on films and series (idempotent)
       const ensureColumn = async (tableName, columnName, definitionSql) => {
         const [rows] = await pool.execute(
