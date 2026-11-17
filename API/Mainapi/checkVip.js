@@ -18,7 +18,17 @@ const { LruMap } = require('./utils/lruMap');
 // unboundedly within the 5-min cleanup window.
 const VIP_CACHE_MAX_ENTRIES = 5000;
 const vipCache = new LruMap({ max: VIP_CACHE_MAX_ENTRIES });
-const VIP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const VIP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes maximum
+const VIP_CACHE_NEGATIVE_TTL = 60 * 1000; // 1 minute
+
+function cacheVipResult(key, result, options = {}) {
+    const now = Date.now();
+    const ttl = Number.isFinite(options.ttl)
+        ? Math.max(0, Math.min(VIP_CACHE_TTL, options.ttl))
+        : (result.vip ? VIP_CACHE_TTL : VIP_CACHE_NEGATIVE_TTL);
+
+    vipCache.set(key, { result, timestamp: now, ttl });
+}
 
 /**
  * Vérifie si une clé d'accès est valide dans la table `access_keys` MySQL.
@@ -51,8 +61,12 @@ async function verifyAccessKey(accessKey) {
 
     // Vérifier le cache d'abord
     const cached = vipCache.get(fixedKey);
-    if (cached && (Date.now() - cached.timestamp < VIP_CACHE_TTL)) {
-        return cached.result;
+    if (cached) {
+        const cacheTtl = Number.isFinite(cached.ttl) ? cached.ttl : VIP_CACHE_TTL;
+        if (Date.now() - cached.timestamp < cacheTtl) {
+            return cached.result;
+        }
+        vipCache.delete(fixedKey);
     }
 
     try {
@@ -70,7 +84,7 @@ async function verifyAccessKey(accessKey) {
         if (rows.length === 0) {
             // Clé inexistante — mettre en cache le résultat négatif (durée plus courte: 1 min)
             const result = { vip: false, expiresAt: null, duration: null };
-            vipCache.set(fixedKey, { result, timestamp: Date.now() });
+            cacheVipResult(fixedKey, result);
             return result;
         }
 
@@ -79,24 +93,31 @@ async function verifyAccessKey(accessKey) {
         // Vérifier si la clé est active
         if (!keyData.active) {
             const result = { vip: false, expiresAt: null, duration: null, reason: 'key_inactive' };
-            vipCache.set(fixedKey, { result, timestamp: Date.now() });
+            cacheVipResult(fixedKey, result);
             return result;
         }
 
-        // Vérifier si la clé a expiré
-        if (keyData.expires_at && new Date() > new Date(keyData.expires_at)) {
+        // Vérifier l'expiration en millisecondes (format stocké dans MySQL).
+        // Une expiration invalide est refusée par sécurité au lieu d'être traitée comme une clé à vie.
+        const hasExpiry = keyData.expires_at !== null
+            && keyData.expires_at !== undefined
+            && keyData.expires_at !== '';
+        const expiresAtMs = hasExpiry ? new Date(keyData.expires_at).getTime() : null;
+        if (hasExpiry && (!Number.isFinite(expiresAtMs) || Date.now() >= expiresAtMs)) {
             const result = { vip: false, expiresAt: keyData.expires_at, duration: keyData.duree_validite, reason: 'key_expired' };
-            vipCache.set(fixedKey, { result, timestamp: Date.now() });
+            cacheVipResult(fixedKey, result);
             return result;
         }
 
-        // Clé valide !
+        // Clé valide : son cache positif ne peut pas survivre à son expiration.
         const result = {
             vip: true,
             expiresAt: keyData.expires_at || null,
             duration: keyData.duree_validite || null
         };
-        vipCache.set(fixedKey, { result, timestamp: Date.now() });
+        const now = Date.now();
+        const ttlUntilExpiry = expiresAtMs === null ? VIP_CACHE_TTL : expiresAtMs - now;
+        cacheVipResult(fixedKey, result, { ttl: ttlUntilExpiry });
         return result;
 
     } catch (error) {
@@ -144,7 +165,8 @@ async function requireVip(req, res, next) {
 setInterval(() => {
     const now = Date.now();
     for (const [key, cached] of vipCache) {
-        if (now - cached.timestamp > VIP_CACHE_TTL) {
+        const cacheTtl = Number.isFinite(cached.ttl) ? cached.ttl : VIP_CACHE_TTL;
+        if (now - cached.timestamp >= cacheTtl) {
             vipCache.delete(key);
         }
     }
