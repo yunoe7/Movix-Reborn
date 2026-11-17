@@ -16,7 +16,7 @@ const REQUEST_TIMEOUT_MS = 10000;
 // et src/config/google.ts). DISCORD_CLIENT_ID / GOOGLE_CLIENT_ID les
 // remplacent ; plusieurs valeurs séparées par des virgules sont acceptées.
 const DEFAULT_CLIENT_IDS = {
-  discord: ['1517232036425895996'],
+  discord: ['1570058543938150611'],
   google: ['803260771655-6uk6p477ec6im3th4qe9mh8emakes0ja.apps.googleusercontent.com'],
 };
 
