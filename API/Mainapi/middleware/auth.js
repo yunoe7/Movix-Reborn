@@ -132,6 +132,7 @@ const DB_UNAVAILABLE_CODES = new Set([
 
 function isDbUnavailableError(error) {
   if (!error) return false;
+  if (error.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') return true;
   if (DB_UNAVAILABLE_CODES.has(error.code)) return true;
   // mysql2 queueLimit atteint : Error sans code, message "Queue limit reached."
   return typeof error.message === 'string' && error.message.includes('Queue limit reached');
@@ -169,6 +170,15 @@ function getAuthIfValid(req) {
   return promise;
 }
 const JWT_SIGNING_KEY = createSecretKey(JWT_SECRET, 'utf8');
+
+class AuthInfrastructureError extends Error {
+  constructor(message, cause) {
+    super(message, cause ? { cause } : undefined);
+    this.name = 'AuthInfrastructureError';
+    this.code = 'AUTH_INFRASTRUCTURE_UNAVAILABLE';
+    this.statusCode = 503;
+  }
+}
 
 async function validateAuthRequest(req) {
   try {
@@ -225,19 +235,19 @@ async function validateAuthRequest(req) {
 
     if (!hasSession) {
       if (!dbAnswered) {
-        // MySQL n'a jamais répondu (restart, queue limit…) : fail-open sur le
-        // JWT (signature déjà vérifiée) plutôt que 401 — un 401 déconnecte
-        // l'utilisateur côté front. Seul le contrôle de révocation de session
-        // est sauté, le temps de l'indisponibilité. Le compte est encore
-        // validé sur disque juste en dessous (validateBackingAccount).
-        console.warn(`[AUTH] MySQL indisponible, fail-open JWT pour userType=${userType}, userId=${userId}, sessionId=${sessionId}`);
-      } else {
-        console.warn(`[AUTH] Session manquante après 3 tentatives pour userType=${userType}, userId=${userId}, sessionId=${sessionId}`);
-        return null;
+        console.error(`[AUTH] MySQL indisponible : validation de session impossible pour userType=${userType}, userId=${userId}, sessionId=${sessionId}`);
+        throw new AuthInfrastructureError('Validation de session temporairement indisponible');
       }
+
+      console.warn(`[AUTH] Session manquante après 3 réponses SQL pour userType=${userType}, userId=${userId}, sessionId=${sessionId}`);
+      return null;
     }
 
     const hasBackingAccount = await validateBackingAccount(userType, userId);
+    if (hasBackingAccount === null) {
+      throw new AuthInfrastructureError('Vérification du compte temporairement indisponible');
+    }
+
     if (hasBackingAccount === false) {
       console.warn(`[AUTH] Account backing data missing for userType=${userType}, userId=${userId}. Purging session ${sessionId}.`);
       purgeSessionRecord(sessionId, userId, userType);
@@ -247,7 +257,10 @@ async function validateAuthRequest(req) {
     // Update last access as activity signal (fire-and-forget, pas de await)
     updateSessionAccess(userType, userId, sessionId);
     return { userType, userId, sessionId, authMethod };
-  } catch {
+  } catch (error) {
+    if (error?.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') {
+      throw error;
+    }
     return null;
   }
 }
