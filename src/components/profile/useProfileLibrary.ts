@@ -61,17 +61,14 @@ export function useProfileLibrary() {
   // Relit quand un autre onglet ou la synchro serveur modifie la bibliothèque.
   useEffect(() => {
     let timer: number | undefined;
-    let authTimer: number | undefined;
     const handleAuthChange = () => {
       // Invalidate metadata requests from the previous identity immediately.
       generation.current += 1;
       setLists({ watchlist: [], favorites: [], watched: [] });
       setLoading(true);
-      window.clearTimeout(authTimer);
-      authTimer = window.setTimeout(() => {
-        if (localStorage.getItem('auth_token')) void reload();
-        else setLoading(false);
-      }, 600);
+      // The profile hydrator emits sync_storage_updated after replacing local data.
+      // Do not reread localStorage here: it may still contain the previous account.
+      if (!localStorage.getItem('auth_token')) setLoading(false);
     };
     const schedule = (event?: Event) => {
       const key = event instanceof StorageEvent ? event.key : null;
@@ -84,7 +81,6 @@ export function useProfileLibrary() {
     window.addEventListener('sync_storage_updated', schedule);
     return () => {
       window.clearTimeout(timer);
-      window.clearTimeout(authTimer);
       generation.current += 1;
       window.removeEventListener('auth_changed', handleAuthChange);
       window.removeEventListener('storage', schedule);
