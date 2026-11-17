@@ -15,7 +15,7 @@ const { getDiscordAdminRole } = require('../utils/discordAdminRoles');
 
 async function resolveDiscordUserId(pool, userType, userId) {
   const candidate = String(userId || '').trim();
-  if (/^\\d{17,20}$/.test(candidate)) {
+  if (/^\d{17,20}$/.test(candidate)) {
     return candidate;
   }
 
@@ -26,7 +26,7 @@ async function resolveDiscordUserId(pool, userType, userId) {
   );
 
   const discordUserId = String(rows[0]?.provider_user_id || '').trim();
-  return /^\\d{17,20}$/.test(discordUserId) ? discordUserId : null;
+  return /^\d{17,20}$/.test(discordUserId) ? discordUserId : null;
 }
 const AUTH_METHODS = ['discord', 'google', 'bip39'];
 const USER_DATA_DIR = path.join(__dirname, '..', 'data');
