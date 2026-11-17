@@ -19,6 +19,7 @@ import {
 } from '../utils/profileSelectionTransaction';
 import { replaceProfileStorage } from '../utils/profileStorage';
 import { API_BASE_URL } from '../config/api';
+import { getResolvedAccountContext } from '../utils/accountAuth';
 
 // Pending sync ops persisted by App.tsx flushPendingOpsSync at unload time.
 // We POST these to /api/sync BEFORE replaceProfileStorage wipes
@@ -162,6 +163,57 @@ const API_URL = API_BASE_URL;
 // file, transient backend bug, partial response) and preserve local state
 // instead of wiping it. NOT synced — prefixed to fall outside the syncable
 // allowlist and not in PROFILE_LOAD_PRESERVED_KEYS removal path.
+const PROFILE_SELECTION_PREFIX = 'movix_selected_profile';
+
+function getProfileSelectionKey(): string | null {
+  try {
+    const { userType, userId } = getResolvedAccountContext();
+    if (!userType || !userId) return null;
+    return `${PROFILE_SELECTION_PREFIX}:${userType}:${encodeURIComponent(userId)}`;
+  } catch {
+    return null;
+  }
+}
+
+function readSelectedProfileId(profiles: Profile[]): string | null {
+  const key = getProfileSelectionKey();
+  if (key) {
+    const scopedId = localStorage.getItem(key);
+    // A saved account-scoped choice is authoritative. If the profile was
+    // deleted, fall back to the account default; never consult the legacy
+    // global key, which may belong to a different account.
+    if (scopedId) {
+      return profiles.some((profile) => profile.id === scopedId) ? scopedId : null;
+    }
+  }
+
+  // One-time migration for devices that only have the legacy global key.
+  // Accept it only when the ID is present in the currently authenticated
+  // account's server profile list, then immediately scope it to that account.
+  const legacyId = localStorage.getItem('selected_profile_id');
+  if (legacyId && profiles.some((profile) => profile.id === legacyId)) {
+    if (key) localStorage.setItem(key, legacyId);
+    return legacyId;
+  }
+  return null;
+}
+
+function persistSelectedProfileId(profileId: string): void {
+  localStorage.setItem('selected_profile_id', profileId);
+  const key = getProfileSelectionKey();
+  if (key) localStorage.setItem(key, profileId);
+}
+
+function clearSelectedProfileId(profileId?: string): void {
+  const key = getProfileSelectionKey();
+  const current = localStorage.getItem('selected_profile_id');
+  if (!profileId || current === profileId) localStorage.removeItem('selected_profile_id');
+  if (key) {
+    const scoped = localStorage.getItem(key);
+    if (!profileId || scoped === profileId) localStorage.removeItem(key);
+  }
+}
+
 const KNOWN_PROFILE_DATA_KEY = '__movix_known_profile_data';
 
 interface KnownProfileDataMap {
@@ -271,7 +323,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       deletedProfileId,
       readSelectedProfileId: () => localStorage.getItem('selected_profile_id'),
       clearCurrentProfile: () => setCurrentProfile(null),
-      clearSelectedProfileId: () => localStorage.removeItem('selected_profile_id'),
+      clearSelectedProfileId: () => clearSelectedProfileId(deletedProfileId),
       notifyProfileDataUpdated,
     })
   );
@@ -336,7 +388,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         // account; otherwise fall back to the default. The fallback covers two
         // cases: (1) account switch (user A's selectedProfileId stale for user
         // B), (2) profile deleted server-side between sessions.
-        const selectedProfileId = localStorage.getItem('selected_profile_id');
+        const selectedProfileId = readSelectedProfileId(response.data.profiles);
         const selectedProfile = selectedProfileId
           ? response.data.profiles.find((p: Profile) => p.id === selectedProfileId)
           : null;
@@ -351,7 +403,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         } else if (response.data.profiles.length > 0) {
           const defaultProfile = response.data.profiles.find((p: Profile) => p.isDefault) || response.data.profiles[0];
           setCurrentProfile(defaultProfile);
-          localStorage.setItem('selected_profile_id', defaultProfile.id);
+          persistSelectedProfileId(defaultProfile.id);
           if (!isWatchRoute) {
             await loadProfileData(defaultProfile.id);
           } else {
@@ -433,7 +485,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         const defaultProfile = response.data.profile;
         setProfiles([defaultProfile]);
         setCurrentProfile(defaultProfile);
-        localStorage.setItem('selected_profile_id', defaultProfile.id);
+        persistSelectedProfileId(defaultProfile.id);
         window.dispatchEvent(new CustomEvent('sync_storage_updated'));
         refreshVipState();
         console.log('Default profile created for new user:', defaultProfile.name);
@@ -464,7 +516,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         const defaultProfile = response.data.profile;
         setProfiles([defaultProfile]);
         setCurrentProfile(defaultProfile);
-        localStorage.setItem('selected_profile_id', defaultProfile.id);
+        persistSelectedProfileId(defaultProfile.id);
         window.dispatchEvent(new CustomEvent('sync_storage_updated'));
         refreshVipState();
         console.log('Data migrated to default profile:', defaultProfile.name);
@@ -580,7 +632,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         isIntentCurrent: currentIntent,
       }),
       persistSelectedProfileId: (profileId) => {
-        localStorage.setItem('selected_profile_id', profileId);
+        persistSelectedProfileId(profileId);
       },
       publishCurrentProfile: setCurrentProfile,
       notifyProfileDataUpdated,
@@ -622,7 +674,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         // If this is the first profile, select it
         if (profiles.length === 0) {
           setCurrentProfile(newProfile);
-          localStorage.setItem('selected_profile_id', newProfile.id);
+          persistSelectedProfileId(newProfile.id);
         }
       }
     } catch (error) {
