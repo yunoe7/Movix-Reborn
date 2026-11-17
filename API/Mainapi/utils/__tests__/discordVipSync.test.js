@@ -63,9 +63,14 @@ test('a missing access key is a non-VIP account only after successful reads', as
 test('VIP state is read from the access_keys table', async () => {
   const pool = {
     async execute(sql, params) {
-      assert.match(sql, /FROM access_keys/);
+      if (/^SELECT/i.test(sql.trim())) {
+        assert.match(sql, /FROM access_keys/);
+        assert.deepEqual(params, ['VIP-123']);
+        return [[{ active: 1, expires_at: null }]];
+      }
+      assert.match(sql, /UPDATE access_keys SET used = 1/);
       assert.deepEqual(params, ['VIP-123']);
-      return [[{ active: 1, expires_at: null }]];
+      return [{ affectedRows: 1 }];
     },
   };
   const active = await getAccountVipState(pool, link, {
