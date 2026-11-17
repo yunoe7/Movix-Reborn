@@ -3,9 +3,9 @@
 const getRedirectUri = () => `${window.location.origin}/auth`;
 
 export const DISCORD_CONFIG = {
-  // Existing Discord OAuth application used by the current Movix deployment.
-  // This is a public application ID; never put the bot token in frontend config.
-  CLIENT_ID: '1517232036425895996',
+  // Application ID copied from the Movix Reborn Discord Developer Portal.
+  // Public client ID only; never put the bot token in frontend config.
+  CLIENT_ID: '1570058543938150611',
   GUILD_ID: '1570056496471867483',
   OWNER_USER_ID: '1239889177055596607',
   ADMIN_ROLE_IDS: ['1570072172104261732'],
