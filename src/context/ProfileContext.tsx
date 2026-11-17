@@ -84,9 +84,12 @@ async function replayOutboxIfAny(): Promise<void> {
   // below would mark the outbox permanently failed → clearing the original
   // owner's pending writes forever. Keep the outbox idle instead; the 7-day
   // TTL evicts stale entries, and the original owner can return and replay.
-  const currentUserId = localStorage.getItem('resolved_user_id') || localStorage.getItem('user_id');
-  if (payload.userId && currentUserId && payload.userId !== currentUserId) {
-    console.warn('[outbox] skipping replay — different user logged in than outbox owner');
+  const { userType: currentUserType, userId: currentUserId } = getResolvedAccountContext();
+  if (
+    currentUserType !== payload.userType
+    || (payload.userId && currentUserId && payload.userId !== currentUserId)
+  ) {
+    console.warn('[outbox] skipping replay — different account logged in than outbox owner');
     return;
   }
 
@@ -173,6 +176,11 @@ function getProfileSelectionKey(): string | null {
   } catch {
     return null;
   }
+}
+
+function readCurrentAccountSelectedProfileId(): string | null {
+  const key = getProfileSelectionKey();
+  return (key && localStorage.getItem(key)) || localStorage.getItem('selected_profile_id');
 }
 
 function readSelectedProfileId(profiles: Profile[]): string | null {
@@ -321,7 +329,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   const clearDeletedProfileSelection = (deletedProfileId: string) => (
     clearDeletedProfileSelectionIfStillActive({
       deletedProfileId,
-      readSelectedProfileId: () => localStorage.getItem('selected_profile_id'),
+      readSelectedProfileId: readCurrentAccountSelectedProfileId,
       clearCurrentProfile: () => setCurrentProfile(null),
       clearSelectedProfileId: () => clearSelectedProfileId(deletedProfileId),
       notifyProfileDataUpdated,
