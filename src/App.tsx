@@ -27,6 +27,7 @@ import { NotificationData } from './types/alerts';
 // rendu, sans attendre un téléchargement pendant lequel la page s'afficherait.
 import IntroAnimation from './components/IntroAnimation';
 import { SITE_URL } from './config/runtime';
+import { API_BASE_URL } from './config/api';
 import RequireUsernameChange from './components/RequireUsernameChange';
 import ReferralManager from './components/referral/ReferralManager';
 import { TopProgressBar } from './components/TopProgressBar';
@@ -773,7 +774,7 @@ const PersistenceManager = () => {
           }
 
           debugAppLog(`Sending sync request (${batch.length} operations) - route: ${location.pathname}`);
-          await axios.post(`${API_URL}/api/sync`, syncPayload, {
+          await axios.post(`${API_BASE_URL}/api/sync`, syncPayload, {
             headers: { Authorization: `Bearer ${authToken}` }
           });
         }
@@ -1466,7 +1467,7 @@ const PersistenceManager = () => {
           };
           if (userInfo.id) syncPayload.userId = userInfo.id;
 
-          fetch(`${API_URL}/api/sync`, {
+          fetch(`${API_BASE_URL}/api/sync`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
