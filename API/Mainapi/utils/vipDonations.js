@@ -1234,8 +1234,13 @@ async function refreshInvoiceStatus(pool, invoiceInput, options = {}) {
 }
 
 async function listVipInvoices(pool, options = {}) {
-  const page = Math.max(1, parseNumber(options.page, 1));
-  const limit = Math.min(100, Math.max(1, parseNumber(options.limit, 30)));
+  const limit = Math.min(100, Math.max(1, Math.floor(parseNumber(options.limit, 30))));
+  // MySQL attend des entiers non signés dans LIMIT/OFFSET. mysql2 transmet
+  // les nombres JS comme DOUBLE dans les requêtes préparées, ce qui peut
+  // déclencher ER_WRONG_ARGUMENTS sur certaines versions MySQL.
+  // Ces deux valeurs sont bornées et normalisées avant interpolation SQL.
+  const maxPage = Math.floor(Number.MAX_SAFE_INTEGER / limit);
+  const page = Math.min(maxPage, Math.max(1, Math.floor(parseNumber(options.page, 1))));
   const offset = (page - 1) * limit;
   const conditions = [];
   const params = [];
@@ -1278,8 +1283,8 @@ async function listVipInvoices(pool, options = {}) {
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const [rows] = await pool.execute(
-    `SELECT * FROM vip_invoices ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    [...params, limit, offset]
+    `SELECT * FROM vip_invoices ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+    params
   );
   const [countRows] = await pool.execute(
     `SELECT COUNT(*) AS total FROM vip_invoices ${whereClause}`,
