@@ -5,6 +5,7 @@ const test = require('node:test');
 
 const {
   getDiscordAdminRole,
+  setDiscordVipRole,
   clearDiscordAdminRoleCache,
   getConfig,
 } = require('../discordAdminRoles');
@@ -95,4 +96,47 @@ test('successful membership checks are cached briefly', async () => {
   await getDiscordAdminRole(USER_ID, { env: ENV, http, now: () => 1000 });
   await getDiscordAdminRole(USER_ID, { env: ENV, http, now: () => 2000 });
   assert.equal(calls, 1);
+});
+
+
+test('VIP role can be assigned with the configured bot', async () => {
+  clearDiscordAdminRoleCache();
+  const calls = [];
+  const http = { async put(url, body, config) { calls.push({ method: 'put', url, body, config }); } };
+  const result = await setDiscordVipRole(USER_ID, true, { env: ENV, http });
+  assert.deepEqual(result, { configured: true, active: true });
+  assert.equal(calls[0].method, 'put');
+  assert.equal(calls[0].url, 'https://discord.com/api/v10/guilds/1570056496471867483/members/' + USER_ID + '/roles/1570312606940659755');
+  assert.equal(calls[0].config.headers.Authorization, 'Bot test-token');
+});
+
+test('VIP role can be removed and a missing guild member is harmless', async () => {
+  clearDiscordAdminRoleCache();
+  const calls = [];
+  const http = { async delete(url, config) { calls.push({ url, config }); } };
+  assert.deepEqual(await setDiscordVipRole(USER_ID, false, { env: ENV, http }), { configured: true, active: false });
+  assert.equal(calls.length, 1);
+
+  const missing = new Error('Not found');
+  missing.response = { status: 404 };
+  assert.deepEqual(
+    await setDiscordVipRole(USER_ID, false, { env: ENV, http: { async delete() { throw missing; } } }),
+    { configured: true, active: false, memberMissing: true }
+  );
+});
+
+test('VIP role synchronization fails closed when configuration is missing', async () => {
+  await assert.rejects(
+    setDiscordVipRole(USER_ID, true, { env: { DISCORD_BOT_TOKEN: 'test-token' }, http: fakeHttp({}) }),
+    { code: 'DISCORD_VIP_NOT_CONFIGURED' }
+  );
+});
+
+test('VIP role synchronization maps missing permissions to configuration error', async () => {
+  const forbidden = new Error('Forbidden');
+  forbidden.response = { status: 403 };
+  await assert.rejects(
+    setDiscordVipRole(USER_ID, true, { env: ENV, http: { async put() { throw forbidden; } } }),
+    { code: 'DISCORD_BOT_CONFIGURATION' }
+  );
 });
