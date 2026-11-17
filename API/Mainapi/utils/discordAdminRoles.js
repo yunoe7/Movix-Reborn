@@ -22,6 +22,7 @@ function getConfig(env = process.env) {
   const adminRoleIds = parseRoleIds(env.DISCORD_ADMIN_ROLE_IDS || '1570072172104261732');
   const moderatorRoleIds = parseRoleIds(env.DISCORD_MODERATOR_ROLE_IDS || '1570312607988977667');
   const uploaderRoleIds = parseRoleIds(env.DISCORD_UPLOADER_ROLE_IDS);
+  const vipRoleId = String(env.DISCORD_VIP_ROLE_ID || '1570312606940659755').trim();
 
   return {
     botToken,
@@ -30,6 +31,8 @@ function getConfig(env = process.env) {
     adminRoleIds,
     moderatorRoleIds,
     uploaderRoleIds,
+    vipRoleId: /^\\d{17,20}$/.test(vipRoleId) ? vipRoleId : '',
+    vipConfigured: Boolean(botToken && /^\\d{17,20}$/.test(guildId) && /^\\d{17,20}$/.test(vipRoleId)),
     configured: Boolean(botToken && /^\d{17,20}$/.test(guildId)),
   };
 }
@@ -131,12 +134,70 @@ async function getDiscordAdminRole(userId, options = {}) {
   }
 }
 
+
+/**
+ * Adds or removes the Movix VIP role for a Discord guild member.
+ * This operation is intentionally uncached; Discord remains the source of truth.
+ */
+async function setDiscordVipRole(userId, active, options = {}) {
+  const env = options.env || process.env;
+  const http = options.http || axios;
+  const config = getConfig(env);
+  const discordUserId = String(userId || '').trim();
+
+  if (!/^\\d{17,20}$/.test(discordUserId)) {
+    const error = new Error('Invalid Discord user ID');
+    error.code = 'DISCORD_INVALID_USER';
+    throw error;
+  }
+  if (typeof active !== 'boolean') {
+    const error = new Error('VIP role state must be boolean');
+    error.code = 'DISCORD_INVALID_ROLE_STATE';
+    throw error;
+  }
+  if (!config.vipConfigured) {
+    const error = new Error('Discord VIP role synchronization is not configured');
+    error.code = 'DISCORD_VIP_NOT_CONFIGURED';
+    throw error;
+  }
+
+  const url = DISCORD_API_BASE + '/guilds/' + config.guildId +
+    '/members/' + discordUserId + '/roles/' + config.vipRoleId;
+  try {
+    if (active) {
+      await http.put(url, null, {
+        headers: { Authorization: 'Bot ' + config.botToken },
+        timeout: REQUEST_TIMEOUT_MS,
+      });
+    } else {
+      await http.delete(url, {
+        headers: { Authorization: 'Bot ' + config.botToken },
+        timeout: REQUEST_TIMEOUT_MS,
+      });
+    }
+    memberCache.delete(config.guildId + ':' + discordUserId);
+    return { configured: true, active };
+  } catch (error) {
+    const status = error?.response?.status;
+    if (status === 404) {
+      // A user who left the guild has no role to update; treat removal as complete.
+      if (!active) return { configured: true, active: false, memberMissing: true };
+      const wrapped = createDiscordError('DISCORD_MEMBER_NOT_FOUND');
+      throw wrapped;
+    }
+    if (status === 401 || status === 403) throw createDiscordError('DISCORD_BOT_CONFIGURATION');
+    if (status === 429) throw createDiscordError('DISCORD_RATE_LIMITED');
+    throw createDiscordError('DISCORD_API_UNAVAILABLE');
+  }
+}
+
 function clearDiscordAdminRoleCache() {
   memberCache.clear();
 }
 
 module.exports = {
   getDiscordAdminRole,
+  setDiscordVipRole,
   clearDiscordAdminRoleCache,
   getConfig,
 };
