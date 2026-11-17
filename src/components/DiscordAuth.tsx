@@ -15,7 +15,7 @@ const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 // fallback so an unset build variable never creates requests to "undefined/...".
 const MAIN_API_BASE = (
   import.meta.env.VITE_MAIN_API || 'https://main-api-production-1590f478.up.railway.app'
-).replace(/\\/+$/, '');
+).replace(/\/+$/, '');
 type DiscordAuthWindow = Window & { __discord_verify_done?: boolean };
 
 const DiscordAuth: React.FC = () => {
