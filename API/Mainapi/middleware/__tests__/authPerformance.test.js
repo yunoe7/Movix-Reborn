@@ -152,6 +152,7 @@ test('une panne SQL ne contourne plus la vérification de session et retourne un
   f.failSql();
   await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
     assert.equal(f.auth.isAuthInfrastructureError(error), true);
+    assert.equal(f.auth.isAuthInfrastructureError(error), true);
     assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
     assert.equal(error.statusCode, 503);
     return true;
@@ -165,6 +166,7 @@ test('une erreur SQL inattendue échoue de manière fermée', async t => {
   const f = await fixture(t);
   f.failSqlUnexpected();
   await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(f.auth.isAuthInfrastructureError(error), true);
     assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
     assert.equal(error.statusCode, 503);
     return true;
@@ -177,6 +179,7 @@ test('une erreur de lecture du compte ne valide jamais le JWT', async t => {
   const f = await fixture(t);
   f.failAccountRead();
   await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(f.auth.isAuthInfrastructureError(error), true);
     assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
     assert.equal(error.statusCode, 503);
     return true;
@@ -197,6 +200,7 @@ test('une erreur lors de la récupération du pool retourne une indisponibilité
   const f = await fixture(t);
   f.failPool();
   await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(f.auth.isAuthInfrastructureError(error), true);
     assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
     assert.equal(error.statusCode, 503);
     return true;
