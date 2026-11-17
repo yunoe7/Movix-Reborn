@@ -488,13 +488,21 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       // browser crash) would be destroyed when replaceProfileStorage
       // wipes localStorage and restores stale backend data.
       await replayOutboxIfAny();
-      if (!hydrationRequest.isCurrent() || !isIntentCurrent()) return false;
+      if (
+        localStorage.getItem('auth_token') !== authToken
+        || !hydrationRequest.isCurrent()
+        || !isIntentCurrent()
+      ) return false;
 
       const response = await axios.get(`${API_URL}/api/profiles/${profileId}/data`, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
-      if (!hydrationRequest.isCurrent() || !isIntentCurrent()) return false;
+      if (
+        localStorage.getItem('auth_token') !== authToken
+        || !hydrationRequest.isCurrent()
+        || !isIntentCurrent()
+      ) return false;
       if (!response.data.success || !response.data.data) return false;
 
       const profileData = response.data.data;
@@ -528,7 +536,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         return true;
       }
 
-      if (!isIntentCurrent()) return false;
+      if (
+        localStorage.getItem('auth_token') !== authToken
+        || !hydrationRequest.isCurrent()
+        || !isIntentCurrent()
+      ) return false;
       replaceProfileStorage(profileEntries);
       profileDataHydratedRef.current = true;
 
@@ -737,6 +749,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   // Listen for auth changes to reload profiles — montage unique (perf)
   useEffect(() => {
     const handleAuthChange = () => {
+      // Invalider immédiatement les réponses de l'ancien compte, y compris
+      // une hydratation déjà en vol et une sélection manuelle de profil.
+      profileIntentGuard.begin();
+      const invalidatedHydration = profileHydrationGuard.begin();
+      invalidatedHydration.finish();
       // Nouveau compte → les données profil devront être réhydratées
       profileDataHydratedRef.current = false;
       // Reload profiles when auth changes (especially for BIP39)
