@@ -880,6 +880,13 @@ app.use((err, req, res, next) => {
     });
   }
 
+  if (err?.code === "AUTH_INFRASTRUCTURE_UNAVAILABLE") {
+    return res.status(503).json({
+      success: false,
+      error: "Service temporairement indisponible",
+    });
+  }
+
   console.error("Erreur globale:", err);
   res.status(500).json({
     error: "Erreur serveur interne",
