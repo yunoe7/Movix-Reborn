@@ -295,3 +295,18 @@ Ce projet est distribué sous licence Creative Commons Attribution-NonCommercial
 Ce projet est fourni uniquement à des fins éducatives, de recherche et de démonstration.
 Il n'encourage ni ne cautionne une utilisation illégale, le contournement de droits, ou toute violation des lois applicables.
 Chaque utilisateur est seul responsable de l'usage qu'il en fait.
+
+## Déploiement Movix — état au 17 novembre 2026
+
+Le déploiement de la nouvelle instance Movix est en cours de validation. Les services principaux sont publiés aux adresses suivantes :
+
+- Frontend Cloudflare Worker : https://movix-reborn.yunoo-collab.workers.dev
+- API principale Railway : https://main-api-production-1590f478.up.railway.app
+
+L'API principale Railway est actuellement **en ligne** : dernier déploiement en succès, une réplique active, MySQL et Redis connectés et initialisation des groupes de tables confirmée dans les logs. Cela confirme le démarrage du backend, pas encore un test complet de toutes les fonctions depuis le navigateur.
+
+La base MySQL de cette instance a été initialisée pour cette nouvelle installation. Les tables sont créées au démarrage ; les données privées des comptes et les clés VIP ne sont pas contenues dans le dépôt GitHub et ne sont pas importées par la simple récupération du code. Le journal de récupération VIP du 17 novembre n'a trouvé aucune ancienne facture livrée ni récompense de parrainage à rétablir dans cette base.
+
+Le domaine `movix.miami` n'est pas rattaché à ce déploiement : il ne doit pas être modifié sans accès et autorisation de son propriétaire. La validation du frontend dans un navigateur et les tests fonctionnels VIP restent à faire.
+
+Pour le détail de l'API, des contrôles VIP et de l'état du service Railway, voir [la documentation Main API](API/Mainapi/README.md#déploiement-railway-et-état-de-production).
