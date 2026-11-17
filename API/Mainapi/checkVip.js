@@ -30,6 +30,34 @@ function cacheVipResult(key, result, options = {}) {
     vipCache.set(key, { result, timestamp: now, ttl });
 }
 
+function parseExpiryTimestamp(value) {
+    if (value instanceof Date) {
+        return value.getTime();
+    }
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : null;
+    }
+    if (typeof value === 'bigint') {
+        const timestamp = Number(value);
+        return Number.isSafeInteger(timestamp) ? timestamp : null;
+    }
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+        return null;
+    }
+    if (/^-?\\d+$/.test(normalized)) {
+        const timestamp = Number(normalized);
+        return Number.isSafeInteger(timestamp) ? timestamp : null;
+    }
+
+    const timestamp = new Date(normalized).getTime();
+    return Number.isFinite(timestamp) ? timestamp : null;
+}
+
 /**
  * Vérifie si une clé d'accès est valide dans la table `access_keys` MySQL.
  * 
@@ -102,7 +130,7 @@ async function verifyAccessKey(accessKey) {
         const hasExpiry = keyData.expires_at !== null
             && keyData.expires_at !== undefined
             && keyData.expires_at !== '';
-        const expiresAtMs = hasExpiry ? new Date(keyData.expires_at).getTime() : null;
+        const expiresAtMs = hasExpiry ? parseExpiryTimestamp(keyData.expires_at) : null;
         if (hasExpiry && (!Number.isFinite(expiresAtMs) || Date.now() >= expiresAtMs)) {
             const result = { vip: false, expiresAt: keyData.expires_at, duration: keyData.duree_validite, reason: 'key_expired' };
             cacheVipResult(fixedKey, result);
