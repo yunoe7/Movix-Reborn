@@ -32,13 +32,15 @@ function isAccessKeyActive(row, now = Date.now()) {
   return Number.isFinite(expiry) && now < expiry;
 }
 
-async function getAccountVipState(pool, link) {
-  const userData = await readUserData(link.target_user_type, link.target_user_id, { strict: true });
+async function getAccountVipState(pool, link, options = {}) {
+  const readUser = options.readUserData || readUserData;
+  const readProfile = options.readProfileData || readProfileData;
+  const userData = await readUser(link.target_user_type, link.target_user_id, { strict: true });
   if (!userData || typeof userData !== 'object') throw new Error('Linked account data unavailable');
   const profiles = Array.isArray(userData.profiles) ? userData.profiles : [];
   const profile = profiles.find((item) => item && item.isDefault) || profiles[0] || null;
   const profileData = profile?.id
-    ? await readProfileData(link.target_user_type, link.target_user_id, profile.id, { strict: true })
+    ? await readProfile(link.target_user_type, link.target_user_id, profile.id, { strict: true })
     : null;
   const key = extractAccessCode(profileData) || extractAccessCode(userData);
   if (!key) return false;
@@ -131,6 +133,7 @@ function stopDiscordVipReconciliation() {
 module.exports = {
   extractAccessCode,
   isAccessKeyActive,
+  getAccountVipState,
   syncDiscordVipForAccount,
   reconcileDiscordVipRoles,
   startDiscordVipReconciliation,
