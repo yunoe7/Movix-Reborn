@@ -160,6 +160,7 @@ const AdminWishboard: React.FC = () => {
         not_found: 0,
     });
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -323,6 +324,7 @@ const AdminWishboard: React.FC = () => {
         } else {
             setLoading(true);
         }
+        setFetchError(null);
         try {
             const authToken = localStorage.getItem('auth_token');
             const params = new URLSearchParams();
@@ -339,27 +341,45 @@ const AdminWishboard: React.FC = () => {
                 },
             });
 
-            if (response.ok) {
-                const data = await response.json();
-
-                // Fetch TMDB data for each request
-                const requestsWithTmdb = await Promise.all(
-                    data.requests.map(async (req: WishboardRequest) => {
-                        const tmdbData = await fetchTmdbData(req.tmdb_id, req.media_type);
-                        return { ...req, ...tmdbData };
-                    })
-                );
-
-                if (append) {
-                    setRequests(prev => [...prev, ...requestsWithTmdb]);
-                } else {
-                    setRequests(requestsWithTmdb);
+            if (!response.ok) {
+                let errorMessage = response.statusText || 'Erreur inconnue';
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.error || errorData.message || errorMessage;
+                } catch {
+                    // Keep the HTTP status text when the response is not JSON.
                 }
-                setHasMore(data.hasMore ?? false);
-                setStats(data.stats);
+                setFetchError(`Erreur API Wishboard (HTTP ${response.status}) : ${errorMessage}`);
+                return;
             }
+
+            const data = await response.json();
+            if (!Array.isArray(data.requests)) {
+                throw new Error('Réponse API Wishboard invalide : liste des demandes absente.');
+            }
+
+            // Fetch TMDB data for each request
+            const requestsWithTmdb = await Promise.all(
+                data.requests.map(async (req: WishboardRequest) => {
+                    const tmdbData = await fetchTmdbData(req.tmdb_id, req.media_type);
+                    return { ...req, ...tmdbData };
+                })
+            );
+
+            if (append) {
+                setRequests(prev => [...prev, ...requestsWithTmdb]);
+            } else {
+                setRequests(requestsWithTmdb);
+            }
+            setHasMore(data.hasMore ?? false);
+            setStats(data.stats);
         } catch (error) {
             console.error('Error fetching admin wishboard:', error);
+            setFetchError(
+                error instanceof Error
+                    ? `Impossible de récupérer les demandes Wishboard : ${error.message}`
+                    : 'Impossible de récupérer les demandes Wishboard.'
+            );
         } finally {
             setLoading(false);
             setLoadingMore(false);
@@ -1437,6 +1457,11 @@ const AdminWishboard: React.FC = () => {
                 transition={{ duration: 0.4 }}
                 className="bg-white/5 rounded-lg border border-white/10 overflow-hidden"
             >
+                {fetchError && (
+                    <div role="alert" className="mx-4 mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                        {fetchError}
+                    </div>
+                )}
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 animate-spin text-green-500" />
