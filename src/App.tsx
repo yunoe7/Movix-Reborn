@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useState, useRef, lazy, Suspense } from 'react';
-import { API_BASE_URL } from './config/api';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -19,7 +18,6 @@ import NotFound from './pages/NotFound';
 // NOTE perf : les imports globaux de video.js/dist/video-js.css et videojs-custom.css
 // ont été supprimés — VideoJS/VideoJSPlayer ne sont montés nulle part et ces composants
 // importent déjà leur propre CSS s'ils sont réactivés un jour.
-import axios from 'axios';
 import Footer from './components/Footer';
 import { AlertService } from './services/alertService';
 import NotificationToast from './components/NotificationToast';
@@ -44,7 +42,7 @@ import { HalloweenAtmosphere } from './components/HalloweenAtmosphere';
 import { useIdleTimer } from './hooks/useIdleTimer';
 import { startVipVerification } from './utils/vipUtils';
 import { readLocalStorage, readSessionStorage } from './utils/browserStorage';
-import { broadcastAuthChange, clearStoredAuthSession, getResolvedAccountContext } from './utils/accountAuth';
+import { getResolvedAccountContext } from './utils/accountAuth';
 import { isSyncableStorageKey, SYNC_OUTBOX_STORAGE_KEY } from './utils/syncStorage';
 import { isWrappedTestRoute } from './utils/wrappedExperiment';
 import i18n, { detectInitialLanguage } from './i18n';
@@ -71,68 +69,10 @@ startVipVerification();
 // Detect and set language on first visit (browser language + IP geolocation)
 detectInitialLanguage();
 
-// Global 401 handler: on any 401 from axios, clear storage and redirect to /
-// 403 is NOT intercepted here — it can come from Turnstile, admin checks, etc.
-// Uses __forceClearInProgress flag to prevent sync operations during forced clear
-(function setupAxios401Handler() {
-  if ((window as any).__axios401Set) return;
-  (window as any).__axios401Set = true;
-  axios.interceptors.response.use(
-    (resp) => resp,
-    (error) => {
-      const status = error?.response?.status;
-      if (status === 401) {
-        // Déterminer le domaine de la requête ayant échoué
-        const cfg = error?.config || error?.response?.config || {};
-        const baseURL = cfg.baseURL || '';
-        const urlPart = cfg.url || '';
-        let fullUrl = '';
-        try {
-          fullUrl = urlPart && /^https?:\/\//i.test(urlPart)
-            ? urlPart
-            : (baseURL ? new URL(urlPart || '', baseURL).toString() : (urlPart || ''));
-        } catch {
-          fullUrl = urlPart || '';
-        }
-        let hostname = '';
-        try { hostname = fullUrl ? new URL(fullUrl).hostname : ''; } catch { hostname = ''; }
-
-        // Vérifier si c'est la route /api/admin/check - ne pas déconnecter pour cette route
-        const isAdminCheckRoute = fullUrl.includes('/api/admin/check') || urlPart.includes('/api/admin/check');
-
-        // N'appliquer le clear/redirect que pour le domaine API configuré et pas pour /api/admin/check
-        if (API_HOSTNAME && hostname === API_HOSTNAME && !isAdminCheckRoute) {
-          // Marquer qu'on est en train de faire un clear forcé pour éviter le sync
-          (window as any).__forceClearInProgress = true;
-
-          try {
-            clearStoredAuthSession();
-            broadcastAuthChange();
-          } catch { }
-          try { sessionStorage.clear(); } catch { }
-
-          // Réinitialiser le flag après un court délai
-          setTimeout(() => {
-            (window as any).__forceClearInProgress = false;
-          }, 1000);
-
-          window.location.href = '/';
-        }
-      }
-      return Promise.reject(error);
-    }
-  );
-})();
-
-// Get API URL from environment variable
-const API_URL = API_BASE_URL;
-const API_HOSTNAME = (() => {
-  try {
-    return API_URL ? new URL(API_URL).hostname : '';
-  } catch {
-    return '';
-  }
-})();
+// A 401 on an individual API request is not sufficient to invalidate the
+// whole browser session. Feature endpoints can reject requests for unrelated
+// reasons (missing profile, stale permissions, etc.). Authentication state is
+// cleared only by explicit logout or the dedicated authentication flow.
 
 // Component to manage episode alerts notifications
 const AlertNotificationManager: React.FC = () => {
