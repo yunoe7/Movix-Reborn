@@ -359,18 +359,18 @@ const AdminWishboard: React.FC = () => {
             }
 
             // Fetch TMDB data for each request
-                const requestsWithTmdb = await Promise.all(
-                    data.requests.map(async (req: WishboardRequest) => {
-                        const tmdbData = await fetchTmdbData(req.tmdb_id, req.media_type);
-                        return { ...req, ...tmdbData };
-                    })
-                );
+            const requestsWithTmdb = await Promise.all(
+                data.requests.map(async (req: WishboardRequest) => {
+                    const tmdbData = await fetchTmdbData(req.tmdb_id, req.media_type);
+                    return { ...req, ...tmdbData };
+                })
+            );
 
-                if (append) {
-                    setRequests(prev => [...prev, ...requestsWithTmdb]);
-                } else {
-                    setRequests(requestsWithTmdb);
-                }
+            if (append) {
+                setRequests(prev => [...prev, ...requestsWithTmdb]);
+            } else {
+                setRequests(requestsWithTmdb);
+            }
             setHasMore(data.hasMore ?? false);
             setStats(data.stats);
         } catch (error) {
