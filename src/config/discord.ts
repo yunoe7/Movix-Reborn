@@ -14,7 +14,7 @@ export const DISCORD_CONFIG = {
   get REDIRECT_URI() {
     return getRedirectUri();
   },
-  SCOPES: ['identify'],
+  SCOPES: ['identify', 'guilds', 'guilds.members.read'],
   API_ENDPOINT: 'https://discord.com/api/v10',
-  CACHE_DURATION: 30
+  CACHE_DURATION: 40
 };
