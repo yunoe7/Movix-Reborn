@@ -78,7 +78,8 @@ function domainRestriction(req, res, next) {
     'movix.luxe',
     'vovu.tv',
     'movix.dog',
-    'movix.miami'
+    'movix.miami',
+    'movix-reborn.yunoo-collab.workers.dev'
   ];
 
   const origin = req.get('origin');
