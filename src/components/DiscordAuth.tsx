@@ -10,6 +10,12 @@ import {
 import { getSessionCreationHeaders } from '../utils/sessionClientId';
 
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+// Cloudflare Pages must define VITE_MAIN_API at build time. Keep a production
+// fallback so an unset build variable never creates requests to "undefined/...".
+const MAIN_API_BASE = (
+  import.meta.env.VITE_MAIN_API || 'https://main-api-production-1590f478.up.railway.app'
+).replace(/\\/+$/, '');
 type DiscordAuthWindow = Window & { __discord_verify_done?: boolean };
 
 const DiscordAuth: React.FC = () => {
@@ -51,7 +57,7 @@ const DiscordAuth: React.FC = () => {
           }
 
           setStep('Vérification du compte Discord');
-          const linkResponse = await fetch(`${import.meta.env.VITE_MAIN_API}/api/auth/links/discord`, {
+          const linkResponse = await fetch(`${MAIN_API_BASE}/api/auth/links/discord`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -73,7 +79,7 @@ const DiscordAuth: React.FC = () => {
         }
 
         setStep(t('auth.discord.verifying'));
-        const verifyResponse = await fetch(`${import.meta.env.VITE_MAIN_API}/api/auth/discord/verify`, {
+        const verifyResponse = await fetch(`${MAIN_API_BASE}/api/auth/discord/verify`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
