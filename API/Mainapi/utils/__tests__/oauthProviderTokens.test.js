@@ -42,7 +42,7 @@ test('les identifiants par défaut cèdent la place à ceux de l\'environnement'
   // Valeur d'exemple laissée telle quelle : on garde l'identifiant par défaut.
   assert.deepEqual(
     getAllowedClientIds('discord', { DISCORD_CLIENT_ID: 'YOUR_DISCORD_CLIENT_ID' }),
-    ['1517232036425895996'],
+    ['1570058543938150611'],
   );
 });
 
