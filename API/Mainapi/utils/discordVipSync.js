@@ -3,6 +3,7 @@
 const { getPool } = require('../mysqlPool');
 const { readUserData, readProfileData } = require('../routes/sync');
 const { setDiscordVipRole, getConfig } = require('./discordAdminRoles');
+const { ensureAccountLinksStorage } = require('./accountLinks');
 
 const LOCK_NAME = 'movix:discord-vip-reconcile:v1';
 const INTERVAL_MS = Math.max(60_000, Number(process.env.DISCORD_VIP_SYNC_INTERVAL_MS) || 5 * 60_000);
@@ -68,6 +69,7 @@ async function reconcileDiscordVipRoles(options = {}) {
   const config = getConfig(options.env || process.env);
   if (!config.vipConfigured) return { skipped: true, reason: 'not_configured', checked: 0 };
   const pool = options.pool || getPool();
+  await ensureAccountLinksStorage();
   const connection = await pool.getConnection();
   let locked = false;
   try {
