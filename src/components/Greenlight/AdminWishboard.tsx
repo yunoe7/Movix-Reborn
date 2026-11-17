@@ -371,9 +371,8 @@ const AdminWishboard: React.FC = () => {
                 } else {
                     setRequests(requestsWithTmdb);
                 }
-                setHasMore(data.hasMore ?? false);
-                setStats(data.stats);
-            }
+            setHasMore(data.hasMore ?? false);
+            setStats(data.stats);
         } catch (error) {
             console.error('Error fetching admin wishboard:', error);
             setFetchError(
