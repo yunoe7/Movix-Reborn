@@ -782,6 +782,11 @@ const appReady = (async () => {
       app.use('/api', require('./routes/history'));
       console.log('History routes initialized successfully');
 
+      // Le schéma communautaire est nécessaire aux commentaires, likes et notifications.
+      // CREATE TABLE IF NOT EXISTS répare les tables absentes sans toucher aux données existantes.
+      await ensureTableGroup(pool, 'community');
+      console.log('Community tables initialized successfully');
+
       // Les clés VIP vivent dans le groupe core. Le créer avant le parrainage
       // garantit que access_keys existe; CREATE TABLE IF NOT EXISTS conserve les tables présentes.
       try {

@@ -44,6 +44,7 @@ mock.method(axios, 'get', async (url, config = {}) => {
 const vipPaygate = require('../vipPaygate');
 const {
   createVipInvoice,
+  listVipInvoices,
   handlePaygateCallback,
   refreshInvoiceStatus,
   forceValidateInvoice,
@@ -1742,4 +1743,50 @@ test('manual admin validation rejects an invalid stored PayGate USD amount befor
     fake.calls.some(({ sql }) => /access_keys|status = 'delivered'/i.test(sql)),
     false
   );
+});
+
+test('admin invoice pagination uses bounded integer literals for MySQL LIMIT/OFFSET', async () => {
+  const calls = [];
+  const invoice = {
+    id: 12,
+    public_id: 'vip-test-12',
+    payment_method: 'btc',
+    status: 'awaiting_payment',
+    pack_eur: 7,
+    amount_eur: 7,
+    amount_usd: 7.6,
+    vip_years: 1,
+    recipient_mode: 'self',
+    created_at: new Date('2026-07-28T12:00:00Z'),
+    expires_at: new Date('2026-07-28T15:30:00Z')
+  };
+  const pool = {
+    async execute(sql, params = []) {
+      calls.push({ sql, params });
+      if (/^SELECT \* FROM vip_invoices/.test(sql)) return [[invoice], []];
+      if (/^SELECT COUNT\(\*\) AS total FROM vip_invoices/.test(sql)) {
+        return [[{ total: 1 }], []];
+      }
+      throw new Error(`Unexpected SQL: ${sql}`);
+    }
+  };
+
+  const result = await listVipInvoices(pool, {
+    status: 'awaiting_payment',
+    search: 'vip-test',
+    page: '2.9',
+    limit: '30.8'
+  });
+
+  assert.equal(result.page, 2);
+  assert.equal(result.limit, 30);
+  assert.equal(result.total, 1);
+  assert.equal(calls.length, 2);
+  assert.match(calls[0].sql, /LIMIT 30 OFFSET 30$/);
+  assert.doesNotMatch(calls[0].sql, /LIMIT \? OFFSET \?/);
+  assert.equal(calls[0].params.length, 12);
+  assert.equal(calls[0].params[0], 'awaiting_payment');
+  assert.equal(calls[0].params[1], '%vip-test%');
+  assert.doesNotMatch(calls[1].sql, /LIMIT|OFFSET/);
+  assert.equal(calls[1].params.length, 12);
 });
