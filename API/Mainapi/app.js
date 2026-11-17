@@ -765,6 +765,15 @@ const appReady = (async () => {
       app.use('/api', require('./routes/history'));
       console.log('History routes initialized successfully');
 
+      // Les clés VIP vivent dans le groupe core. Le créer avant le parrainage
+      // garantit que access_keys existe; CREATE TABLE IF NOT EXISTS conserve les tables présentes.
+      try {
+        await ensureTableGroup(pool, 'core');
+        console.log('Core tables initialized successfully');
+      } catch (error) {
+        console.error('Core tables init error:', error?.message || error);
+      }
+
       // Parrainage (idempotent). Sans ces tables, le parrainage reste coupé
       // (réglages par défaut) : l'API démarre quand même.
       try {
