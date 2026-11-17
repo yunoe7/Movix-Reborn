@@ -15,6 +15,7 @@ import { checkVipStatus } from '../utils/vipUtils';
 import { useProfile } from '../context/ProfileContext';
 import { broadcastAuthChange, clearStoredAuthSession } from '../utils/accountAuth';
 import { readLocalStorage } from '../utils/browserStorage';
+import { API_BASE_URL } from '../config/api';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
 import { useIsDesktopNav } from '../hooks/useIsDesktopNav';
 import { HoverHighlight, HoverHighlightItem } from './ui/hover-highlight';
@@ -180,7 +181,7 @@ const ProfileMenu: React.FC = () => {
       }
 
       try {
-        const response = await fetch(`${import.meta.env.VITE_MAIN_API}/api/admin/check`, {
+        const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
@@ -193,7 +194,7 @@ const ProfileMenu: React.FC = () => {
 
         const data = await response.json();
         const role = String(data?.admin?.role || '').toLowerCase();
-        setCanAccessAdminPanel(role === 'admin' || role === 'uploader');
+        setCanAccessAdminPanel(['admin', 'uploader', 'moderator'].includes(role));
       } catch {
         setCanAccessAdminPanel(false);
       }
@@ -248,7 +249,7 @@ const ProfileMenu: React.FC = () => {
     // Tenter de supprimer la session courante côté serveur si possible
     try {
       if (sessionId && token) {
-        await fetch(`${import.meta.env.VITE_MAIN_API}/api/sessions/delete`, {
+        await fetch(`${API_BASE_URL}/api/sessions/delete`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
