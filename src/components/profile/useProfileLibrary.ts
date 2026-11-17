@@ -61,16 +61,28 @@ export function useProfileLibrary() {
   // Relit quand un autre onglet ou la synchro serveur modifie la bibliothèque.
   useEffect(() => {
     let timer: number | undefined;
+    const handleAuthChange = () => {
+      // Invalidate metadata requests from the previous identity immediately.
+      generation.current += 1;
+      setLists({ watchlist: [], favorites: [], watched: [] });
+      setLoading(true);
+      // The profile hydrator emits sync_storage_updated after replacing local data.
+      // Do not reread localStorage here: it may still contain the previous account.
+      if (!localStorage.getItem('auth_token')) setLoading(false);
+    };
     const schedule = (event?: Event) => {
       const key = event instanceof StorageEvent ? event.key : null;
       if (key && !LIBRARY_KEY_PATTERN.test(key) && !EXTRA_KEYS.has(key)) return;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => void reload(), 150);
     };
+    window.addEventListener('auth_changed', handleAuthChange);
     window.addEventListener('storage', schedule);
     window.addEventListener('sync_storage_updated', schedule);
     return () => {
       window.clearTimeout(timer);
+      generation.current += 1;
+      window.removeEventListener('auth_changed', handleAuthChange);
       window.removeEventListener('storage', schedule);
       window.removeEventListener('sync_storage_updated', schedule);
     };

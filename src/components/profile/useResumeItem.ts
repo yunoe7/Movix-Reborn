@@ -1,6 +1,6 @@
 // Dernier titre en cours (clé continueWatching), pour le bouton « Reprendre ».
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { encodeId } from '@/utils/idEncoder';
 import { fetchTmdb, readJson } from './storage';
 
@@ -67,17 +67,21 @@ function progressOf(entry: Entry) {
 export function useResumeItem() {
   const [item, setItem] = useState<ResumeItem | null>(null);
   const [loading, setLoading] = useState(true);
+  const generation = useRef(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  const reload = useCallback(async () => {
+    const current = ++generation.current;
+    setItem(null);
+    setLoading(true);
     // Le plus récent qui n'est pas fini (au-delà de 95 %, on passe au suivant).
     const entry = latestEntries().find((candidate) => progressOf(candidate).progress < 95);
     if (!entry) {
-      setLoading(false);
+      if (current === generation.current) setLoading(false);
       return;
     }
-    void fetchTmdb(`/${entry.type}/${entry.id}`).then((data) => {
-      if (cancelled) return;
+    try {
+      const data = await fetchTmdb(`/${entry.type}/${entry.id}`);
+      if (current !== generation.current) return;
       if (!data) {
         setLoading(false);
         return;
@@ -98,11 +102,35 @@ export function useResumeItem() {
         detailsPath: `/${entry.type}/${encoded}`,
       });
       setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
+    } catch {
+      if (current === generation.current) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void reload();
+    const handleAuthChange = () => {
+      generation.current += 1;
+      setItem(null);
+      setLoading(true);
+      // Wait for ProfileContext hydration to emit sync_storage_updated.
+      if (!localStorage.getItem('auth_token')) setLoading(false);
+    };
+    const handleStorage = (event: Event) => {
+      if (!(event instanceof StorageEvent) || event.key === 'continueWatching' || event.key === null) {
+        void reload();
+      }
+    };
+    window.addEventListener('auth_changed', handleAuthChange);
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('sync_storage_updated', reload);
+    return () => {
+      generation.current += 1;
+      window.removeEventListener('auth_changed', handleAuthChange);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('sync_storage_updated', reload);
+    };
+  }, [reload]);
 
   return { item, loading };
 }

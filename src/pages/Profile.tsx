@@ -108,7 +108,7 @@ const Profile: React.FC = () => {
 
   // L'onglet suit toujours l'URL : /profile sans ?tab revient sur « À voir ».
   const activeTab = parseTab(location.search);
-  const [authenticated] = useState(isUserAuthenticated);
+  const [authenticated, setAuthenticated] = useState(isUserAuthenticated);
   const [account, setAccount] = useState<StoredUserProfile>(readAccountProfile);
   const [vip, setVip] = useState(() => ({ isVip: isUserVip(), until: readVipUntil() }));
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
@@ -120,6 +120,7 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     const refresh = () => {
+      setAuthenticated(isUserAuthenticated());
       setAccount(readAccountProfile());
       setVip({ isVip: isUserVip(), until: readVipUntil() });
     };

@@ -71,14 +71,25 @@ export function useCustomLists(): {
   useEffect(() => {
     void load();
 
+    const onAuthChange = () => {
+      generationRef.current += 1;
+      setLists([]);
+      setLoading(true);
+      countsRef.current.clear();
+      // Wait for ProfileContext hydration to emit sync_storage_updated.
+      if (!localStorage.getItem('auth_token')) setLoading(false);
+    };
+
     const onStorage = (event: StorageEvent) => {
       if (event.key === 'custom_lists' || event.key === null) void load();
     };
     const onSync = () => { void load(); };
 
+    window.addEventListener('auth_changed', onAuthChange);
     window.addEventListener('storage', onStorage);
     window.addEventListener('sync_storage_updated', onSync);
     return () => {
+      window.removeEventListener('auth_changed', onAuthChange);
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('sync_storage_updated', onSync);
       generationRef.current += 1;

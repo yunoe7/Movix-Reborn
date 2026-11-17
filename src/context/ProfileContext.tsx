@@ -288,7 +288,15 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
     try {
       setIsLoading(true);
       const authToken = localStorage.getItem('auth_token');
-      if (!authToken) return;
+      if (!authToken) {
+        // A logged-out session must never keep the previous account's profile
+        // visible in context. Keep selected_profile_id untouched for a later
+        // login, but clear only the in-memory identity.
+        setCurrentProfile(null);
+        setProfiles([]);
+        profileDataHydratedRef.current = false;
+        return;
+      }
 
       // For BIP39 users, ensure auth data is fully loaded
       const isBip39Auth = localStorage.getItem('bip39_auth') === 'true';
@@ -590,9 +598,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
   // Create a new profile
   const createProfile = async (name: string, avatar: string, ageRestriction?: number) => {
+    let requestAuthToken: string | null = null;
     try {
       setIsLoading(true);
       const authToken = localStorage.getItem('auth_token');
+      requestAuthToken = authToken;
       if (!authToken) throw new Error('No auth token');
 
       const response = await axios.post(`${API_URL}/api/profiles`, {
@@ -603,6 +613,8 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
+      // Ignore late responses from the account that was active before a switch.
+      if (localStorage.getItem('auth_token') !== authToken) return;
       if (response.data.success) {
         const newProfile = response.data.profile;
         setProfiles(prev => [...prev, newProfile]);
@@ -617,7 +629,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       console.error('Error creating profile:', error);
       throw error;
     } finally {
-      setIsLoading(false);
+      if (requestAuthToken && localStorage.getItem('auth_token') === requestAuthToken) setIsLoading(false);
     }
   };
 
@@ -634,6 +646,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
+      if (localStorage.getItem('auth_token') !== authToken) return;
       if (response.data.success) {
         const updatedProfile = response.data.profile;
         setProfiles(prev => prev.map(p => p.id === profileId ? updatedProfile : p));
@@ -661,6 +674,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
+      if (localStorage.getItem('auth_token') !== authToken || !deletionIntent.isCurrent()) return;
       if (response.data.success) {
         // Check if server created a new default profile
         if (response.data.newDefaultProfile) {
@@ -682,7 +696,8 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
           const profilesResponse = await axios.get(`${API_URL}/api/profiles`, {
             headers: { Authorization: `Bearer ${authToken}` }
           });
-          
+
+          if (localStorage.getItem('auth_token') !== authToken || !deletionIntent.isCurrent()) return;
           if (profilesResponse.data.success) {
             const updatedProfiles = profilesResponse.data.profiles;
             setProfiles(updatedProfiles);
@@ -714,7 +729,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       console.error('Error deleting profile:', error);
       throw error;
     } finally {
-      setIsLoading(false);
+      if (deletionIntent.isCurrent()) setIsLoading(false);
     }
   };
 
@@ -754,6 +769,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       profileIntentGuard.begin();
       const invalidatedHydration = profileHydrationGuard.begin();
       invalidatedHydration.finish();
+      // Ne jamais laisser l'identité précédente visible pendant le changement
+      // de compte (connexion Discord, déconnexion ou reconnexion).
+      setCurrentProfile(null);
+      setProfiles([]);
+      setIsLoading(true);
       // Nouveau compte → les données profil devront être réhydratées
       profileDataHydratedRef.current = false;
       // Reload profiles when auth changes (especially for BIP39)
