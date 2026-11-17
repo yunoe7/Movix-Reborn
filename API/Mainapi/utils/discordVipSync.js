@@ -49,7 +49,11 @@ async function getAccountVipState(pool, link, options = {}) {
     'SELECT active, expires_at FROM access_keys WHERE key_value = ? LIMIT 1',
     [key]
   );
-  return isAccessKeyActive(rows[0]);
+  const active = isAccessKeyActive(rows[0]);
+  if (active) {
+    await pool.execute('UPDATE access_keys SET used = 1 WHERE key_value = ? AND used = 0', [key]);
+  }
+  return active;
 }
 
 async function syncDiscordVipForAccount(discordUserId, options = {}) {

@@ -949,6 +949,25 @@ router.post('/sync', syncRateLimit, rejectOversizedSync, authorizeSyncWrite, ...
       return nextSnapshot.stats;
     });
 
+    // Si la clé VIP du profil vient d'être ajoutée/modifiée, synchroniser
+    // immédiatement le rôle Discord des comptes liés au lieu d'attendre le
+    // prochain passage du réconciliateur (5 minutes).
+    if (ops.some((op) => op.key === 'access_code')) {
+      try {
+        const [discordLinks] = await getPool().execute(
+          "SELECT provider_user_id FROM account_links WHERE provider = 'discord' AND target_user_type = ? AND target_user_id = ?",
+          [userType, finalUserId]
+        );
+        if (discordLinks.length > 0) {
+          const { syncDiscordVipForAccount } = require('../utils/discordVipSync');
+          await Promise.all(discordLinks.map((link) => syncDiscordVipForAccount(link.provider_user_id)));
+        }
+      } catch (discordSyncError) {
+        // La sauvegarde du profil reste valide même si Discord est temporairement indisponible.
+        console.error('[Discord VIP Sync] Immediate profile-key sync failed:', discordSyncError.code || discordSyncError.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       stats: {
