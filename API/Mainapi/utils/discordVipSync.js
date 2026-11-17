@@ -1,7 +1,6 @@
 'use strict';
 
 const { getPool } = require('../mysqlPool');
-const { readUserData, readProfileData } = require('../routes/sync');
 const { setDiscordVipRole, getConfig } = require('./discordAdminRoles');
 const { ensureAccountLinksStorage } = require('./accountLinks');
 
@@ -33,8 +32,10 @@ function isAccessKeyActive(row, now = Date.now()) {
 }
 
 async function getAccountVipState(pool, link, options = {}) {
-  const readUser = options.readUserData || readUserData;
-  const readProfile = options.readProfileData || readProfileData;
+  // Charger les lecteurs uniquement si nécessaire : évite d'importer les routes
+  // Express (et leur configuration JWT) lors des tests avec lecteurs injectés.
+  const readUser = options.readUserData || ((...args) => require('../routes/sync').readUserData(...args));
+  const readProfile = options.readProfileData || ((...args) => require('../routes/sync').readProfileData(...args));
   const userData = await readUser(link.target_user_type, link.target_user_id, { strict: true });
   if (!userData || typeof userData !== 'object') throw new Error('Linked account data unavailable');
   const profiles = Array.isArray(userData.profiles) ? userData.profiles : [];
