@@ -3589,8 +3589,14 @@ router.get("/admin/reports", requireAuth, isAdmin, async (req, res) => {
   try {
     const status = req.query.status || "pending";
     const targetType = req.query.targetType || "all";
-    const pageNum = Math.max(1, Number(req.query.page) || 1);
-    const limitNum = Math.min(100, Math.max(1, Number(req.query.limit) || 30));
+    const requestedPage = Number.parseInt(String(req.query.page ?? ""), 10);
+    const requestedLimit = Number.parseInt(String(req.query.limit ?? ""), 10);
+    const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0
+      ? requestedPage
+      : 1;
+    const limitNum = Number.isSafeInteger(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 100)
+      : 30;
     const offset = (pageNum - 1) * limitNum;
 
     let query = `SELECT r.*,
@@ -3607,8 +3613,9 @@ router.get("/admin/reports", requireAuth, isAdmin, async (req, res) => {
       params.push(targetType);
     }
 
-    query += " ORDER BY r.created_at DESC LIMIT ? OFFSET ?";
-    params.push(limitNum, offset);
+    // Pagination values are validated integers. Inline only these numeric
+    // values to avoid MySQL prepared-statement LIMIT/OFFSET binding errors.
+    query += ` ORDER BY r.created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
 
     const reports = await dbAll(query, params);
 
