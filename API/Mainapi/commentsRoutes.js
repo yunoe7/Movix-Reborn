@@ -5,6 +5,7 @@ const path = require("path");
 const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const { getPool } = require("./mysqlPool");
+const { isAdmin } = require("./middleware/auth");
 const { verifyAccessKey } = require("./checkVip");
 // Réutiliser l'instance Redis partagée au lieu d'en créer une nouvelle (évite les fuites mémoire)
 const { redis } = require("./config/redis");
@@ -3583,12 +3584,8 @@ router.post("/report", requireAuth, reportRateLimit, async (req, res) => {
 });
 
 // GET /api/comments/admin/reports - Lister les signalements (admin)
-router.get("/admin/reports", requireAuth, async (req, res) => {
+router.get("/admin/reports", requireAuth, isAdmin, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
-    if (!userData.isAdmin)
-      return res.status(403).json({ error: "Non autorisé" });
-
     const status = req.query.status || "pending";
     const targetType = req.query.targetType || "all";
     const pageNum = Math.max(1, Number(req.query.page) || 1);
@@ -3772,12 +3769,8 @@ router.get("/admin/reports", requireAuth, async (req, res) => {
 });
 
 // PUT /api/comments/admin/reports/:id/resolve
-router.put("/admin/reports/:id/resolve", requireAuth, async (req, res) => {
+router.put("/admin/reports/:id/resolve", requireAuth, isAdmin, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
-    if (!userData.isAdmin)
-      return res.status(403).json({ error: "Non autorisé" });
-
     const { id } = req.params;
     const { deleteContent } = req.body;
 
@@ -3851,12 +3844,8 @@ router.put("/admin/reports/:id/resolve", requireAuth, async (req, res) => {
 });
 
 // PUT /api/comments/admin/reports/:id/dismiss
-router.put("/admin/reports/:id/dismiss", requireAuth, async (req, res) => {
+router.put("/admin/reports/:id/dismiss", requireAuth, isAdmin, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
-    if (!userData.isAdmin)
-      return res.status(403).json({ error: "Non autorisé" });
-
     const { id } = req.params;
     const report = await dbGet("SELECT * FROM reports WHERE id = ? AND status = 'pending'", [id]);
     if (!report)
