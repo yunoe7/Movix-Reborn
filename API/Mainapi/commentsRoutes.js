@@ -1400,8 +1400,9 @@ router.get("/notifications", requireAuth, async (req, res) => {
       query += " AND is_read = 0";
     }
 
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    params.push(safeLimit, offset);
+    // LIMIT/OFFSET sont déjà bornés en entiers ci-dessus. Les interpoler évite
+    // que mysql2 les transmette comme DOUBLE dans une requête préparée MySQL.
+    query += ` ORDER BY created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const notifications = await dbAll(query, params);
 
