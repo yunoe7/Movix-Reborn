@@ -604,6 +604,7 @@ const appReady = (async () => {
         id VARCHAR(255) PRIMARY KEY,
         user_id VARCHAR(255) NOT NULL,
         user_type ENUM('oauth', 'bip39') NOT NULL,
+        device TEXT NULL,
         user_agent TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -611,6 +612,21 @@ const appReady = (async () => {
         INDEX idx_user_sessions_accessed (accessed_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+      // Les bases déjà créées avant l'ajout des informations d'appareil
+      // n'obtiennent pas les nouvelles colonnes via CREATE TABLE IF NOT EXISTS.
+      // Ajouter uniquement la colonne manquante, sans toucher aux sessions existantes.
+      const [deviceColumns] = await pool.execute(
+        `SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'user_sessions'
+           AND COLUMN_NAME = 'device'
+         LIMIT 1`
+      );
+      if (deviceColumns.length === 0) {
+        await pool.execute('ALTER TABLE user_sessions ADD COLUMN device TEXT NULL');
+        console.log('Added missing user_sessions.device column');
+      }
       console.log("Table user_sessions initialized successfully");
 
       await ensureAccountLinksStorage();
