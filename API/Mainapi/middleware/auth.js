@@ -11,6 +11,7 @@ const { redis } = require('../config/redis');
 const { readAccountData } = require('../utils/accountDataCache');
 const { createSessionActivityUpdater } = require('../utils/sessionActivity');
 const { getUserDataFilePath } = require('../utils/syncPolicy');
+const { getDiscordAdminRole } = require('../utils/discordAdminRoles');
 const AUTH_METHODS = ['discord', 'google', 'bip39'];
 const USER_DATA_DIR = path.join(__dirname, '..', 'data');
 const GUESTS_DIR = path.join(USER_DATA_DIR, 'guests');
@@ -263,19 +264,26 @@ async function isAdmin(req, res, next) {
 
     const { userId, userType } = auth;
 
-    // Vérifier si l'utilisateur est dans la table admins
+    // La table MySQL reste disponible pour les comptes Google/BIP39 et les
+    // installations historiques. Pour une session Discord, le bot devient
+    // l'autorité dès que DISCORD_BOT_TOKEN + DISCORD_GUILD_ID sont configurés.
     const [rows] = await pool.execute(
       'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
       [userId, userType === 'bip39' ? 'bip-39' : userType]
     );
+    const databaseAdmin = rows[0] || null;
+    let role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
 
-    if (rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Accès refusé - Droits admin requis' });
+    if (auth.authMethod === 'discord') {
+      const discordAccess = await getDiscordAdminRole(userId);
+      if (discordAccess.configured) {
+        role = discordAccess.role;
+      }
     }
 
-    // Récupérer le rôle (par défaut 'admin' si non défini — lignes legacy
-    // créées avant l'ajout de la colonne `role`).
-    const role = rows[0].role || 'admin';
+    if (role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Accès refusé - Droits admin requis' });
+    }
 
     // Les uploaders sont aussi dans la table `admins` (role='uploader') mais ne
     // doivent PAS franchir `isAdmin` : ces routes (clés VIP, factures, OAuth apps,
@@ -287,12 +295,12 @@ async function isAdmin(req, res, next) {
     }
 
     // Ajouter les infos admin à la requête (avec le rôle)
-    req.admin = { userId, userType, adminId: rows[0].id, role };
+    req.admin = { userId, userType, adminId: databaseAdmin?.id || null, role };
     next();
   } catch (error) {
     console.error('❌ Admin verification error:', error);
-    if (isDbUnavailableError(error)) {
-      return res.status(503).json({ success: false, error: 'Service temporairement indisponible - Base de données injoignable' });
+    if (isDbUnavailableError(error) || String(error?.code || '').startsWith('DISCORD_')) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible - Vérification des droits impossible' });
     }
     return res.status(500).json({ success: false, error: 'Erreur lors de la vérification admin' });
   }
@@ -322,6 +330,14 @@ async function isAdminRequest(req) {
     if (!pool) return false;
 
     const { userId, userType } = auth;
+
+    if (auth.authMethod === 'discord') {
+      const discordAccess = await getDiscordAdminRole(userId);
+      if (discordAccess.configured) {
+        return discordAccess.role === 'admin';
+      }
+    }
+
     const [rows] = await pool.execute(
       'SELECT role FROM admins WHERE user_id = ? AND auth_type = ?',
       [userId, userType === 'bip39' ? 'bip-39' : userType]
@@ -329,7 +345,7 @@ async function isAdminRequest(req) {
 
     if (rows.length === 0) return false;
 
-    // `role` absent : lignes legacy créées avant l'ajout de la colonne.
+    // role absent : lignes legacy créées avant l'ajout de la colonne.
     return (rows[0].role || 'admin') === 'admin';
   } catch (error) {
     console.error('❌ Admin request check error:', error.message);
@@ -355,18 +371,26 @@ async function isUploaderOrAdmin(req, res, next) {
 
     const { userId, userType } = auth;
 
-    // Vérifier si l'utilisateur est dans la table admins (admin ou uploader)
     const [rows] = await pool.execute(
       'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
       [userId, userType === 'bip39' ? 'bip-39' : userType]
     );
+    const databaseAdmin = rows[0] || null;
+    let role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
 
-    if (rows.length === 0) {
-      return res.status(403).json({ success: false, error: 'Accès refusé - Droits requis' });
+    if (auth.authMethod === 'discord') {
+      const discordAccess = await getDiscordAdminRole(userId);
+      if (discordAccess.configured) {
+        // Un rôle Discord admin/uploader est prioritaire. En son absence, on
+        // conserve uniquement un éventuel droit uploader historique — jamais
+        // un ancien droit admin qui contournerait le rôle Discord.
+        role = discordAccess.role || (role === 'uploader' ? 'uploader' : null);
+      }
     }
 
-    // Récupérer le rôle (par défaut 'admin' si non défini)
-    const role = rows[0].role || 'admin';
+    if (!role) {
+      return res.status(403).json({ success: false, error: 'Accès refusé - Droits requis' });
+    }
 
     // Autoriser les rôles 'admin' et 'uploader'
     if (role !== 'admin' && role !== 'uploader') {
@@ -374,12 +398,12 @@ async function isUploaderOrAdmin(req, res, next) {
     }
 
     // Ajouter les infos admin à la requête (avec le rôle)
-    req.admin = { userId, userType, adminId: rows[0].id, role };
+    req.admin = { userId, userType, adminId: databaseAdmin?.id || null, role };
     next();
   } catch (error) {
     console.error('❌ Admin/Uploader verification error:', error);
-    if (isDbUnavailableError(error)) {
-      return res.status(503).json({ success: false, error: 'Service temporairement indisponible - Base de données injoignable' });
+    if (isDbUnavailableError(error) || String(error?.code || '').startsWith('DISCORD_')) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible - Vérification des droits impossible' });
     }
     return res.status(500).json({ success: false, error: 'Erreur lors de la vérification des droits' });
   }
