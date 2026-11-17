@@ -17,7 +17,7 @@ const REQUEST_TIMEOUT_MS = 10000;
 // remplacent ; plusieurs valeurs séparées par des virgules sont acceptées.
 const DEFAULT_CLIENT_IDS = {
   discord: ['1570058543938150611'],
-  google: ['803260771655-6uk6p477ec6im3th4qe9mh8emakes0ja.apps.googleusercontent.com'],
+  google: ['240076922442-1poqc3eaqlt5c5j41vo60m1al5b2odc3.apps.googleusercontent.com'],
 };
 
 const CLIENT_ID_ENV = {

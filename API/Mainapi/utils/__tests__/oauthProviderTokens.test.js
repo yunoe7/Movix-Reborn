@@ -25,8 +25,15 @@ const DISCORD_USER = 'https://discord.com/api/users/@me';
 const GOOGLE_INFO = 'https://oauth2.googleapis.com/tokeninfo';
 const GOOGLE_USER = 'https://www.googleapis.com/oauth2/v3/userinfo';
 
+test('le nouvel identifiant Google de Movix est autorisé par défaut', () => {
+  assert.deepEqual(
+    getAllowedClientIds('google', {}),
+    ['240076922442-1poqc3eaqlt5c5j41vo60m1al5b2odc3.apps.googleusercontent.com'],
+  );
+});
+
 test('les identifiants par défaut cèdent la place à ceux de l\'environnement', () => {
-  assert.deepEqual(getAllowedClientIds('discord', {}), ['1517232036425895996']);
+  assert.deepEqual(getAllowedClientIds('discord', {}), ['1570058543938150611']);
   assert.deepEqual(
     getAllowedClientIds('discord', { DISCORD_CLIENT_ID: ' 111 , 222,' }),
     ['111', '222'],
@@ -35,7 +42,7 @@ test('les identifiants par défaut cèdent la place à ceux de l\'environnement'
   // Valeur d'exemple laissée telle quelle : on garde l'identifiant par défaut.
   assert.deepEqual(
     getAllowedClientIds('discord', { DISCORD_CLIENT_ID: 'YOUR_DISCORD_CLIENT_ID' }),
-    ['1517232036425895996'],
+    ['1570058543938150611'],
   );
 });
 
