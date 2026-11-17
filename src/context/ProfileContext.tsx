@@ -227,6 +227,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
   // this guard, two concurrent GET /api/profiles → loadProfileData chains
   // race the wipe-and-restore against in-flight user writes.
   const loadProfilesInFlightRef = useRef(false);
+  const reloadProfilesAfterFlightRef = useRef(false);
 
   // The /watch/* skip only applies to automatic hydration during loadProfiles;
   // an explicit profile selection always hydrates its target before publishing.
@@ -277,7 +278,12 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
   // Load profiles from server
   const loadProfiles = async () => {
-    if (loadProfilesInFlightRef.current) return;
+    if (loadProfilesInFlightRef.current) {
+      // An auth change can arrive while the previous account's request is still
+      // running. Queue one fresh load instead of silently dropping that change.
+      reloadProfilesAfterFlightRef.current = true;
+      return;
+    }
     loadProfilesInFlightRef.current = true;
     try {
       setIsLoading(true);
@@ -294,6 +300,10 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       const response = await axios.get(`${API_URL}/api/profiles`, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
+
+      // Never publish a response belonging to a session that was replaced
+      // while the request was in flight (e.g. Discord re-login/account switch).
+      if (localStorage.getItem('auth_token') !== authToken) return;
 
       if (response.data.success) {
         setProfiles(response.data.profiles);
@@ -353,6 +363,10 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       // appel couvre les branches qui ne l'invoquent pas (pas d'auth_token,
       // route /watch/*, profiles.length === 0).
       profileHydrationGuard.releaseLoadingIfIdle();
+      if (reloadProfilesAfterFlightRef.current) {
+        reloadProfilesAfterFlightRef.current = false;
+        window.setTimeout(() => loadProfilesRef.current(), 0);
+      }
     }
   };
 
