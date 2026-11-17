@@ -509,7 +509,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         const defaultProfile = response.data.profile;
         setProfiles([defaultProfile]);
         setCurrentProfile(defaultProfile);
-        localStorage.setItem('selected_profile_id', defaultProfile.id);
+        persistSelectedProfileId(defaultProfile.id);
         window.dispatchEvent(new CustomEvent('sync_storage_updated'));
         refreshVipState();
         console.log('Data migrated to default profile:', defaultProfile.name);
