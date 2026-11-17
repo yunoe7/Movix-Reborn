@@ -143,6 +143,14 @@ async function verifyAccessKey(accessKey) {
             expiresAt: keyData.expires_at || null,
             duration: keyData.duree_validite || null
         };
+        // Une clé est marquée utilisée dès sa première validation réelle.
+        // Le champ used est un indicateur d'utilisation, pas un verrou de consommation.
+        try {
+            await pool.execute('UPDATE access_keys SET used = 1 WHERE key_value = ? AND used = 0', [fixedKey]);
+        } catch (markError) {
+            console.warn('[checkVip] Unable to mark access key as used:', markError.message);
+        }
+
         const now = Date.now();
         const ttlUntilExpiry = expiresAtMs === null ? VIP_CACHE_TTL : expiresAtMs - now;
         cacheVipResult(fixedKey, result, { ttl: ttlUntilExpiry });
