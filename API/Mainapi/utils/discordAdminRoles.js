@@ -12,7 +12,7 @@ function parseRoleIds(raw) {
   return String(raw || '')
     .split(',')
     .map((value) => value.trim())
-    .filter((value) => /^\\d{17,20}$/.test(value));
+    .filter((value) => /^\d{17,20}$/.test(value));
 }
 
 function getConfig(env = process.env) {
@@ -30,7 +30,7 @@ function getConfig(env = process.env) {
     adminRoleIds,
     moderatorRoleIds,
     uploaderRoleIds,
-    configured: Boolean(botToken && /^\\d{17,20}$/.test(guildId)),
+    configured: Boolean(botToken && /^\d{17,20}$/.test(guildId)),
   };
 }
 
@@ -72,7 +72,7 @@ async function getDiscordAdminRole(userId, options = {}) {
   const config = getConfig(env);
   const discordUserId = String(userId || '').trim();
 
-  if (!/^\\d{17,20}$/.test(discordUserId)) {
+  if (!/^\d{17,20}$/.test(discordUserId)) {
     return { configured: Boolean(config.configured), role: null };
   }
   if (discordUserId === config.ownerUserId) {
