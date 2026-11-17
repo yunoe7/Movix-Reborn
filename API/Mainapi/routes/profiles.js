@@ -9,7 +9,7 @@ const router = express.Router();
 const fsp = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
 
-const { getAuthIfValid } = require('../middleware/auth');
+const { getAuthIfValid, isAuthInfrastructureError } = require('../middleware/auth');
 const { getPool } = require('../mysqlPool');
 const {
   ensureSafeProfileId,
@@ -44,6 +44,9 @@ router.get('/', async (req, res) => {
     res.status(200).json({ success: true, profiles });
   } catch (error) {
     console.error('Error getting profiles:', error);
+    if (isAuthInfrastructureError(error)) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ error: 'Failed to get profiles' });
   }
 });
@@ -96,6 +99,9 @@ router.post('/', async (req, res) => {
     res.status(200).json({ success: true, profile: newProfile });
   } catch (error) {
     console.error('Error creating profile:', error);
+    if (isAuthInfrastructureError(error)) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ error: 'Failed to create profile' });
   }
 });
@@ -145,6 +151,9 @@ router.put('/:profileId', async (req, res) => {
     res.status(200).json({ success: true, profile: profiles[profileIndex] });
   } catch (error) {
     console.error('Error updating profile:', error);
+    if (isAuthInfrastructureError(error)) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
@@ -224,6 +233,9 @@ router.delete('/:profileId', async (req, res) => {
     res.status(200).json({ success: true, newDefaultProfile: isLastProfile ? profiles[profiles.length - 1] : null });
   } catch (error) {
     console.error('Error deleting profile:', error);
+    if (isAuthInfrastructureError(error)) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ error: 'Failed to delete profile' });
   }
 });
@@ -253,6 +265,9 @@ router.get('/:profileId/data', async (req, res) => {
     }
   } catch (error) {
     console.error('Error getting profile data:', error);
+    if (isAuthInfrastructureError(error)) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ error: 'Failed to get profile data' });
   }
 });
@@ -306,6 +321,9 @@ router.post('/migrate', async (req, res) => {
     res.status(200).json({ success: true, profile: defaultProfile });
   } catch (error) {
     console.error('Error migrating profile:', error);
+    if (isAuthInfrastructureError(error)) {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ error: 'Failed to migrate profile' });
   }
 });
