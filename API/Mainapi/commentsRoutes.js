@@ -1945,14 +1945,12 @@ router.get("/:commentId/replies", async (req, res) => {
         FROM comment_replies cr
         WHERE cr.comment_id = ? AND cr.deleted = 0
         ORDER BY cr.hierarchical_path ASC
-        LIMIT ? OFFSET ?`;
+        LIMIT ${safeLimit} OFFSET ${offset}`;
       repliesParams = [
         currentUser.userId,
         currentUser.userType,
         profileId,
         commentId,
-        safeLimit,
-        offset,
       ];
     } else {
       repliesQuery = `
@@ -1961,8 +1959,8 @@ router.get("/:commentId/replies", async (req, res) => {
         FROM comment_replies cr
         WHERE cr.comment_id = ? AND cr.deleted = 0
         ORDER BY cr.hierarchical_path ASC
-        LIMIT ? OFFSET ?`;
-      repliesParams = [commentId, safeLimit, offset];
+        LIMIT ${safeLimit} OFFSET ${offset}`;
+      repliesParams = [commentId];
     }
 
     const replies = await dbAll(repliesQuery, repliesParams);
@@ -2380,7 +2378,11 @@ router.get("/admin/list", requireAuth, async (req, res) => {
       search = "",
       contentType = "all",
     } = req.query;
-    const offset = (page - 1) * limit;
+    const requestedPage = Number.parseInt(String(page), 10);
+    const requestedLimit = Number.parseInt(String(limit), 10);
+    const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const limitNum = Number.isSafeInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
+    const offset = (pageNum - 1) * limitNum;
 
     // Vérifier que l'utilisateur est admin
     const userData = await getUserData(req.user.userId, req.user.userType);
@@ -2404,8 +2406,8 @@ router.get("/admin/list", requireAuth, async (req, res) => {
       params.push(contentType);
     }
 
-    query += " GROUP BY c.id ORDER BY c.created_at DESC LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), parseInt(offset));
+    // Valeurs de pagination validées : inline uniquement ces entiers pour MySQL.
+    query += ` GROUP BY c.id ORDER BY c.created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
 
     const rawComments = await dbAll(query, params);
 
@@ -2557,10 +2559,10 @@ router.get("/admin/moderated", requireAuth, async (req, res) => {
         ${unionParts.join(" UNION ALL ")}
       ) AS combined
       ORDER BY moderated_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT ${safeLimit} OFFSET ${offset}
     `;
 
-    const items = await dbAll(dataQuery, [safeLimit, offset]);
+    const items = await dbAll(dataQuery);
 
     // Enrichir avec les données utilisateur (getUserData est caché dans Redis via #14)
     const userDataCache = new Map();
@@ -2869,8 +2871,10 @@ router.get("/admin/bans", requireAuth, async (req, res) => {
     }
 
     const { showExpired, page = "1", limit = "30", search } = req.query;
-    const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const requestedPage = Number.parseInt(String(page), 10);
+    const requestedLimit = Number.parseInt(String(limit), 10);
+    const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const limitNum = Number.isSafeInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 30;
     const offset = (pageNum - 1) * limitNum;
 
     let whereClause = "";
@@ -2897,9 +2901,8 @@ router.get("/admin/bans", requireAuth, async (req, res) => {
     );
     const total = countResult[0]?.total || 0;
 
-    params.push(limitNum, offset);
     const bans = await dbAll(
-      `SELECT * FROM banned_users${whereClause} ORDER BY banned_at DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM banned_users${whereClause} ORDER BY banned_at DESC LIMIT ${limitNum} OFFSET ${offset}`,
       params,
     );
     res.json({
@@ -3948,15 +3951,13 @@ router.get("/:contentType/:contentId", async (req, res) => {
         FROM comments c
         WHERE c.content_type = ? AND c.content_id = ? AND c.deleted = 0
         ORDER BY (SELECT COUNT(*) FROM comment_reactions WHERE target_type = 'comment' AND target_id = c.id) DESC, c.created_at DESC
-        LIMIT ? OFFSET ?`;
+        LIMIT ${safeLimit} OFFSET ${offset}`;
       commentsParams = [
         currentUser.userId,
         currentUser.userType,
         profileId,
         contentType,
         contentId,
-        safeLimit,
-        offset,
       ];
     } else {
       commentsQuery = `
@@ -3966,12 +3967,10 @@ router.get("/:contentType/:contentId", async (req, res) => {
         FROM comments c
         WHERE c.content_type = ? AND c.content_id = ? AND c.deleted = 0
         ORDER BY (SELECT COUNT(*) FROM comment_reactions WHERE target_type = 'comment' AND target_id = c.id) DESC, c.created_at DESC
-        LIMIT ? OFFSET ?`;
+        LIMIT ${safeLimit} OFFSET ${offset}`;
       commentsParams = [
         contentType,
         contentId,
-        safeLimit,
-        offset,
       ];
     }
 
