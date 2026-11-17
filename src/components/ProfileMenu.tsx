@@ -133,7 +133,7 @@ const ProfileMenu: React.FC = () => {
         const bip39Auth = localStorage.getItem('bip39_auth');
         const isVipUser = isUserVip();
 
-        const isAuth = discordAuthFlag === 'true' || googleAuthFlag === 'true' || bip39Auth === 'true' || !!auth;
+        const isAuth = Boolean(localStorage.getItem('auth_token')) && (discordAuthFlag === 'true' || googleAuthFlag === 'true' || bip39Auth === 'true' || !!auth);
 
         setIsAuthenticated(isAuth);
         setIsVip(isVipUser);
@@ -145,6 +145,7 @@ const ProfileMenu: React.FC = () => {
 
     checkAuth();
     window.addEventListener('storage', checkAuth);
+    window.addEventListener('auth_changed', checkAuth);
     window.addEventListener('vipStatusChanged', checkAuth);
 
     try {
@@ -158,49 +159,49 @@ const ProfileMenu: React.FC = () => {
     return () => {
       mounted = false;
       window.removeEventListener('storage', checkAuth);
+      window.removeEventListener('auth_changed', checkAuth);
       window.removeEventListener('vipStatusChanged', checkAuth);
     };
   }, []);
 
   useEffect(() => {
+    let active = true;
     const checkAdminAccess = async () => {
-      if (!isAuthenticated) {
-        setCanAccessAdminPanel(false);
-        return;
-      }
-
       let authToken: string | null;
-      try {
-        authToken = localStorage.getItem('auth_token');
-      } catch {
-        return;
-      }
-      if (!authToken) {
-        setCanAccessAdminPanel(false);
+      try { authToken = localStorage.getItem('auth_token'); } catch { return; }
+      if (!isAuthenticated || !authToken) {
+        if (active) setCanAccessAdminPanel(false);
         return;
       }
 
       try {
         const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
+          headers: { Authorization: `Bearer ${authToken}` },
         });
-
+        // Ignore stale responses from a previous login/session.
+        if (!active || localStorage.getItem('auth_token') !== authToken) return;
         if (!response.ok) {
           setCanAccessAdminPanel(false);
           return;
         }
-
         const data = await response.json();
         const role = String(data?.admin?.role || '').toLowerCase();
         setCanAccessAdminPanel(['admin', 'uploader', 'moderator'].includes(role));
       } catch {
-        setCanAccessAdminPanel(false);
+        if (active && localStorage.getItem('auth_token') === authToken) {
+          setCanAccessAdminPanel(false);
+        }
       }
     };
 
-    checkAdminAccess();
+    void checkAdminAccess();
+    window.addEventListener('auth_changed', checkAdminAccess);
+    window.addEventListener('storage', checkAdminAccess);
+    return () => {
+      active = false;
+      window.removeEventListener('auth_changed', checkAdminAccess);
+      window.removeEventListener('storage', checkAdminAccess);
+    };
   }, [isAuthenticated]);
 
   const close = useCallback(() => setIsOpen(false), []);
