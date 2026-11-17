@@ -688,6 +688,8 @@ const appReady = (async () => {
       } = require("./linkSubmissionsRoutes");
       const linkSubmissionsRouter = createLinkSubmissionsRouter(pool, redis);
       app.use("/api/link-submissions", linkSubmissionsRouter);
+      // Public read endpoints consumed by the movie and TV watch pages.
+      app.use("/api/links", require("./routes/communityLinks").createCommunityLinksRouter(pool));
       // Create link_submissions table if not exists
       await pool.execute(`
       CREATE TABLE IF NOT EXISTS link_submissions (
