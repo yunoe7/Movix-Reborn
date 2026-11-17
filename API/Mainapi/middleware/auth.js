@@ -285,8 +285,8 @@ async function isAdmin(req, res, next) {
       const discordUserId = await resolveDiscordUserId(pool, userType, userId);
       const discordAccess = await getDiscordAdminRole(discordUserId);
       if (discordAccess.configured) {
-        if (!['owner', 'admin', 'moderator'].includes(discordAccess.role)) {
-          return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord administrateur ou modérateur requis' });
+        if (!['owner', 'admin'].includes(discordAccess.role)) {
+          return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord admin requis' });
         }
         req.admin = {
           userId,
@@ -351,7 +351,7 @@ async function isAdminRequest(req) {
       const discordUserId = await resolveDiscordUserId(pool, userType, userId);
       const discordAccess = await getDiscordAdminRole(discordUserId);
       if (discordAccess.configured) {
-        return ['owner', 'admin', 'moderator'].includes(discordAccess.role);
+        return ['owner', 'admin'].includes(discordAccess.role);
       }
     }
 
