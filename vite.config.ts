@@ -2,7 +2,7 @@ import { build as viteBuild, defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import legacy from '@vitejs/plugin-legacy'
 import { resolve } from 'path'
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
 
@@ -93,11 +93,15 @@ function injectPublicConfig(): Plugin {
     },
     // Mode build : injecte la configuration dans les fichiers publics copiés par Vite.
     async closeBundle() {
+      const distDirectory = resolve(__dirname, 'dist')
+      // Cloudflare's clean build can leave the output directory absent when
+      // only public assets are emitted. Ensure it exists before writing sw.js.
+      mkdirSync(distDirectory, { recursive: true })
       const bundledServiceWorker = replacePlaceholders(await bundleServiceWorker(true))
-      writeFileSync(resolve(__dirname, 'dist', 'sw.js'), bundledServiceWorker, 'utf-8')
+      writeFileSync(resolve(distDirectory, 'sw.js'), bundledServiceWorker, 'utf-8')
 
       for (const fileName of ['sitemap.xml', 'robots.txt', 'llms.txt']) {
-        const outputPath = resolve(__dirname, 'dist', fileName)
+        const outputPath = resolve(distDirectory, fileName)
         if (!existsSync(outputPath)) continue
         const contents = readFileSync(outputPath, 'utf-8')
         writeFileSync(outputPath, replacePlaceholders(contents), 'utf-8')
