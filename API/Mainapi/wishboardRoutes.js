@@ -268,7 +268,15 @@ function createWishboardRouter(mysqlPool, redis) {
     router.get('/', async (req, res) => {
         try {
             const { page = 1, limit = 20, search, media_type, status, sort = 'votes_desc' } = req.query;
-            const offset = (parseInt(page) - 1) * parseInt(limit);
+            // Normalize pagination values before binding them to MySQL prepared statements.
+            // Invalid or empty query-string values must never become NaN.
+            const requestedPage = Number.parseInt(String(page), 10);
+            const requestedLimit = Number.parseInt(String(limit), 10);
+            const pageNum = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+            const limitNum = Number.isFinite(requestedLimit)
+                ? Math.min(Math.max(requestedLimit, 1), 100)
+                : 20;
+            const offset = (pageNum - 1) * limitNum;
             const profileId = getProfileId(req);
 
             let whereConditions = ['1=1'];
@@ -324,7 +332,7 @@ function createWishboardRouter(mysqlPool, redis) {
             // Get requests
             const [requests] = await mysqlPool.execute(
                 `SELECT * FROM wishboard_requests WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-                [...whereParams, parseInt(limit), offset]
+                [...whereParams, limitNum, offset]
             );
 
             // Check vote status and get public notes for each request
@@ -732,7 +740,7 @@ function createWishboardRouter(mysqlPool, redis) {
             // Get requests with pagination (fetch one extra to check hasMore)
             const [requests] = await mysqlPool.execute(
                 `SELECT * FROM wishboard_requests WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-                [...whereParams, String(limitNum + 1), String(offset)]
+                [...whereParams, limitNum + 1, offset]
             );
 
             const hasMore = requests.length > limitNum;
