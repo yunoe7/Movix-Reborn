@@ -320,7 +320,29 @@ async function finalizeResolvedSession(req, {
 
   await ensureStoredAuthData(fallbackUserType, providerUserId, sourceAuthData, sourceExtraFields);
 
-  const linkedTarget = await getLinkedTarget(provider, providerUserId);
+  let linkedTarget = await getLinkedTarget(provider, providerUserId);
+
+  // A Discord-primary account is already authenticated by Discord. Persist that
+  // identity as its own account link so VIP reconciliation can find the member;
+  // the settings UI correctly prevents users from linking the same identity twice.
+  if (!linkedTarget && provider === 'discord' && fallbackUserType === 'oauth') {
+    linkedTarget = await setLink({
+      provider: 'discord',
+      providerUserId: String(providerUserId),
+      targetUserType: 'oauth',
+      targetUserId: String(providerUserId),
+    });
+
+    // Apply the current VIP state immediately instead of waiting for the next
+    // scheduled reconciliation. A Discord outage must not block login.
+    try {
+      const { syncDiscordVipForAccount } = require('../utils/discordVipSync');
+      await syncDiscordVipForAccount(linkedTarget.providerUserId);
+    } catch (error) {
+      console.error('[Discord VIP Sync] Primary-account activation failed:', error.code || error.message);
+    }
+  }
+
   const resolvedUserType = linkedTarget?.targetUserType || fallbackUserType;
   const resolvedUserId = linkedTarget?.targetUserId || String(providerUserId);
 
