@@ -49,7 +49,10 @@ async function fixture(t) {
   const stubs = {
     '../mysqlPool': { getPool: () => pool },
     '../config/redis': { redis: { status: 'ready', eval: async () => [1, 60_000] } },
-    '../utils/accountDataCache': { readAccountData: cache.read },
+    '../utils/accountDataCache': { readAccountData: async (...args) => {
+      if (accountReadError) throw accountReadError;
+      return cache.read(...args);
+    } },
     '../utils/syncPolicy': {
       ...policy, getUserDataFilePath: (_dirs, userType, userId) => policy.getUserDataFilePath({ usersDir: dir }, userType, userId),
     },
