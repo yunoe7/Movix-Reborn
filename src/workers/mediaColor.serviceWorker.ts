@@ -239,10 +239,13 @@ export async function handleTmdbImage(
 
   const cache = await caches.open(TMDB_IMAGE_CACHE_NAME)
   const cached = await cache.match(source.href)
-  const opaqueForCors = cached?.type === 'opaque' && request.mode !== 'no-cors'
-  if (cached && cached.type !== 'opaque') return cached
-  if (cached && !opaqueForCors && recentlyFailedCors(source.href)) return cached
-  if (!cached && request.mode === 'no-cors' && recentlyFailedCors(source.href)) {
+  if (cached) return cached
+
+  // Les affiches TMDB sont destinées à l'affichage HTML, pas à la lecture
+  // canvas. Les demander en mode CORS provoque des erreurs console sur les
+  // réponses TMDB qui n'exposent pas Access-Control-Allow-Origin. Conserver
+  // le mode no-cors d'origine : l'image opaque s'affiche normalement.
+  if (request.mode === 'no-cors') {
     const fallback = fetchOpaqueFallback(request)
     const pendingWrite = fallback
       .then(() => imageCacheWrites.get(source.href))
@@ -254,21 +257,7 @@ export async function handleTmdbImage(
 
   const readableWork = startReadableImageFetch(request)
   waitUntil?.(readableWork.cacheWritten)
-  try {
-    return (await readableWork.response).clone()
-  } catch (error) {
-    if (request.mode !== 'no-cors') throw error
-    // Si l'image opaque existe déjà, elle reste un repli d'affichage immédiat
-    // après l'unique tentative de mise à niveau CORS.
-    if (cached) return cached
-    const fallback = fetchOpaqueFallback(request)
-    const pendingWrite = fallback
-      .then(() => imageCacheWrites.get(source.href))
-      .then(() => undefined)
-      .catch(() => {})
-    waitUntil?.(pendingWrite)
-    return (await fallback).clone()
-  }
+  return (await readableWork.response).clone()
 }
 
 function mediaColorCacheKey(request: MediaColorRequest): string {
