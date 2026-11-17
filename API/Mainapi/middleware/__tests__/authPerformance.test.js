@@ -17,6 +17,7 @@ async function fixture(t) {
   let sessionExists = true;
   let sqlError = null;
   let accountReadError = null;
+  let poolError = null;
   let selects = 0;
   let updates = 0;
   let purges = 0;
@@ -47,7 +48,7 @@ async function fixture(t) {
   const localRequire = createRequire(filename);
   const module = { exports: {} };
   const stubs = {
-    '../mysqlPool': { getPool: () => pool },
+    '../mysqlPool': { getPool: () => { if (poolError) throw poolError; return pool; } },
     '../config/redis': { redis: { status: 'ready', eval: async () => [1, 60_000] } },
     '../utils/accountDataCache': { readAccountData: async (...args) => {
       if (accountReadError) throw accountReadError;
@@ -69,6 +70,7 @@ async function fixture(t) {
     revoke: () => { sessionExists = false; },
     failSql: () => { sqlError = Object.assign(new Error('unavailable'), { code: 'ECONNREFUSED' }); },
     failSqlUnexpected: () => { sqlError = Object.assign(new Error('bad SQL state'), { code: 'ER_BAD_FIELD_ERROR' }); },
+    failPool: () => { poolError = Object.assign(new Error('pool initialization failed'), { code: 'POOL_CLOSED' }); },
     failAccountRead: () => { accountReadError = Object.assign(new Error('storage unavailable'), { code: 'EIO' }); },
     counts: () => ({ selects, updates, purges, reads }),
   };
@@ -181,5 +183,17 @@ test('une session absente après des réponses SQL reste une révocation confirm
   f.revoke();
   assert.equal(await f.auth.getAuthIfValid(f.req()), null);
   assert.equal(f.counts().selects, 3);
+  assert.equal(f.counts().updates, 0);
+});
+
+test('une erreur lors de la récupération du pool retourne une indisponibilité', async t => {
+  const f = await fixture(t);
+  f.failPool();
+  await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
+    assert.equal(error.statusCode, 503);
+    return true;
+  });
+  assert.equal(f.counts().selects, 0);
   assert.equal(f.counts().updates, 0);
 });
