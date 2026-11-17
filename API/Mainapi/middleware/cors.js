@@ -40,7 +40,7 @@ function isAllowedStaticOrigin(origin) {
     const hostname = parsedOrigin.hostname;
 
     return STATIC_ALLOWED_DOMAINS.some((domain) => (
-      hostname === domain || hostname.endsWith(`.${domain}`)
+      hostname === domain || hostname.endsWith(\`.\${domain}\`)
     ));
   } catch {
     return false;
@@ -57,7 +57,7 @@ const corsMiddleware = cors({
     if (!origin) return callback(null, true);
 
     // Allow all localhost requests in development only
-    if (process.env.NODE_ENV !== 'production' && origin.match(/^https?:\\/\\/localhost(:[0-9]+)?$/)) {
+    if (process.env.NODE_ENV !== 'production' && origin.match(/^https?:\/\/localhost(:[0-9]+)?$/)) {
       return callback(null, true);
     }
 
