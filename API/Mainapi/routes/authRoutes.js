@@ -325,6 +325,9 @@ async function finalizeResolvedSession(req, {
   const resolvedUserId = linkedTarget?.targetUserId || String(providerUserId);
 
   const sessionId = await createUserSession(resolvedUserType, resolvedUserId, req);
+  if (!sessionId) {
+    throw new Error('Impossible de créer la session utilisateur');
+  }
   const token = issueJwt(resolvedUserType, resolvedUserId, sessionId, provider);
 
   const fallbackResolvedProvider = resolvedUserType === 'bip39'

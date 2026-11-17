@@ -8,7 +8,7 @@ import { MovixWordmark } from './brand/MovixWordmark';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { isHiddenOnTv } from '@/routing/registry';
-import { Film, Search, X, Star, Tv2, Users, Clapperboard, Bell, Tv, Lightbulb, Network, List, Radio, Unlock, ChevronDown, ExternalLink, LayoutGrid, Settings, Dices, Sparkles, HelpCircle, Github, CalendarDays, Puzzle, Smartphone, MonitorPlay } from 'lucide-react';
+import { Film, Search, X, Star, Tv2, Users, Clapperboard, Bell, Tv, Lightbulb, Network, List, Radio, Unlock, ChevronDown, ExternalLink, LayoutGrid, Settings, Dices, Sparkles, HelpCircle, Github, CalendarDays, Puzzle, Smartphone, MonitorPlay, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfileMenu from './ProfileMenu';
 import NotificationsPopup from './NotificationsPopup';
@@ -30,6 +30,7 @@ import { useAgeRestrictedContent } from '../hooks/useAgeRestrictedContent';
 import { readLocalStorage } from '../utils/browserStorage';
 import CommunityMenu from './header/CommunityMenu';
 import { AMBIENT_TOGGLE_EVENT, readAmbientActive } from './ambient/ambientOptions';
+import { API_BASE_URL } from '../config/api';
 
 // Le moteur des effets d'ambiance ne se télécharge qu'une fois ceux-ci activés.
 const AmbientLayer = lazy(() => import('./ambient/AmbientLayer'));
@@ -84,6 +85,7 @@ const Header: React.FC = () => {
   const [notificationsDisabled, setNotificationsDisabled] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isVip, setIsVip] = useState(false);
+  const [hasAdminAccess, setHasAdminAccess] = useState(false);
 
   const [headerQuery, setHeaderQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -170,6 +172,7 @@ const Header: React.FC = () => {
       // Outils du compte d'abord, liens externes en dernier.
       title: t('nav.groupTools'),
       items: [
+        ...(hasAdminAccess ? [{ name: t('admin.title'), path: '/admin', icon: <ShieldCheck size={18} />, desc: t('admin.title') }] : []),
         ...(isVip ? [{ name: t('nav.debrid'), path: '/debrid', icon: <Unlock size={18} />, desc: t('nav.debridDesc') }] : []),
         { name: t('nav.settings'), path: '/settings', icon: <Settings size={18} />, desc: t('nav.settingsDesc') },
         { name: t('nav.helpHub'), path: '/help', icon: <HelpCircle size={18} />, desc: t('nav.helpHubDesc') },
@@ -181,11 +184,37 @@ const Header: React.FC = () => {
     // Sur TV, les entrées hors périmètre V1 (CinéGraph, Watch Party) mèneraient
     // à <NotFound /> : on les retire, puis on écarte les groupes vidés.
     .map(g => ({ ...g, items: g.items.filter(item => !isHiddenOnTv(item.path)) }))
-    .filter(g => g.items.length > 0), [t, isVip]);
+    .filter(g => g.items.length > 0), [t, isVip, hasAdminAccess]);
 
-  // Auth
+  // Auth + droits d'administration : l'API reste l'unique autorité.
   useEffect(() => {
     let mounted = true;
+
+    const refreshAdminAccess = async (authenticated: boolean) => {
+      const authToken = localStorage.getItem('auth_token');
+      if (!authenticated || !authToken) {
+        if (mounted) setHasAdminAccess(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        if (!mounted) return;
+        if (!response.ok) {
+          setHasAdminAccess(false);
+          return;
+        }
+        const payload = await response.json();
+        setHasAdminAccess(
+          payload?.success === true
+          && ['admin', 'uploader', 'moderator'].includes(payload?.admin?.role),
+        );
+      } catch {
+        if (mounted) setHasAdminAccess(false);
+      }
+    };
 
     const checkAuth = () => {
       try {
@@ -197,12 +226,14 @@ const Header: React.FC = () => {
         const isAuth = discordAuth === 'true' || googleAuth === 'true' || bip39Auth === 'true' || !!auth;
         setIsAuthenticated(isAuth);
         setIsVip(isVipUser);
+        void refreshAdminAccess(isAuth);
       } catch {
         // Conserver l'affichage courant si le stockage devient inaccessible.
       }
     };
     checkAuth();
     window.addEventListener('storage', checkAuth);
+    window.addEventListener('auth_changed', checkAuth);
     window.addEventListener('vipStatusChanged', checkAuth);
 
     if (readLocalStorage('access_code')) {
@@ -214,6 +245,7 @@ const Header: React.FC = () => {
     return () => {
       mounted = false;
       window.removeEventListener('storage', checkAuth);
+      window.removeEventListener('auth_changed', checkAuth);
       window.removeEventListener('vipStatusChanged', checkAuth);
     };
   }, []);
@@ -495,6 +527,20 @@ const Header: React.FC = () => {
                     </span>
                     <Settings size={15} />
                     <span>{t('aprilAdmin.navLabel')}</span>
+                  </Link>
+                )}
+
+                {hasAdminAccess && (
+                  <Link
+                    to="/admin"
+                    className={`ml-1 flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm transition-all duration-200 ${
+                      location.pathname === '/admin'
+                        ? 'border-red-400/35 bg-red-500/15 text-white'
+                        : 'border-white/10 text-gray-300 hover:border-red-400/30 hover:bg-red-500/10 hover:text-white'
+                    }`}
+                  >
+                    <ShieldCheck size={15} />
+                    <span>{t('admin.title')}</span>
                   </Link>
                 )}
 

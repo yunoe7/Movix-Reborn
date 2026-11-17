@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useState, useRef, lazy, Suspense } from 'react';
+import { API_BASE_URL } from './config/api';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
@@ -124,7 +125,7 @@ detectInitialLanguage();
 })();
 
 // Get API URL from environment variable
-const API_URL = import.meta.env.VITE_MAIN_API
+const API_URL = API_BASE_URL;
 const API_HOSTNAME = (() => {
   try {
     return API_URL ? new URL(API_URL).hostname : '';

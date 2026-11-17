@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import AdminDashboard from '../components/AdminDashboard';
 import { SquareBackground } from '../components/ui/square-background';
+import { API_BASE_URL } from '../config/api';
 
 const AdminPage: React.FC = () => {
   const { t } = useTranslation();
@@ -25,7 +26,7 @@ const AdminPage: React.FC = () => {
         }
 
         // Vérifier si l'utilisateur est admin en utilisant l'endpoint de vérification
-        const API_URL = import.meta.env.VITE_MAIN_API;
+        const API_URL = API_BASE_URL;
         const response = await fetch(`${API_URL}/api/admin/check`, {
           headers: {
             'Authorization': `Bearer ${authToken}`
