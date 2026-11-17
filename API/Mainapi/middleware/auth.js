@@ -250,13 +250,11 @@ const updateSessionAccess = createSessionActivityUpdater({
 async function isAdmin(req, res, next) {
   try {
     const pool = getDbPool();
-    // Vérifier si le pool MySQL est initialisé
     if (!pool) {
       console.error('❌ MySQL pool not initialized');
       return res.status(503).json({ success: false, error: 'Service temporairement indisponible - Base de données en cours d\'initialisation' });
     }
 
-    // Vérifier le JWT
     const auth = await getAuthIfValid(req);
     if (!auth) {
       return res.status(401).json({ success: false, error: 'Non autorisé - Token invalide' });
@@ -264,39 +262,35 @@ async function isAdmin(req, res, next) {
 
     const { userId, userType } = auth;
 
-    // La table MySQL reste disponible pour les comptes Google/BIP39 et les
-    // installations historiques. Pour une session Discord, le bot devient
-    // l'autorité dès que DISCORD_BOT_TOKEN + DISCORD_GUILD_ID sont configurés.
+    // Pour Discord, le bot est l'autorité dès que sa configuration est présente.
+    // Cette branche ne dépend pas de la table admins : elle fonctionne aussi
+    // sur une base neuve où aucun administrateur n'a encore été inscrit.
+    if (auth.authMethod === 'discord') {
+      const discordAccess = await getDiscordAdminRole(userId);
+      if (discordAccess.configured) {
+        if (discordAccess.role !== 'admin') {
+          return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord admin requis' });
+        }
+        req.admin = { userId, userType, adminId: null, role: 'admin' };
+        return next();
+      }
+    }
+
+    // Repli historique pour les comptes Google/BIP39 ou tant que le bot
+    // Discord n'a pas encore été configuré.
     const [rows] = await pool.execute(
       'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
       [userId, userType === 'bip39' ? 'bip-39' : userType]
     );
     const databaseAdmin = rows[0] || null;
-    let role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
-
-    if (auth.authMethod === 'discord') {
-      const discordAccess = await getDiscordAdminRole(userId);
-      if (discordAccess.configured) {
-        role = discordAccess.role;
-      }
-    }
+    const role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
 
     if (role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Accès refusé - Droits admin requis' });
     }
 
-    // Les uploaders sont aussi dans la table `admins` (role='uploader') mais ne
-    // doivent PAS franchir `isAdmin` : ces routes (clés VIP, factures, OAuth apps,
-    // stats, gestion d'équipe…) sont réservées aux admins. Les routes ouvertes
-    // aux uploaders utilisent `isUploaderOrAdmin`. Sans ce contrôle, n'importe
-    // quel uploader pouvait appeler directement les API admin-only.
-    if (role !== 'admin') {
-      return res.status(403).json({ success: false, error: 'Accès refusé - Droits admin requis' });
-    }
-
-    // Ajouter les infos admin à la requête (avec le rôle)
-    req.admin = { userId, userType, adminId: databaseAdmin?.id || null, role };
-    next();
+    req.admin = { userId, userType, adminId: databaseAdmin.id, role };
+    return next();
   } catch (error) {
     console.error('❌ Admin verification error:', error);
     if (isDbUnavailableError(error) || String(error?.code || '').startsWith('DISCORD_')) {
@@ -357,13 +351,11 @@ async function isAdminRequest(req) {
 async function isUploaderOrAdmin(req, res, next) {
   try {
     const pool = getDbPool();
-    // Vérifier si le pool MySQL est initialisé
     if (!pool) {
       console.error('❌ MySQL pool not initialized');
       return res.status(503).json({ success: false, error: 'Service temporairement indisponible - Base de données en cours d\'initialisation' });
     }
 
-    // Vérifier le JWT
     const auth = await getAuthIfValid(req);
     if (!auth) {
       return res.status(401).json({ success: false, error: 'Non autorisé - Token invalide' });
@@ -371,35 +363,32 @@ async function isUploaderOrAdmin(req, res, next) {
 
     const { userId, userType } = auth;
 
+    // Admin et uploader Discord sont accordés directement par les rôles du bot.
+    if (auth.authMethod === 'discord') {
+      const discordAccess = await getDiscordAdminRole(userId);
+      if (discordAccess.configured) {
+        if (discordAccess.role !== 'admin' && discordAccess.role !== 'uploader') {
+          return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord requis' });
+        }
+        req.admin = { userId, userType, adminId: null, role: discordAccess.role };
+        return next();
+      }
+    }
+
+    // Repli historique pour les autres connexions / bot non configuré.
     const [rows] = await pool.execute(
       'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
       [userId, userType === 'bip39' ? 'bip-39' : userType]
     );
     const databaseAdmin = rows[0] || null;
-    let role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
+    const role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
 
-    if (auth.authMethod === 'discord') {
-      const discordAccess = await getDiscordAdminRole(userId);
-      if (discordAccess.configured) {
-        // Un rôle Discord admin/uploader est prioritaire. En son absence, on
-        // conserve uniquement un éventuel droit uploader historique — jamais
-        // un ancien droit admin qui contournerait le rôle Discord.
-        role = discordAccess.role || (role === 'uploader' ? 'uploader' : null);
-      }
-    }
-
-    if (!role) {
-      return res.status(403).json({ success: false, error: 'Accès refusé - Droits requis' });
-    }
-
-    // Autoriser les rôles 'admin' et 'uploader'
     if (role !== 'admin' && role !== 'uploader') {
       return res.status(403).json({ success: false, error: 'Accès refusé - Droits insuffisants' });
     }
 
-    // Ajouter les infos admin à la requête (avec le rôle)
-    req.admin = { userId, userType, adminId: databaseAdmin?.id || null, role };
-    next();
+    req.admin = { userId, userType, adminId: databaseAdmin.id, role };
+    return next();
   } catch (error) {
     console.error('❌ Admin/Uploader verification error:', error);
     if (isDbUnavailableError(error) || String(error?.code || '').startsWith('DISCORD_')) {
