@@ -1032,9 +1032,12 @@ router.get('/admin/vip-keys', isAdmin, async (req, res) => {
     );
     const total = Number(countRow?.total || 0);
 
+    // MySQL prepared statements can reject LIMIT/OFFSET placeholders on some
+    // server configurations. Both values are parsed and bounded integers above,
+    // so interpolating them here is safe.
     const [rows] = await pool.execute(
-      `SELECT * FROM access_keys${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-      [...params, limit, offset]
+      `SELECT * FROM access_keys${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`,
+      params
     );
 
     res.json({
