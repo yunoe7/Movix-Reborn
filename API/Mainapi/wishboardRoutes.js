@@ -330,9 +330,12 @@ function createWishboardRouter(mysqlPool, redis) {
             }
 
             // Get requests
+            // LIMIT/OFFSET are validated positive safe integers above. Inline only
+            // these numeric values because MySQL prepared LIMIT/OFFSET bindings
+            // can fail with ER_WRONG_ARGUMENTS on the production server.
             const [requests] = await mysqlPool.execute(
-                `SELECT * FROM wishboard_requests WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-                [...whereParams, limitNum, offset]
+                `SELECT * FROM wishboard_requests WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ${limitNum} OFFSET ${offset}`,
+                whereParams
             );
 
             // Check vote status and get public notes for each request
@@ -698,8 +701,12 @@ function createWishboardRouter(mysqlPool, redis) {
     router.get('/admin', requireAuth, requireUploaderOrAdmin, async (req, res) => {
         try {
             const { search, media_type, status, vip_only, page = '1', limit = '50' } = req.query;
-            const pageNum = Math.max(1, parseInt(page) || 1);
-            const limitNum = Math.min(100, Math.max(1, parseInt(limit) || 50));
+            const requestedPage = Number.parseInt(String(page), 10);
+            const requestedLimit = Number.parseInt(String(limit), 10);
+            const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+            const limitNum = Number.isSafeInteger(requestedLimit)
+                ? Math.min(Math.max(requestedLimit, 1), 100)
+                : 50;
             const offset = (pageNum - 1) * limitNum;
 
             let whereConditions = ['1=1'];
@@ -738,9 +745,11 @@ function createWishboardRouter(mysqlPool, redis) {
             const whereClause = whereConditions.join(' AND ');
 
             // Get requests with pagination (fetch one extra to check hasMore)
+            // Pagination values are validated integers; interpolate only these
+            // numeric values to avoid MySQL prepared LIMIT/OFFSET binding errors.
             const [requests] = await mysqlPool.execute(
-                `SELECT * FROM wishboard_requests WHERE ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-                [...whereParams, limitNum + 1, offset]
+                `SELECT * FROM wishboard_requests WHERE ${whereClause} ORDER BY created_at DESC LIMIT ${limitNum + 1} OFFSET ${offset}`,
+                whereParams
             );
 
             const hasMore = requests.length > limitNum;
