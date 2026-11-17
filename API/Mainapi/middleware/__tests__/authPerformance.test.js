@@ -76,6 +76,12 @@ async function fixture(t) {
   };
 }
 
+test('seules les erreurs infrastructure auth sont reconnues comme indisponibilités', async t => {
+  const f = await fixture(t);
+  assert.equal(f.auth.isAuthInfrastructureError({ code: 'AUTH_INFRASTRUCTURE_UNAVAILABLE' }), true);
+  assert.equal(f.auth.isAuthInfrastructureError(new Error('ordinary failure')), false);
+});
+
 test('une requête sans token reste refusée sans erreur', async t => {
   const f = await fixture(t);
   assert.equal(await f.auth.getAuthIfValid({ headers: {} }), null);
@@ -145,6 +151,7 @@ test('une panne SQL ne contourne plus la vérification de session et retourne un
   const f = await fixture(t);
   f.failSql();
   await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(f.auth.isAuthInfrastructureError(error), true);
     assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
     assert.equal(error.statusCode, 503);
     return true;
