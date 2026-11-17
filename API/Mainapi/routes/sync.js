@@ -648,7 +648,7 @@ function normalizeLastUpdated(rawValue) {
   return 0;
 }
 
-async function readUserData(userType, userId) {
+async function readUserData(userType, userId, options = {}) {
   const filePath = getUserDataFilePath({ usersDir: USERS_DIR, guestsDir: GUESTS_DIR }, userType, userId);
 
   try {
@@ -657,6 +657,7 @@ async function readUserData(userType, userId) {
     const data = structuredClone(await readAccountData(filePath));
     return normalizeStoredProfiles(data && typeof data === 'object' ? data : {});
   } catch (error) {
+    if (options.strict) throw error;
     if (error.code === 'ENOENT') return {};
 
     console.error(`Erreur lors de la lecture des donnees utilisateur ${userType}:${userId}:`, error.message);
@@ -707,7 +708,7 @@ async function writeUserData(userType, userId, data) {
   }
 }
 
-async function readProfileSnapshot(userType, userId, profileId) {
+async function readProfileSnapshot(userType, userId, profileId, options = {}) {
   const profilePath = getProfileFilePath(USERS_DIR, userType, userId, profileId);
 
   try {
@@ -726,6 +727,7 @@ async function readProfileSnapshot(userType, userId, profileId) {
     }
     return snapshot;
   } catch (error) {
+    if (options.strict) throw error;
     if (error.code === 'ENOENT') return sanitizeProfileData({});
     if (error instanceof SyncPolicyError) throw error;
 
@@ -747,8 +749,8 @@ function scheduleProfileCleanup(userType, userId, profileId) {
   });
 }
 
-async function readProfileData(userType, userId, profileId) {
-  const snapshot = await readProfileSnapshot(userType, userId, profileId);
+async function readProfileData(userType, userId, profileId, options = {}) {
+  const snapshot = await readProfileSnapshot(userType, userId, profileId, options);
   if (snapshot.changed) scheduleProfileCleanup(userType, userId, profileId);
   return snapshot.data;
 }
