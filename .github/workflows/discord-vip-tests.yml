@@ -19,5 +19,5 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: API/Mainapi/package-lock.json
-      - run: npm install --ignore-scripts
+      - run: npm ci
       - run: npm test
