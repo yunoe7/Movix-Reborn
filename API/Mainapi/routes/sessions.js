@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { getAuthIfValid } = require('../middleware/auth');
+const { getAuthIfValid, isAuthInfrastructureError } = require('../middleware/auth');
 const { getPool } = require('../mysqlPool');
 const { getSessionDeviceInfo, parseStoredSessionDeviceInfo } = require('../utils/sessionDeviceInfo');
 
@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
     res.status(200).json({ success: true, data: { count: sessions.length, items: sessions } });
   } catch (error) {
     console.error('Error getting sessions:', error);
-    if (error?.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') {
+    if (isAuthInfrastructureError(error)) {
       return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
     }
     res.status(500).json({ success: false, error: 'Erreur lors de la récupération des sessions' });
