@@ -22,7 +22,7 @@ function getConfig(env = process.env) {
   const adminRoleIds = parseRoleIds(env.DISCORD_ADMIN_ROLE_IDS || '1570072172104261732');
   const moderatorRoleIds = parseRoleIds(env.DISCORD_MODERATOR_ROLE_IDS || '1570312607988977667');
   const uploaderRoleIds = parseRoleIds(env.DISCORD_UPLOADER_ROLE_IDS);
-  const vipRoleId = String(env.DISCORD_VIP_ROLE_ID || '1570312606940659755').trim();
+  const vipRoleId = String(env.DISCORD_VIP_ROLE_ID || '').trim();
 
   return {
     botToken,
@@ -32,7 +32,7 @@ function getConfig(env = process.env) {
     moderatorRoleIds,
     uploaderRoleIds,
     vipRoleId: /^\\d{17,20}$/.test(vipRoleId) ? vipRoleId : '',
-    vipConfigured: Boolean(botToken && /^\\d{17,20}$/.test(guildId) && /^\\d{17,20}$/.test(vipRoleId)),
+    vipConfigured: Boolean(botToken && /^\\d{17,20}$/.test(String(env.DISCORD_GUILD_ID || '').trim()) && /^\\d{17,20}$/.test(vipRoleId)),
     configured: Boolean(botToken && /^\d{17,20}$/.test(guildId)),
   };
 }
