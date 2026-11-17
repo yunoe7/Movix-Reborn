@@ -686,7 +686,23 @@ router.post('/links/:provider', authRateLimit, authorizeAuthWrite, ...authBodyPa
     );
 
     const previousLink = provider === 'discord' ? await getLinksForTarget(auth.userType, auth.userId) : [];
-    const previousDiscordIds = previousLink.filter((item) => item.provider === 'discord').map((item) => item.providerUserId);
+    const previousDiscordIds = previousLink.filter((item) => item.provider === 'discord')
+      .map((item) => item.providerUserId)
+      .filter((id) => id !== String(resolved.providerUserId));
+
+    // Retirer l'ancien rôle avant que setLink remplace la liaison. En cas
+    // d'indisponibilité Discord, on conserve l'ancienne liaison intacte.
+    if (provider === 'discord' && previousDiscordIds.length) {
+      const { setDiscordVipRole } = require('../utils/discordAdminRoles');
+      for (const oldDiscordId of previousDiscordIds) {
+        try {
+          await setDiscordVipRole(oldDiscordId, false);
+        } catch (error) {
+          console.error('[Discord VIP Sync] Previous link role removal failed:', error.code || error.message);
+          return res.status(503).json({ success: false, error: 'Synchronisation Discord indisponible. Réessayez.' });
+        }
+      }
+    }
 
     const link = await setLink({
       provider,
@@ -697,12 +713,6 @@ router.post('/links/:provider', authRateLimit, authorizeAuthWrite, ...authBodyPa
 
     if (provider === 'discord') {
       const { syncDiscordVipForAccount } = require('../utils/discordVipSync');
-      for (const oldDiscordId of previousDiscordIds) {
-        if (oldDiscordId !== link.providerUserId) {
-          try { await require('../utils/discordAdminRoles').setDiscordVipRole(oldDiscordId, false); }
-          catch (error) { console.error('[Discord VIP Sync] Previous link role removal failed:', error.code || error.message); }
-        }
-      }
       try { await syncDiscordVipForAccount(link.providerUserId); }
       catch (error) { console.error('[Discord VIP Sync] Link activation failed:', error.code || error.message); }
     }
@@ -744,14 +754,20 @@ router.delete('/links/:provider', async (req, res) => {
     }
 
     const linkedBeforeRemoval = provider === 'discord' ? await getLinksForTarget(auth.userType, auth.userId) : [];
-    const removed = await removeLinksForTargetProvider(auth.userType, auth.userId, provider);
-    if (removed && provider === 'discord') {
+    // Le rôle est retiré avant la suppression SQL : si Discord échoue, la
+    // liaison reste en place et l'utilisateur peut réessayer sans rôle orphelin.
+    if (provider === 'discord') {
       const { setDiscordVipRole } = require('../utils/discordAdminRoles');
       for (const link of linkedBeforeRemoval.filter((item) => item.provider === 'discord')) {
-        try { await setDiscordVipRole(link.providerUserId, false); }
-        catch (error) { console.error('[Discord VIP Sync] Unlink role removal failed:', error.code || error.message); }
+        try {
+          await setDiscordVipRole(link.providerUserId, false);
+        } catch (error) {
+          console.error('[Discord VIP Sync] Unlink role removal failed:', error.code || error.message);
+          return res.status(503).json({ success: false, error: 'Synchronisation Discord indisponible. Réessayez.' });
+        }
       }
     }
+    const removed = await removeLinksForTargetProvider(auth.userType, auth.userId, provider);
     return res.status(200).json({
       success: true,
       removed,
