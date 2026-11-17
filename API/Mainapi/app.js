@@ -587,6 +587,7 @@ const {
   importLegacyRedisStats
 } = require('./utils/monetizationStats');
 const { ensureTableGroup } = require('./db/runtimeEnsure');
+const { restoreMissingVipAccessKeys } = require('./utils/vipAccessKeyRecovery');
 
 const appReady = (async () => {
   try {
@@ -782,6 +783,14 @@ const appReady = (async () => {
         // dans l'admin. Colonne ajoutée en fin de table, sans réécriture.
         await ensureColumn('access_keys', 'source', 'source VARCHAR(32) DEFAULT NULL');
         console.log('Referral tables initialized successfully');
+
+        // Restore missing VIP key rows only from delivered invoices and
+        // redeemed referral rewards. Existing access_keys rows are untouched.
+        try {
+          await restoreMissingVipAccessKeys(pool);
+        } catch (recoveryError) {
+          console.error('VIP key recovery failed:', recoveryError?.message || recoveryError);
+        }
       } catch (error) {
         console.error('Referral tables init error:', error?.message || error);
       }
