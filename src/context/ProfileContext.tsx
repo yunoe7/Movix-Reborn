@@ -179,10 +179,17 @@ function readSelectedProfileId(profiles: Profile[]): string | null {
   const key = getProfileSelectionKey();
   if (key) {
     const scopedId = localStorage.getItem(key);
-    if (scopedId && profiles.some((profile) => profile.id === scopedId)) return scopedId;
+    // A saved account-scoped choice is authoritative. If the profile was
+    // deleted, fall back to the account default; never consult the legacy
+    // global key, which may belong to a different account.
+    if (scopedId) {
+      return profiles.some((profile) => profile.id === scopedId) ? scopedId : null;
+    }
   }
 
-  // Migrate the legacy global selection only when it belongs to this account.
+  // One-time migration for devices that only have the legacy global key.
+  // Accept it only when the ID is present in the currently authenticated
+  // account's server profile list, then immediately scope it to that account.
   const legacyId = localStorage.getItem('selected_profile_id');
   if (legacyId && profiles.some((profile) => profile.id === legacyId)) {
     if (key) localStorage.setItem(key, legacyId);
