@@ -288,7 +288,15 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
     try {
       setIsLoading(true);
       const authToken = localStorage.getItem('auth_token');
-      if (!authToken) return;
+      if (!authToken) {
+        // A logged-out session must never keep the previous account's profile
+        // visible in context. Keep selected_profile_id untouched for a later
+        // login, but clear only the in-memory identity.
+        setCurrentProfile(null);
+        setProfiles([]);
+        profileDataHydratedRef.current = false;
+        return;
+      }
 
       // For BIP39 users, ensure auth data is fully loaded
       const isBip39Auth = localStorage.getItem('bip39_auth') === 'true';
@@ -754,6 +762,11 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       profileIntentGuard.begin();
       const invalidatedHydration = profileHydrationGuard.begin();
       invalidatedHydration.finish();
+      // Ne jamais laisser l'identité précédente visible pendant le changement
+      // de compte (connexion Discord, déconnexion ou reconnexion).
+      setCurrentProfile(null);
+      setProfiles([]);
+      setIsLoading(true);
       // Nouveau compte → les données profil devront être réhydratées
       profileDataHydratedRef.current = false;
       // Reload profiles when auth changes (especially for BIP39)
