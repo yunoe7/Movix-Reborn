@@ -11,6 +11,7 @@ import {
 } from './ui/select';
 import ReusableModal from './ui/reusable-modal';
 import { copyText } from '../utils/clipboard';
+import { API_BASE_URL } from '../config/api';
 
 interface VipKey {
   key_value: string;
@@ -47,7 +48,7 @@ const VipKeysManager: React.FC = () => {
   const [editMode, setEditMode] = useState<'duration' | 'date'>('duration');
   const [editExpiresAt, setEditExpiresAt] = useState('');
 
-  const API_URL = import.meta.env.VITE_MAIN_API;
+  const API_URL = API_BASE_URL;
 
   const getAuthToken = () => localStorage.getItem('auth_token');
   const getRequestErrorMessage = (error: unknown) => {

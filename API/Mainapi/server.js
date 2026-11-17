@@ -289,6 +289,12 @@ const startServer = async (retries = 3) => {
   }
 
   try {
+    require('./utils/discordVipSync').startDiscordVipReconciliation();
+  } catch (error) {
+    console.warn('[Discord VIP Sync] Scheduler not started:', error.code || error.message);
+  }
+
+  try {
     await refreshProxyScrapeProxies({ force: false, silent: false });
   } catch (error) {
     console.warn(`[PROXYSCRAPE] Initialisation incomplete avant listen: ${error.message}`);

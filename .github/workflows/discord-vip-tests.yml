@@ -1,0 +1,23 @@
+name: Discord VIP sync tests
+
+on:
+  pull_request:
+    paths:
+      - "API/Mainapi/**"
+      - ".github/workflows/discord-vip-tests.yml"
+
+jobs:
+  discord-vip-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: API/Mainapi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: API/Mainapi/package-lock.json
+      - run: npm ci
+      - run: npm test
