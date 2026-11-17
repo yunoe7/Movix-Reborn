@@ -611,6 +611,8 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
+      // Ignore late responses from the account that was active before a switch.
+      if (localStorage.getItem('auth_token') !== authToken) return;
       if (response.data.success) {
         const newProfile = response.data.profile;
         setProfiles(prev => [...prev, newProfile]);
@@ -625,7 +627,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       console.error('Error creating profile:', error);
       throw error;
     } finally {
-      setIsLoading(false);
+      if (localStorage.getItem('auth_token') === authToken) setIsLoading(false);
     }
   };
 
@@ -642,6 +644,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
+      if (localStorage.getItem('auth_token') !== authToken) return;
       if (response.data.success) {
         const updatedProfile = response.data.profile;
         setProfiles(prev => prev.map(p => p.id === profileId ? updatedProfile : p));
@@ -669,6 +672,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
+      if (localStorage.getItem('auth_token') !== authToken || !deletionIntent.isCurrent()) return;
       if (response.data.success) {
         // Check if server created a new default profile
         if (response.data.newDefaultProfile) {
@@ -690,7 +694,8 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
           const profilesResponse = await axios.get(`${API_URL}/api/profiles`, {
             headers: { Authorization: `Bearer ${authToken}` }
           });
-          
+
+          if (localStorage.getItem('auth_token') !== authToken || !deletionIntent.isCurrent()) return;
           if (profilesResponse.data.success) {
             const updatedProfiles = profilesResponse.data.profiles;
             setProfiles(updatedProfiles);
@@ -722,7 +727,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       console.error('Error deleting profile:', error);
       throw error;
     } finally {
-      setIsLoading(false);
+      if (deletionIntent.isCurrent()) setIsLoading(false);
     }
   };
 
