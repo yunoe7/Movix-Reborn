@@ -15,7 +15,8 @@ async function fixture(t) {
   const accountPath = path.join(dir, 'user.json');
   await fs.writeFile(accountPath, '{"oauth_provider":"discord","profiles":[]}');
   let sessionExists = true;
-  let sqlUnavailable = false;
+  let sqlError = null;
+  let accountReadError = null;
   let selects = 0;
   let updates = 0;
   let purges = 0;
@@ -33,7 +34,7 @@ async function fixture(t) {
   const pool = { async execute(sql) {
     if (sql.startsWith('SELECT')) {
       selects++;
-      if (sqlUnavailable) throw Object.assign(new Error('unavailable'), { code: 'ECONNREFUSED' });
+      if (sqlError) throw sqlError;
       return [sessionExists ? [{ id: 'session-one' }] : []];
     }
     if (sql.startsWith('UPDATE')) updates++;
@@ -62,7 +63,10 @@ async function fixture(t) {
   }, { filename });
   return {
     auth: module.exports, accountPath, req: () => ({ headers: { authorization: `Bearer ${token}` } }),
-    revoke: () => { sessionExists = false; }, failSql: () => { sqlUnavailable = true; },
+    revoke: () => { sessionExists = false; },
+    failSql: () => { sqlError = Object.assign(new Error('unavailable'), { code: 'ECONNREFUSED' }); },
+    failSqlUnexpected: () => { sqlError = Object.assign(new Error('bad SQL state'), { code: 'ER_BAD_FIELD_ERROR' }); },
+    failAccountRead: () => { accountReadError = Object.assign(new Error('storage unavailable'), { code: 'EIO' }); },
     counts: () => ({ selects, updates, purges, reads }),
   };
 }
@@ -132,10 +136,47 @@ test('un changement d’en-tête dans la même requête refait la validation', a
   assert.equal(await f.auth.getAuthIfValid(req), null);
 });
 
-test('le comportement existant en panne SQL conserve la vérification du compte', async t => {
+test('une panne SQL ne contourne plus la vérification de session et retourne une indisponibilité', async t => {
   const f = await fixture(t);
   f.failSql();
-  assert.ok(await f.auth.getAuthIfValid(f.req()));
-  await fs.unlink(f.accountPath);
+  await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
+    assert.equal(error.statusCode, 503);
+    return true;
+  });
+  assert.equal(f.counts().selects, 3);
+  assert.equal(f.counts().updates, 0);
+  assert.equal(f.counts().purges, 0);
+});
+
+test('une erreur SQL inattendue échoue de manière fermée', async t => {
+  const f = await fixture(t);
+  f.failSqlUnexpected();
+  await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
+    assert.equal(error.statusCode, 503);
+    return true;
+  });
+  assert.equal(f.counts().selects, 3);
+  assert.equal(f.counts().updates, 0);
+});
+
+test('une erreur de lecture du compte ne valide jamais le JWT', async t => {
+  const f = await fixture(t);
+  f.failAccountRead();
+  await assert.rejects(f.auth.getAuthIfValid(f.req()), error => {
+    assert.equal(error.code, 'AUTH_INFRASTRUCTURE_UNAVAILABLE');
+    assert.equal(error.statusCode, 503);
+    return true;
+  });
+  assert.equal(f.counts().updates, 0);
+  assert.equal(f.counts().purges, 0);
+});
+
+test('une session absente après des réponses SQL reste une révocation confirmée', async t => {
+  const f = await fixture(t);
+  f.revoke();
   assert.equal(await f.auth.getAuthIfValid(f.req()), null);
+  assert.equal(f.counts().selects, 3);
+  assert.equal(f.counts().updates, 0);
 });
