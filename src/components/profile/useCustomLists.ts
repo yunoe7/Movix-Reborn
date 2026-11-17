@@ -76,10 +76,8 @@ export function useCustomLists(): {
       setLists([]);
       setLoading(true);
       countsRef.current.clear();
-      window.setTimeout(() => {
-        if (localStorage.getItem('auth_token')) void load();
-        else setLoading(false);
-      }, 600);
+      // Wait for ProfileContext hydration to emit sync_storage_updated.
+      if (!localStorage.getItem('auth_token')) setLoading(false);
     };
 
     const onStorage = (event: StorageEvent) => {
