@@ -28,7 +28,7 @@ function isAuthorized(req, expectedSecret) {
 
 // GET /api/internal/discord/member?discordId=<Discord user ID>
 // Endpoint privé en lecture seule : ne modifie ni comptes, ni profils, ni rôles.
-router.get('/member', async (req, res) => {
+router.post('/member', async (req, res) => {
   res.set('Cache-Control', 'no-store');
 
   const secret = String(process.env.MOVIX_DISCORD_SYNC_SECRET || '');
@@ -39,7 +39,7 @@ router.get('/member', async (req, res) => {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
-  const discordId = String(req.query.discordId || '').trim();
+  const discordId = String(req.body?.discordUserId || '').trim();
   if (!/^\d{17,20}$/.test(discordId)) {
     return res.status(400).json({ success: false, error: 'Invalid Discord user ID' });
   }
