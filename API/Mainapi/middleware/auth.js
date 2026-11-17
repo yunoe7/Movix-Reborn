@@ -198,11 +198,17 @@ async function validateAuthRequest(req) {
     // réponse de la DB. false si toutes les tentatives ont échoué (MySQL
     // down/restart, queue limit) → réponse indéterminée.
     let dbAnswered = false;
-    const pool = getDbPool();
+    let pool;
+    try {
+      pool = getDbPool();
+    } catch (error) {
+      throw new AuthInfrastructureError('Validation de session temporairement indisponible', error);
+    }
 
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
         if (!pool) {
+          dbAnswered = false;
           console.warn('[AUTH] MySQL pool not ready, attempt', attempt);
           if (attempt < 3) {
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -226,6 +232,7 @@ async function validateAuthRequest(req) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
       } catch (error) {
+        dbAnswered = false;
         console.error(`[AUTH] Erreur lors de la tentative ${attempt}/3:`, error.message);
         if (attempt < 3) {
           await new Promise(resolve => setTimeout(resolve, 500));
