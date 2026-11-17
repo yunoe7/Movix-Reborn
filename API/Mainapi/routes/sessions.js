@@ -50,6 +50,9 @@ router.get('/', async (req, res) => {
     res.status(200).json({ success: true, data: { count: sessions.length, items: sessions } });
   } catch (error) {
     console.error('Error getting sessions:', error);
+    if (error?.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ success: false, error: 'Erreur lors de la récupération des sessions' });
   }
 });
@@ -90,6 +93,9 @@ router.post('/delete', async (req, res) => {
     res.status(200).json({ success: true, message: 'Session supprimée avec succès' });
   } catch (error) {
     console.error('Error deleting session:', error);
+    if (error?.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') {
+      return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+    }
     res.status(500).json({ success: false, error: 'Erreur lors de la suppression de la session' });
   }
 });
