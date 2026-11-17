@@ -793,6 +793,53 @@ const PersistenceManager = () => {
         syncDiag.sendOpsError++;
         syncDiag.lastError = (e instanceof Error ? e.message : String(e)).slice(0, 200);
         console.error('Delta sync failed', e);
+
+        // A failed delta request must not disappear: ProfileContext replays this
+        // durable outbox before hydrating (and replacing) profile localStorage.
+        // Persist only while the same session is still active, and never replace
+        // an outbox owned by another account/profile.
+        try {
+          if (localStorage.getItem('auth_token') !== authToken) return;
+          const currentUser = getUserInfo();
+          if (currentUser.type !== userInfo.type
+            || currentUser.id !== userInfo.id
+            || currentUser.profileId !== userInfo.profileId) return;
+
+          const existingRaw = localStorage.getItem(SYNC_OUTBOX_STORAGE_KEY);
+          let mergedOps: any[] = [];
+          if (existingRaw) {
+            const existing = JSON.parse(existingRaw);
+            const sameOwner = existing
+              && existing.userType === userInfo.type
+              && existing.profileId === userInfo.profileId
+              && (existing.userId || null) === (userInfo.id || null);
+            if (!sameOwner) {
+              console.warn('[sync] preserving outbox belonging to another profile; failed ops remain local for retry');
+              return;
+            }
+            if (Array.isArray(existing.ops)) {
+              mergedOps = existing.ops.filter((op: any) => op && typeof op === 'object'
+                && typeof op.key === 'string' && isSyncableStorageKey(op.key));
+            }
+          }
+
+          const validFailedOps = ops.filter((op: any) => op && typeof op === 'object'
+            && typeof op.key === 'string' && isSyncableStorageKey(op.key));
+          if (validFailedOps.length) {
+            const MAX_OUTBOX_OPS = 10000;
+            mergedOps = [...mergedOps, ...validFailedOps].slice(-MAX_OUTBOX_OPS);
+            localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, JSON.stringify({
+              userType: userInfo.type,
+              profileId: userInfo.profileId,
+              userId: userInfo.id || undefined,
+              ops: mergedOps,
+              ts: Date.now()
+            }));
+            console.warn('[sync] failed operations saved for replay on next profile load');
+          }
+        } catch (persistError) {
+          console.error('[sync] could not persist failed operations for retry', persistError);
+        }
       }
     };
 
