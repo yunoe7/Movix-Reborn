@@ -521,6 +521,7 @@ app.use('/api', require('./routes/sync'));
 app.use('/api', require('./routes/mediaSegments'));
 app.use('/api/profiles', require('./routes/profiles'));
 app.use('/api/help', require('./routes/helpFeedback'));
+app.use('/api/internal/discord', require('./routes/internalDiscord'));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/oauth', oauthRouter);
 app.use('/api/admin/oauth-apps', require('./routes/adminOauthApps'));
