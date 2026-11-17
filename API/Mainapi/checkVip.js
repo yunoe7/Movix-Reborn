@@ -49,7 +49,7 @@ function parseExpiryTimestamp(value) {
     if (!normalized) {
         return null;
     }
-    if (/^-?\\d+$/.test(normalized)) {
+    if (/^-?[0-9]+$/.test(normalized)) {
         const timestamp = Number(normalized);
         return Number.isSafeInteger(timestamp) ? timestamp : null;
     }
