@@ -31,8 +31,8 @@ function getConfig(env = process.env) {
     adminRoleIds,
     moderatorRoleIds,
     uploaderRoleIds,
-    vipRoleId: /^\\d{17,20}$/.test(vipRoleId) ? vipRoleId : '',
-    vipConfigured: Boolean(botToken && /^\\d{17,20}$/.test(String(env.DISCORD_GUILD_ID || '').trim()) && /^\\d{17,20}$/.test(vipRoleId)),
+    vipRoleId: /^\d{17,20}$/.test(vipRoleId) ? vipRoleId : '',
+    vipConfigured: Boolean(botToken && /^\d{17,20}$/.test(String(env.DISCORD_GUILD_ID || '').trim()) && /^\d{17,20}$/.test(vipRoleId)),
     configured: Boolean(botToken && /^\d{17,20}$/.test(guildId)),
   };
 }
@@ -145,7 +145,7 @@ async function setDiscordVipRole(userId, active, options = {}) {
   const config = getConfig(env);
   const discordUserId = String(userId || '').trim();
 
-  if (!/^\\d{17,20}$/.test(discordUserId)) {
+  if (!/^\d{17,20}$/.test(discordUserId)) {
     const error = new Error('Invalid Discord user ID');
     error.code = 'DISCORD_INVALID_USER';
     throw error;
