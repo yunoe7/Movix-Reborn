@@ -17,13 +17,19 @@ function parseRoleIds(raw) {
 
 function getConfig(env = process.env) {
   const botToken = String(env.DISCORD_BOT_TOKEN || '').trim();
-  const guildId = String(env.DISCORD_GUILD_ID || '').trim();
+  const guildId = String(env.DISCORD_GUILD_ID || '1570056496471867483').trim();
+  const ownerUserId = String(env.DISCORD_OWNER_USER_ID || '1239889177055596607').trim();
+  const adminRoleIds = parseRoleIds(env.DISCORD_ADMIN_ROLE_IDS || '1570072172104261732');
+  const moderatorRoleIds = parseRoleIds(env.DISCORD_MODERATOR_ROLE_IDS || '1570312607988977667');
+  const uploaderRoleIds = parseRoleIds(env.DISCORD_UPLOADER_ROLE_IDS);
 
   return {
     botToken,
     guildId,
-    adminRoleIds: parseRoleIds(env.DISCORD_ADMIN_ROLE_IDS),
-    uploaderRoleIds: parseRoleIds(env.DISCORD_UPLOADER_ROLE_IDS),
+    ownerUserId,
+    adminRoleIds,
+    moderatorRoleIds,
+    uploaderRoleIds,
     configured: Boolean(botToken && /^\d{17,20}$/.test(guildId)),
   };
 }
@@ -31,12 +37,10 @@ function getConfig(env = process.env) {
 function readCache(key, now) {
   const entry = memberCache.get(key);
   if (!entry) return undefined;
-
   if (now - entry.timestamp >= MEMBER_CACHE_TTL_MS) {
     memberCache.delete(key);
     return undefined;
   }
-
   memberCache.delete(key);
   memberCache.set(key, entry);
   return entry.role;
@@ -47,7 +51,6 @@ function writeCache(key, role, now) {
     const oldestKey = memberCache.keys().next().value;
     if (oldestKey !== undefined) memberCache.delete(oldestKey);
   }
-
   memberCache.set(key, { role, timestamp: now });
 }
 
@@ -58,35 +61,39 @@ function createDiscordError(code) {
 }
 
 /**
- * Returns the highest Movix role granted by Discord for this member.
- * An unconfigured bot leaves the legacy MySQL allowlist unchanged.
- * When configured, Discord is authoritative for Discord-authenticated sessions.
+ * Returns the highest Movix role granted by Discord.
+ * Owner is explicit and does not depend on Discord API availability.
+ * Admin and moderator map to the Movix admin capability; uploader remains separate.
  */
 async function getDiscordAdminRole(userId, options = {}) {
   const env = options.env || process.env;
   const http = options.http || axios;
   const now = typeof options.now === 'function' ? options.now : Date.now;
   const config = getConfig(env);
+  const discordUserId = String(userId || '').trim();
 
+  if (!/^\d{17,20}$/.test(discordUserId)) {
+    return { configured: Boolean(config.configured), role: null };
+  }
+  if (discordUserId === config.ownerUserId) {
+    return { configured: true, role: 'owner' };
+  }
   if (!config.configured) {
     return { configured: false, role: null };
   }
 
-  const discordUserId = String(userId || '').trim();
-  if (!/^\d{17,20}$/.test(discordUserId)) {
-    return { configured: true, role: null };
-  }
-
-  const allowedRoleIds = new Set([...config.adminRoleIds, ...config.uploaderRoleIds]);
+  const allowedRoleIds = new Set([
+    ...config.adminRoleIds,
+    ...config.moderatorRoleIds,
+    ...config.uploaderRoleIds,
+  ]);
   if (allowedRoleIds.size === 0) {
     return { configured: true, role: null };
   }
 
   const cacheKey = config.guildId + ':' + discordUserId;
   const cachedRole = readCache(cacheKey, now());
-  if (cachedRole !== undefined) {
-    return { configured: true, role: cachedRole };
-  }
+  if (cachedRole !== undefined) return { configured: true, role: cachedRole };
 
   try {
     const response = await http.get(
@@ -104,6 +111,8 @@ async function getDiscordAdminRole(userId, options = {}) {
     let role = null;
     if (config.adminRoleIds.some((roleId) => memberRoles.includes(roleId))) {
       role = 'admin';
+    } else if (config.moderatorRoleIds.some((roleId) => memberRoles.includes(roleId))) {
+      role = 'moderator';
     } else if (config.uploaderRoleIds.some((roleId) => memberRoles.includes(roleId))) {
       role = 'uploader';
     }
@@ -112,19 +121,12 @@ async function getDiscordAdminRole(userId, options = {}) {
     return { configured: true, role };
   } catch (error) {
     const status = error?.response?.status;
-
     if (status === 404) {
       writeCache(cacheKey, null, now());
       return { configured: true, role: null };
     }
-
-    if (status === 401 || status === 403) {
-      throw createDiscordError('DISCORD_BOT_CONFIGURATION');
-    }
-    if (status === 429) {
-      throw createDiscordError('DISCORD_RATE_LIMITED');
-    }
-
+    if (status === 401 || status === 403) throw createDiscordError('DISCORD_BOT_CONFIGURATION');
+    if (status === 429) throw createDiscordError('DISCORD_RATE_LIMITED');
     throw createDiscordError('DISCORD_API_UNAVAILABLE');
   }
 }

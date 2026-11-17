@@ -285,10 +285,15 @@ async function isAdmin(req, res, next) {
       const discordUserId = await resolveDiscordUserId(pool, userType, userId);
       const discordAccess = await getDiscordAdminRole(discordUserId);
       if (discordAccess.configured) {
-        if (discordAccess.role !== 'admin') {
+        if (!['owner', 'admin'].includes(discordAccess.role)) {
           return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord admin requis' });
         }
-        req.admin = { userId, userType, adminId: null, role: 'admin' };
+        req.admin = {
+          userId,
+          userType,
+          adminId: null,
+          role: discordAccess.role === 'owner' ? 'admin' : discordAccess.role,
+        };
         return next();
       }
     }
@@ -346,7 +351,7 @@ async function isAdminRequest(req) {
       const discordUserId = await resolveDiscordUserId(pool, userType, userId);
       const discordAccess = await getDiscordAdminRole(discordUserId);
       if (discordAccess.configured) {
-        return discordAccess.role === 'admin';
+        return ['owner', 'admin'].includes(discordAccess.role);
       }
     }
 
@@ -386,10 +391,15 @@ async function isUploaderOrAdmin(req, res, next) {
       const discordUserId = await resolveDiscordUserId(pool, userType, userId);
       const discordAccess = await getDiscordAdminRole(discordUserId);
       if (discordAccess.configured) {
-        if (discordAccess.role !== 'admin' && discordAccess.role !== 'uploader') {
+        if (!['owner', 'admin', 'moderator', 'uploader'].includes(discordAccess.role)) {
           return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord requis' });
         }
-        req.admin = { userId, userType, adminId: null, role: discordAccess.role };
+        req.admin = {
+          userId,
+          userType,
+          adminId: null,
+          role: discordAccess.role === 'owner' ? 'admin' : discordAccess.role,
+        };
         return next();
       }
     }
