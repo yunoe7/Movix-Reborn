@@ -18,6 +18,29 @@ function extractAccessCode(source) {
   }
 }
 
+function isAccessKeyActive(key, now = Date.now()) {
+  if (!key || !(key.active === true || Number(key.active) === 1)) return false;
+  if (key.expires_at === null || key.expires_at === undefined || key.expires_at === '') return true;
+  const raw = key.expires_at;
+  const expiry = raw instanceof Date ? raw.getTime()
+    : (typeof raw === 'number' || /^-?\\d+$/.test(String(raw).trim()))
+      ? Number(raw) : new Date(raw).getTime();
+  return Number.isFinite(expiry) && now < expiry;
+}
+
+function serializeExpiry(value) {
+  if (value === null || value === undefined || value === '') return null;
+  if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : null;
+  const raw = String(value).trim();
+  if (/^-?\\d+$/.test(raw)) {
+    const numeric = Number(raw);
+    const date = new Date(numeric);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  }
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : raw;
+}
+
 function isAuthorized(req, expectedSecret) {
   const header = req.get('authorization') || '';
   if (!header.startsWith('Bearer ')) return false;
@@ -63,7 +86,7 @@ router.post('/member', async (req, res) => {
     }
 
     const accessCode = extractAccessCode(profileData) || extractAccessCode(userData);
-    let active = false;
+    let active = false;\n    let expiresAt = null;
 
     if (accessCode) {
       const pool = getPool();
@@ -73,17 +96,14 @@ router.post('/member', async (req, res) => {
         [accessCode]
       );
       const key = rows[0];
-      active = Boolean(
-        key &&
-        (key.active === true || Number(key.active) === 1) &&
-        (!key.expires_at || new Date(key.expires_at).getTime() >= Date.now())
-      );
+      active = isAccessKeyActive(key);
+      expiresAt = key ? serializeExpiry(key.expires_at) : null;
     }
 
     return res.status(200).json({
       success: true,
       linked: true,
-      vip: { active },
+      vip: { active, expiresAt: active ? expiresAt : null },
     });
   } catch (error) {
     console.error('[Discord Sync] Member lookup failed:', error.message);
