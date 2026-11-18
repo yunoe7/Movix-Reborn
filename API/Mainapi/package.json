@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --test utils/__tests__/discordAdminRoles.test.js utils/__tests__/discordVipSync.test.js utils/__tests__/oauthProviderTokens.test.js middleware/__tests__/authPerformance.test.js"
+    "test": "node --test utils/__tests__/discordAdminRoles.test.js utils/__tests__/discordVipSync.test.js utils/__tests__/oauthProviderTokens.test.js middleware/__tests__/authPerformance.test.js services/kisskh/__tests__/kisskhClient.directMode.test.js"
   },
   "dependencies": {
     "@fastify/compress": "^8.3.1",
