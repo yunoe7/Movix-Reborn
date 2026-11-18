@@ -23,7 +23,7 @@ function isAccessKeyActive(key, now = Date.now()) {
   if (key.expires_at === null || key.expires_at === undefined || key.expires_at === '') return true;
   const raw = key.expires_at;
   const expiry = raw instanceof Date ? raw.getTime()
-    : (typeof raw === 'number' || /^-?\\d+$/.test(String(raw).trim()))
+    : (typeof raw === 'number' || /^-?\d+$/.test(String(raw).trim()))
       ? Number(raw) : new Date(raw).getTime();
   return Number.isFinite(expiry) && now < expiry;
 }
@@ -32,7 +32,7 @@ function serializeExpiry(value) {
   if (value === null || value === undefined || value === '') return null;
   if (value instanceof Date) return Number.isFinite(value.getTime()) ? value.toISOString() : null;
   const raw = String(value).trim();
-  if (/^-?\\d+$/.test(raw)) {
+  if (/^-?\d+$/.test(raw)) {
     const numeric = Number(raw);
     const date = new Date(numeric);
     return Number.isFinite(date.getTime()) ? date.toISOString() : null;
@@ -86,7 +86,8 @@ router.post('/member', async (req, res) => {
     }
 
     const accessCode = extractAccessCode(profileData) || extractAccessCode(userData);
-    let active = false;\n    let expiresAt = null;
+    let active = false;
+    let expiresAt = null;
 
     if (accessCode) {
       const pool = getPool();
