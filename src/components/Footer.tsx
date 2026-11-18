@@ -156,7 +156,7 @@ const Footer = () => {
               components={{
                 author: (
                   <a
-                    href="https://mysticsaba.com/"
+                    href="https://github.com/yunoe7"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="rounded-sm text-indigo-400 underline-offset-4 hover:text-indigo-300 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400"
