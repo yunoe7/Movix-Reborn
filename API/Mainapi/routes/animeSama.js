@@ -35,6 +35,7 @@ const {
   episodeLabelsFromCalls,
 } = require('../utils/animeSamaPages');
 const { createLinkResolver, isLinkTokenError, isLinkRateError } = require('../utils/animeSamaLinks');
+const { canReuseSeasonCache } = require('../utils/animeSamaCache');
 const DEBUG_ANIMESAMA = process.env.DEBUG_ANIMESAMA === 'true';
 
 // Anime-Sama est le seul catalogue dont les lecteurs sont des chaînes brutes
@@ -1043,7 +1044,7 @@ function refreshAnime(anime, client) {
           }
           continue;
         }
-        if (cachedEpisodes && (seasonCache.path ?? seasonObj.path) === seasonObj.path && sameEpisodes(cachedEpisodes, siteEpisodes)) continue;
+        if (canReuseSeasonCache(seasonCache, seasonObj.path, cachedEpisodes, siteEpisodes, sameEpisodes)) continue;
 
         updatedAnimeCache[seasonObj.name] = {
           timestamp: Date.now(),
