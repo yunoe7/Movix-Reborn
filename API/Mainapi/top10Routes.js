@@ -321,7 +321,7 @@ async function buildStatsResult(requestedType, typeConfig, period = DEFAULT_PERI
              SUM(total_sessions) AS total_sessions,
              MIN(data_from) AS data_from, MAX(data_to) AS data_to
       FROM (
-        SELECT user_id, content_id,
+        SELECT user_id, content_type, content_id,
                CASE WHEN content_type = 'movie' THEN NULL ELSE season_number END AS season_key,
                CASE WHEN content_type = 'movie' THEN NULL ELSE episode_number END AS episode_key,
                SUM(watch_duration) AS watch_duration,
