@@ -479,8 +479,8 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
                     whereConditions.push('(ls.tmdb_id = ? OR ls.id = ?)');
                     whereParams.push(numSearch, numSearch);
                 } else {
-                    const escapedSearch = String(search).replace(/[%_]/g, '\\\\$&');
-                    whereConditions.push('(ls.url LIKE ? OR ls.source_name LIKE ?)');
+                    const escapedSearch = String(search).replace(/[!%_]/g, (char) => `!${char}`);
+                    whereConditions.push("(ls.url LIKE ? ESCAPE '!' OR ls.source_name LIKE ? ESCAPE '!')");
                     whereParams.push(`%${escapedSearch}%`, `%${escapedSearch}%`);
                 }
             }
