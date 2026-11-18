@@ -14,6 +14,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { verifyAccessKey } = require('./checkVip');
 const { isHttpUrl } = require('./utils/safeLinkUrl');
+const { escapeLikePattern } = require('./utils/likePattern');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -479,7 +480,7 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
                     whereConditions.push('(ls.tmdb_id = ? OR ls.id = ?)');
                     whereParams.push(numSearch, numSearch);
                 } else {
-                    const escapedSearch = String(search).replace(/[!%_]/g, (char) => `!${char}`);
+                    const escapedSearch = escapeLikePattern(search);
                     whereConditions.push("(ls.url LIKE ? ESCAPE '!' OR ls.source_name LIKE ? ESCAPE '!')");
                     whereParams.push(`%${escapedSearch}%`, `%${escapedSearch}%`);
                 }
