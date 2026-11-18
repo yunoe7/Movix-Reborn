@@ -782,6 +782,10 @@ const appReady = (async () => {
       app.use('/api', require('./routes/history'));
       console.log('History routes initialized successfully');
 
+      // Recommandations personnalisées, fondées sur l'historique du profil connecté.
+      app.use('/api', require('./routes/recommendations'));
+      console.log('Personalized recommendations routes initialized successfully');
+
       // Le schéma communautaire est nécessaire aux commentaires, likes et notifications.
       // CREATE TABLE IF NOT EXISTS répare les tables absentes sans toucher aux données existantes.
       await ensureTableGroup(pool, 'community');
