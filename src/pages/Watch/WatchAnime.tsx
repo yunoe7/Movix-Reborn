@@ -665,14 +665,28 @@ const WatchAnime: React.FC = () => {
     fetchAnimeEpisodeLinks(slug, seasonPath, episodeIndex, serverResolveRequest()).then((links) => {
       if (links && links.streaming_links.length > 0) {
         registerServerResolvedSources(links);
-        setAnimeData((current) => (current && current.slug === slug ? {
-          ...current,
-          seasons: current.seasons.map((entry) => (entry.path !== seasonPath ? entry : {
-            ...entry,
-            episodes: entry.episodes.map((item) => (item.index !== episodeIndex ? item : { ...item, streaming_links: links.streaming_links })),
-          })),
-        } : current));
+        setAnimeData((current) => {
+          if (!current || current.slug !== slug) return current;
+          return {
+            ...current,
+            seasons: current.seasons.map((entry) => (
+              animeSeasonPath(current, entry) !== seasonPath ? entry : {
+                ...entry,
+                path: entry.path || seasonPath,
+                episodes: entry.episodes.map((item) => (
+                  item.index !== episodeIndex
+                    ? item
+                    : { ...item, streaming_links: links.streaming_links }
+                )),
+              }
+            )),
+          };
+        });
       }
+      settledEpisodeLinksRef.current.add(key);
+      setEpisodeLinksVersion((version) => version + 1);
+    }).catch((error) => {
+      console.warn('[ANIME-SAMA] Impossible de récupérer les liens de cet épisode:', error);
       settledEpisodeLinksRef.current.add(key);
       setEpisodeLinksVersion((version) => version + 1);
     });
