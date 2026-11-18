@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --test utils/__tests__/discordAdminRoles.test.js utils/__tests__/discordVipSync.test.js utils/__tests__/oauthProviderTokens.test.js middleware/__tests__/authPerformance.test.js services/kisskh/__tests__/kisskhClient.directMode.test.js utils/__tests__/recommendationEngine.test.js utils/__tests__/likePattern.test.js utils/__tests__/animeSamaCache.test.js utils/__tests__/northliveCatalog.test.js routes/__tests__/top10Aggregation.test.js"
+    "test": "node --test utils/__tests__/discordAdminRoles.test.js utils/__tests__/discordVipSync.test.js utils/__tests__/oauthProviderTokens.test.js middleware/__tests__/authPerformance.test.js middleware/__tests__/domainRestriction.test.js services/kisskh/__tests__/kisskhClient.directMode.test.js utils/__tests__/recommendationEngine.test.js utils/__tests__/likePattern.test.js utils/__tests__/animeSamaCache.test.js utils/__tests__/northliveCatalog.test.js routes/__tests__/top10Aggregation.test.js"
   },
   "dependencies": {
     "@fastify/compress": "^8.3.1",
@@ -41,7 +41,6 @@
     "mysql2": "^3.15.0",
     "openai": "^6.15.0",
     "proper-lockfile": "^4.1.2",
-    "socket.io": "^4.8.3",
     "socks-proxy-agent": "^8.0.5",
     "sqlite3": "^5.1.7",
     "streamed-pk-hls-stream-resolver": "git+https://github.com/hiighbob/streamed-pk-hls-stream-resolver.git#7d918be84d47a924373a9304d7c8856a9daba4c6",
