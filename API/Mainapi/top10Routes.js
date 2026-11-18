@@ -527,49 +527,48 @@ router.get("/stats", async (req, res) => {
 async function loadContentDetailsMap(config, contentIds, periodDays) {
   if (contentIds.length === 0) return new Map();
 
+  const placeholders = contentIds.map(() => "?").join(", ");
   const periodClause = periodDays
     ? " AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)"
     : "";
-  const placeholders = contentIds.map(() => "?").join(", ");
-  const episodesSelect = config.withEpisodes
-    ? `,
-        (SELECT COUNT(*) FROM (
-          SELECT season_number, episode_number
-          FROM wrapped_viewing_data episode_rows
-          WHERE episode_rows.content_type = ?
-            AND episode_rows.content_id = content_rows.content_id${periodClause}
-          GROUP BY season_number, episode_number
-          HAVING SUM(watch_duration) >= ?
-        ) qualified_episodes) AS episodes_watched`
-    : ", 0 AS episodes_watched";
-
-  const params = config.withEpisodes
-    ? [
-        config.contentType,
-        ...(periodDays ? [periodDays] : []),
-        config.minDuration,
-        config.contentType,
-        ...contentIds,
-        ...(periodDays ? [periodDays] : []),
-      ]
-    : [config.contentType, ...contentIds, ...(periodDays ? [periodDays] : [])];
-
-  const [rows] = await pool.execute(
+  const [titleRows] = await pool.execute(
     `
-      SELECT content_rows.content_id,
-             MAX(content_rows.content_title) AS content_title${episodesSelect}
-      FROM wrapped_viewing_data content_rows
-      WHERE content_rows.content_type = ?
-        AND content_rows.content_id IN (${placeholders})${periodClause}
-      GROUP BY content_rows.content_id
+      SELECT content_id, MAX(content_title) AS content_title
+      FROM wrapped_viewing_data
+      WHERE content_type = ? AND content_id IN (${placeholders})${periodClause}
+      GROUP BY content_id
     `,
-    params,
+    [config.contentType, ...contentIds, ...(periodDays ? [periodDays] : [])],
   );
 
-  return new Map(rows.map((row) => [
+  const details = new Map(titleRows.map((row) => [
     String(row.content_id),
-    { title: row.content_title || null, episodesWatched: parseInt(row.episodes_watched) || 0 },
+    { title: row.content_title || null, episodesWatched: 0 },
   ]));
+
+  if (config.withEpisodes) {
+    const [episodeRows] = await pool.execute(
+      `
+        SELECT content_id, COUNT(*) AS episodes_watched
+        FROM (
+          SELECT content_id, season_number, episode_number
+          FROM wrapped_viewing_data
+          WHERE content_type = ? AND content_id IN (${placeholders})${periodClause}
+          GROUP BY content_id, season_number, episode_number
+          HAVING SUM(watch_duration) >= ?
+        ) qualified_episodes
+        GROUP BY content_id
+      `,
+      [config.contentType, ...contentIds, ...(periodDays ? [periodDays] : []), config.minDuration],
+    );
+
+    for (const row of episodeRows) {
+      const detail = details.get(String(row.content_id));
+      if (detail) detail.episodesWatched = parseInt(row.episodes_watched) || 0;
+    }
+  }
+
+  return details;
 }
 async function buildTop10ByCategory(
   category,
