@@ -310,14 +310,14 @@ async function buildStatsResult(requestedType, typeConfig, period = DEFAULT_PERI
   const statsQuery = `
     SELECT
       COUNT(DISTINCT user_id) AS total_active_users,
-      COUNT(DISTINCT content_id) AS total_unique_content,
+      COUNT(DISTINCT CONCAT(content_type, ':', content_id)) AS total_unique_content,
       ROUND(SUM(watch_duration) / 3600, 0) AS total_hours_watched,
       SUM(total_sessions) AS total_sessions,
       ROUND(SUM(watch_duration) / NULLIF(SUM(total_sessions), 0) / 60, 0) AS avg_session_minutes,
       MIN(data_from) AS data_from,
       MAX(data_to) AS data_to
     FROM (
-      SELECT user_id, content_id, SUM(watch_duration) AS watch_duration,
+      SELECT user_id, content_type, content_id, SUM(watch_duration) AS watch_duration,
              SUM(total_sessions) AS total_sessions,
              MIN(data_from) AS data_from, MAX(data_to) AS data_to
       FROM (
@@ -335,7 +335,7 @@ async function buildStatsResult(requestedType, typeConfig, period = DEFAULT_PERI
                  content_type
         HAVING SUM(watch_duration) >= CASE WHEN content_type = 'movie' THEN 1200 ELSE 300 END
       ) qualified_units
-      GROUP BY user_id, content_id
+      GROUP BY user_id, content_type, content_id
     ) qualified_content
   `;
 
@@ -531,34 +531,39 @@ async function loadContentDetailsMap(config, contentIds, periodDays) {
     ? " AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)"
     : "";
   const placeholders = contentIds.map(() => "?").join(", ");
-  const params = [config.contentType];
-  if (periodDays) params.push(periodDays);
-  params.push(...contentIds);
-
   const episodesSelect = config.withEpisodes
     ? `,
         (SELECT COUNT(*) FROM (
           SELECT season_number, episode_number
           FROM wrapped_viewing_data episode_rows
           WHERE episode_rows.content_type = ?
-            AND episode_rows.content_id = content_id${periodClause}
+            AND episode_rows.content_id = content_rows.content_id${periodClause}
           GROUP BY season_number, episode_number
           HAVING SUM(watch_duration) >= ?
         ) qualified_episodes) AS episodes_watched`
     : ", 0 AS episodes_watched";
 
-  // Titles are loaded for already-qualified content IDs; episode counts use
-  // the same cumulative five-minute-per-episode rule as the ranking.
+  const params = config.withEpisodes
+    ? [
+        config.contentType,
+        ...(periodDays ? [periodDays] : []),
+        config.minDuration,
+        config.contentType,
+        ...contentIds,
+        ...(periodDays ? [periodDays] : []),
+      ]
+    : [config.contentType, ...contentIds, ...(periodDays ? [periodDays] : [])];
+
   const [rows] = await pool.execute(
     `
-      SELECT content_id, MAX(content_title) AS content_title${episodesSelect}
-      FROM wrapped_viewing_data
-      WHERE content_type = ? AND content_id IN (${placeholders})${periodClause}
-      GROUP BY content_id
+      SELECT content_rows.content_id,
+             MAX(content_rows.content_title) AS content_title${episodesSelect}
+      FROM wrapped_viewing_data content_rows
+      WHERE content_rows.content_type = ?
+        AND content_rows.content_id IN (${placeholders})${periodClause}
+      GROUP BY content_rows.content_id
     `,
-    config.withEpisodes
-      ? [config.contentType, ...(periodDays ? [periodDays] : []), config.contentType, config.minDuration, ...contentIds, ...(periodDays ? [periodDays] : [])]
-      : [config.contentType, ...contentIds, ...(periodDays ? [periodDays] : [])],
+    params,
   );
 
   return new Map(rows.map((row) => [
@@ -566,7 +571,6 @@ async function loadContentDetailsMap(config, contentIds, periodDays) {
     { title: row.content_title || null, episodesWatched: parseInt(row.episodes_watched) || 0 },
   ]));
 }
-
 async function buildTop10ByCategory(
   category,
   period = DEFAULT_PERIOD,
