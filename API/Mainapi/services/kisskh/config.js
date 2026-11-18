@@ -96,11 +96,13 @@ function fromEnv(environ) {
   if (!environ || typeof environ !== 'object') throw new TypeError('environnement KissKH invalide');
   const policy = loadFallbackPolicy();
   const enabled = parseBoolean(environ, 'KISSKH_ENABLED');
+  const directMode = parseBoolean(environ, 'KISSKH_DIRECT_MODE');
   const subtitleAllowedHosts = parseHostList(environ.KISSKH_SUBTITLE_ALLOWED_HOSTS);
   const bundleCheckTtlSeconds = parsePositiveInteger(environ, 'KISSKH_BUNDLE_CHECK_TTL_SECONDS', 900);
   const bundleStaleMaxSeconds = parsePositiveInteger(environ, 'KISSKH_BUNDLE_STALE_MAX_SECONDS', 86_400);
   return Object.freeze({
     enabled,
+    directMode,
     providerBaseUrl: getProviderBaseUrl(environ.KISSKH_BASE_URL || undefined),
     browserFallbackEnabled: false,
     subtitleAllowedHosts: Object.freeze(subtitleAllowedHosts),
