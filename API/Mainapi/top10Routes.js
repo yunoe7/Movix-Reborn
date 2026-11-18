@@ -549,12 +549,13 @@ async function loadContentDetailsMap(config, contentIds, periodDays) {
   if (config.withEpisodes) {
     const [episodeRows] = await pool.execute(
       `
-        SELECT content_id, COUNT(*) AS episodes_watched
+        SELECT content_id,
+               COUNT(DISTINCT CONCAT(COALESCE(season_number, ''), '-', COALESCE(episode_number, ''))) AS episodes_watched
         FROM (
-          SELECT content_id, season_number, episode_number
+          SELECT user_id, content_id, season_number, episode_number
           FROM wrapped_viewing_data
           WHERE content_type = ? AND content_id IN (${placeholders})${periodClause}
-          GROUP BY content_id, season_number, episode_number
+          GROUP BY user_id, content_id, season_number, episode_number
           HAVING SUM(watch_duration) >= ?
         ) qualified_episodes
         GROUP BY content_id
