@@ -16,7 +16,7 @@ let redis = null;
 
 const CACHE_REFRESH = 1800; // 30 min before background refresh
 const CACHE_TTL = 86400; // 24h Redis TTL
-const CACHE_PREFIX = "top10:";
+const CACHE_PREFIX = "top10:v2:"; // Invalidate pre-fix aggregates on deploy
 const LOCK_PREFIX = `${CACHE_PREFIX}lock:`;
 const LOCK_TTL = 120; // seconds
 // Anti-stampede : un build lourd peut prendre plusieurs secondes a froid.
