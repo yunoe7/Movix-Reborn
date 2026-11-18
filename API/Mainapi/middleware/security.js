@@ -99,11 +99,16 @@ function domainRestriction(req, res, next) {
   const checkDomain = (url) => {
     try {
       if (!url) return false;
-      const hostname = new URL(url).hostname;
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+      const hostname = parsed.hostname;
       // Allow exact matches or subdomains if needed (here we list full domains)
       return allowedDomains.some(domain => {
          // Handle localhost with port special case if needed, or just match hostname
-         if (domain.includes(':')) return url.includes(domain);
+         if (domain.includes(':')) {
+           // Compare the parsed authority, not a substring of the untrusted URL.
+           return parsed.host === domain;
+         }
          return hostname === domain || hostname.endsWith('.' + domain);
       });
     } catch (e) {
