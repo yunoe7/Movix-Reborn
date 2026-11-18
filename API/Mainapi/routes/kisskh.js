@@ -469,6 +469,7 @@ function runtimeEnvironment(overrides) {
   if (overrides) return overrides;
   return {
     KISSKH_ENABLED: process.env.KISSKH_ENABLED,
+    KISSKH_DIRECT_MODE: process.env.KISSKH_DIRECT_MODE,
     KISSKH_BASE_URL: process.env.KISSKH_BASE_URL,
     KISSKH_ALLOWED_HOSTS: process.env.KISSKH_ALLOWED_HOSTS,
     KISSKH_MEDIA_ALLOWED_HOSTS: process.env.KISSKH_MEDIA_ALLOWED_HOSTS,
@@ -604,6 +605,7 @@ function createRuntimeDependencies(deps = {}) {
     request: deps.kisskhRequest,
     timeout: positiveInteger(environ, 'KISSKH_METADATA_TIMEOUT_MS', 10_000),
     maxAttempts: positiveInteger(environ, 'KISSKH_METADATA_MAX_ATTEMPTS', 3),
+    directMode: config.directMode,
   });
   const resolver = createKisskhResolver({
     providerBaseUrl,

@@ -315,6 +315,7 @@ function createKisskhClient(deps = {}) {
   const baseUrl = validateMetadataUrl(providerBaseUrl, allowedHosts);
   if (baseUrl.pathname !== '/' || baseUrl.search) throw new TypeError('baseUrl KissKH invalide');
   const proxyPolicy = deps.proxyPolicy;
+  const directMode = deps.directMode === true;
   if (!proxyPolicy || ['reserve', 'reserveGlobal', 'recordSuccess', 'recordFailure', 'record429', 'assertCircuitClosed']
     .some((name) => typeof proxyPolicy[name] !== 'function')) {
     throw new TypeError('policy proxy KissKH invalide');
@@ -427,8 +428,8 @@ function createKisskhClient(deps = {}) {
     const allowImagePng = /^\/api\/DramaList\/Episode\/\d+\.png(?:\?|$)/.test(pathname);
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       assertProviderAvailable();
-      const proxy = await proxyPolicy.reserve();
-      if (!proxy) throw new KisskhError('provider_unavailable', 'Proxy KissKH indisponible');
+      const proxy = directMode ? null : await proxyPolicy.reserve();
+      if (!directMode && !proxy) throw new KisskhError('provider_unavailable', 'Proxy KissKH indisponible');
       let response;
       try {
         response = await requestWithRedirects(new URL(pathname, baseUrl).href, proxy);
@@ -436,17 +437,18 @@ function createKisskhClient(deps = {}) {
         if (error instanceof KisskhError
             && ['provider_rate_limited', 'provider_security'].includes(error.code)) throw error;
         const kind = error?.code === 'ETIMEDOUT' || /timeout/i.test(String(error?.message || '')) ? 'timeout' : 'transport';
-        await proxyPolicy.recordFailure(proxy, kind);
+        if (proxy) await proxyPolicy.recordFailure(proxy, kind);
         if (attempt + 1 === maxAttempts) throw providerUnavailable();
         continue;
       }
       const status = Number(response?.status);
       if (status === 429) {
-        await proxyPolicy.record429(proxy, response.headers || {});
+        if (proxy) await proxyPolicy.record429(proxy, response.headers || {});
+        else await proxyPolicy.record429(response.headers || {});
         throw new KisskhError('provider_rate_limited', 'KissKH temporairement limite');
       }
       if (status === 408 || (status >= 500 && status < 600)) {
-        await proxyPolicy.recordFailure(proxy, 'transport');
+        if (proxy) await proxyPolicy.recordFailure(proxy, 'transport');
         if (attempt + 1 === maxAttempts) throw providerUnavailable();
         continue;
       }
@@ -454,7 +456,7 @@ function createKisskhClient(deps = {}) {
         throw new KisskhError('provider_unavailable', 'KissKH indisponible');
       }
       const data = readBoundedJson(response, { allowImagePng });
-      await proxyPolicy.recordSuccess(proxy);
+      if (proxy) await proxyPolicy.recordSuccess(proxy);
       return data;
     }
     throw new KisskhError('provider_unavailable', 'KissKH indisponible');
