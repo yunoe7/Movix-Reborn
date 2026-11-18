@@ -35,6 +35,7 @@ const {
   episodeLabelsFromCalls,
 } = require('../utils/animeSamaPages');
 const { createLinkResolver, isLinkTokenError, isLinkRateError } = require('../utils/animeSamaLinks');
+const { canReuseSeasonCache, hasMissingSeasonPaths } = require('../utils/animeSamaCache');
 const DEBUG_ANIMESAMA = process.env.DEBUG_ANIMESAMA === 'true';
 
 // Anime-Sama est le seul catalogue dont les lecteurs sont des chaînes brutes
@@ -977,8 +978,11 @@ function refreshAnime(anime, client) {
     }
     const existingData = source?.data || {};
     const originalMtime = source?.mtime || 0;
-    if (animeRefresh.recentlyChecked(paths.titlePath, ANIME_CHECK_INTERVAL)) return;
-    if (source && Date.now() - Math.max(originalMtime, Number(existingData.lastCheckedAt) || 0) < ANIME_CHECK_INTERVAL) return;
+    const needsLegacyPathRepair = hasMissingSeasonPaths(existingData.seasons);
+    // Les anciennes saisons sans chemin ne peuvent pas être résolues par le
+    // client. Elles forcent une actualisation même si le cache est récent.
+    if (!needsLegacyPathRepair && animeRefresh.recentlyChecked(paths.titlePath, ANIME_CHECK_INTERVAL)) return;
+    if (!needsLegacyPathRepair && source && Date.now() - Math.max(originalMtime, Number(existingData.lastCheckedAt) || 0) < ANIME_CHECK_INTERVAL) return;
 
     // Une œuvre se lit en plusieurs pages (la fiche, puis une page par saison
     // et par langue) : un seul worker s'en charge. Ni « vérifié » ni « en
@@ -1043,7 +1047,7 @@ function refreshAnime(anime, client) {
           }
           continue;
         }
-        if (cachedEpisodes && (seasonCache.path ?? seasonObj.path) === seasonObj.path && sameEpisodes(cachedEpisodes, siteEpisodes)) continue;
+        if (canReuseSeasonCache(seasonCache, seasonObj.path, cachedEpisodes, siteEpisodes, sameEpisodes)) continue;
 
         updatedAnimeCache[seasonObj.name] = {
           timestamp: Date.now(),
@@ -1266,6 +1270,16 @@ router.get('/search/:query', async (req, res) => {
       }
     }
 
+    // Les anciens caches sans chemin de saison empêchent le client de
+    // demander les liens de l'épisode. Les réparer avant de construire la
+    // réponse (avec une attente bornée, comme pour le premier scan TMDB).
+    const searchClient = new AnimeSama(deps.ANIME_SAMA_URL);
+    await Promise.all(cachedResults.map(async (anime) => {
+      const cached = await readTitleCache(anime);
+      if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
+        await waitAtMost(refreshAnime(anime, searchClient.client), deps.firstScanWaitMs);
+      }
+    }));
     const animesWithSeasons = await attachCachedSeasons(cachedResults, cacheKey);
     stripUnplayable(animesWithSeasons);
 
@@ -1440,8 +1454,10 @@ router.get('/tmdb/:type/:id', async (req, res) => {
     // vide, attendre (un peu) sa première lecture.
     const client = new AnimeSama(deps.ANIME_SAMA_URL);
     await Promise.all(animes.map(async (anime) => {
-      if (await readTitleCache(anime)) return;
-      await waitAtMost(refreshAnime(anime, client.client), deps.firstScanWaitMs);
+      const cached = await readTitleCache(anime);
+      if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
+        await waitAtMost(refreshAnime(anime, client.client), deps.firstScanWaitMs);
+      }
     }));
 
     const animesWithSeasons = await attachCachedSeasons(animes);
