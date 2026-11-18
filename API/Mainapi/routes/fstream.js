@@ -1050,24 +1050,22 @@ async function fetchMoviePlayersFromApi(pageUrl) {
   for (let i = 0; i < attempts.length; i++) {
     const entry = attempts[i];
     try {
-      const sendRequest = () => axios({
+      const sendRequest = (agents = null) => axios({
         method: 'get',
         url: apiUrl,
         timeout: 10000,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.4472.124 Safari/537.36',
           'Referer': pageUrl,
           'Accept': 'application/json, text/plain, */*',
           'Cookie': buildFStreamCookieHeader()
         },
-        ...(entry.type !== 'direct'
-          ? { httpAgent: entry.agents?.httpAgent, httpsAgent: entry.agents?.httpsAgent }
-          : {}),
+        ...(agents ? { httpAgent: agents.httpAgent, httpsAgent: agents.httpsAgent } : {}),
         proxy: false
       });
       const response = await sendPastFStreamChallenge(() => entry.type === 'direct'
         ? sendRequest()
-        : withFStreamProxy(entry, sendRequest));
+        : withFStreamProxy(entry, (agents) => sendRequest(agents)));
 
       refreshStep('movie_api_response', { httpStatus: response.status, proxyType: entry.type, attempt: i + 1 });
       if (response.status === 429) {
