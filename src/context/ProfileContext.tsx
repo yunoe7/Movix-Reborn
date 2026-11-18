@@ -836,6 +836,18 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       setIsLoading(true);
       // Nouveau compte → les données profil devront être réhydratées
       profileDataHydratedRef.current = false;
+
+      // Wipe syncable localStorage data from the previous account so it cannot
+      // be migrated into the new account's default profile (P0-3).
+      try {
+        const syncableEntries = getSyncableLocalStorageEntries();
+        for (const [key] of syncableEntries) {
+          localStorage.removeItem(key);
+        }
+      } catch {
+        // Best-effort: if storage is unavailable, skip silently.
+      }
+
       // Reload profiles when auth changes (especially for BIP39)
       setTimeout(() => {
         loadProfilesRef.current();

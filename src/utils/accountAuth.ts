@@ -97,6 +97,7 @@ const AUTH_KEYS = [
   'resolved_user_id',
   'user_id',
   'requires_username_change',
+  'is_admin',
 ] as const;
 
 function isAuthMethod(value: string | null): value is AuthMethod {

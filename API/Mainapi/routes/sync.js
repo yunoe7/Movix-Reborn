@@ -58,7 +58,11 @@ const {
 } = require('../utils/syncPolicy');
 
 // === Data directories ===
-const USER_DATA_DIR = path.join(__dirname, '..', 'data');
+// DATA_DIR allows relocating user data to a persistent volume (Railway, etc.).
+// Defaults to API/Mainapi/data for backward compatibility.
+const USER_DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, '..', 'data');
 const GUESTS_DIR = path.join(USER_DATA_DIR, 'guests');
 const USERS_DIR = path.join(USER_DATA_DIR, 'users');
 

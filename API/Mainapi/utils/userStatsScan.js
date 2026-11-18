@@ -4,7 +4,8 @@ const path = require('path');
 const { bucketIsoByDay } = require('./statsAggregate');
 
 // data/users lives at API/Mainapi/data/users; this file is at API/Mainapi/utils.
-const USERS_DIR = path.join(__dirname, '..', 'data', 'users');
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..', 'data');
+const USERS_DIR = path.join(DATA_DIR, 'users');
 const SKIP_FILES = new Set(['cinepulse_accounts.json']);
 const CONCURRENCY = 20;
 

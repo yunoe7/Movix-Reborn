@@ -32,7 +32,12 @@ const useWatchStatus = ({ id, type, title, poster_path, episodeInfo }: UseWatchS
   const [isWatched, setIsWatched] = useState(false);
 
   const getKey = (status: string) => {
-    const baseKey = `${status}_${type}`;
+    // Canonical keys must match the ones used by profile/storage.ts and syncStorage.ts
+    // so favorites/watchlist/watched stay consistent across the app.
+    let baseKey = `${status}_${type}`;
+    if (status === 'favorite') {
+      baseKey = type === 'tv' ? 'favorites_tv' : 'favorite_movie';
+    }
     return episodeInfo ? `${baseKey}_episodes` : baseKey;
   };
 

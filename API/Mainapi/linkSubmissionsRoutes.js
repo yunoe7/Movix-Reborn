@@ -14,6 +14,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { verifyAccessKey } = require('./checkVip');
 const { isHttpUrl } = require('./utils/safeLinkUrl');
+const { escapeLikePattern } = require('./utils/likePattern');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -112,9 +113,9 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
             const safeUserId = String(userId).replace(/[^a-zA-Z0-9_\-]/g, '');
             let userFilePath;
             if (userType === 'bip39') {
-                userFilePath = path.join(__dirname, 'data', 'users', `bip39-${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `bip39-${safeUserId}.json`);
             } else {
-                userFilePath = path.join(__dirname, 'data', 'users', `${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `${safeUserId}.json`);
             }
             const userFile = await fs.readFile(userFilePath, 'utf8');
             const user = JSON.parse(userFile);
@@ -135,9 +136,9 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
 
             let userFilePath;
             if (userType === 'bip39') {
-                userFilePath = path.join(__dirname, 'data', 'users', `bip39-${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `bip39-${safeUserId}.json`);
             } else {
-                userFilePath = path.join(__dirname, 'data', 'users', `${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `${safeUserId}.json`);
             }
 
             try {
@@ -479,8 +480,9 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
                     whereConditions.push('(ls.tmdb_id = ? OR ls.id = ?)');
                     whereParams.push(numSearch, numSearch);
                 } else {
-                    whereConditions.push('(ls.url LIKE ? OR ls.source_name LIKE ?)');
-                    whereParams.push(`%${search}%`, `%${search}%`);
+                    const escapedSearch = escapeLikePattern(search);
+                    whereConditions.push("(ls.url LIKE ? ESCAPE '!' OR ls.source_name LIKE ? ESCAPE '!')");
+                    whereParams.push(`%${escapedSearch}%`, `%${escapedSearch}%`);
                 }
             }
 
@@ -500,7 +502,7 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
                 try {
                     let userType = 'oauth';
                     try {
-                        await fs.access(path.join(__dirname, 'data', 'users', `bip39-${sub.user_id}.json`));
+                        await fs.access(path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `bip39-${sub.user_id}.json`));
                         userType = 'bip39';
                     } catch { /* keep oauth */ }
                     user = await getUserData(sub.user_id, userType, sub.profile_id);

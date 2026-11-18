@@ -130,8 +130,14 @@ const recentlyHidden = new Map<string, number>();
 // Retraits en cours : une lecture attend qu'ils soient finis avant de partir.
 const pendingHides = new Set<Promise<boolean>>();
 
+function getHiddenScope(): string {
+  const token = readStorage('auth_token') || '';
+  const profileId = readStorage('selected_profile_id') || '';
+  return `${token.slice(0, 12)}:${profileId}`;
+}
+
 function hiddenKey(type: string, id: number): string {
-  return `${type}:${id}`;
+  return `${getHiddenScope()}:${type}:${id}`;
 }
 
 function markHidden(type: string, id: number, at: number): void {

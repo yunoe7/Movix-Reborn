@@ -27,7 +27,8 @@ function getCachedPool() {
 }
 
 const SHARED_LIST_CACHE_TTL = 600; // 10 minutes
-const USERS_DIR = path.join(__dirname, 'data', 'users');
+const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data');
+const USERS_DIR = path.join(DATA_DIR, 'users');
 
 // === OpenRouter Configuration for content moderation (Claude Haiku 5.5) ===
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
