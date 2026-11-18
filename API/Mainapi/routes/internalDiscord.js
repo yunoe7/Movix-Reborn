@@ -101,9 +101,37 @@ router.post('/member', async (req, res) => {
       expiresAt = key ? serializeExpiry(key.expires_at) : null;
     }
 
+    let storedAuth = null;
+    if (typeof userData.auth === 'string') {
+      try { storedAuth = JSON.parse(userData.auth); } catch { storedAuth = null; }
+    } else if (userData.auth && typeof userData.auth === 'object') {
+      storedAuth = userData.auth;
+    }
+    const userProfile = storedAuth?.userProfile && typeof storedAuth.userProfile === 'object'
+      ? storedAuth.userProfile
+      : {};
+    const roleCandidates = [
+      userProfile.role,
+      userData.role,
+      userProfile.isAdmin === true || userData.isAdmin === true ? 'admin' : null,
+      Array.isArray(userProfile.roles) && userProfile.roles.includes('admin') ? 'admin' : null,
+    ];
+    const rawRole = roleCandidates.find((value) => typeof value === 'string' && value.trim());
+    const role = rawRole && ['admin', 'moderator', 'user'].includes(rawRole.toLowerCase())
+      ? rawRole.toLowerCase()
+      : 'user';
+    const displayName = String(
+      userProfile.username || userProfile.name || userData.username || userData.displayName || ''
+    ).trim().slice(0, 100);
+
     return res.status(200).json({
       success: true,
       linked: true,
+      account: {
+        displayName,
+        role,
+        vip: { active, expiresAt: active ? expiresAt : null },
+      },
       vip: { active, expiresAt: active ? expiresAt : null },
     });
   } catch (error) {
