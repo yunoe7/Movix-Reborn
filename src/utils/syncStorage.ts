@@ -8,7 +8,6 @@ const SYNCABLE_EXACT_KEYS = new Set([
   'episodeReleaseAlerts',
   'favorite_collections',
   'favorite_movie',
-  'favorite_movies',
   'favorites_tv',
   'live_tv_favorite_channels',
   'live_tv_favorite_iptv_categories',

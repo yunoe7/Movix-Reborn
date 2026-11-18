@@ -53,7 +53,11 @@ function getUserFavoritePosters(): string[] {
   const posters: string[] = [];
   try {
     // Movies
-    const favMovies = JSON.parse(localStorage.getItem('favorite_movies') || '[]');
+    const favMovies = JSON.parse(
+      localStorage.getItem('favorite_movie') ||
+      localStorage.getItem('favorite_movies') ||
+      '[]'
+    );
     for (const m of favMovies) {
       if (m.poster_path) posters.push(`${IMG_BASE}/w342${m.poster_path}`);
     }

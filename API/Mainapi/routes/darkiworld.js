@@ -164,7 +164,8 @@ async function resolveMovixUsername(userId, authType) {
   try {
     const safeUserId = String(userId).replace(/[^a-zA-Z0-9_\-]/g, '');
     const safeUserType = authType === 'bip-39' ? 'bip39' : 'oauth';
-    const userPath = path.join(__dirname, '..', 'data', 'users', safeUserType, `${safeUserId}.json`);
+    const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, '..', 'data');
+    const userPath = path.join(DATA_DIR, 'users', safeUserType, `${safeUserId}.json`);
     const data = JSON.parse(await fsp.readFile(userPath, 'utf8'));
     if (data.profiles && data.profiles.length > 0) {
       return { username: data.profiles[0].name || 'Admin', avatar: data.profiles[0].avatar || null };

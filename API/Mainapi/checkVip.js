@@ -212,9 +212,27 @@ setInterval(() => {
  * Invalider le cache pour une clé spécifique (utile quand un admin révoque une clé)
  * @param {string} accessKey
  */
+function normalizeVipKey(accessKey) {
+    if (!accessKey || typeof accessKey !== 'string') return null;
+    const trimmedKey = accessKey.trim();
+    if (!trimmedKey) return null;
+    let fixedKey = trimmedKey;
+    try {
+        const buf = Buffer.from(trimmedKey, 'latin1');
+        const decoded = buf.toString('utf8');
+        if (!decoded.includes('\\ufffd')) {
+            fixedKey = decoded;
+        }
+    } catch (e) {
+        // Encoding fix failed, use original
+    }
+    return fixedKey;
+}
+
 function invalidateVipCache(accessKey) {
-    if (accessKey) {
-        vipCache.delete(accessKey.trim());
+    const key = normalizeVipKey(accessKey);
+    if (key) {
+        vipCache.delete(key);
     }
 }
 

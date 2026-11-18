@@ -12,11 +12,12 @@ async function getProfileIds(userId, userType) {
   try {
     // Sanitize userId to prevent path traversal
     const safeUserId = String(userId).replace(/[^a-zA-Z0-9_\-]/g, '');
+    const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data');
     let userFilePath;
     if (userType === 'bip39') {
-      userFilePath = path.join(__dirname, 'data', 'users', `bip39-${safeUserId}.json`);
+      userFilePath = path.join(DATA_DIR, 'users', `bip39-${safeUserId}.json`);
     } else {
-      userFilePath = path.join(__dirname, 'data', 'users', `${safeUserId}.json`);
+      userFilePath = path.join(DATA_DIR, 'users', `${safeUserId}.json`);
     }
 
     try {

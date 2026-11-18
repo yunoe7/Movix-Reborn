@@ -29,7 +29,9 @@ async function resolveDiscordUserId(pool, userType, userId) {
   return /^\d{17,20}$/.test(discordUserId) ? discordUserId : null;
 }
 const AUTH_METHODS = ['discord', 'google', 'bip39'];
-const USER_DATA_DIR = path.join(__dirname, '..', 'data');
+const USER_DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, '..', 'data');
 const GUESTS_DIR = path.join(USER_DATA_DIR, 'guests');
 const USERS_DIR = path.join(USER_DATA_DIR, 'users');
 

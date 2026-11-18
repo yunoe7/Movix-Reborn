@@ -130,9 +130,9 @@ function createWishboardRouter(mysqlPool, redis) {
 
             let userFilePath;
             if (userType === 'bip39') {
-                userFilePath = path.join(__dirname, 'data', 'users', `bip39-${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `bip39-${safeUserId}.json`);
             } else {
-                userFilePath = path.join(__dirname, 'data', 'users', `${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `${safeUserId}.json`);
             }
 
             try {
@@ -160,7 +160,7 @@ function createWishboardRouter(mysqlPool, redis) {
             if (profileId && safeUserId) {
                 try {
                     const safeProfileId = String(profileId).replace(/[^a-zA-Z0-9_\-]/g, '');
-                    const profileDataPath = path.join(__dirname, 'data', 'users', 'profiles', safeUserType, safeUserId, `${safeProfileId}.json`);
+                    const profileDataPath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', 'profiles', safeUserType, safeUserId, `${safeProfileId}.json`);
                     const profileData = JSON.parse(await fs.readFile(profileDataPath, 'utf8'));
                     const storedAccessCode = profileData.access_code || null;
                     if (storedAccessCode) {
@@ -199,7 +199,7 @@ function createWishboardRouter(mysqlPool, redis) {
                 const safeUserId = String(userId).replace(/[^a-zA-Z0-9_\-]/g, '');
                 const safeUserType = ['oauth', 'bip39'].includes(userType) ? userType : 'oauth';
                 const safeProfileId = String(profileId).replace(/[^a-zA-Z0-9_\-]/g, '');
-                const profileDataPath = path.join(__dirname, 'data', 'users', 'profiles', safeUserType, safeUserId, `${safeProfileId}.json`);
+                const profileDataPath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', 'profiles', safeUserType, safeUserId, `${safeProfileId}.json`);
                 const profileData = JSON.parse(await fs.readFile(profileDataPath, 'utf8'));
                 const storedAccessCode = profileData.access_code || null;
                 if (storedAccessCode) {
@@ -228,9 +228,9 @@ function createWishboardRouter(mysqlPool, redis) {
             const safeUserId = String(userId).replace(/[^a-zA-Z0-9_\-]/g, '');
             let userFilePath;
             if (userType === 'bip39') {
-                userFilePath = path.join(__dirname, 'data', 'users', `bip39-${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `bip39-${safeUserId}.json`);
             } else {
-                userFilePath = path.join(__dirname, 'data', 'users', `${safeUserId}.json`);
+                userFilePath = path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `${safeUserId}.json`);
             }
             const userFile = await fs.readFile(userFilePath, 'utf8');
             const user = JSON.parse(userFile);
@@ -267,7 +267,8 @@ function createWishboardRouter(mysqlPool, redis) {
      */
     router.get('/', async (req, res) => {
         try {
-            const { page = 1, limit = 20, search, media_type, status, sort = 'votes_desc' } = req.query;
+            const { page = 1, limit = 20, search: rawSearch, media_type, status, sort = 'votes_desc' } = req.query;
+            const search = Array.isArray(rawSearch) ? rawSearch[0] : rawSearch;
             // Normalize pagination values before binding them to MySQL prepared statements.
             // Invalid or empty query-string values must never become NaN.
             const requestedPage = Number.parseInt(String(page), 10);
@@ -535,6 +536,12 @@ function createWishboardRouter(mysqlPool, redis) {
                 [requestId, userId, profileId]
             );
 
+            // Maintain vote_count
+            await mysqlPool.execute(
+                'UPDATE wishboard_requests SET vote_count = (SELECT COUNT(*) FROM wishboard_votes WHERE request_id = ?) WHERE id = ?',
+                [requestId, requestId]
+            );
+
             res.json({ message: 'Vote enregistré' });
         } catch (error) {
             console.error('Error voting:', error);
@@ -562,6 +569,12 @@ function createWishboardRouter(mysqlPool, redis) {
             await mysqlPool.execute(
                 'DELETE FROM wishboard_votes WHERE request_id = ? AND user_id = ?',
                 [requestId, userId]
+            );
+
+            // Maintain vote_count
+            await mysqlPool.execute(
+                'UPDATE wishboard_requests SET vote_count = (SELECT COUNT(*) FROM wishboard_votes WHERE request_id = ?) WHERE id = ?',
+                [requestId, requestId]
             );
 
             res.json({ message: 'Vote retiré' });
@@ -700,7 +713,8 @@ function createWishboardRouter(mysqlPool, redis) {
      */
     router.get('/admin', requireAuth, requireUploaderOrAdmin, async (req, res) => {
         try {
-            const { search, media_type, status, vip_only, page = '1', limit = '50' } = req.query;
+            const { search: rawSearch2, media_type, status, vip_only, page = '1', limit = '50' } = req.query;
+            const search = Array.isArray(rawSearch2) ? rawSearch2[0] : rawSearch2;
             const requestedPage = Number.parseInt(String(page), 10);
             const requestedLimit = Number.parseInt(String(limit), 10);
             const pageNum = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
@@ -773,7 +787,7 @@ function createWishboardRouter(mysqlPool, redis) {
                     // Determine user type (bip39 or oauth)
                     let userType = 'oauth'; // Default to oauth
                     try {
-                        await fs.access(path.join(__dirname, 'data', 'users', `bip39-${r.user_id}.json`));
+                        await fs.access(path.join(process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(__dirname, 'data'), 'users', `bip39-${r.user_id}.json`));
                         userType = 'bip39';
                     } catch {
                         // Keep oauth
@@ -895,14 +909,14 @@ function createWishboardRouter(mysqlPool, redis) {
                 // Update existing
                 await mysqlPool.execute(
                     'UPDATE wishboard_notes SET note = ?, is_public = ?, admin_id = ?, updated_at = NOW() WHERE request_id = ?',
-                    [note.trim(), is_public ? 1 : 0, adminId, requestId]
+                    [note.trim(), (is_public === true || is_public === 1 || is_public === 'true' || is_public === '1') ? 1 : 0, adminId, requestId]
                 );
                 resultId = existing[0].id;
             } else {
                 // Insert new
                 const [result] = await mysqlPool.execute(
                     'INSERT INTO wishboard_notes (request_id, admin_id, note, is_public) VALUES (?, ?, ?, ?)',
-                    [requestId, adminId, note.trim(), is_public ? 1 : 0]
+                    [requestId, adminId, note.trim(), (is_public === true || is_public === 1 || is_public === 'true' || is_public === '1') ? 1 : 0]
                 );
                 resultId = result.insertId;
             }
@@ -911,7 +925,7 @@ function createWishboardRouter(mysqlPool, redis) {
                 id: resultId,
                 admin_id: adminId,
                 note: note.trim(),
-                is_public: is_public ? 1 : 0,
+                is_public: (is_public === true || is_public === 1 || is_public === 'true' || is_public === '1') ? 1 : 0,
                 created_at: new Date().toISOString()
             });
         } catch (error) {

@@ -266,7 +266,7 @@ router.get('/history/list', historyRateLimit, handle('lecture de l’historique'
       pageSize,
       total: 0,
       counts: { inProgress: 0, finished: 0, notStarted: 0 },
-      stats: { watchedSeconds: 0, trackedSeconds: 0, moviesFinished: 0, episodesFinished: 0 },
+      stats: { watchedSeconds: 0, trackedSeconds: null, moviesFinished: 0, episodesFinished: 0 },
       complete: true,
     });
   }
