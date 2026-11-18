@@ -592,10 +592,6 @@ const { restoreMissingVipAccessKeys } = require('./utils/vipAccessKeyRecovery');
 const appReady = (async () => {
   try {
     const pool = await initPool();
-    // Register public community-link reads as soon as the MySQL pool exists.
-    // These endpoints must not wait for the full schema/bootstrap sequence,
-    // otherwise watch pages receive transient 404s during worker startup.
-    app.use("/api/links", require("./routes/communityLinks").createCommunityLinksRouter(pool));
     console.log("MySQL unified pool initialized successfully");
     await withMysqlAdvisoryLock(pool, SCHEMA_BOOTSTRAP_LOCK_NAME, async () => {
       console.log(
