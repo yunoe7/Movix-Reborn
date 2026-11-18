@@ -690,7 +690,7 @@ except ImportError:
 gc.set_threshold(50000, 500, 100)
 
 # Configuration
-PORT = 25569
+PORT = int(os.environ.get('PORT', '25569'))
 PROXY_BASE = str(os.environ.get("PROXY_BASE", '') or '').strip()
 VIP_CACHE_TTL = 300  # Cache VIP check results for 5 minutes
 
