@@ -164,7 +164,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
     if (!Array.isArray(historyRows) || historyRows.length === 0) {
       const result = emptyResult();
       failureStage = 'write-cache';
-    await writeCache(key, result);
+      await writeCache(key, result);
       return res.status(200).json(result);
     }
 
@@ -208,6 +208,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
         detailsByKey,
       }),
     };
+    failureStage = 'write-cache';
     await writeCache(key, result);
     return res.status(200).json(result);
   } catch (error) {
