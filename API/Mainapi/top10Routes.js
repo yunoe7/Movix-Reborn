@@ -291,12 +291,12 @@ async function getTop10Response(
 }
 
 async function buildStatsResult(requestedType, typeConfig, period = DEFAULT_PERIOD) {
-  const conditions = ["watch_duration >= ?"];
-  const statsParams = [typeConfig ? typeConfig.minDuration : 300];
+  const conditions = ["content_type IN ('movie', 'tv', 'anime')"];
+  const statsParams = [];
 
   if (typeConfig) {
-    conditions.unshift("content_type = ?");
-    statsParams.unshift(typeConfig.contentType);
+    conditions.push("content_type = ?");
+    statsParams.push(typeConfig.contentType);
   }
 
   const periodDays = PERIODS[period];
@@ -305,17 +305,38 @@ async function buildStatsResult(requestedType, typeConfig, period = DEFAULT_PERI
     statsParams.push(periodDays);
   }
 
+  // Qualify each viewing unit after summing its rows. Movies qualify per
+  // user/title; TV and anime qualify per user/title/episode.
   const statsQuery = `
     SELECT
       COUNT(DISTINCT user_id) AS total_active_users,
       COUNT(DISTINCT content_id) AS total_unique_content,
       ROUND(SUM(watch_duration) / 3600, 0) AS total_hours_watched,
-      COUNT(*) AS total_sessions,
-      ROUND(AVG(watch_duration) / 60, 0) AS avg_session_minutes,
-      MIN(created_at) AS data_from,
-      MAX(created_at) AS data_to
-    FROM wrapped_viewing_data
-    WHERE ${conditions.join("\n      AND ")}
+      SUM(total_sessions) AS total_sessions,
+      ROUND(SUM(watch_duration) / NULLIF(SUM(total_sessions), 0) / 60, 0) AS avg_session_minutes,
+      MIN(data_from) AS data_from,
+      MAX(data_to) AS data_to
+    FROM (
+      SELECT user_id, content_id, SUM(watch_duration) AS watch_duration,
+             SUM(total_sessions) AS total_sessions,
+             MIN(data_from) AS data_from, MAX(data_to) AS data_to
+      FROM (
+        SELECT user_id, content_id,
+               CASE WHEN content_type = 'movie' THEN NULL ELSE season_number END AS season_key,
+               CASE WHEN content_type = 'movie' THEN NULL ELSE episode_number END AS episode_key,
+               SUM(watch_duration) AS watch_duration,
+               COUNT(*) AS total_sessions,
+               MIN(created_at) AS data_from, MAX(created_at) AS data_to
+        FROM wrapped_viewing_data
+        WHERE ${conditions.join("\n          AND ")}
+        GROUP BY user_id, content_id,
+                 CASE WHEN content_type = 'movie' THEN NULL ELSE season_number END,
+                 CASE WHEN content_type = 'movie' THEN NULL ELSE episode_number END,
+                 content_type
+        HAVING SUM(watch_duration) >= CASE WHEN content_type = 'movie' THEN 1200 ELSE 300 END
+      ) qualified_units
+      GROUP BY user_id, content_id
+    ) qualified_content
   `;
 
   const [stats] = await pool.execute(statsQuery, statsParams);
@@ -504,45 +525,46 @@ router.get("/stats", async (req, res) => {
  * lourde d'agregation sans content_title, donc couverte par idx_top10.
  */
 async function loadContentDetailsMap(config, contentIds, periodDays) {
-  if (contentIds.length === 0) {
-    return new Map();
-  }
+  if (contentIds.length === 0) return new Map();
 
   const periodClause = periodDays
     ? " AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)"
     : "";
-  const params = [config.contentType, config.minDuration];
+  const placeholders = contentIds.map(() => "?").join(", ");
+  const params = [config.contentType];
   if (periodDays) params.push(periodDays);
+  params.push(...contentIds);
 
   const episodesSelect = config.withEpisodes
-    ? "COUNT(DISTINCT CONCAT(IFNULL(season_number, ''), '-', IFNULL(episode_number, ''))) AS episodes_watched"
-    : "0 AS episodes_watched";
+    ? `,
+        (SELECT COUNT(*) FROM (
+          SELECT season_number, episode_number
+          FROM wrapped_viewing_data episode_rows
+          WHERE episode_rows.content_type = ?
+            AND episode_rows.content_id = content_id${periodClause}
+          GROUP BY season_number, episode_number
+          HAVING SUM(watch_duration) >= ?
+        ) qualified_episodes) AS episodes_watched`
+    : ", 0 AS episodes_watched";
 
-  const placeholders = contentIds.map(() => "?").join(", ");
+  // Titles are loaded for already-qualified content IDs; episode counts use
+  // the same cumulative five-minute-per-episode rule as the ranking.
   const [rows] = await pool.execute(
     `
-      SELECT
-        content_id,
-        MAX(content_title) AS content_title,
-        ${episodesSelect}
+      SELECT content_id, MAX(content_title) AS content_title${episodesSelect}
       FROM wrapped_viewing_data
-      WHERE content_type = ?
-        AND watch_duration >= ?${periodClause}
-        AND content_id IN (${placeholders})
+      WHERE content_type = ? AND content_id IN (${placeholders})${periodClause}
       GROUP BY content_id
     `,
-    [...params, ...contentIds],
+    config.withEpisodes
+      ? [config.contentType, ...(periodDays ? [periodDays] : []), config.contentType, config.minDuration, ...contentIds, ...(periodDays ? [periodDays] : [])]
+      : [config.contentType, ...contentIds, ...(periodDays ? [periodDays] : [])],
   );
 
-  return new Map(
-    rows.map((row) => [
-      String(row.content_id),
-      {
-        title: row.content_title || null,
-        episodesWatched: parseInt(row.episodes_watched) || 0,
-      },
-    ]),
-  );
+  return new Map(rows.map((row) => [
+    String(row.content_id),
+    { title: row.content_title || null, episodesWatched: parseInt(row.episodes_watched) || 0 },
+  ]));
 }
 
 async function buildTop10ByCategory(
@@ -560,23 +582,30 @@ async function buildTop10ByCategory(
   const periodClause = periodDays
     ? " AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)"
     : "";
-  const params = [config.contentType, config.minDuration];
+  const params = [config.contentType];
   if (periodDays) params.push(periodDays);
+  params.push(config.minDuration);
 
-  // Volontairement sans content_title : toutes les colonnes referencees sont
-  // dans idx_top10 (voir exportscripts/add_top10_index.sql) => scan index-only,
-  // pas de lecture de lignes. Titres recuperes ensuite sur les 10 ids retenus.
+  // Aggregate per user before applying the eligibility threshold. For TV and
+  // anime, the unit is an episode; for movies, it is the whole title.
+  const eligibleGrouping = config.withEpisodes
+    ? "user_id, content_id, season_number, episode_number"
+    : "user_id, content_id";
   const [rows] = await pool.execute(
     `
-      SELECT
-        content_id,
-        COUNT(DISTINCT user_id) AS unique_viewers,
-        ROUND(SUM(watch_duration) / 3600, 1) AS total_hours,
-        COUNT(*) AS total_sessions,
-        ROUND(AVG(watch_duration) / 60, 0) AS avg_session_minutes
-      FROM wrapped_viewing_data
-      WHERE content_type = ?
-        AND watch_duration >= ?${periodClause}
+      SELECT content_id,
+             COUNT(DISTINCT user_id) AS unique_viewers,
+             ROUND(SUM(watch_duration) / 3600, 1) AS total_hours,
+             SUM(total_sessions) AS total_sessions,
+             ROUND(SUM(watch_duration) / NULLIF(SUM(total_sessions), 0) / 60, 0) AS avg_session_minutes
+      FROM (
+        SELECT user_id, content_id, SUM(watch_duration) AS watch_duration,
+               COUNT(*) AS total_sessions
+        FROM wrapped_viewing_data
+        WHERE content_type = ?${periodClause}
+        GROUP BY ${eligibleGrouping}
+        HAVING SUM(watch_duration) >= ?
+      ) eligible_viewings
       GROUP BY content_id
       ORDER BY ${orderBy}
       LIMIT 10
