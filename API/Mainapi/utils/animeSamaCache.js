@@ -13,4 +13,11 @@ function canReuseSeasonCache(seasonCache, seasonPath, cachedEpisodes, siteEpisod
     && sameEpisodes(cachedEpisodes, siteEpisodes);
 }
 
-module.exports = { canReuseSeasonCache };
+function hasMissingSeasonPaths(seasons) {
+  if (!seasons || typeof seasons !== 'object' || Array.isArray(seasons)) return false;
+  return Object.values(seasons).some((season) => (
+    Array.isArray(season?.episodes) && (typeof season.path !== 'string' || !season.path.trim())
+  ));
+}
+
+module.exports = { canReuseSeasonCache, hasMissingSeasonPaths };
