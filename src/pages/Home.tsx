@@ -22,6 +22,7 @@ import CarouselTitle from '../components/CarouselTitle';
 import ConfirmDialog from '../components/ui/confirm-dialog';
 import ContentRowSkeleton from '../components/skeletons/ContentRowSkeleton';
 import { readLocalStorage } from '../utils/browserStorage';
+import { useProfile } from '../context/ProfileContext';
 import { isHalloweenSeason } from '../hooks/useHalloweenTheme';
 
 // Rangée « Spécial Halloween » : téléchargée seulement quand elle s'affiche
@@ -371,6 +372,7 @@ const normalizePersonalizedReco = (reco: PersonalizedRecommendations | null): Pe
 
 const Home: React.FC = () => {
   const { t } = useTranslation();
+  const { currentProfile } = useProfile();
   const tmdbLanguage = getTmdbLanguage();
   // « Spécial Halloween » : en octobre seulement, pour tout le monde, thème
   // allumé ou non.
@@ -431,14 +433,9 @@ const Home: React.FC = () => {
     }
 
     const token = readLocalStorage('auth_token');
-    const profileData = readLocalStorage('auth');
-    let profileId: string | null = null;
-    if (profileData) {
-      try {
-        const parsed = JSON.parse(profileData);
-        profileId = parsed?.selectedProfileId || parsed?.userProfile?.id || null;
-      } catch {}
-    }
+    // Les recommandations sont liées au profil Movix actif, pas à l'identifiant
+    // du compte OAuth/Discord stocké dans l'objet "auth".
+    const profileId = currentProfile?.id || null;
 
     if (token && profileId) {
       const lang = getTmdbLanguage();
@@ -984,7 +981,7 @@ const Home: React.FC = () => {
     };
     // Home n'est monté que sur "/" : un changement de route le démonte de toute façon,
     // donc dépendre de location.pathname ne faisait que risquer des relances inutiles (perf)
-  }, [tmdbLanguage]);
+  }, [tmdbLanguage, currentProfile?.id]);
 
   // NOTE perf : l'ancien setInterval de rotation du hero a été supprimé — il pilotait un state
   // (currentHeroIndex) utilisé nulle part et re-rendait tout Home toutes les 6s.
