@@ -69,6 +69,9 @@ function createNorthliveCatalog({
   logger = console,
   now = Date.now,
   cacheCheckMs = 1000,
+  initialWaitMs = 0,
+  pollIntervalMs = 200,
+  sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 }) {
   let memory = [];
   let refreshInFlight = null;
@@ -126,8 +129,22 @@ function createNorthliveCatalog({
   async function getChannels({ force = false } = {}) {
     if (isOwner && force) return refresh();
     const cached = await readCached();
-    if (isCompleteCatalog(cached) || !isOwner) return cached;
-    return refresh();
+    if (isCompleteCatalog(cached)) return cached;
+    if (isOwner) return refresh();
+
+    // Cluster readers must not answer with an empty catalogue while slot zero
+    // is still performing its first upstream scrape. They never scrape or
+    // publish themselves; they briefly poll the shared disk cache instead.
+    const waitMs = Math.max(0, Number(initialWaitMs) || 0);
+    if (waitMs > 0) {
+      const deadline = now() + waitMs;
+      while (now() < deadline) {
+        await sleep(Math.min(Math.max(1, pollIntervalMs), deadline - now()));
+        const published = await readCached();
+        if (isCompleteCatalog(published)) return published;
+      }
+    }
+    return cached;
   }
 
   return { getChannels, refresh, isOwner: Boolean(isOwner) };

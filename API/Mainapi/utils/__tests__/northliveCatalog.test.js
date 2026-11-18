@@ -16,6 +16,7 @@ function fixture({ isOwner, initial = [] } = {}) {
   let publishOk = true;
   const catalog = createNorthliveCatalog({
     isOwner,
+    initialWaitMs: 0,
     readFresh: async () => cache,
     readStale: async () => cache,
     publish: async (channels) => {
@@ -36,6 +37,28 @@ function fixture({ isOwner, initial = [] } = {}) {
     cache: () => cache,
   };
 }
+
+test('un lecteur attend brièvement la première publication du propriétaire', async () => {
+  let now = 0;
+  const shared = { value: [] };
+  const reader = createNorthliveCatalog({
+    isOwner: false,
+    now: () => now,
+    initialWaitMs: 3000,
+    pollIntervalMs: 200,
+    sleep: async (ms) => {
+      now += ms;
+      if (now >= 800) shared.value = [{ id: 'northlive_published' }];
+    },
+    readFresh: async () => shared.value,
+    readStale: async () => shared.value,
+    publish: async () => { throw new Error('reader must not publish'); },
+    scrape: async () => { throw new Error('reader must not scrape'); },
+    logger: { warn() {} },
+  });
+  assert.deepEqual(await reader.getChannels(), [{ id: 'northlive_published' }]);
+  assert.equal(now, 1000);
+});
 
 test('un lecteur ne scrape jamais, même sans cache', async () => {
   const app = fixture({ isOwner: false });
