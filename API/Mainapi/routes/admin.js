@@ -141,13 +141,13 @@ router.get('/links/:type/:id', async (req, res) => {
     const [rows] = await pool.execute(query, params);
 
     if (rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Aucun lien trouvé',
+      // The player calls this public endpoint for every title. No user-submitted
+      // links is a valid empty state, not a missing API route or missing title.
+      // Keep the existing movie/TV response shapes while returning an empty list.
+      return res.json({
+        success: true,
         type,
-        id,
-        ...(season && { season }),
-        ...(episode && { episode })
+        data: type === 'movie' ? { id, links: [] } : []
       });
     }
 
