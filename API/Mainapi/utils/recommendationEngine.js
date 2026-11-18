@@ -64,7 +64,9 @@ function buildRecommendations({ history, recommendationResults, detailsByKey }) 
       });
     }
     for (const item of items) {
-      const key = mediaKey(item.media_type, item.id);
+      // TMDB peut renvoyer le même identifiant numérique depuis deux sources
+      // (movie/tv). Le flux global ne doit afficher cet identifiant qu'une fois.
+      const key = String(item.id);
       const previous = candidates.get(key);
       if (!previous || item.score > previous.score) candidates.set(key, item);
     }
