@@ -2,8 +2,8 @@ import { Euro, Globe, Info, Puzzle, Scale, Shield, Smartphone, Tv, type LucideIc
 import { Trans, useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useLightMode } from '@/context/LightModeContext';
-import matrixLogo from '@/assets/brand/matrix.svg';
-import { IX_MATRIX_URL } from '@/config/community';
+import discordLogo from 'bootstrap-icons/icons/discord.svg';
+import { DISCORD_INVITE_URL } from '@/config/community';
 import githubLogo from 'bootstrap-icons/icons/github.svg';
 import reactLogo from '@/assets/technology-logos/react.svg';
 import typescriptLogo from '@/assets/technology-logos/typescript.svg';
@@ -30,12 +30,12 @@ const createFooterMaskIcon = (logo: string) => ({ className, size = 20 }: Lucide
   />
 );
 
-const MatrixIcon = createFooterMaskIcon(matrixLogo);
+const DiscordIcon = createFooterMaskIcon(discordLogo);
 const GithubIcon = createFooterMaskIcon(githubLogo);
 
 type FooterLink = {
   label: string;
-  icon: LucideIcon | typeof MatrixIcon;
+  icon: LucideIcon | typeof DiscordIcon;
 } & ({ to: string; href?: never } | { href: string; to?: never });
 
 const linkGroups: { title: string; links: FooterLink[] }[] = [
@@ -51,7 +51,7 @@ const linkGroups: { title: string; links: FooterLink[] }[] = [
   {
     title: 'footer.community',
     links: [
-      { label: 'footer.telegram', href: IX_MATRIX_URL, icon: MatrixIcon },
+      { label: 'footer.discord', href: DISCORD_INVITE_URL, icon: DiscordIcon },
       { label: 'footer.sourceCode', href: 'https://github.com/movixstream/MovixOpenSource', icon: GithubIcon },
       { label: 'costs.navLabel', to: '/frais', icon: Euro },
     ],
