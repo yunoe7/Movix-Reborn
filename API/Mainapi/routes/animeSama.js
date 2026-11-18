@@ -1276,7 +1276,7 @@ router.get('/search/:query', async (req, res) => {
     const searchClient = new AnimeSama(deps.ANIME_SAMA_URL);
     await Promise.all(cachedResults.map(async (anime) => {
       const cached = await readTitleCache(anime);
-      if (hasMissingSeasonPaths(cached?.data?.seasons)) {
+      if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
         await waitAtMost(refreshAnime(anime, searchClient.client), deps.firstScanWaitMs);
       }
     }));
