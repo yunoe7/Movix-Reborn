@@ -77,12 +77,7 @@
     }
   },
   "wrappedMotion": {
-    "formatTraits": {
-      "movie": "A soft spot for films",
-      "tv": "A soft spot for series",
-      "anime": "A soft spot for anime",
-      "live-tv": "A soft spot for live TV"
-    },
+    "formatTraits": { "movie": "A soft spot for films", "tv": "A soft spot for series", "anime": "A soft spot for anime", "live-tv": "A soft spot for live TV" },
     "intro": {
       "community": "You had something to say.",
       "explorer": "You crossed into new worlds.",
@@ -634,7 +629,7 @@
     "newEntry": "New entry",
     "editEntry": "Edit entry",
     "fieldTitle": "Title",
-    "fieldTitlePlaceholder": "Dune 3 release, movie night…",
+    "fieldTitlePlaceholder": "Dune 3 release, movie night\u2026",
     "linkedToCatalog": "Linked title",
     "fieldDate": "Date",
     "pickDate": "Pick a date",
@@ -643,7 +638,7 @@
     "clearTime": "Clear time",
     "fieldCategory": "Category",
     "customCategoryLabel": "Category name",
-    "customCategoryPlaceholder": "Concert, birthday, deadline…",
+    "customCategoryPlaceholder": "Concert, birthday, deadline\u2026",
     "fieldRecurrence": "Repeat",
     "fieldRecurrenceUntil": "Until",
     "fieldRecurrenceUntilHint": "Leave empty to repeat with no end.",
@@ -1152,7 +1147,7 @@
         "supporting": "Supporting"
       },
       "performer": {
-        "seiyu": "Seiyū",
+        "seiyu": "Seiy\u016b",
         "actor": "With"
       }
     },
@@ -2367,75 +2362,12 @@
       "sourcePriority": "Priority",
       "adPopup": "Ad popup"
     },
-    "search": {
-      "placeholder": "Search settings…",
-      "noResults": "No settings found",
-      "clear": "Clear search"
-    },
+    "search": { "placeholder": "Search settings…", "noResults": "No settings found", "clear": "Clear search" },
     "subtitles": {
       "previewHideGrid": "Hide grid",
       "previewShowGrid": "Show grid",
       "auto": "Auto",
-      "title": "Subtitles",
-      "description": "Style applied to HLS players.",
-      "resetAll": "Reset all",
-      "resetAnnounced": "Subtitle style reset.",
-      "preview": "Preview",
-      "previewExample": "This is what your subtitles will look like.",
-      "textSize": "Text size",
-      "backToAuto": "Return to auto",
-      "textSizeDescription": "Value for large screens. It is reduced automatically on tablets and phones to preserve the same readability relative to the image.",
-      "height": "Height",
-      "heightDescription": "Distance between the bottom of the image and the subtitles. You can move them into the controls area without letting them leave the frame.",
-      "textColor": "Text color",
-      "textColorDescription": "Classic HLS and WebVTT colors stay readable on most images. Custom colors update live.",
-      "colorWhite": "White",
-      "colorYellow": "Yellow",
-      "colorBlue": "Blue",
-      "colorCyan": "Cyan",
-      "colorGreen": "Green",
-      "colorRed": "Red",
-      "colorMagenta": "Magenta",
-      "colorBlack": "Black",
-      "edge": "Text edge",
-      "edgeDescription": "A shadow softly separates text from the image, while an outline draws a crisp edge around each letter.",
-      "edgeShadow": "Shadow",
-      "edgeOutline": "Outline",
-      "edgeNone": "None",
-      "edgeColor": "Shadow or outline color",
-      "edgeColorHint": "Choose a color that differs from the text to make the effect clearly visible.",
-      "edgeSize": "Shadow or outline size",
-      "background": "Background behind text",
-      "backgroundDescription": "A band behind the subtitles, like on television. It is the most readable solution on very bright images.",
-      "font": "Font",
-      "fontDescription": "Try the enhanced-readability fonts if letters or words tend to run together. System and classic fonts remain available too.",
-      "fontStandard": "Standard",
-      "fontAtkinson": "Atkinson Hyperlegible",
-      "fontLexend": "Lexend",
-      "fontOpenDyslexic": "OpenDyslexic",
-      "fontArial": "Arial",
-      "fontVerdana": "Verdana",
-      "fontTrebuchet": "Trebuchet",
-      "fontTahoma": "Tahoma",
-      "fontSerif": "Serif",
-      "fontMonospace": "Monospace",
-      "weight": "Weight",
-      "weightDescription": "Heavier text is easier to read from a distance, for example on a television.",
-      "weightNormal": "Normal",
-      "weightBold": "Bold",
-      "weightSize": "Text weight",
-      "previewFullscreen": "Show preview fullscreen",
-      "previewHideControls": "Hide preview controls",
-      "previewShowControls": "Show preview controls",
-      "previewOneLine": "1 line",
-      "previewTwoLines": "2 lines",
-      "previewThreeLines": "3 lines",
-      "previewCustomText": "Custom text",
-      "previewRestore": "Restore sample text",
-      "previewCustomPlaceholder": "Write text to test subtitles…",
-      "previewFullscreenError": "Fullscreen is not available in this browser.",
-      "previewDragHint": "Drag the text to choose its position.",
-      "previewAlignedCenter": "Center"
+      "title": "Subtitles", "description": "Style applied to HLS players.", "resetAll": "Reset all", "resetAnnounced": "Subtitle style reset.", "preview": "Preview", "previewExample": "This is what your subtitles will look like.", "textSize": "Text size", "backToAuto": "Return to auto", "textSizeDescription": "Value for large screens. It is reduced automatically on tablets and phones to preserve the same readability relative to the image.", "height": "Height", "heightDescription": "Distance between the bottom of the image and the subtitles. You can move them into the controls area without letting them leave the frame.", "textColor": "Text color", "textColorDescription": "Classic HLS and WebVTT colors stay readable on most images. Custom colors update live.", "colorWhite": "White", "colorYellow": "Yellow", "colorBlue": "Blue", "colorCyan": "Cyan", "colorGreen": "Green", "colorRed": "Red", "colorMagenta": "Magenta", "colorBlack": "Black", "edge": "Text edge", "edgeDescription": "A shadow softly separates text from the image, while an outline draws a crisp edge around each letter.", "edgeShadow": "Shadow", "edgeOutline": "Outline", "edgeNone": "None", "edgeColor": "Shadow or outline color", "edgeColorHint": "Choose a color that differs from the text to make the effect clearly visible.", "edgeSize": "Shadow or outline size", "background": "Background behind text", "backgroundDescription": "A band behind the subtitles, like on television. It is the most readable solution on very bright images.", "font": "Font", "fontDescription": "Try the enhanced-readability fonts if letters or words tend to run together. System and classic fonts remain available too.", "fontStandard": "Standard", "fontAtkinson": "Atkinson Hyperlegible", "fontLexend": "Lexend", "fontOpenDyslexic": "OpenDyslexic", "fontArial": "Arial", "fontVerdana": "Verdana", "fontTrebuchet": "Trebuchet", "fontTahoma": "Tahoma", "fontSerif": "Serif", "fontMonospace": "Monospace", "weight": "Weight", "weightDescription": "Heavier text is easier to read from a distance, for example on a television.", "weightNormal": "Normal", "weightBold": "Bold", "weightSize": "Text weight", "previewFullscreen": "Show preview fullscreen", "previewHideControls": "Hide preview controls", "previewShowControls": "Show preview controls", "previewOneLine": "1 line", "previewTwoLines": "2 lines", "previewThreeLines": "3 lines", "previewCustomText": "Custom text", "previewRestore": "Restore sample text", "previewCustomPlaceholder": "Write text to test subtitles…", "previewFullscreenError": "Fullscreen is not available in this browser.", "previewDragHint": "Drag the text to choose its position.", "previewAlignedCenter": "Center"
     },
     "appearance": "Appearance",
     "appearanceDesc": "Customize the interface and animations",
@@ -2451,15 +2383,7 @@
     "imageQualityHint": "Automatic and High may load the same image when its resolution is sufficient. This setting does not change video quality. A larger image already in cache may still be used.",
     "lightModeSavings": "Simple loading indicators, plain backgrounds and no decorative video previews. Pages load when you open them, without background preloading.",
     "lowLatencyApplyHint": "Off by default. These choices apply to this device, starting with the next playback.",
-    "lightModeReason": {
-      "tv": "Auto enabled light mode because this browser is running on a TV.",
-      "cpu": "Auto enabled light mode because the browser reports 2 or fewer CPU cores.",
-      "memory": "Auto enabled light mode because the browser reports 2 GB of memory or less.",
-      "reducedMotion": "Auto enabled light mode to respect your system’s reduced motion preference.",
-      "capable": "Auto leaves light mode off: no limited-resource signals were detected.",
-      "manual": "Light mode stays active, regardless of this device’s capabilities.",
-      "custom": "Your detailed settings apply. Your system’s reduced motion preference is still respected."
-    },
+    "lightModeReason": {"tv": "Auto enabled light mode because this browser is running on a TV.", "cpu": "Auto enabled light mode because the browser reports 2 or fewer CPU cores.", "memory": "Auto enabled light mode because the browser reports 2 GB of memory or less.", "reducedMotion": "Auto enabled light mode to respect your system’s reduced motion preference.", "capable": "Auto leaves light mode off: no limited-resource signals were detected.", "manual": "Light mode stays active, regardless of this device’s capabilities.", "custom": "Your detailed settings apply. Your system’s reduced motion preference is still respected."},
     "animPrefsSystemHint": "Your system requests reduced motion. Moving effects remain paused; background blur can still be customized.",
     "animSavedOn": "Saved choice: enabled",
     "animSavedOff": "Saved choice: disabled",
@@ -3639,22 +3563,11 @@
     "streamedEmbedHint": "Choose a server below to start the video with the Streamed player.",
     "streamedTryEmbed": "Try the Streamed player",
     "streamedSports": {
-      "all": "All sports",
-      "football": "Football",
-      "basketball": "Basketball",
-      "american-football": "American football",
-      "hockey": "Hockey",
-      "baseball": "Baseball",
-      "motor-sports": "Motor sports",
-      "fight": "Combat sports",
-      "tennis": "Tennis",
-      "rugby": "Rugby",
-      "golf": "Golf",
-      "billiards": "Billiards",
-      "afl": "Australian football",
-      "darts": "Darts",
-      "cricket": "Cricket",
-      "other": "Other sports"
+      "all": "All sports", "football": "Football", "basketball": "Basketball",
+      "american-football": "American football", "hockey": "Hockey", "baseball": "Baseball",
+      "motor-sports": "Motor sports", "fight": "Combat sports", "tennis": "Tennis",
+      "rugby": "Rugby", "golf": "Golf", "billiards": "Billiards", "afl": "Australian football",
+      "darts": "Darts", "cricket": "Cricket", "other": "Other sports"
     }
   },
   "genres": {
@@ -6745,16 +6658,16 @@
     "editDeleteTooltip": "Left click: Edit | Right click: Delete"
   },
   "vipDonations": {
-    "common": {
-      "oneYear": "1 year",
-      "manyYears": "{{count}} years",
-      "oneMonth": "1 month",
-      "manyMonths": "{{count}} months",
-      "oneVipYear": "1 VIP year",
-      "manyVipYears": "{{count}} VIP years",
-      "oneVipMonth": "1 VIP month",
-      "manyVipMonths": "{{count}} VIP months",
-      "premiumSubscription": "Premium subscription",
+      "common": {
+        "oneYear": "1 year",
+        "manyYears": "{{count}} years",
+        "oneMonth": "1 month",
+        "manyMonths": "{{count}} months",
+        "oneVipYear": "1 VIP year",
+        "manyVipYears": "{{count}} VIP years",
+        "oneVipMonth": "1 VIP month",
+        "manyVipMonths": "{{count}} VIP months",
+        "premiumSubscription": "Premium subscription",
       "copyAmountSuccess": "Amount copied",
       "copyAddressSuccess": "Address copied",
       "copyGiftUrlSuccess": "Gift URL copied",
@@ -6763,22 +6676,22 @@
       "copyVipKeySuccess": "VIP key copied",
       "copyFailed": "Copy failed",
       "turnstileRequired": "Complete the security check.",
-      "loadingGift": "Loading VIP gift...",
-      "giftNotFound": "Gift not found"
-    },
-    "payment": {
-      "btc": "Bitcoin",
-      "ltc": "Litecoin",
-      "cryptogate": "Card or cryptocurrency via CryptoGate",
-      "cryptogateShort": "CryptoGate",
-      "paygateHosted": "Card / Apple Pay / Google Pay",
-      "paygateShort": "PayGate",
-      "autobuy": "AutoBuy",
-      "autobuyShort": "AutoBuy",
-      "payblis": "Payblis",
-      "payblisShort": "Payblis"
-    },
-    "status": {
+        "loadingGift": "Loading VIP gift...",
+        "giftNotFound": "Gift not found"
+      },
+      "payment": {
+        "btc": "Bitcoin",
+        "ltc": "Litecoin",
+        "cryptogate": "Card or cryptocurrency via CryptoGate",
+        "cryptogateShort": "CryptoGate",
+        "paygateHosted": "Card / Apple Pay / Google Pay",
+        "paygateShort": "PayGate",
+        "autobuy": "AutoBuy",
+        "autobuyShort": "AutoBuy",
+        "payblis": "Payblis",
+        "payblisShort": "Payblis"
+      },
+      "status": {
       "awaiting_payment": {
         "label": "Waiting for donation",
         "hint": "We're waiting for your donation, just one step left."
@@ -6823,22 +6736,10 @@
       "thankYouNoVip": "Thank you! This amount is too small to unlock VIP.",
       "methodTitle": "How would you like to give?",
       "methods": {
-        "cryptogate": {
-          "title": "Card",
-          "subtitle": "Card, Apple Pay, Google Pay or crypto, via CryptoGate"
-        },
-        "giftcard": {
-          "title": "Gift card",
-          "subtitle": "Google Play, Amazon, Paysafecard or Eneba, no bank card needed"
-        },
-        "btc": {
-          "title": "Bitcoin",
-          "subtitle": "From your Bitcoin wallet"
-        },
-        "ltc": {
-          "title": "Litecoin",
-          "subtitle": "From your Litecoin wallet"
-        }
+        "cryptogate": { "title": "Card", "subtitle": "Card, Apple Pay, Google Pay or crypto, via CryptoGate" },
+        "giftcard": { "title": "Gift card", "subtitle": "Google Play, Amazon, Paysafecard or Eneba, no bank card needed" },
+        "btc": { "title": "Bitcoin", "subtitle": "From your Bitcoin wallet" },
+        "ltc": { "title": "Litecoin", "subtitle": "From your Litecoin wallet" }
       },
       "noMethod": "No way to donate is available right now. Please check back a little later.",
       "recipientTitle": "Who is it for?",
@@ -7955,12 +7856,7 @@
     },
     "hero": {
       "title": "Movix on your TV",
-      "words": [
-        "Movix",
-        "on",
-        "your",
-        "TV"
-      ],
+      "words": ["Movix", "on", "your", "TV"],
       "subtitle": "The app for Fire TV, Google TV and Android TV, built for the remote. Pick up right where you left off.",
       "install": "Install",
       "apk": "Download the APK"
@@ -8093,78 +7989,22 @@
       },
       "paths": {
         "fire": {
-          "downloader": [
-            "Home",
-            "Search",
-            "Downloader"
-          ],
-          "devMode": [
-            "Settings",
-            "My Fire TV",
-            "About",
-            "Device name, OK 7 times"
-          ],
-          "allow": [
-            "My Fire TV",
-            "Developer options",
-            "Install unknown apps",
-            "Downloader"
-          ],
-          "install": [
-            "Install",
-            "Open"
-          ]
+          "downloader": ["Home", "Search", "Downloader"],
+          "devMode": ["Settings", "My Fire TV", "About", "Device name, OK 7 times"],
+          "allow": ["My Fire TV", "Developer options", "Install unknown apps", "Downloader"],
+          "install": ["Install", "Open"]
         },
         "google": {
-          "downloader": [
-            "Apps",
-            "Search for apps",
-            "Downloader",
-            "Install"
-          ],
-          "devMode": [
-            "Settings",
-            "System",
-            "About",
-            "Android TV OS build, OK 7 times"
-          ],
-          "allow": [
-            "Settings",
-            "Apps",
-            "Security & restrictions",
-            "Unknown sources",
-            "Downloader"
-          ],
-          "install": [
-            "Install",
-            "More details",
-            "Install anyway"
-          ]
+          "downloader": ["Apps", "Search for apps", "Downloader", "Install"],
+          "devMode": ["Settings", "System", "About", "Android TV OS build, OK 7 times"],
+          "allow": ["Settings", "Apps", "Security & restrictions", "Unknown sources", "Downloader"],
+          "install": ["Install", "More details", "Install anyway"]
         },
         "android": {
-          "downloader": [
-            "Play Store",
-            "Search",
-            "Downloader",
-            "Install"
-          ],
-          "devMode": [
-            "Settings",
-            "Device Preferences",
-            "About",
-            "Build, OK 7 times"
-          ],
-          "allow": [
-            "Device Preferences",
-            "Security & restrictions",
-            "Unknown sources",
-            "Downloader"
-          ],
-          "install": [
-            "Install",
-            "More details",
-            "Install anyway"
-          ]
+          "downloader": ["Play Store", "Search", "Downloader", "Install"],
+          "devMode": ["Settings", "Device Preferences", "About", "Build, OK 7 times"],
+          "allow": ["Device Preferences", "Security & restrictions", "Unknown sources", "Downloader"],
+          "install": ["Install", "More details", "Install anyway"]
         }
       }
     },
