@@ -1037,15 +1037,20 @@ async function fetchMoviePlayersFromApi(pageUrl) {
   const baseUrl = extractBaseUrlFromLink(pageUrl);
   const apiUrl = `${baseUrl}/engine/ajax/film_api.php?id=${pageId}`;
 
-  const proxies = getShuffledAllProxies();
-  const maxAttempts = Math.min(proxies.length, 3);
+  const proxies = getShuffledAllProxies().slice(0, 3);
+  // Le pool peut être vide en production (configuration proxy absente ou
+  // temporairement indisponible). La fiche HTML est alors récupérable en direct,
+  // mais film_api.php n'était jamais tenté : maxAttempts valait zéro.
+  // On conserve les essais proxy en priorité et n'ajoute qu'un seul fallback
+  // direct, vers l'API du domaine FStream déjà validé par canonicalFStreamUrl.
+  const attempts = [...proxies, { type: 'direct' }];
   let lastError = null;
-  refreshStep('movie_api', { url: apiUrl, proxyCount: proxies.length });
+  refreshStep('movie_api', { url: apiUrl, proxyCount: proxies.length, directFallback: true });
 
-  for (let i = 0; i < maxAttempts; i++) {
-    const entry = proxies[i];
+  for (let i = 0; i < attempts.length; i++) {
+    const entry = attempts[i];
     try {
-      const response = await sendPastFStreamChallenge(() => withFStreamProxy(entry, (agents) => axios({
+      const sendRequest = () => axios({
         method: 'get',
         url: apiUrl,
         timeout: 10000,
@@ -1055,8 +1060,14 @@ async function fetchMoviePlayersFromApi(pageUrl) {
           'Accept': 'application/json, text/plain, */*',
           'Cookie': buildFStreamCookieHeader()
         },
-        httpAgent: agents.httpAgent, httpsAgent: agents.httpsAgent, proxy: false
-      })));
+        ...(entry.type !== 'direct'
+          ? { httpAgent: entry.agents?.httpAgent, httpsAgent: entry.agents?.httpsAgent }
+          : {}),
+        proxy: false
+      });
+      const response = await sendPastFStreamChallenge(() => entry.type === 'direct'
+        ? sendRequest()
+        : withFStreamProxy(entry, sendRequest));
 
       refreshStep('movie_api_response', { httpStatus: response.status, proxyType: entry.type, attempt: i + 1 });
       if (response.status === 429) {
