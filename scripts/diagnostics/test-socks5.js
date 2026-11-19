@@ -4,7 +4,7 @@ import { createRequire } from "node:module";
 const require = createRequire("/tmp/socks-probe/package.json");
 const { SocksProxyAgent } = require("socks-proxy-agent");
 
-const LIST_URL = "https://raw.githubusercontent.com/maximilianfeix/proxy-scraper/proxy-list/socks5.txt";
+const LIST_URL = "https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt";
 const MAX_CANDIDATES = 20;
 const TIMEOUT_MS = 9000;
 
