@@ -12,8 +12,8 @@ async function loadCandidates() {
   const response = await fetch(LIST_URL, { signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`Liste SOCKS5 inaccessible: HTTP ${response.status}`);
   const text = await response.text();
-  return [...new Set(text.split(/\\r?\\n/).map((line) => line.trim()).filter(Boolean))]
-    .filter((line) => /^\\d{1,3}(?:\\.\\d{1,3}){3}:\\d+$/.test(line))
+  return [...new Set(text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean))]
+    .filter((line) => /^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(line))
     .slice(0, MAX_CANDIDATES)
     .map((address) => `socks5h://${address}`);
 }
