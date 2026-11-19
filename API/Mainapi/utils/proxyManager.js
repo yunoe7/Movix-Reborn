@@ -1849,7 +1849,7 @@ const VAVOO_SOCKS5_PROXIES = dedupeProxyEntries(
 );
 
 const DEDICATED_SOCKS5_PROXIES = dedupeProxyEntries(
-  parseProxyPayload(process.env.SOCKS5_PROXIES, "socks5")
+  [...configuredSocks5Env, ...extraSocks5Env]
     .map((entry) => sanitizeProxyEntry(entry, "socks5h"))
     .filter(Boolean),
 );
