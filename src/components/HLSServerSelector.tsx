@@ -3,6 +3,7 @@ import { Server as ServerIcon } from 'lucide-react';
 
 export interface HLSServerSource {
   url: string;
+  label?: string;
 }
 
 interface HLSServerSelectorProps<T extends HLSServerSource> {

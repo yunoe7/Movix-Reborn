@@ -27,7 +27,7 @@ const loadShaka = async (): Promise<typeof ShakaType> => {
   // shaka-player is a CJS module; Vite/Rollup synthesizes a `default` namespace
   // for it. The previous code used `import shaka from 'shaka-player'` (default),
   // which is what mod.default returns here.
-  const dflt = (mod as { default?: typeof ShakaType }).default;
+  const dflt = (mod as unknown as { default?: typeof ShakaType }).default;
   ShakaLib = dflt ?? (mod as unknown as typeof ShakaType);
   return ShakaLib;
 };
@@ -248,7 +248,7 @@ const FranceTVPlayer: React.FC = () => {
   const initShakaPlayer = useCallback(async (manifestUrl: string, keys: string[]) => {
     if (!videoRef.current) return;
 
-    const shaka = await loadShaka();
+    const shaka: any = await loadShaka();
     if (!videoRef.current) return;
 
     shaka.polyfill.installAll();

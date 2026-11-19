@@ -1294,7 +1294,7 @@ const Home: React.FC = () => {
                   <LazySection index={idx + 2} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
                     <EmblaCarousel
                       title={becauseYouWatchedTitles[idx]}
-                      items={group.items}
+                      items={group.items as any}
                       mediaType="mixed"
                     />
                   </LazySection>
@@ -1307,7 +1307,7 @@ const Home: React.FC = () => {
                   <LazySection index={idx + 5} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
                     <EmblaCarousel
                       title={topGenresTitles[idx]}
-                      items={group.items}
+                      items={group.items as any}
                       mediaType="mixed"
                     />
                   </LazySection>
