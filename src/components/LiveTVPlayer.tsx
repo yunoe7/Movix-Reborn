@@ -1197,18 +1197,22 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
             shouldForceProxy
         });
 
-        // URL proxifiée signée fournie d'office par mainapi avec le flux. Le
-        // navigateur ne sait pas signer et il n'existe pas d'endpoint pour le
-        // faire à sa place (ce serait un oracle de signature) : si le serveur
-        // n'en a pas joint, la lecture reste directe.
+        // URL proxifiée signée fournie par Main API. Elle doit elle-même être
+        // HTTPS : une signature ne rend pas une URL HTTP compatible Mixed Content.
         const signedProxyUrl = typeof currentStream.proxyUrl === 'string' ? currentStream.proxyUrl : '';
+        let hasSecureSignedProxyUrl = false;
+        try {
+            hasSecureSignedProxyUrl = new URL(signedProxyUrl).protocol === 'https:';
+        } catch {
+            hasSecureSignedProxyUrl = false;
+        }
 
         // Never let HLS.js receive an HTTP URL from an HTTPS page. VIP streams
         // can use the signed proxy URL attached by Main API; installations with
         // the browser extension can fetch the upstream URL through ExtensionLoader.
         // If neither transport exists, fail visibly instead of spinning forever
         // while Chrome silently blocks every manifest request.
-        if (isHttp && isPageHttps && !extensionHandlesStream && !signedProxyUrl) {
+        if (isHttp && isPageHttps && !extensionHandlesStream && !hasSecureSignedProxyUrl) {
             const message = 'Cette source TV utilise HTTP et ne peut pas être lue en HTTPS sans extension ou proxy sécurisé.';
             console.warn('[LiveTV] Mixed Content prevented: no extension or signed proxy URL available.');
             setError(message);
@@ -1227,7 +1231,7 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
         if (isWiflixStream && extensionAvailable && currentStream.originalUrl) {
             finalUrl = currentStream.originalUrl;
             console.log("Wiflix: Extension will handle raw stream:", finalUrl);
-        } else if (shouldForceProxy && !extensionHandlesStream && signedProxyUrl) {
+        } else if (shouldForceProxy && !extensionHandlesStream && hasSecureSignedProxyUrl) {
             // Only use remote proxy if extension is NOT handling it.
             // L'URL signée est utilisée telle quelle : la reconstruire côté
             // client produirait une URL non signée, donc refusée par le proxy.
