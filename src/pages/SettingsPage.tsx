@@ -2337,7 +2337,7 @@ const SettingsPage: React.FC = () => {
                         seulement BgColorPickerPanel. Commit ~100ms après l'arrêt. */}
                     <BgColorPickerPanel
                       committedHex={bgAccentCustomHex}
-                      inputLabel={t('settings.bgAccentCustom', 'Custom')}
+                      label={t('settings.bgAccentCustom', 'Custom')}
                       hint={t('settings.bgAccentCustomHint', 'Glissez la pipette pour ajuster, ou tapez l\'hex. La couleur est appliquée à cette page en preview.')}
                       onCommit={handleBgAccentCustomChange}
                     />

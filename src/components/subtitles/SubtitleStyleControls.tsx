@@ -444,7 +444,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
         </div>
         <BgColorPickerPanel
           committedHex={preferences.color}
-          inputLabel={t('settings.subtitles.textColor')}
+          label={t('settings.subtitles.textColor')}
           hint={t('watch.customColorHint')}
           onPreview={previewColor}
           onCommit={commitColor}
@@ -476,7 +476,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
               </div>
               <BgColorPickerPanel
                 committedHex={preferences.edgeColor}
-                inputLabel={t('settings.subtitles.edgeColor')}
+                label={t('settings.subtitles.edgeColor')}
                 hint={t('settings.subtitles.edgeColorHint')}
                 onPreview={previewEdgeColor}
                 onCommit={commitEdgeColor}
