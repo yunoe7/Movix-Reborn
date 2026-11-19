@@ -3,7 +3,7 @@ import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Dices, Star, Calendar, RotateCcw, Info, ChevronDown, ChevronUp, Sparkles, X } from 'lucide-react';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type confettiType from 'canvas-confetti';
 import { toast } from 'sonner';
 

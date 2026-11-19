@@ -40,7 +40,7 @@ import { useTitleHistory } from '../hooks/useTitleHistory';
 import { localProgressFinished, movieResume, movieWatchedState, seedProgress } from '../utils/titleHistoryMerge';
 import { EstimateInfoDialog } from '../components/profile/EstimateInfo';
 
-const MAIN_API = import.meta.env.VITE_MAIN_API;
+
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
 const parseStoredMediaList = (stored: string | null): any[] | null => {

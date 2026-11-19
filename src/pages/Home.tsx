@@ -15,7 +15,7 @@ import LazySection from '../components/LazySection';
 import { SquareBackground } from '../components/ui/square-background';
 import { SITE_URL } from '../config/runtime';
 import { getTmdbLanguage } from '../i18n';
-import { encodeId } from '../utils/idEncoder';
+
 import { getPersonalizedRecommendations, isRecommendationsEnabled, PersonalizedRecommendations } from '../services/recommendationService';
 import { fetchContinueWatching, hideAllContinueWatching, hideContinueWatching, toHomeItem, type HomeContinueItem } from '../services/historyService';
 import CarouselTitle from '../components/CarouselTitle';

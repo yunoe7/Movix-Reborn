@@ -30,8 +30,7 @@ interface Movie {
 }
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
-const MAIN_API = import.meta.env.VITE_MAIN_API;
-const BACKUP_API = import.meta.env.VITE_BACKUP_API;
+
 const ITEMS_PER_PAGE = 20;
 
 // Genre IDs from TMDB

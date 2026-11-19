@@ -6,7 +6,7 @@ import { useLightMode } from '../context/LightModeContext';
 import { ChevronRight, ExternalLink, Gauge, Loader2 } from 'lucide-react';
 import ReactCountryFlag from 'react-country-flag';
 import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
-import CustomDropdown from './CustomDropdown';
+
 import { computeFacets, filterTracks } from '../services/subtitles/index.ts';
 import type { SubtitleFilters, SubtitleTrack } from '../services/subtitles/index.ts';
 import { SubtitleStyleControls } from './subtitles/SubtitleStyleControls';

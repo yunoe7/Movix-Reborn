@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
@@ -8,7 +8,7 @@ import { Loader, ChevronRight, Film, Tv, Flame } from 'lucide-react';
 import HeroSlider from '../components/HeroSlider';
 import CarouselTitle from '../components/CarouselTitle';
 import EmblaCarousel from '../components/EmblaCarousel';
-import ContentRowSkeleton from '../components/skeletons/ContentRowSkeleton';
+
 import LazySection from '../components/LazySection';
 import { getTmdbLanguage } from '../i18n';
 import { getMinimumCarouselCategoryItems, makeExclusiveCategories } from '../utils/exclusiveCategories';
