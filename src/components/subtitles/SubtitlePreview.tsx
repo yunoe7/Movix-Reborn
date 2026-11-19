@@ -712,7 +712,7 @@ export const SubtitlePreview: React.FC<SubtitlePreviewProps> = ({ preferences, o
 
       <div
         aria-hidden={!customMode}
-        inert={!customMode}
+        inert={!customMode as any}
         className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${customMode ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
       >
         <div className="min-h-0 overflow-hidden">

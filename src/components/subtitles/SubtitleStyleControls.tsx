@@ -459,7 +459,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
         </div>
         <div
           aria-hidden={preferences.edgeStyle === 'none'}
-          inert={preferences.edgeStyle === 'none'}
+          inert={preferences.edgeStyle === 'none' as any}
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${preferences.edgeStyle !== 'none' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
         >
           <div className="min-h-0 overflow-hidden">
@@ -539,7 +539,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
         </div>
         <div
           aria-hidden={!preferences.backgroundEnabled}
-          inert={!preferences.backgroundEnabled}
+          inert={!preferences.backgroundEnabled as any}
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${preferences.backgroundEnabled ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
         >
           <div className="min-h-0 overflow-hidden">

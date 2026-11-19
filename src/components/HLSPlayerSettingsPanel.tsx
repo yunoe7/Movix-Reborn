@@ -460,7 +460,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
     [sortedNexusHlsMemo],
   );
   const seekStreamingNexusGroupsMemo = useMemo(
-    () => groupSeekStreamingSources(seekStreamingNexusMemo),
+    () => groupSeekStreamingSources(seekStreamingNexusMemo as any),
     [seekStreamingNexusMemo],
   );
   const otherNexusHlsMemo = useMemo(
@@ -675,7 +675,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                     />
 
                     {/* Sources HLS d'abord */}
-                    {sourceGroups.map((group, groupIndex) => (
+                    {sourceGroups .map((group: any, groupIndex: any) => (
                       <div key={`group_${groupIndex}`} className="mb-6">
                         <div className="flex items-center justify-between gap-2 mb-2 px-2">
                           <h4 className="text-gray-400 text-xs uppercase tracking-wider">{group.title}</h4>
@@ -856,7 +856,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                       transition={getTransition({ duration: 0.2, ease: "easeOut" })}
                                       className="ml-4 pl-2 border-l-2 border-gray-700 mb-2"
                                     >
-                                      {seekStreamingNexusGroupsMemo.map((group, groupIndex) => (
+                                      {seekStreamingNexusGroupsMemo .map((group: any, groupIndex: any) => (
                                         <HLSServerSelector
                                           key={`${group[0]?.seekGroupKey ?? 'legacy'}-${groupIndex}`}
                                           sources={group}
@@ -1700,7 +1700,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                     transition={getTransition({ duration: 0.25 })}
                     className="pr-2"
                   >
-                    {audioTracks.map((track) => (
+                    {audioTracks .map((track: any) => (
                       <button
                         key={track.id}
                         onClick={() => handleAudioTrackChange(track.id)}
@@ -1746,7 +1746,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                     {subtitles.length > 0 ? (
                       <div className="mb-4">
                         <h4 className="text-gray-400 text-xs uppercase tracking-wider mb-2 px-2">{t('watch.builtInSubtitles')}</h4>
-                        {subtitles.map((track, idx) => {
+                        {subtitles .map((track: any, idx: any) => {
                           // Key on idx, not language: two tracks can share a language
                           // (e.g. "Français (forced)" + "Français"), and a language-based
                           // id collides so both rows would show "Actif" and only the first

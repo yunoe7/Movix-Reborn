@@ -3310,7 +3310,7 @@ const SettingsPage: React.FC = () => {
                     const selected = extractionPrefs.method === key;
                     const available =
                       key === 'extension' ? !!(typeof window !== 'undefined' && window.hasMovixExtension) :
-                      key === 'userscript' ? !!(typeof window !== 'undefined' && window.hasMovixUserscript) :
+                      key === 'userscript' ? !!(typeof window !== 'undefined' && (window as any).hasMovixUserscript) :
                       key === 'server' ? isUserVip() :
                       true;
                     return (

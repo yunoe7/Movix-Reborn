@@ -529,8 +529,7 @@ const ProviderCategoryRow: React.FC<ProviderCategoryRowProps> = React.memo(({
       <EmblaCarousel
         key={category.id}
         title={categoryHeader}
-        items={category.items}
-        mediaType={category.id}
+        items={category.items as any}        mediaType={category.id}
       />
     </LazySection>
   );
@@ -1286,7 +1285,7 @@ const ProviderContent: React.FC = () => {
                     <LazySection index={0} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
                       <EmblaCarousel
                         title={trendingTitle}
-                        items={topContent}
+                        items={topContent as any}
                         mediaType="top10"
                         showRanking={true}
                       />

@@ -4307,7 +4307,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
         }
 
         if (isVideoLevelFailure(data)) {
-          const failedLevel = getFailingLevelIndex(data, hls);
+          const failedLevel = getFailingLevelIndex(data as any, hls);
           const lowerLevel = selectExactHlsFallbackLevel(qualitiesRef.current, 720);
           const failedHeight = hls.levels[failedLevel]?.height ?? null;
           const lowerHeight = hls.levels[lowerLevel]?.height ?? null;

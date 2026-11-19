@@ -33,7 +33,7 @@ function UnavailableMorph({ onStatusChange }: MorphBackdropProps) {
   useEffect(() => { onStatusChange('unavailable'); }, [onStatusChange]);
   return null;
 }
-const MorphBackdrop = React.lazy(() => import('./hero/MorphBackdrop').catch(() => ({ default: UnavailableMorph })));
+const MorphBackdrop = React.lazy(() => import('./hero/MorphBackdrop').catch(() => ({ default: UnavailableMorph as any })));
 
 // Sur mobile, taper « Regarder » ratait une fois sur deux : Embla démarre son
 // drag dès le premier `touchmove` et appelle `preventDefault()`, ce qui pousse

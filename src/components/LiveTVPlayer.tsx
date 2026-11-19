@@ -693,7 +693,7 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
         const prevHtmlOverflow = document.documentElement.style.overflow;
         document.body.style.overflow = 'hidden';
         document.documentElement.style.overflow = 'hidden';
-        const lenis = (window as Window & { lenis?: { stop: () => void; start: () => void } }).lenis;
+        const lenis = (window as unknown as { lenis?: { stop: () => void; start: () => void } }).lenis;
         lenis?.stop();
         return () => {
             document.body.style.overflow = prevBodyOverflow;

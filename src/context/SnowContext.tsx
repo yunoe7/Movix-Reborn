@@ -18,7 +18,7 @@ export const SnowProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isSnowEnabled]);
 
   const toggleSnow = useCallback(() => {
-    setIsSnowEnabled(prev => !prev);
+    setIsSnowEnabled((prev: boolean) => !prev);
   }, []);
 
   const value = useMemo(
