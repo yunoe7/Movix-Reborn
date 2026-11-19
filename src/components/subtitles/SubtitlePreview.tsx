@@ -443,7 +443,7 @@ export const SubtitlePreview: React.FC<SubtitlePreviewProps> = ({ preferences, o
     pendingScalePatchRef.current = null;
     scalingRef.current = true;
     stylePreviewActiveRef.current = true;
-    cueRef.current.style.transition = 'none';
+    if (cueRef.current) cueRef.current.style.transition = 'none';
     if (cuePositionRef.current) cuePositionRef.current.style.transition = 'none';
     activeScaleHandleRef.current = event.currentTarget;
     setIsScaling(true);

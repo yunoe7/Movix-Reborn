@@ -17,6 +17,7 @@ export interface SeekStreamingResultLike {
 export interface SeekStreamingHlsSource {
   url: string;
   label: string;
+  type?: string;
   seekKind?: SeekStreamingCandidateKind;
   seekGroupKey?: string;
   seekEmbedUrl?: string;

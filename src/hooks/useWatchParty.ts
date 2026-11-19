@@ -9,7 +9,7 @@ interface UseWatchPartyOptions {
   onSync: (action: any) => void;
 }
 
-export default function useWatchParty({ src, title, videoRef, onSync }: UseWatchPartyOptions) {
+export default function useWatchParty(_options: UseWatchPartyOptions) {
   const [isInParty, setIsInParty] = useState(false);
   const [isHost, setIsHost] = useState(false);
   const [partyId, setPartyId] = useState<string | null>(null);

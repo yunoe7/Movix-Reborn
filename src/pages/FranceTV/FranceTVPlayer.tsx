@@ -87,8 +87,8 @@ const FranceTVPlayer: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<HlsType | null>(null);
-  const shakaRef = useRef<ShakaType.Player | null>(null);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const shakaRef = useRef<any | null>(null);
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [extracting, setExtracting] = useState(false);
@@ -306,7 +306,7 @@ const FranceTVPlayer: React.FC = () => {
     }
   }, [safeAutoplay]);
 
-  const populateShakaControls = useCallback((player: ShakaType.Player) => {
+  const populateShakaControls = useCallback((player: any) => {
     const variants = player.getVariantTracks();
     const textTracks = player.getTextTracks();
 

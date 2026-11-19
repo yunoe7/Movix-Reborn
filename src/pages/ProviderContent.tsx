@@ -556,7 +556,7 @@ const ProviderContent: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<Media[]>([]);
   const [showSearch, setShowSearch] = useState(false);
-  const sliderIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const sliderIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hoveredTopContentIndex, setHoveredTopContentIndex] = useState<number | null>(null);
   const [hoveredCategoryItemsMap, setHoveredCategoryItemsMap] = useState<Record<string, boolean>>({});
   const top10RowRef = useRef<HTMLDivElement>(null);
