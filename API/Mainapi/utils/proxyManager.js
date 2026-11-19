@@ -1795,7 +1795,8 @@ const PROXYSCRAPE_ENABLED = Boolean(
 );
 const KISSKH_PROXY_CONFIGURATION_PRESENT = Boolean(
   PROXYSCRAPE_API_TOKEN || PROXYSCRAPE_ACCOUNT_ID ||
-  String(process.env.SOCKS5_PROXIES || "").trim(),
+  String(process.env.SOCKS5_PROXIES || "").trim() ||
+  String(process.env.SOCKS5_EXTRA_PROXIES || "").trim(),
 );
 const PROXY_POOL_REDIS_TTL_SECONDS = 60 * 60;
 const PROXYSCRAPE_ACCOUNT_BASE_URL = "https://api.proxyscrape.com";
@@ -1818,11 +1819,22 @@ const legacyHttpEnv =
     ? []
     : parseJsonArrayEnv("HTTP_PROXIES", []);
 
+// Optional additive pool for newly validated SOCKS5 relays. Keep the existing
+// SOCKS5_PROXIES value intact; entries here are appended and deduplicated.
+const extraSocks5Env = parseProxyPayload(
+  process.env.SOCKS5_EXTRA_PROXIES,
+  "socks5",
+);
+const configuredSocks5Env = parseProxyPayload(
+  process.env.SOCKS5_PROXIES,
+  "socks5",
+);
+
 const PROXIES = dedupeProxyEntries(
-  (legacySocksEnv.length > 0
-    ? legacySocksEnv
-    : parseProxyPayload(process.env.SOCKS5_PROXIES, "socks5")
-  )
+  [
+    ...(legacySocksEnv.length > 0 ? legacySocksEnv : configuredSocks5Env),
+    ...extraSocks5Env,
+  ]
     .map((entry) => sanitizeProxyEntry(entry, "socks5"))
     .filter(Boolean),
 );
@@ -1837,7 +1849,7 @@ const VAVOO_SOCKS5_PROXIES = dedupeProxyEntries(
 );
 
 const DEDICATED_SOCKS5_PROXIES = dedupeProxyEntries(
-  parseProxyPayload(process.env.SOCKS5_PROXIES, "socks5")
+  [...configuredSocks5Env, ...extraSocks5Env]
     .map((entry) => sanitizeProxyEntry(entry, "socks5h"))
     .filter(Boolean),
 );
@@ -1847,7 +1859,7 @@ const vavooProxyPolicy = createVavooProxyPolicy({
 });
 
 const COFLIX_SOCKS5_PROXIES = dedupeProxyEntries(
-  parseProxyPayload(process.env.SOCKS5_PROXIES, "socks5")
+  [...configuredSocks5Env, ...extraSocks5Env]
     .map((entry) => sanitizeProxyEntry(entry, "socks5"))
     .filter(Boolean),
 );
