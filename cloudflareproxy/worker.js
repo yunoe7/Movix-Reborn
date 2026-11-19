@@ -36,10 +36,23 @@
           return headers;
         }
         __name(setupCORSHeaders, "setupCORSHeaders");
-        const targetUrl = decodeURIComponent(decodeURIComponent(originUrl.search.substr(1)));
+        const targetUrl = decodeURIComponent(originUrl.search.substr(1));
         const originHeader = event.request.headers.get("Origin");
         const connectingIp = event.request.headers.get("CF-Connecting-IP");
-        if (!isListedInWhitelist(targetUrl, blacklistUrls) && isListedInWhitelist(originHeader, whitelistOrigins)) {
+        function isSafeTargetUrl(value) {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    if (!host || host === 'localhost' || host === '::1' || host === '[::1]') return false;
+    if (/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|169\.254\.|0\.)/.test(host)) return false;
+    if (host.endsWith('.local') || host.endsWith('.internal')) return false;
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+if (originHeader && isSafeTargetUrl(targetUrl) && isListedInWhitelist(originHeader, whitelistOrigins)) {
           let customHeaders = event.request.headers.get("x-cors-headers");
           if (customHeaders !== null) {
             try {

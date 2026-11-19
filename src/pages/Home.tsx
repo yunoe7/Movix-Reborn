@@ -15,7 +15,7 @@ import LazySection from '../components/LazySection';
 import { SquareBackground } from '../components/ui/square-background';
 import { SITE_URL } from '../config/runtime';
 import { getTmdbLanguage } from '../i18n';
-import { encodeId } from '../utils/idEncoder';
+
 import { getPersonalizedRecommendations, isRecommendationsEnabled, PersonalizedRecommendations } from '../services/recommendationService';
 import { fetchContinueWatching, hideAllContinueWatching, hideContinueWatching, toHomeItem, type HomeContinueItem } from '../services/historyService';
 import CarouselTitle from '../components/CarouselTitle';
@@ -1294,7 +1294,7 @@ const Home: React.FC = () => {
                   <LazySection index={idx + 2} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
                     <EmblaCarousel
                       title={becauseYouWatchedTitles[idx]}
-                      items={group.items}
+                      items={group.items as any}
                       mediaType="mixed"
                     />
                   </LazySection>
@@ -1307,7 +1307,7 @@ const Home: React.FC = () => {
                   <LazySection index={idx + 5} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
                     <EmblaCarousel
                       title={topGenresTitles[idx]}
-                      items={group.items}
+                      items={group.items as any}
                       mediaType="mixed"
                     />
                   </LazySection>
@@ -1320,7 +1320,7 @@ const Home: React.FC = () => {
                   <LazySection index={8} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
                     <EmblaCarousel
                       title={usersAlsoWatchedTitle}
-                      items={personalizedReco.usersAlsoWatched}
+                      items={personalizedReco.usersAlsoWatched as any}
                       mediaType="mixed"
                     />
                   </LazySection>

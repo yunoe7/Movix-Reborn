@@ -3,7 +3,7 @@ import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { Dices, Star, Calendar, RotateCcw, Info, ChevronDown, ChevronUp, Sparkles, X } from 'lucide-react';
-import { motion, AnimatePresence, useAnimation } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import type confettiType from 'canvas-confetti';
 import { toast } from 'sonner';
 
@@ -1335,7 +1335,7 @@ const RoulettePage: React.FC = () => {
                         name: item.name,
                         media_type: item.media_type,
                         poster_path: item.poster_path || '',
-                        backdrop_path: item.backdrop_path,
+                        backdrop_path: item.backdrop_path as any,
                         release_date: item.release_date,
                         first_air_date: item.first_air_date,
                         vote_average: item.vote_average,

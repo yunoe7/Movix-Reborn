@@ -7,7 +7,7 @@ import type {
 } from '../types/sourcePriority';
 
 export interface SourceAvailability {
-  id: TopLevelSourceId;
+  id: TopLevelSourceId | 'nexus_file';
   hasData: boolean;
 }
 

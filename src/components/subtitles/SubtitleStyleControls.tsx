@@ -444,7 +444,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
         </div>
         <BgColorPickerPanel
           committedHex={preferences.color}
-          inputLabel={t('settings.subtitles.textColor')}
+          label={t('settings.subtitles.textColor')}
           hint={t('watch.customColorHint')}
           onPreview={previewColor}
           onCommit={commitColor}
@@ -459,7 +459,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
         </div>
         <div
           aria-hidden={preferences.edgeStyle === 'none'}
-          inert={preferences.edgeStyle === 'none'}
+          inert={preferences.edgeStyle === 'none' as any}
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${preferences.edgeStyle !== 'none' ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
         >
           <div className="min-h-0 overflow-hidden">
@@ -476,7 +476,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
               </div>
               <BgColorPickerPanel
                 committedHex={preferences.edgeColor}
-                inputLabel={t('settings.subtitles.edgeColor')}
+                label={t('settings.subtitles.edgeColor')}
                 hint={t('settings.subtitles.edgeColorHint')}
                 onPreview={previewEdgeColor}
                 onCommit={commitEdgeColor}
@@ -539,7 +539,7 @@ export const SubtitleStyleControls: React.FC<SubtitleStyleControlsProps> = ({
         </div>
         <div
           aria-hidden={!preferences.backgroundEnabled}
-          inert={!preferences.backgroundEnabled}
+          inert={!preferences.backgroundEnabled as any}
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out ${preferences.backgroundEnabled ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
         >
           <div className="min-h-0 overflow-hidden">

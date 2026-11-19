@@ -832,7 +832,7 @@ const isSubtitleLoadError = (data: any): boolean => {
 
 // Global variables to track failed segments for retry
 const failed429Segments: Set<number> = new Set();
-let retryTimeout: NodeJS.Timeout | null = null;
+let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Function to clear failed segments when playback is successful
 const clearFailed429Segments = () => {
@@ -1575,8 +1575,8 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   }, [src]);
   
   const [, setIsBuffering] = useState(false);
-  const bufferingTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout ref for buffering indicator delay
-  const sourceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Timeout ref for automatic source switching
+  const bufferingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Timeout ref for buffering indicator delay
+  const sourceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null); // Timeout ref for automatic source switching
   const [showSettings, setShowSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState<'quality' | 'subtitles' | 'audio' | 'style' | 'format' | 'speed' | 'progression' | 'enhancer' | 'oled'>('quality'); // Add 'progression', 'enhancer', 'oled'
   const requestHlsFallback = useCallback((
@@ -1632,7 +1632,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   const fallbackLevelRef = useRef<number | null>(null);
   const [sourceStreamQualities, setSourceStreamQualities] = useState<Record<string, string>>(() => getInitialSourceQualityState());
   const [copiedSourceUrl, setCopiedSourceUrl] = useState<string | null>(null);
-  const copiedSourceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const copiedSourceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [subtitles, setSubtitles] = useState<TextTrack[]>([]);
   const [currentSubtitle, setCurrentSubtitleState] = useState<string>('off');
   const currentSubtitleRef = useRef<string>('off');
@@ -1779,7 +1779,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
 
   const [selectedExternalSub, setSelectedExternalSub] = useState<SubtitleTrack | null>(null);
   const [loadingSubtitle, setLoadingSubtitle] = useState(false);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout>();
+  const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   /** Dernier état de plein écran connu, pour ne réagir qu'aux transitions. */
   const wasFullscreenRef = useRef(false);
   /** Fin de la fenêtre morte suivant l'entrée en plein écran (timestamp ms). */
@@ -1835,16 +1835,16 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   const [showRewindAnimation, setShowRewindAnimation] = useState(false);
   const [forwardClickCount, setForwardClickCount] = useState(0);
   const [rewindClickCount, setRewindClickCount] = useState(0);
-  const forwardTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const rewindTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const forwardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rewindTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mobile double-tap (Crunchy/Netflix-like) state
   const [showLeftTapAnimation, setShowLeftTapAnimation] = useState(false);
   const [showRightTapAnimation, setShowRightTapAnimation] = useState(false);
   const [leftTapCount, setLeftTapCount] = useState(0);
   const [rightTapCount, setRightTapCount] = useState(0);
-  const leftTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const rightTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const leftTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rightTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   /**
@@ -1863,7 +1863,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   // Tap detection refs for single vs double tap on touch devices
   const lastTapTimeRef = useRef<number>(0);
   const lastTapSideRef = useRef<'left' | 'right' | null>(null);
-  const singleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchStartXRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchMovedRef = useRef<boolean>(false);
@@ -1886,7 +1886,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   const [hasDeclinedNextEpisode, setHasDeclinedNextEpisode] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [hasLoadedProgress, setHasLoadedProgress] = useState(false);
-  const progressSaveInterval = useRef<NodeJS.Timeout>();
+  const progressSaveInterval = useRef<ReturnType<typeof setTimeout>>();
   const [, setSelectedSource] = useState<string | null>(null);
   const [currentDarkiIndex, setCurrentDarkiIndex] = useState(0);
   const [currentNexusHlsIndex, setCurrentNexusHlsIndex] = useState(0);
@@ -1907,7 +1907,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     previewUrl: null,
     showPreview: false,
   });
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   const previewHlsRef = useRef<HlsType | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -3049,11 +3049,11 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     const isSourceMenuVisible = onlyQualityMenu || (showSettings && settingsTab === 'quality');
     if (!isSourceMenuVisible) return;
 
-    const lenis = (window as Window & { lenis?: { stop: () => void; start: () => void } }).lenis;
+    const lenis = (window as unknown as { lenis?: { stop: () => void; start: () => void } }).lenis;
     if (lenis) lenis.stop();
 
     return () => {
-      const lenisInstance = (window as Window & { lenis?: { stop: () => void; start: () => void } }).lenis;
+      const lenisInstance = (window as unknown as { lenis?: { stop: () => void; start: () => void } }).lenis;
       if (lenisInstance) lenisInstance.start();
     };
   }, [onlyQualityMenu, showSettings, settingsTab]);
@@ -3981,7 +3981,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       // hls.js — route them through the proxy vttwrap endpoint. Video stays direct.
       const isBravoSrc = Array.isArray(purstreamSources) && purstreamSources.some(s => s.url === normalizedSrc);
       if (isBravoSrc && Hls) {
-        hlsConfig.pLoader = makeCinepSubtitlePLoader(Hls);
+        (hlsConfig as any).pLoader = makeCinepSubtitlePLoader(Hls);
       }
       console.log(`📡 [HLSPlayer] Initializing HLS with URL: ${normalizedSrc.substring(0, 100)}...`);
       const hls = new Hls(hlsConfig);
@@ -4307,7 +4307,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
         }
 
         if (isVideoLevelFailure(data)) {
-          const failedLevel = getFailingLevelIndex(data, hls);
+          const failedLevel = getFailingLevelIndex(data as any, hls);
           const lowerLevel = selectExactHlsFallbackLevel(qualitiesRef.current, 720);
           const failedHeight = hls.levels[failedLevel]?.height ?? null;
           const lowerHeight = hls.levels[lowerLevel]?.height ?? null;
@@ -6268,7 +6268,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   const [pipError, setPipError] = useState<string | null>(null);
 
   // Add reference for the PiP error timeout
-  const pipErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pipErrorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cleanupPipSubtitleTrack = useCallback(() => {
     const cleanup = pipSubtitleCleanupRef.current;
@@ -6554,12 +6554,12 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       ? Array.from(video.querySelectorAll('track[data-kisskh-track="true"]'))
       : [];
     for (const track of preparedKisskhSubtitles) {
-      const element = kisskhTrackElements.find(candidate => candidate.src === track.url);
+      const element = kisskhTrackElements.find(candidate => (candidate as HTMLTrackElement).src === track.url);
       candidates.push({
         id: `kisskh:${track.id}`,
         label: track.label,
         language: normalizeSubtitleLanguageCode(track.lang, track.label),
-        active: element?.track === activeTextTrack,
+        active: (element as HTMLTrackElement | undefined)?.track === activeTextTrack,
         vtt: track.vtt,
       });
     }

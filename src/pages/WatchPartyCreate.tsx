@@ -295,7 +295,12 @@ const WatchPartyCreate: React.FC = () => {
         })),
         selectedValue: mp4Sources.find((source) => source.url === mediaInfo.src)?.url || mp4Sources[0]?.url || ''
       }
-    ].filter((group) => group.options.length > 0);
+    ].filter((group) => group.options.length > 0) as Array<{
+      id: DefaultSourceFamily;
+      label: string;
+      options: DefaultSourceOption[];
+      selectedValue: string;
+    }>;
 
   const activeSourceGroup = sourceGroups.find((group) => group.id === activeSourceFamily) || sourceGroups[0];
   const activeSourceLabel = activeSourceGroup?.options.find((option) => option.value === activeSourceGroup.selectedValue)?.label

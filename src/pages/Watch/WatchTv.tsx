@@ -635,7 +635,7 @@ const WatchTv: React.FC = () => {
   }, [seasonNumber, episodeNumber]);
 
   // Bump à chaque changement de prefs de priorité pour re-trier les sortedX.
-  const [prefsVersion, setPrefsVersion] = useState<number>(0);
+  const [, setPrefsVersion] = useState<number>(0);
   useEffect(() => {
     return subscribeToPriorityChanges(() => setPrefsVersion((v) => v + 1));
   }, []);
@@ -1660,7 +1660,7 @@ const WatchTv: React.FC = () => {
             }));
           // Pré-tri par priorité hoster (M4) avec fallback raw si tous unknown.
           const prefsBv0 = getSourcePriorityPrefs();
-          const annotatedBravo = rawBravo.map((s) => ({
+          const annotatedBravo = rawBravo.map((s: (typeof rawBravo)[number]) => ({
             ...s,
             type: (detectHoster(s.url || '', {
               patternOverrides: prefsBv0.patternOverrides,
@@ -1670,7 +1670,7 @@ const WatchTv: React.FC = () => {
               customHosters: prefsBv0.customHosters,
             })) ?? 'unknown',
           }));
-          const allUnknown = annotatedBravo.every((s) => s.type === 'unknown');
+          const allUnknown = annotatedBravo.every((s: (typeof annotatedBravo)[number]) => s.type === 'unknown');
           localBravoSources = allUnknown
             ? rawBravo
             : (sortHostersByPriority(annotatedBravo, { category: 'moviesTv', topLevel: 'bravo' }) as typeof rawBravo);
@@ -2299,7 +2299,7 @@ const WatchTv: React.FC = () => {
 
         // Helper : applique la config d'embed pour l'id choisi. Close sur toutes les
         // variables locales de `initialFetch`. Retourne true si géré.
-        const applyEmbedConfig = (sourceId: TopLevelSourceId): boolean => {
+        const applyEmbedConfig = (sourceId: TopLevelSourceId | 'nexus_file'): boolean => {
           switch (sourceId) {
             case 'nexus_hls': {
               console.log('✅ Selecting NEXUS HLS as primary source');

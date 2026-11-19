@@ -30,8 +30,7 @@ interface Movie {
 }
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
-const MAIN_API = import.meta.env.VITE_MAIN_API;
-const BACKUP_API = import.meta.env.VITE_BACKUP_API;
+
 const ITEMS_PER_PAGE = 20;
 
 // Genre IDs from TMDB
@@ -950,7 +949,7 @@ const Movies: React.FC = () => {
             <LazySection index={0} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
               <EmblaCarousel
                 title={trendingTitle}
-                items={topMovies}
+                items={topMovies as any}
                 mediaType="top10"
                 showRanking={true}
               />
@@ -965,7 +964,7 @@ const Movies: React.FC = () => {
               <EmblaCarousel
                 key={category.id}
                 title={categoryTitles[catIndex]}
-                items={category.items}
+                items={category.items as any}
                 mediaType={category.id}
               />
             </LazySection>

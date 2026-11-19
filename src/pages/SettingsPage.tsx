@@ -1003,7 +1003,7 @@ const SettingsPage: React.FC = () => {
     if (!showIdPopup && !showLocalStoragePopup && !showNonSyncablePopup && !showImportPopup && !linkModal && !showResetExtractionsConfirm && !showResetAllSettingsConfirm) return;
     const original = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const lenis = (window as Window & { lenis?: { stop: () => void; start: () => void } }).lenis;
+    const lenis = (window as unknown as { lenis?: { stop: () => void; start: () => void } }).lenis;
     if (lenis) lenis.stop();
     return () => {
       document.body.style.overflow = original;
@@ -1596,7 +1596,7 @@ const SettingsPage: React.FC = () => {
     const topOffset = isMobile ? 112 : 96;
     const targetTop = Math.max(0, window.scrollY + el.getBoundingClientRect().top - topOffset);
 
-    const lenis = (window as Window & { lenis?: Lenis }).lenis;
+    const lenis = (window as unknown as { lenis?: Lenis }).lenis;
     const smoothEnabled = localStorage.getItem('settings_smooth_scroll') !== 'false';
     const reducedMotion = !effectivePrefs.transitions;
     const willSmoothScroll = smoothEnabled && !reducedMotion;
@@ -1637,7 +1637,7 @@ const SettingsPage: React.FC = () => {
   const navigateToSearchTarget = (sectionId: string, target: HTMLElement) => {
     const highlightClasses = ['rounded-lg', 'ring-2', 'ring-red-500/70', 'ring-offset-4', 'ring-offset-[#0a0a0f]'];
     const reducedMotion = !effectivePrefs.transitions || localStorage.getItem('settings_smooth_scroll') === 'false';
-    const lenis = (window as Window & { lenis?: Lenis }).lenis;
+    const lenis = (window as unknown as { lenis?: Lenis }).lenis;
     setActiveSection(sectionId);
     programmaticScrollLockRef.current = true;
     if (lenis) {
@@ -2337,7 +2337,7 @@ const SettingsPage: React.FC = () => {
                         seulement BgColorPickerPanel. Commit ~100ms après l'arrêt. */}
                     <BgColorPickerPanel
                       committedHex={bgAccentCustomHex}
-                      inputLabel={t('settings.bgAccentCustom', 'Custom')}
+                      label={t('settings.bgAccentCustom', 'Custom')}
                       hint={t('settings.bgAccentCustomHint', 'Glissez la pipette pour ajuster, ou tapez l\'hex. La couleur est appliquée à cette page en preview.')}
                       onCommit={handleBgAccentCustomChange}
                     />
@@ -3310,7 +3310,7 @@ const SettingsPage: React.FC = () => {
                     const selected = extractionPrefs.method === key;
                     const available =
                       key === 'extension' ? !!(typeof window !== 'undefined' && window.hasMovixExtension) :
-                      key === 'userscript' ? !!(typeof window !== 'undefined' && window.hasMovixUserscript) :
+                      key === 'userscript' ? !!(typeof window !== 'undefined' && (window as any).hasMovixUserscript) :
                       key === 'server' ? isUserVip() :
                       true;
                     return (

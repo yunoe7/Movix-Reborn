@@ -6,6 +6,7 @@ import {
   type SourcePriorityPrefs, type PriorityCategory,
   type MoviesTvPrefs, type AnimePrefs, type CustomHoster,
 } from '../types/sourcePriority';
+import { BUILTIN_HOSTER_PATTERNS } from './hosterRegistry';
 
 const STORAGE_KEY = 'settings_source_priority_prefs';
 const CHANGE_EVENT = 'movix-source-priority-changed';
@@ -150,11 +151,7 @@ function isValidPrefs(obj: unknown): obj is PersistedSourcePriorityPrefs {
 function migrateV1toV2(
   parsed: LegacySourcePriorityPrefs<1>,
 ): LegacySourcePriorityPrefs<2> {
-  // Import dynamique synchrone : le module est déjà chargé côté runtime.
-  // (Le cycle d'imports théorique est rompu en pratique car hosterRegistry
-  // n'appelle JAMAIS getSourcePriorityPrefs au import-time.)
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { BUILTIN_HOSTER_PATTERNS } = require('./hosterRegistry') as typeof import('./hosterRegistry');
+  // BUILTIN_HOSTER_PATTERNS importé en haut du module.
 
   const migratedOverrides: SourcePriorityPrefs['patternOverrides'] = {};
   for (const [id, userPatterns] of Object.entries(parsed.patternOverrides ?? {})) {

@@ -227,7 +227,7 @@ interface NightflixSource {
   label?: string;
 }
 
-type PlayerSourceType = 'primary' | 'vostfr' | 'videasy' | 'vidsrccc' | 'vidsrcsu' | 'vidsrcwtf1' | 'vidsrcwtf5' | 'multi' | 'omega' | 'darkino' | 'mp4' | 'coflix' | 'frembed' | 'custom' | 'nexus_hls' | 'nexus_file' | 'fstream' | 'wiflix' | 'j1f' | 'swiftflow' | 'viper' | 'vidmoly' | 'dropload' | 'adfree' | 'bravo' | 'kisskh' | number;
+type PlayerSourceType = 'primary' | 'vostfr' | 'videasy' | 'vidsrccc' | 'vidsrcsu' | 'vidsrcwtf1' | 'vidsrcwtf5' | 'multi' | 'omega' | 'darkino' | 'mp4' | 'coflix' | 'frembed' | 'custom' | 'nexus_hls' | 'nexus_file' | 'fstream' | 'wiflix' | 'j1f' | 'swiftflow' | 'swiftflux' | 'viper' | 'vidmoly' | 'dropload' | 'adfree' | 'bravo' | 'kisskh' | number;
 
 function formatPremidSourceDetail(...parts: Array<string | null | undefined>) {
   const normalizedParts = parts
@@ -1156,7 +1156,7 @@ const WatchMovie: React.FC = () => {
         // Pré-tri par priorité hoster (M4) avec fallback : si tous unknown,
         // on garde l'ordre brut (purstream c'est souvent un seul provider).
         const prefsBv0 = getSourcePriorityPrefs();
-        const annotatedBravo = rawBravo.map((s) => ({
+        const annotatedBravo = rawBravo.map((s: (typeof rawBravo)[number]) => ({
           ...s,
           type: (detectHoster(s.url || '', {
             patternOverrides: prefsBv0.patternOverrides,
@@ -1166,7 +1166,7 @@ const WatchMovie: React.FC = () => {
             customHosters: prefsBv0.customHosters,
           })) ?? 'unknown',
         }));
-        const allUnknown = annotatedBravo.every((s) => s.type === 'unknown');
+        const allUnknown = annotatedBravo.every((s: (typeof annotatedBravo)[number]) => s.type === 'unknown');
         localBravoSources = allUnknown
           ? rawBravo
           : (sortHostersByPriority(annotatedBravo, { category: 'moviesTv', topLevel: 'bravo' }) as typeof rawBravo);
@@ -1784,7 +1784,7 @@ const WatchMovie: React.FC = () => {
       // Close sur toutes les variables locales de fetchVideoSources (sources, résultats),
       // ce qui garde le coût faible et évite de faire ressortir tous ces états en props.
       // Retourne true si l'id a été géré avec succès, false sinon.
-      const applyEmbedConfig = async (sourceId: TopLevelSourceId): Promise<boolean> => {
+      const applyEmbedConfig = async (sourceId: TopLevelSourceId | 'nexus_file'): Promise<boolean> => {
         switch (sourceId) {
           case 'nexus_hls': {
             // Tri par priorité hoster (M4) — applique le pin user (ex. uqload first).

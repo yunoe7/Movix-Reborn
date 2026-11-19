@@ -261,7 +261,7 @@ export function mergeSegmentedSeason(
     if (isUsableName(episode.name)) return episode.name.trim();
     const fallback = fallbackByNumber.get(numberOf(episode, index));
     if (fallback && isUsableName(fallback.name)) return fallback.name.trim();
-    return isUsableText(episode.name) ? episode.name.trim() : '';
+    return isUsableText(episode.name) ? String(episode.name).trim() : '';
   };
 
   /** Synopsis exploitable : fr-FR d'abord, en-US ensuite. */

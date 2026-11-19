@@ -1091,7 +1091,7 @@ const AdminComments: React.FC = () => {
                         <span className="text-xs text-white/40">{bans.length}/{bansTotal}</span>
                     )}
                     <div className="flex gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => fetchBans(true)} disabled={bansLoading}>
+                        <Button variant="secondary" size="sm" onClick={() => fetchBans(1)} disabled={bansLoading}>
                             <RefreshCw className={`h-4 w-4 mr-1.5 ${bansLoading ? 'animate-spin' : ''}`} />
                             {t('admin.refresh')}
                         </Button>

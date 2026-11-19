@@ -841,7 +841,7 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
       // be migrated into the new account's default profile (P0-3).
       try {
         const syncableEntries = getSyncableLocalStorageEntries();
-        for (const [key] of syncableEntries) {
+        for (const key of Object.keys(syncableEntries)) {
           localStorage.removeItem(key);
         }
       } catch {

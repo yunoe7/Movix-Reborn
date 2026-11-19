@@ -555,9 +555,13 @@ app.use("/api/purstream", purstreamRouter);
 const kisskhRouter = require('./routes/kisskh');
 kisskhRouter.configure({
   redis,
+  env: process.env,
+  getProxyCandidates: require('./utils/proxyManager').getKisskhProxyCandidates,
+  reserveProxy: require('./utils/proxyManager').reserveKisskhProxy,
   verifyAccessKey: require("./checkVip").verifyAccessKey,
   TMDB_API_KEY,
   TMDB_API_URL,
+  cacheDir: require('path').join(__dirname, 'cache', 'kisskh'),
 });
 app.use('/api/kisskh', kisskhRouter);
 

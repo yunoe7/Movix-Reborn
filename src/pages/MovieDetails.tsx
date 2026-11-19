@@ -40,7 +40,7 @@ import { useTitleHistory } from '../hooks/useTitleHistory';
 import { localProgressFinished, movieResume, movieWatchedState, seedProgress } from '../utils/titleHistoryMerge';
 import { EstimateInfoDialog } from '../components/profile/EstimateInfo';
 
-const MAIN_API = import.meta.env.VITE_MAIN_API;
+
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
 const parseStoredMediaList = (stored: string | null): any[] | null => {
@@ -82,27 +82,6 @@ interface Movie {
   backdrop_path?: string;
 }
 
-interface KinocheckResponse {
-  youtube_video_id: string;
-}
-
-interface FrembedResponse {
-  status: number;
-  result: {
-    Total: number;
-    items: Array<{
-      title: string;
-      tmdb: string;
-      imdb: string;
-      year: string;
-      quality: string;
-      version: string;
-      poster: string;
-      link: string;
-    }>;
-  };
-}
-
 interface CastMember {
   id: number;
   name: string;
@@ -128,12 +107,6 @@ interface WatchStatus {
   watchlist: boolean;
   favorite: boolean;
   watched: boolean;
-}
-
-interface ExtractedVideoSource {
-  url: string;
-  quality: string;
-  label: string;
 }
 
 interface MovieExtended extends Movie {
