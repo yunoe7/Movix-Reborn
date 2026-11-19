@@ -191,7 +191,7 @@ const AprilFoolsAdminPage: React.FC = () => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    const lenis = (window as Window & { lenis?: { stop: () => void; start: () => void } }).lenis;
+    const lenis = (window as unknown as { lenis?: { stop: () => void; start: () => void } }).lenis;
     if (lenis) {
       lenis.stop();
     }

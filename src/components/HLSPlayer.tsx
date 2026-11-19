@@ -3049,11 +3049,11 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     const isSourceMenuVisible = onlyQualityMenu || (showSettings && settingsTab === 'quality');
     if (!isSourceMenuVisible) return;
 
-    const lenis = (window as Window & { lenis?: { stop: () => void; start: () => void } }).lenis;
+    const lenis = (window as unknown as { lenis?: { stop: () => void; start: () => void } }).lenis;
     if (lenis) lenis.stop();
 
     return () => {
-      const lenisInstance = (window as Window & { lenis?: { stop: () => void; start: () => void } }).lenis;
+      const lenisInstance = (window as unknown as { lenis?: { stop: () => void; start: () => void } }).lenis;
       if (lenisInstance) lenisInstance.start();
     };
   }, [onlyQualityMenu, showSettings, settingsTab]);

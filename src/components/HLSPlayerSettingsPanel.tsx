@@ -698,7 +698,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                           )}
                         </div>
 
-                        {group.sources.map(source => {
+                        {group.sources.map((source: any) => {
                           // Skip rendering individual VOSTFR sources here, they are handled in the dropdown
                           if (source.type === 'vostfr') return null;
 
@@ -706,11 +706,11 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                           // Updated isActive logic for HLS sources
                           if (source.type === 'darkino_main') {
                             // Main Darkino button is active if any child Darkino source is playing
-                            isActive = darkinoSources.some(ds => ds.m3u8 === src);
+                            isActive = darkinoSources.some((ds: any) => ds.m3u8 === src);
                           } else if (source.type === 'nexus_main') {
                             // Main Nexus button is active if any child Nexus source is playing
-                            isActive = (nexusHlsSources && nexusHlsSources.some(ns => ns.url === src)) ||
-                              (nexusFileSources && nexusFileSources.some(ns => ns.url === src));
+                            isActive = (nexusHlsSources && nexusHlsSources.some((ns: any) => ns.url === src)) ||
+                              (nexusFileSources && nexusFileSources.some((ns: any) => ns.url === src));
                           } else if (source.type === 'mp4') {
                             isActive = src === source.url; // Direct comparison for MP4
                           } else if (source.type === 'swiftflux') {
@@ -724,12 +724,12 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                             isActive = src === source.url;
                           } else if (source.type === 'viper_main') {
                             // Main Viper button is active if any viper source is active
-                            isActive = viperSources.some(vs => vs.url === embedUrl);
+                            isActive = viperSources.some((vs: any) => vs.url === embedUrl);
                           } else if (source.type === 'vox_main') {
                             // Main Vox button is active if any vox source is active
-                            isActive = voxSources.some(vs => vs.link === embedUrl);
+                            isActive = voxSources.some((vs: any) => vs.link === embedUrl);
                           } else if (source.type === 'bravo_main') {
-                            isActive = purstreamSources.some(ps => ps.url === src);
+                            isActive = purstreamSources.some((ps: any) => ps.url === src);
                           } else {
                             // Existing logic for embed sources
                             isActive = !!source.isActive || (onlyQualityMenu && embedType === source.type && embedUrl === source.url);
