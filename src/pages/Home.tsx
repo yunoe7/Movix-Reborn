@@ -1320,7 +1320,7 @@ const Home: React.FC = () => {
                   <LazySection index={8} immediateLoadCount={IMMEDIATE_LOAD_COUNT}>
                     <EmblaCarousel
                       title={usersAlsoWatchedTitle}
-                      items={personalizedReco.usersAlsoWatched}
+                      items={personalizedReco.usersAlsoWatched as any}
                       mediaType="mixed"
                     />
                   </LazySection>
