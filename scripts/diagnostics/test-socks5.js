@@ -1,5 +1,5 @@
-const https = require("node:https");
-const { SocksProxyAgent } = require("socks-proxy-agent");
+import https from "node:https";
+import { SocksProxyAgent } from "socks-proxy-agent";
 
 const proxies = [
   "socks5h://158.220.101.43:1080",
