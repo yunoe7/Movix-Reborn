@@ -1,0 +1,27 @@
+name: Diagnostic SOCKS5 (manuel via PR)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/socks5-diagnostic.yml"
+      - "scripts/diagnostics/test-socks5.js"
+
+permissions:
+  contents: read
+
+jobs:
+  test-socks5:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated diagnostic dependency
+        run: npm install --no-save --no-package-lock socks-proxy-agent@8
+      - name: Test HTTPS through each SOCKS5 proxy
+        run: node scripts/diagnostics/test-socks5.js
