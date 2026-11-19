@@ -699,7 +699,7 @@
   },
   "footer": {
     "copyright": "© {{year}} Movix. Tous droits réservés.",
-    "credits": "Développé avec ❤️ par <author>@mysticsaba</author> · Projet commencé à 14 ans",
+    "credits": "Développé avec ❤️ par <author>@yunoe7</author> · Projet commencé à 14 ans",
     "navigation": "Navigation de pied de page",
     "movix": "Movix",
     "about": "À propos de Movix",
@@ -6163,9 +6163,9 @@
     "description": "Restez informé des dernières nouveautés",
     "notNow": "Pas maintenant",
     "joinCommunity": "Rejoignez la communauté",
-    "officialAnnouncements": "Toutes les annonces officielles, le support et les discussions sont sur <strong>Matrix</strong>.",
+    "officialAnnouncements": "Toutes les annonces officielles, le support et les discussions sont sur <strong>Discord</strong>.",
     "joinUsNow": "Rejoignez-nous pour ne rien rater.",
-    "joinTelegram": "Rejoindre Matrix",
+    "joinTelegram": "Rejoindre Discord",
     "announcementMatrixDesc": "Discuter et suivre les annonces",
     "announcementSiteDesc": "Les adresses officielles à jour"
   },

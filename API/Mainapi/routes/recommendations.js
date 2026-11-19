@@ -115,10 +115,12 @@ async function fetchRecommendationsFor(source, language, apiKey) {
 }
 
 router.get('/recommendations/personalized', recommendationsRateLimit, async (req, res) => {
+  let failureStage = 'resolve-owner';
   try {
     const owner = await resolveOwner(req, res);
     if (!owner) return;
 
+    failureStage = 'read-profile';
     const language = parseLanguage(req.query.language);
     const profileData = await owner.sync.readProfileData(owner.userType, owner.userId, owner.profileId);
     if (
@@ -128,6 +130,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
       return res.status(200).json(emptyResult());
     }
 
+    failureStage = 'read-cache';
     const key = cacheKey(owner, language);
     const cached = await readCache(key);
     if (cached) return res.status(200).json(cached);
@@ -135,6 +138,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
     const apiKey = process.env.TMDB_API_KEY;
     if (!apiKey) return res.status(200).json(emptyResult());
 
+    failureStage = 'import-history';
     const historyStore = owner.sync.getHistoryStore();
     const importStatus = await ensureImported(
       getPool(),
@@ -146,6 +150,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
       return res.status(200).json(emptyResult());
     }
 
+    failureStage = 'query-history';
     // Les recommandations se basent sur tout l'historique récent du profil,
     // films et séries terminés ou non, sans consulter les autres profils.
     const [historyRows] = await getPool().execute(
@@ -153,11 +158,12 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
        FROM watch_history
        WHERE user_type = ? AND user_id = ? AND profile_id = ? AND hidden = 0
        ORDER BY last_watched_at DESC
-       LIMIT ?`,
-      [owner.userType, owner.userId, owner.profileId, MAX_HISTORY_ITEMS],
+       LIMIT ${MAX_HISTORY_ITEMS}`,
+      [owner.userType, owner.userId, owner.profileId],
     );
     if (!Array.isArray(historyRows) || historyRows.length === 0) {
       const result = emptyResult();
+      failureStage = 'write-cache';
       await writeCache(key, result);
       return res.status(200).json(result);
     }
@@ -165,6 +171,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
     const history = historyRows
       .filter((row) => (row.media_type === 'movie' || row.media_type === 'tv') && Number(row.tmdb_id) > 0)
       .map((row) => ({ ...row, tmdb_id: Number(row.tmdb_id) }));
+    failureStage = 'fetch-tmdb-details';
     const detailsPairs = await Promise.all(history.map(async (item) => {
       try {
         const details = await fetchTmdbDetails(TMDB_API_URL, apiKey, item.tmdb_id, item.media_type, language);
@@ -178,6 +185,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
     // Les titres sans détails TMDB ne déclenchent pas d'appel de recommandations.
     const sources = history.filter((item) => detailsByKey.has(mediaKey(item.media_type, item.tmdb_id)))
       .slice(0, MAX_RECOMMENDATION_REQUESTS);
+    failureStage = 'fetch-tmdb-recommendations';
     const recommendationPairs = await Promise.all(sources.map(async (source) => {
       try {
         return [mediaKey(source.media_type, source.tmdb_id), await fetchRecommendationsFor(source, language, apiKey)];
@@ -186,6 +194,7 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
         return [mediaKey(source.media_type, source.tmdb_id), []];
       }
     }));
+    failureStage = 'build-result';
     const result = {
       success: true,
       ...buildRecommendations({
@@ -199,13 +208,14 @@ router.get('/recommendations/personalized', recommendationsRateLimit, async (req
         detailsByKey,
       }),
     };
+    failureStage = 'write-cache';
     await writeCache(key, result);
     return res.status(200).json(result);
   } catch (error) {
     if (error instanceof SyncPolicyError) {
       return res.status(error.status).json({ success: false, error: error.message, code: error.code });
     }
-    console.error('[RECOMMENDATIONS] Personalized recommendations failed:', error.message || error);
+    console.error('[RECOMMENDATIONS] Personalized recommendations failed at', failureStage, error.stack || error.message || error);
     return res.status(500).json({ success: false, error: 'Recommendations unavailable' });
   }
 });

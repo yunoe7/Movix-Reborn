@@ -690,7 +690,7 @@ except ImportError:
 gc.set_threshold(50000, 500, 100)
 
 # Configuration
-PORT = 25569
+PORT = int(os.environ.get('PORT', '25569'))
 PROXY_BASE = str(os.environ.get("PROXY_BASE", '') or '').strip()
 VIP_CACHE_TTL = 300  # Cache VIP check results for 5 minutes
 
@@ -798,7 +798,7 @@ DEBRIDR_MAX_POW_ATTEMPTS = 250_000
 
 DEBRID_ENABLED_PROVIDERS = get_enabled_debrid_providers(os.environ.get('DEBRID_ENABLED_PROVIDERS'))
 
-VIDMOLY_PROXY = PROXIES[1] if len(PROXIES) > 1 else (PROXIES[0] if len(PROXIES) > 0 else None)
+VIDMOLY_PROXY = (PROXIES[1] if len(PROXIES) > 1 else (PROXIES[0] if PROXIES else None))
 
 # Logging — default WARNING (errors/warns only); set LOG_LEVEL=INFO|DEBUG to reenable.
 _LOG_LEVEL = getattr(logging, os.environ.get('LOG_LEVEL', 'INFO').upper(), logging.WARNING)

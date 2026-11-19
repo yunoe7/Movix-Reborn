@@ -192,13 +192,6 @@ function startReadableImageFetch(request: Request): ReadableImageWork {
   return work
 }
 
-function recentlyFailedCors(source: string): boolean {
-  const failedAt = corsFailures.get(source)
-  if (failedAt === undefined) return false
-  if (Date.now() - failedAt < CORS_FAILURE_RETRY_MS) return true
-  corsFailures.delete(source)
-  return false
-}
 
 function fetchOpaqueFallback(request: Request): Promise<Response> {
   const source = request.url

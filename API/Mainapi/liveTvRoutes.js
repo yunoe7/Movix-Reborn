@@ -1990,6 +1990,7 @@ const northliveCatalog = createNorthliveCatalog({
   },
   scrape: scrapeNorthliveCatalog,
   logger: console,
+  initialWaitMs: 6000,
 });
 
 async function fetchAllNorthlive(force = false) {

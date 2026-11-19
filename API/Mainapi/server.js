@@ -205,7 +205,10 @@ const { redis } = require('./config/redis');
 const { shutdownCycleTLS, refreshProxyScrapeProxies } = require('./utils/proxyManager');
 const { getPool } = require('./mysqlPool');
 
-const PORT = 25565;
+const configuredPort = Number(process.env.PORT);
+const PORT = Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65535
+  ? configuredPort
+  : 25565;
 
 // ===========================================================================
 // === MEMORY DIAGNOSTICS (worker) ===========================================

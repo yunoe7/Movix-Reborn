@@ -10,13 +10,12 @@ import { getOverlayPortalRoot } from '@/utils/overlayPortal';
 import { useIsDesktopNav } from '@/hooks/useIsDesktopNav';
 import { HoverHighlight, HoverHighlightItem } from '../ui/hover-highlight';
 import { ExploreRow, type ExploreItem } from '../ExploreMenu';
-import { MatrixIcon } from '../brand/MatrixIcon';
 import { LiquidDropdown, LiquidSheet } from './liquidMenu';
 import { useSheetScrollLock } from './useSheetScrollLock';
 import { HeaderPanelsContext } from './headerPanels';
 
 /* ─── Menu des canaux officiels ──────────────────────────────────────────────
-   Le bouton à côté du logo ouvre un petit menu : Matrix (discussion et
+   Le bouton à côté du logo ouvre un petit menu : Discord (discussion et
    annonces) et movix.online (adresses à jour). Même liquide que les autres
    menus de l'en-tête, mêmes lignes que le menu Explorer : sur ordinateur, le
    rond du bouton se remplit et coule dans le menu ; sur mobile, il s'étire
@@ -39,7 +38,7 @@ const CommunityMenu: React.FC = () => {
   const label = t('header.officialChannels');
 
   const channels = useMemo<ExploreItem[]>(() => [
-    { name: 'Matrix', path: IX_MATRIX_URL, icon: <MatrixIcon className="h-[18px] w-[18px]" />, desc: t('telegram.announcementMatrixDesc'), external: true },
+    { name: 'Discord', path: IX_MATRIX_URL, icon: <img src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png" alt="" className="h-[18px] w-[18px] object-contain" />, desc: 'Discuter et suivre les annonces', external: true },
     { name: 'movix.online', path: MOVIX_ONLINE_URL, icon: <Globe className="h-[18px] w-[18px]" />, desc: t('telegram.announcementSiteDesc'), external: true },
   ], [t]);
 

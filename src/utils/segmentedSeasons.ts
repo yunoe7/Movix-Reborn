@@ -31,7 +31,7 @@
  * `SEGMENTED_SHOWS` ne paie strictement rien : une regex sur l'URL, et on rend
  * la réponse telle quelle.
  */
-import type { AxiosInstance, AxiosResponse } from 'axios';
+import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import {
   mergeSegmentedSeason,
   type MergedEpisode,
@@ -142,7 +142,7 @@ export const installSegmentedSeasons = (instance: AxiosInstance): void => {
     try {
       const { data } = await instance.get(seasonUrl(showId, seasonNumber, params), {
         __movixSegmentedRaw: true,
-      } as SegmentedRequestConfig);
+      } as AxiosRequestConfig & { __movixSegmentedRaw?: boolean });
       return Array.isArray(data?.episodes) ? (data.episodes as SegmentedEpisode[]) : null;
     } catch {
       return null;
