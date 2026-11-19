@@ -1134,18 +1134,21 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
         const extensionAvailable = isExtensionAvailable();
         const effectiveExtensionAvailable = extensionAvailable;
 
+        const isPageHttps = window.location.protocol === 'https:';
+
         // Vavoo répartit ses edges entre des domaines tournants et des serveurs
-        // en IP nue. Une IP n'a pas de certificat valide : elle n'est servie
-        // qu'en http, donc la page https ne peut pas la charger (mixed content).
-        // L'extension, elle, n'a pas cette limite : on lui délègue ces flux au
-        // lieu de les jouer en direct.
+        // en IP nue. Une IP nue en HTTP ne peut pas être chargée depuis une page
+        // HTTPS : l'extension ou l'URL proxy signée du backend doit la transporter.
         const isDirectPlayStream = currentStream._directPlay === true;
         const isBareIpDirectServer = isDirectPlayStream && isBareIpStreamUrl(streamUrl);
+        const bareIpNeedsSecureTransport = isBareIpDirectServer && isHttp && isPageHttps;
 
-        // Direct-play streams (Vavoo source): play the raw URL as-is, never proxy
-        // or route through the extension, even if the URL matches a proxy heuristic.
-        const forceDirect = isDirectPlayStream
-            && !(isBareIpDirectServer && effectiveExtensionAvailable);
+        // Keep direct-play behavior except when a bare-IP HTTP edge would trigger
+        // Mixed Content. In that case continue through the normal extension /
+        // signed-proxy selection below instead of forcing the raw URL.
+        const forceDirect = isDirectPlayStream && !(
+            isBareIpDirectServer && (effectiveExtensionAvailable || bareIpNeedsSecureTransport)
+        );
 
         // Vavoo streams typically contain "sunshine" signature or require headers that need proxy (when no extension)
         const isVavooStream = !forceDirect && (streamUrl.includes('/sunshine/') ||
@@ -1157,8 +1160,6 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
         // Check if URL is already proxied (to prevent double-proxying)
         const isStreamedRelay = !!currentStream._streamedNative && !currentStream._streamedExtension;
         const isAlreadyProxied = isStreamedRelay || streamUrl.includes('proxiesembed') || streamUrl.includes('/proxy?url=');
-
-        const isPageHttps = window.location.protocol === 'https:';
 
         // Determine if extension will handle this stream (via Blob proxy)
         // Wiflix streams with extension should use originalUrl (unproxied) + ExtensionLoader
@@ -1201,6 +1202,23 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
         // faire à sa place (ce serait un oracle de signature) : si le serveur
         // n'en a pas joint, la lecture reste directe.
         const signedProxyUrl = typeof currentStream.proxyUrl === 'string' ? currentStream.proxyUrl : '';
+
+        // Never let HLS.js receive an HTTP URL from an HTTPS page. VIP streams
+        // can use the signed proxy URL attached by Main API; installations with
+        // the browser extension can fetch the upstream URL through ExtensionLoader.
+        // If neither transport exists, fail visibly instead of spinning forever
+        // while Chrome silently blocks every manifest request.
+        if (isHttp && isPageHttps && !extensionHandlesStream && !signedProxyUrl) {
+            const message = 'Cette source TV utilise HTTP et ne peut pas être lue en HTTPS sans extension ou proxy sécurisé.';
+            console.warn('[LiveTV] Mixed Content prevented: no extension or signed proxy URL available.');
+            setError(message);
+            setPlayerLoadError(new Error(message));
+            setIsLoading(false);
+            return () => {
+                cancelled = true;
+                if (cleanupNativeHls) cleanupNativeHls();
+            };
+        }
 
         // Construct final URL
         let finalUrl = mergeHeadersIntoProxyUrl(streamUrl, buildProxyHeadersForStream(currentStream, isVavooStream));
