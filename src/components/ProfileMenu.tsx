@@ -55,14 +55,14 @@ const onAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
 
 // Couleur pleine et opacité sur l'icône seule : une couleur translucide
 // éclaircirait les croisements de ses tracés.
-const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/55 transition-[color,opacity,transform] duration-200 group-hover:text-white/90 group-hover:opacity-100 group-hover:scale-105';
+const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/50 transition-[color,opacity,transform,filter] duration-200 group-hover:scale-105 group-hover:text-[#a9baff] group-hover:opacity-100 group-hover:drop-shadow-[0_0_7px_rgba(133,158,255,0.48)]';
 // Fond de survol simple du panneau mobile, seulement avec une souris
 // (fenêtre étroite sur ordinateur) : au toucher, il resterait accroché.
 const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.055] [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045)]';
 
 const rowClass = (variant: MenuVariant, extra?: string) => cn(
-  'group flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[color,background-color,box-shadow] duration-200 active:bg-white/[0.07] focus-visible:ring-1 focus-visible:ring-white/30',
-  variant === 'sheet' ? cn('py-3 text-base', SHEET_HOVER) : 'py-2.5 text-sm',
+  'group relative flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[color,background-color,box-shadow,transform] duration-200 active:scale-[0.99] active:bg-white/[0.07] focus-visible:ring-1 focus-visible:ring-[#9caeff]/70 focus-visible:ring-offset-1 focus-visible:ring-offset-[#101116]',
+  variant === 'sheet' ? cn('py-3 text-base', SHEET_HOVER) : 'py-2.5 text-sm hover:bg-[linear-gradient(100deg,rgba(117,139,255,0.11),rgba(255,255,255,0.025)_58%,rgba(181,133,255,0.07))] hover:shadow-[inset_0_0_0_1px_rgba(185,196,255,0.075)]',
   extra ?? 'text-white/85',
 );
 
@@ -343,15 +343,15 @@ const ProfileMenu: React.FC = () => {
 
   const renderConnected = (variant: MenuVariant) => (
     <div className={variant === 'panel' ? 'p-2' : undefined}>
-      <div data-sheet-item className="flex items-center gap-3 px-3 pb-3 pt-2">
+      <div data-sheet-item className="relative isolate mb-2 flex items-center gap-3 overflow-hidden rounded-[15px] border border-white/[0.075] bg-[linear-gradient(120deg,rgba(91,112,205,0.13),rgba(255,255,255,0.035)_48%,rgba(143,98,191,0.09))] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_24px_rgba(0,0,0,0.14)] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(ellipse_at_0%_0%,rgba(125,151,255,0.16),transparent_62%)]">
         <img
           src={profileImage}
           alt=""
-          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/25 ring-offset-2 ring-offset-[#111214] shadow-[0_0_18px_rgba(120,145,255,0.12)]"
+          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/35 ring-offset-2 ring-offset-[#111214] shadow-[0_0_0_1px_rgba(132,153,255,0.13),0_0_22px_rgba(120,145,255,0.22)]"
           onError={onAvatarError}
         />
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-semibold tracking-[-0.02em] leading-5 text-white">{username}</p>
+          <p className="truncate text-[15px] font-semibold tracking-[-0.025em] leading-5 text-white [text-shadow:0_1px_12px_rgba(255,255,255,0.12)]">{username}</p>
           {isVip
             ? vipLine('mt-0.5')
             : <p className="mt-0.5 truncate text-xs text-white/45">{providerStatus()}</p>}
@@ -529,7 +529,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="w-72 border border-white/[0.09] bg-[#111214]/95 shadow-[0_22px_70px_rgba(0,0,0,0.62),0_4px_18px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
+              panelClassName="relative isolate w-72 overflow-hidden rounded-[20px] border border-white/[0.105] bg-[#101116]/95 shadow-[0_28px_80px_rgba(0,0,0,0.68),0_8px_26px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.075)] backdrop-blur-2xl before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent after:pointer-events-none after:absolute after:inset-0 after:-z-10 after:bg-[radial-gradient(ellipse_at_0%_0%,rgba(105,132,255,0.16),transparent_54%),radial-gradient(ellipse_at_100%_15%,rgba(163,112,222,0.10),transparent_48%)]"
             >
               {renderContent('panel')}
             </LiquidDropdown>
