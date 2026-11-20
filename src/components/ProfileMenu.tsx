@@ -529,7 +529,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="w-72"
+              panelClassName="w-72 border border-white/[0.09] bg-[#111214]/95 shadow-[0_22px_70px_rgba(0,0,0,0.62),0_4px_18px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
             >
               {renderContent('panel')}
             </LiquidDropdown>
