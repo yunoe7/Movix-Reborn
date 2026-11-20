@@ -2450,7 +2450,7 @@ const MovieDetails = (): JSX.Element => {
                     </div>
 
                     {/* Notes */}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
                       <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
                         <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.ratingLabel')}</h3>
                         <div className="flex items-center gap-2">
@@ -2490,7 +2490,7 @@ const MovieDetails = (): JSX.Element => {
                             {getClassificationLabel(certifications['FR'], t)}
                           </span>
                         ) : certifications['US'] ? (
-                          <span className="bg-red-600/70 text-white px-3 py-1 rounded-md font-bold">
+                          <span className="inline-flex rounded-lg border border-rose-300/20 bg-rose-500/15 px-3 py-1.5 text-sm font-semibold text-rose-100">
                             {getClassificationLabel(certifications['US'], t)}
                           </span>
                         ) : (
