@@ -212,71 +212,118 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role }) => {
 
   const activeSectionMeta = sections.find((section) => section.id === activeSection) || sections[0];
 
+  const navigationGroups: { title: string; ids: AdminSection[] }[] = [
+    {
+      title: t('admin.navigation.content', 'Contenu'),
+      ids: ['links', 'wishboard', 'link-submissions', 'hero-promos']
+    },
+    {
+      title: t('admin.navigation.community', 'Communauté'),
+      ids: ['comments', 'shared-lists', 'reports', 'help-feedback']
+    },
+    {
+      title: t('admin.navigation.business', 'VIP & revenus'),
+      ids: ['vip-keys', 'vip-invoices', 'vip-donation-settings', 'monetization', 'referral']
+    },
+    {
+      title: t('admin.navigation.access', 'Accès & équipe'),
+      ids: ['team', 'oauth-apps']
+    }
+  ];
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 text-center">
-        <div className="inline-flex items-center justify-center rounded-full bg-white/5 p-3 ring-1 ring-white/10 mb-4">
-          <Wrench className="h-7 w-7 text-white" />
+    <div className="mx-auto w-full max-w-[1600px] px-3 py-5 sm:px-5 lg:px-7">
+      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-white/[0.08] bg-[#0b1020]/85 px-4 py-4 shadow-[0_16px_50px_rgba(0,0,0,0.22)] backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-indigo-300/20 bg-indigo-400/10 text-indigo-200 shadow-[0_0_24px_rgba(99,102,241,0.12)]">
+            <Wrench className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-200/65">MOVIX / CONTROL CENTER</p>
+            <h1 className="text-lg font-semibold tracking-tight text-white sm:text-xl">
+              {role === 'uploader' ? t('admin.uploaderSpace') : t('admin.movixAdministration')}
+            </h1>
+          </div>
         </div>
-        <div className="mb-2 flex justify-center">
-          <ShinyText
-            text={role === 'uploader' ? t('admin.uploaderSpace') : t('admin.movixAdministration')}
-            speed={2}
-            color="#ffffff"
-            shineColor="#fbbf24"
-            className="text-4xl font-bold"
-          />
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/65">
+          <span className={`h-1.5 w-1.5 rounded-full ${role === 'admin' ? 'bg-indigo-300 shadow-[0_0_8px_rgba(129,140,248,0.8)]' : 'bg-sky-300'}`} />
+          {role === 'admin' ? t('admin.adminInterface') : t('admin.streamingLinksManagement')}
         </div>
-        <p className="text-lg text-gray-400">
-          {role === 'uploader'
-            ? t('admin.streamingLinksManagement')
-            : t('admin.adminInterface')}
-        </p>
       </div>
 
-      {sections.length > 1 && (
-        <div className="mb-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-          {sections.map((section) => {
-            const Icon = section.icon;
-            const isActive = activeSection === section.id;
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[260px_minmax(0,1fr)] xl:gap-6">
+        <aside className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#090e1b]/90 shadow-[0_18px_55px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:sticky lg:top-24">
+          <div className="hidden border-b border-white/[0.07] px-5 py-5 lg:block">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-400/20 to-blue-500/10 text-indigo-200 ring-1 ring-indigo-300/20">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">Movix Admin</p>
+                <p className="text-[11px] text-white/35">{t('admin.adminInterface')}</p>
+              </div>
+            </div>
+          </div>
 
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => setActiveSection(section.id)}
-                className="text-left"
-              >
-                <AnimatedBorderCard
-                  highlightColor={section.highlight}
-                  backgroundColor="10 10 10"
-                  className={`h-full p-5 transition-all ${
-                    isActive
-                      ? 'scale-[1.02] shadow-[0_18px_45px_rgba(0,0,0,0.22)]'
-                      : 'opacity-90 hover:opacity-100'
-                  }`}
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="rounded-xl bg-white/5 p-3 ring-1 ring-white/10">
-                        <Icon className={`h-6 w-6 ${section.accent}`} />
-                      </div>
-                      {isActive && (
-                        <span className="inline-flex h-3 w-3 rounded-full bg-white/80" aria-hidden="true">
-                        </span>
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-white">{section.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-white/52">{section.description}</p>
-                    </div>
+          <nav aria-label={t('admin.navigation.label', 'Navigation administration')} className="grid grid-cols-2 gap-1.5 p-2 sm:grid-cols-3 lg:block lg:space-y-5 lg:p-3">
+            {navigationGroups.map((group) => {
+              const groupSections = group.ids
+                .map((id) => sections.find((section) => section.id === id))
+                .filter((section): section is DashboardSection => Boolean(section));
+
+              if (groupSections.length === 0) return null;
+
+              return (
+                <div key={group.title} className="min-w-0">
+                  <p className="hidden px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/30 lg:block">
+                    {group.title}
+                  </p>
+                  <div className="space-y-1">
+                    {groupSections.map((section) => {
+                      const Icon = section.icon;
+                      const isActive = activeSection === section.id;
+
+                      return (
+                        <button
+                          key={section.id}
+                          type="button"
+                          onClick={() => setActiveSection(section.id)}
+                          aria-current={isActive ? 'page' : undefined}
+                          className={`group flex min-h-[46px] w-full min-w-0 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70 sm:gap-3 ${isActive
+                            ? 'border-indigo-300/20 bg-gradient-to-r from-indigo-500/20 to-blue-500/[0.08] text-white shadow-[inset_2px_0_0_rgba(165,180,252,0.9),0_8px_24px_rgba(49,46,129,0.12)]'
+                            : 'border-transparent text-white/55 hover:border-white/[0.07] hover:bg-white/[0.045] hover:text-white/90'
+                          }`}
+                        >
+                          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${isActive ? 'bg-indigo-300/15 text-indigo-100' : 'bg-white/[0.035] text-white/45 group-hover:bg-white/[0.07] group-hover:text-white/80'}`}>
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium sm:text-[13px]">{section.title}</span>
+                          {isActive && <span className="hidden h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-200 shadow-[0_0_8px_rgba(165,180,252,0.9)] lg:block" />}
+                        </button>
+                      );
+                    })}
                   </div>
-                </AnimatedBorderCard>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              );
+            })}
+          </nav>
+
+          <div className="hidden border-t border-white/[0.07] px-5 py-4 lg:block">
+            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/25">MOVIX REBORN</p>
+            <p className="mt-1 text-[11px] text-white/35">Premium administration</p>
+          </div>
+        </aside>
+
+        <main className="min-w-0">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-1">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-200/55">{t('admin.navigation.workspace', 'Espace de travail')}</p>
+              <p className="mt-1 text-sm text-white/45">{activeSectionMeta?.description || t('admin.adminInterface')}</p>
+            </div>
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1 text-[11px] text-white/40">
+              {sections.length} {t('admin.navigation.sections', 'sections')}
+            </span>
+          </div>
 
       {activeSection === 'vip-invoices' && role === 'admin' ? (
         <div>
@@ -433,6 +480,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role }) => {
           )}
         </AnimatedBorderCard>
       )}
+
+        </main>
+      </div>
     </div>
   );
 };
