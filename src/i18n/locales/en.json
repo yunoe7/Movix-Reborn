@@ -8348,7 +8348,7 @@
     "common": {
       "back": "Back to hub",
       "backToHub": "Back to tutorials hub",
-      "contactTelegram": "Contact support on Matrix"
+      "contactTelegram": "Contact support on Discord"
     },
     "glossary": {
       "seed": "Secret 12-word phrase (BIP39 standard) that serves as the unique key to your Movix account. No one server-side knows it — if you lose it, the account is permanently lost.",
@@ -8367,7 +8367,7 @@
       "clearSearch": "Clear search",
       "foundIn": "Found in:",
       "noResults": "No tutorial matches your search.",
-      "bottomCta": "Can't find what you need? Reach out on Matrix.",
+      "bottomCta": "Can't find what you need? Join us on Discord.",
       "cardCaMarchePlusTitle": "Nothing works anymore",
       "cardCaMarchePlusSub": "The 4 most common causes, in the order to try them.",
       "cardDnsTitle": "My ISP is blocking Movix",
