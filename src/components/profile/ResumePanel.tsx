@@ -13,7 +13,7 @@ export default function ResumePanel({ item, loading }: { item: ResumeItem | null
   const [imageFailed, setImageFailed] = useState(false);
 
   if (loading) {
-    return <div className="h-full min-h-[280px] animate-pulse rounded-2xl bg-gray-900" aria-hidden="true" />;
+    return <div className="h-full min-h-[280px] animate-pulse rounded-[1.6rem] bg-gray-900 shadow-[0_22px_60px_rgba(0,0,0,0.3)] ring-1 ring-white/10" aria-hidden="true" />;
   }
 
   if (!item) {
@@ -46,13 +46,13 @@ export default function ResumePanel({ item, loading }: { item: ResumeItem | null
           src={image}
           alt=""
           onError={() => setImageFailed(true)}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]"
         />
       )}
       {/* Voile neutre pour lire le texte sur la photo */}
-      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
+      <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-black/15" />
 
-      <div className="relative p-5 sm:p-6">
+      <div className="relative p-6 sm:p-7">
         <p className="text-sm text-white/70">{t('profilePage.resume.kicker', 'Tu en étais là')}</p>
         <h2 className="mt-1 line-clamp-2 text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl">{item.title}</h2>
         <p className="mt-1 text-[15px] text-white/75">{episodeLine}</p>

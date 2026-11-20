@@ -50,7 +50,7 @@ export default function HistoryStatusSwitch({ active, counts, onChange, panelId,
     <div
       role="tablist"
       aria-label={t('profilePage.history.statusLabel', 'Statut')}
-      className="grid w-full grid-cols-3 gap-1 rounded-2xl bg-gray-900 p-1 sm:inline-flex sm:w-auto sm:rounded-full"
+      className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-white/[0.07] bg-[#111827] p-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.18)] sm:inline-flex sm:w-auto sm:rounded-full"
     >
       {STATUSES.map((status, index) => {
         const selected = status === active;
@@ -69,7 +69,7 @@ export default function HistoryStatusSwitch({ active, counts, onChange, panelId,
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(status)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[13px] font-medium leading-tight transition-[color,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-9 sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:py-0 sm:text-sm ${selected ? 'text-white' : 'text-white/55 hover:text-white'}`}
+            className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[13px] font-semibold leading-tight transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-9 sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:py-0 sm:text-sm ${selected ? 'text-white' : 'text-white/55 hover:text-white'}`}
           >
             {selected && (
               <motion.span

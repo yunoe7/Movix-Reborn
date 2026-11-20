@@ -37,7 +37,7 @@ export default function ProfileTabs({ tabs, active, onChange, label }: ProfileTa
 
   return (
     <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-      <div role="tablist" aria-label={label} className="flex min-w-max gap-1 sm:gap-2">
+      <div role="tablist" aria-label={label} className="flex min-w-max gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.035] p-1.5 shadow-[0_12px_36px_rgba(0,0,0,0.18)] sm:gap-2">
         {tabs.map((tab, index) => {
           const selected = tab.id === active;
           return (
@@ -54,7 +54,7 @@ export default function ProfileTabs({ tabs, active, onChange, label }: ProfileTa
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.id)}
               onKeyDown={(event) => handleKeyDown(event, index)}
-              className={`relative flex h-12 items-center gap-2 rounded-t-md px-3 text-[15px] font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 ${selected ? 'text-white' : 'text-white/55 hover:text-white'}`}
+              className={`relative flex h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 ${selected ? 'text-white' : 'text-white/55 hover:text-white'}`}
             >
               <span className="whitespace-nowrap">{tab.label}</span>
               {typeof tab.count === 'number' && (
@@ -64,7 +64,7 @@ export default function ProfileTabs({ tabs, active, onChange, label }: ProfileTa
                 <motion.span
                   layoutId="profile-tab-underline"
                   transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }}
-                  className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-red-600"
+                  className="absolute inset-x-4 bottom-0 h-[2px] rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.55)]"
                   aria-hidden="true"
                 />
               )}

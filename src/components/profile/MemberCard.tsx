@@ -98,22 +98,22 @@ export default function MemberCard({
         onPointerMove={handlePointerMove}
         onPointerLeave={resetTilt}
         style={reduceMotion ? undefined : { rotateX, rotateY, transformStyle: 'preserve-3d' }}
-        className="relative flex h-full min-h-[280px] flex-col overflow-hidden rounded-2xl bg-red-600 text-white"
+        className="relative flex h-full min-h-[280px] flex-col overflow-hidden rounded-[1.6rem] border border-white/[0.09] bg-[#111318] text-white shadow-[0_24px_70px_rgba(0,0,0,0.48)] ring-1 ring-black/40"
       >
         {/* Bande de pellicule : la seule décoration de la carte */}
-        <div aria-hidden="true" className="flex h-9 min-w-0 shrink-0 items-center justify-between gap-1.5 overflow-hidden bg-red-800 px-3">
+        <div aria-hidden="true" className="flex h-8 min-w-0 shrink-0 items-center justify-between gap-1.5 overflow-hidden border-b border-red-500/20 bg-[#211216] px-3">
           {SPROCKETS.map((_, index) => (
             <span key={index} className="h-3.5 w-5 shrink-0 rounded-[3px] bg-black" />
           ))}
         </div>
 
-        <div className="flex flex-1 flex-col gap-5 p-5 sm:p-6">
+        <div className="relative flex flex-1 flex-col gap-5 bg-[radial-gradient(ellipse_at_92%_0%,rgba(153,27,48,0.24),transparent_38%),radial-gradient(ellipse_at_0%_100%,rgba(127,29,29,0.10),transparent_42%),linear-gradient(135deg,#17181e_0%,#101116_58%,#151116_100%)] p-5 sm:gap-6 sm:p-7">
           <div className="flex items-start justify-between gap-4">
             <div className="relative">
               <button
                 type="button"
                 onClick={onEditAvatar}
-                className="group/avatar relative block h-20 w-20 overflow-hidden rounded-full bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:h-24 sm:w-24"
+                className="group/avatar relative block h-20 w-20 overflow-hidden rounded-full bg-black shadow-[0_8px_28px_rgba(0,0,0,0.28)] ring-[3px] ring-red-500/35 shadow-[0_0_0_5px_rgba(127,29,29,0.10),0_10px_30px_rgba(0,0,0,0.5)] transition-transform duration-300 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:h-24 sm:w-24"
                 aria-label={t('profilePage.card.changeAvatar', 'Changer d’avatar')}
               >
                 {avatar && !avatarFailed ? (
@@ -126,7 +126,7 @@ export default function MemberCard({
                 </span>
               </button>
             </div>
-            <p className="text-right text-sm leading-snug text-white/85">
+            <p className="rounded-xl border border-white/[0.09] bg-black/25 px-3 py-2 text-right text-xs leading-snug text-white/90 backdrop-blur-md sm:text-sm">
               {t('profilePage.card.title', 'Carte de membre')}
               <br />
               <span className="text-white/70">
@@ -174,7 +174,7 @@ export default function MemberCard({
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/25 transition-[background-color,transform] hover:bg-black/40 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-red-400/20 bg-red-950/50 text-red-100 transition-[background-color,transform] hover:bg-red-900/70 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
                   aria-label={t('profilePage.card.rename', 'Modifier le nom')}
                 >
                   <Pencil className="h-4 w-4" aria-hidden="true" />
@@ -194,14 +194,14 @@ export default function MemberCard({
                 {vipUntil ? t('vip.activeUntil', { date: vipUntil }) : t('vip.youAreVip')}
               </span>
             ) : (
-              <Link to="/vip" className="inline-flex items-center gap-1.5 rounded-full bg-black px-3.5 py-1.5 text-sm font-medium transition-colors hover:bg-black/80">
+              <Link to="/vip" className="inline-flex items-center gap-1.5 rounded-full border border-red-500/25 bg-red-950/70 px-3.5 py-1.5 text-sm font-semibold text-red-50 shadow-[0_4px_16px_rgba(127,29,29,0.18)] transition-colors hover:bg-red-900/80">
                 <Crown className="h-4 w-4" aria-hidden="true" />
                 {t('vip.becomeVip')}
               </Link>
             )}
             <div className="flex gap-1.5">
               {profileCount > 0 && (
-                <Link to="/profile-selection" className={buttonClass('ghost', 'sm', 'text-white/90 hover:bg-black/20')}>
+                <Link to="/profile-selection" className={buttonClass('ghost', 'sm', 'text-white/85 hover:bg-white/[0.08]')}>
                   <Repeat className="h-4 w-4" aria-hidden="true" />
                   {t('profilePage.card.switchProfile', 'Changer')}
                 </Link>

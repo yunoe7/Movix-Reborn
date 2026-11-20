@@ -103,8 +103,8 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-start gap-4 rounded-xl bg-gray-900 px-6 py-10 sm:flex-row sm:items-center sm:px-8">
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-red-600/15 text-red-400 [&>svg]:h-6 [&>svg]:w-6">
+    <div className="group relative isolate flex flex-col items-start gap-5 overflow-hidden rounded-[1.4rem] border border-white/[0.07] bg-[#111827] px-6 py-8 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center sm:px-8 sm:py-9">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-600/15 text-red-400 ring-1 ring-red-500/15 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-6 [&>svg]:w-6">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
@@ -203,7 +203,7 @@ export function PosterTicket({
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-t-lg';
 
   return (
-    <article className={`group relative flex flex-col ${selected ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
+    <article className={`group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(0,0,0,0.28)] ${selected ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
       {to ? (
         <Link to={to} aria-label={title} className={`block ${focusRing}`}>{art}</Link>
       ) : onOpen ? (
@@ -217,11 +217,11 @@ export function PosterTicket({
         </div>
       )}
 
-      <div className={`relative rounded-b-lg px-3 pb-3 pt-3 ${colors.strip}`}>
+      <div className={`relative rounded-b-2xl px-3 pb-3 pt-3 ${colors.strip}`}>
         {/* Perforation et encoches du talon */}
-        <span aria-hidden="true" className="absolute inset-x-3 top-0 border-t-2 border-dotted border-black/45" />
-        <span aria-hidden="true" className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-black" />
-        <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full bg-black" />
+        <span aria-hidden="true" className="absolute inset-x-3 top-0 border-t border-white/10" />
+        <span aria-hidden="true" className="hidden" />
+        <span aria-hidden="true" className="hidden" />
         <p className="line-clamp-1 text-sm font-medium" title={title}>{title}</p>
         {(metaLeft || metaRight) && (
           <p className={`mt-0.5 flex items-center justify-between gap-2 text-[13px] tabular-nums ${colors.meta}`}>
@@ -242,5 +242,5 @@ export function PosterBadge({ children }: { children: React.ReactNode }) {
 
 /** Grille d'affiches commune à tous les onglets. */
 export function PosterGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">{children}</div>;
+  return <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">{children}</div>;
 }

@@ -49,7 +49,7 @@ export default function HistoryStats({ data }: { data: HistoryListResponse | nul
   ];
   return (
     <>
-      <dl className="grid grid-cols-3 gap-y-4 rounded-xl bg-gray-900 px-2 py-4 sm:grid-cols-5 sm:px-0">
+      <dl className="grid grid-cols-3 gap-y-4 rounded-[1.35rem] border border-white/[0.07] bg-[#111827] px-2 py-5 shadow-[0_16px_42px_rgba(0,0,0,0.2)] sm:grid-cols-5 sm:px-0 sm:py-6">
         {stats.map((stat, index) => (
           <div
             key={stat.key}
