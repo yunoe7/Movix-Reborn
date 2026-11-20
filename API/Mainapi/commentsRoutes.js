@@ -1,4 +1,4 @@
-﻿﻿const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const fs = require("fs").promises;
 const path = require("path");
@@ -674,12 +674,36 @@ async function getUserData(userId, userType, profileId = null) {
   userData.isAdmin = false;
   try {
     const authType = userType === "bip39" ? "bip-39" : userType;
-    const [rows] = await getCachedPool().execute(
+    const pool = getCachedPool();
+    const [rows] = await pool.execute(
       "SELECT role FROM admins WHERE user_id = ? AND auth_type = ? LIMIT 1",
       [userId, authType],
     );
     // Même compatibilité avec les anciens admins que middleware/auth.js.
-    userData.isAdmin = rows.length > 0 && (rows[0].role || "admin") === "admin";
+    if (rows.length > 0 && (rows[0].role || "admin") === "admin") {
+      userData.isAdmin = true;
+    }
+
+    // Support des administrateurs Discord, même s'ils ne sont pas dans admins.
+    if (!userData.isAdmin) {
+      let discordUserId = String(userId).trim();
+      if (!/^\\d{17,20}$/.test(discordUserId)) {
+        const targetUserType = userType === "bip39" ? "bip39" : "oauth";
+        const [linkRows] = await pool.execute(
+          "SELECT provider_user_id FROM account_links WHERE provider = 'discord' AND target_user_type = ? AND target_user_id = ? LIMIT 1",
+          [targetUserType, String(userId)],
+        );
+        const candidate = String(linkRows[0]?.provider_user_id || "").trim();
+        discordUserId = /^\\d{17,20}$/.test(candidate) ? candidate : null;
+      }
+      if (discordUserId) {
+        const { getDiscordAdminRole } = require("./utils/discordAdminRoles");
+        const discordAccess = await getDiscordAdminRole(discordUserId);
+        if (discordAccess.configured && ["owner", "admin"].includes(discordAccess.role)) {
+          userData.isAdmin = true;
+        }
+      }
+    }
   } catch (err) {
     console.error("❌ Erreur lors de la vérification admin:", err);
   }
@@ -1517,6 +1541,30 @@ router.delete("/notifications/:id", requireAuth, writeRateLimit, async (req, res
     res.json({ message: "Notification supprimée" });
   } catch (error) {
     console.error("Erreur lors de la suppression de la notification:", error);
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+
+// GET /api/comments/notifications/unread-count - Compter les notifications non lues
+router.get("/notifications/unread-count", requireAuth, async (req, res) => {
+  try {
+    const { profileId } = req.query;
+    if (!profileId) {
+      return res.status(400).json({ error: "profileId requis" });
+    }
+    const userProfileIds = await getProfileIds(req.user.userId, req.user.userType);
+    if (!userProfileIds.includes(profileId)) {
+      return res.status(403).json({ error: "Profil non autorisé" });
+    }
+    await ensureNotificationTables();
+    const pool = getCachedPool();
+    const [rows] = await pool.execute(
+      "SELECT COUNT(*) AS count FROM notifications WHERE user_id = ? AND user_type = ? AND profile_id = ? AND is_read = 0",
+      [req.user.userId, req.user.userType, profileId],
+    );
+    res.json({ count: Number(rows[0]?.count || 0) });
+  } catch (error) {
+    console.error("Erreur lors du comptage des notifications:", error);
     res.status(500).json({ error: "Erreur serveur" });
   }
 });
