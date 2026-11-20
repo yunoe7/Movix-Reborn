@@ -33,7 +33,7 @@ import {
 import { isExtensionAvailable, fetchFromExtension } from '../utils/extensionProxy';
 import { isUserVip } from '../utils/authUtils';
 import { copyText } from '../utils/clipboard';
-import { unsubscribeFromPush } from '../services/pushNotificationService';
+import { subscribeToPush, unsubscribeFromPush } from '../services/pushNotificationService';
 import { clearStoredAuthSession, getResolvedAccountContext, setPendingAuthLink } from '../utils/accountAuth';
 import {
   formatStorageBytes,
@@ -1158,7 +1158,7 @@ const SettingsPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const authToken = localStorage.getItem('auth_token');
+    const authToken = localStorage.getItem('auth_token') || localStorage.getItem('session_id');
     if (!authToken) return;
     fetch(`${API_URL}/api/comments/notifications/preferences`, {
       headers: { 'Authorization': `Bearer ${authToken}` },
@@ -1201,7 +1201,7 @@ const SettingsPage: React.FC = () => {
   }, [extensionPresent]);
 
   const handleNotificationsToggle = async () => {
-    const authToken = localStorage.getItem('auth_token');
+    const authToken = localStorage.getItem('auth_token') || localStorage.getItem('session_id');
     if (!authToken || notificationsLoading) return;
     setNotificationsLoading(true);
     const newValue = !notificationsDisabled;
@@ -1218,6 +1218,8 @@ const SettingsPage: React.FC = () => {
         // Désinscrire des push si notifications désactivées
         if (data.notificationsDisabled) {
           unsubscribeFromPush();
+        } else {
+          subscribeToPush().catch(() => {});
         }
       }
     } catch {

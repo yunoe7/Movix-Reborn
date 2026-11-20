@@ -170,13 +170,12 @@ export async function getUnreadNotificationsCount(): Promise<number> {
       return 0;
     }
 
-    const response = await axios.get(`${API_URL}/api/comments/notifications`, {
-      params: { unreadOnly: 'true', limit: 100, profileId },
+    const response = await axios.get(`${API_URL}/api/comments/notifications/unread-count`, {
+      params: { profileId },
       headers: { Authorization: `Bearer ${token}` }
     });
 
-    const unreadNotifications: ApiNotification[] = response.data.notifications || [];
-    return unreadNotifications.length;
+    return Number(response.data?.count || 0);
   } catch (error) {
     console.error('Error getting unread notifications count:', error);
     return 0;
