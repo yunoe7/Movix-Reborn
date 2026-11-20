@@ -986,7 +986,7 @@ const RoulettePage: React.FC = () => {
               <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-5xl">
                 <ShinyText text={t('roulette.title')} speed={4} />
               </h1>
-              <Dices className="w-8 h-8 text-red-500" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-400/20 bg-gradient-to-br from-rose-500/20 to-red-600/10 text-rose-300 shadow-[0_0_28px_rgba(239,68,68,0.16)]"><Dices className="h-6 w-6" /></span>
             </div>
             <p className="text-sm font-medium tracking-wide text-slate-400">{t('roulette.subtitle')}</p>
           </motion.div>
@@ -1065,7 +1065,7 @@ const RoulettePage: React.FC = () => {
 
                   {/* Min rating */}
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                    <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">{t('roulette.minRating')}</label>
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{t('roulette.minRating')}</label>
                     <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-black/20 px-3 py-2">
                       <CustomSlider min={0} max={10} step={0.5} value={localMinRating}
                         onChange={setLocalMinRating}
@@ -1079,7 +1079,7 @@ const RoulettePage: React.FC = () => {
 
                   {/* Languages — multi-select */}
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                    <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">{t('roulette.language')}</label>
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{t('roulette.language')}</label>
                     <CustomDropdown
                       options={languageOptions.filter(o => !selectedLangs.includes(o.value))}
                       value=""
@@ -1101,19 +1101,19 @@ const RoulettePage: React.FC = () => {
 
                   {/* Year min */}
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                    <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">{t('roulette.yearMin')}</label>
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{t('roulette.yearMin')}</label>
                     <CustomDropdown options={yearOptions} value={yearMin} onChange={setYearMin} searchable={false} />
                   </motion.div>
 
                   {/* Year max */}
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                    <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">{t('roulette.yearMax')}</label>
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{t('roulette.yearMax')}</label>
                     <CustomDropdown options={yearOptions} value={yearMax} onChange={setYearMax} searchable={false} />
                   </motion.div>
 
                   {/* Providers — multi-select */}
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                    <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">{t('roulette.provider')}</label>
+                    <label className="mb-2 block text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">{t('roulette.provider')}</label>
                     <CustomDropdown
                       options={providerOptions.filter(o => !selectedProviders.includes(o.value))}
                       value=""
