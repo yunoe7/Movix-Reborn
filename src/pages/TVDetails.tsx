@@ -3750,7 +3750,7 @@ const TVDetails: React.FC = () => {
                             {getClassificationLabel(certifications['FR'], t)}
                           </span>
                         ) : certifications['US'] ? (
-                          <span className="bg-red-600/70 text-white px-3 py-1 rounded-md font-bold">
+                          <span className="inline-flex rounded-lg border border-rose-300/20 bg-rose-500/15 px-3 py-1.5 text-sm font-semibold text-rose-100">
                             {getClassificationLabel(certifications['US'], t)}
                           </span>
                         ) : (
@@ -3764,13 +3764,13 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className="mb-6 seasons-section"
+                    className="mb-6 rounded-2xl border border-white/[0.08] bg-slate-950/25 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm seasons-section"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                      <h3 className="text-xl font-bold">{t('details.seasonsLabel')}</h3>
+                      <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.seasonsLabel')}</h3>
                       {hasNetflixLayout && !animeMode && id && (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-400">{t('details.seasonLayout')}</span>
