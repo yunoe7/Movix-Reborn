@@ -456,6 +456,7 @@ function systemMessage(room, text) {
 // Rôle du porteur d'un token pour une room donnée : 'host', 'member' ou null.
 function resolveRoomRole(room, token) {
   if (!room || typeof token !== 'string' || !token) return null;
+  if (room.hostTokens && room.hostTokens instanceof Set && room.hostTokens.has(token)) return 'host';
   if (room.hostToken && safeCompare(token, room.hostToken)) return 'host';
   if (room.accessTokens && Object.prototype.hasOwnProperty.call(room.accessTokens, token)) return 'member';
   return null;
@@ -1125,7 +1126,15 @@ watchpartyIO.on('connection', (socket) => {
     // ancien reste donc confinée aux membres légitimes.
     if (socket.id === r.hostId && r.participants.length > 0) {
       const newHost = r.participants.sort((a, b) => a.joinedAt - b.joinedAt)[0];
+      // Révoquer l'ancien jeton d'hôte et émettre un nouveau jeton persistant.
+      const newHostToken = generateToken();
+      r.hostToken = newHostToken;
+      r.hostTokens = new Set([newHostToken]);
       r.hostId = newHost.id; newHost.isHost = true;
+      const newHostSocket = watchpartyIO.sockets.get(newHost.id);
+      if (newHostSocket) {
+        newHostSocket.emit('host:token', { token: newHostToken });
+      }
       const newHostMsg = systemMessage(r, `${newHost.nickname} est maintenant l'hôte de la Watch Party.`);
       watchpartyIO.to(roomId).emit('room:chat', newHostMsg);
     }
@@ -1198,6 +1207,7 @@ app.post(
         code,
         hostId: null,
         hostToken,                // secret : ne doit jamais sortir d'ici
+        hostTokens: new Set([hostToken]), // jetons d'hôte valides (transfert révoque les anciens)
         accessTokens: {},         // token -> { nickname, issuedAt }
         createdByIp: getClientIp(req),
         maxParticipants: Math.max(2, Math.min(MAX_PARTICIPANTS_CAP, Number(maxParticipants) || 10)),

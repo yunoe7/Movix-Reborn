@@ -850,6 +850,15 @@ const WatchPartyRoom: React.FC = () => {
         );
       });
 
+      socket.on('host:token', ({ token }: { token: string }) => {
+        if (!mounted || !token) return;
+        try {
+          storeRoomToken(roomId, token);
+        } catch {
+          // ignore storage failures
+        }
+      });
+
       socket.on('room:chatToggled', ({ enabled }: { enabled: boolean }) => {
         if (!mounted) return;
         setChatEnabled(enabled);

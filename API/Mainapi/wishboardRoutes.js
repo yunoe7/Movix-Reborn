@@ -776,8 +776,7 @@ function createWishboardRouter(mysqlPool, redis) {
                 whereParams
             );
 
-            const hasMore = requests.length > limitNum;
-            const paginatedRequests = hasMore ? requests.slice(0, limitNum) : requests;
+            const paginatedRequests = requests;
 
             // Get notes for each request and user info
             const requestsWithNotes = await Promise.all(requests.map(async (r) => {
@@ -815,8 +814,10 @@ function createWishboardRouter(mysqlPool, redis) {
             const filteredAll = vip_only === 'true'
                 ? requestsWithNotes.filter(r => r.user?.isVip)
                 : requestsWithNotes;
-            const hasMoreFiltered = filteredAll.length > limitNum;
-            const filteredRequests = hasMoreFiltered ? filteredAll.slice(0, limitNum) : filteredAll;
+            // hasMore is based on the raw page, so a VIP present on a later
+            // page is not hidden by a full page of non-VIP results.
+            const hasMore = requests.length > limitNum;
+            const filteredRequests = filteredAll.slice(0, limitNum);
 
             // Get stats
             const [statsResult] = await mysqlPool.execute(`
@@ -831,7 +832,7 @@ function createWishboardRouter(mysqlPool, redis) {
 
             res.json({
                 requests: filteredRequests,
-                hasMore: hasMoreFiltered,
+                hasMore,
                 stats: {
                     total: statsResult[0].total || 0,
                     pending: statsResult[0].pending || 0,
