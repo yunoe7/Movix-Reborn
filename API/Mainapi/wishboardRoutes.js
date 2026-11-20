@@ -342,7 +342,17 @@ function createWishboardRouter(mysqlPool, redis) {
             // Check vote status and get public notes for each request
             const requestsWithVotes = await Promise.all(requests.map(async (r) => {
                 let hasVoted = false;
-                if (profileId) {
+                const auth = await (async () => {
+                    try { return require('./middleware/auth').getAuthIfValid(req); } catch { return null; }
+                })();
+                const voteUserId = auth?.userId || null;
+                if (voteUserId) {
+                    const [voteRows] = await mysqlPool.execute(
+                        'SELECT id FROM wishboard_votes WHERE request_id = ? AND user_id = ?',
+                        [r.id, voteUserId]
+                    );
+                    hasVoted = voteRows.length > 0;
+                } else if (profileId) {
                     const [voteRows] = await mysqlPool.execute(
                         'SELECT id FROM wishboard_votes WHERE request_id = ? AND profile_id = ?',
                         [r.id, profileId]
@@ -614,8 +624,8 @@ function createWishboardRouter(mysqlPool, redis) {
                 );
 
                 const [voteRows] = await mysqlPool.execute(
-                    'SELECT id FROM wishboard_votes WHERE request_id = ? AND profile_id = ?',
-                    [r.id, profileId]
+                    'SELECT id FROM wishboard_votes WHERE request_id = ? AND user_id = ?',
+                    [r.id, req.user.userId]
                 );
 
                 // Get status history
@@ -654,9 +664,9 @@ function createWishboardRouter(mysqlPool, redis) {
             const [requests] = await mysqlPool.execute(
                 `SELECT r.* FROM wishboard_requests r
          INNER JOIN wishboard_votes v ON v.request_id = r.id
-         WHERE v.profile_id = ? AND r.profile_id != ?
+         WHERE v.user_id = ? AND r.user_id != ?
          ORDER BY v.created_at DESC`,
-                [profileId, profileId]
+                [req.user.userId, req.user.userId]
             );
 
             const requestsWithVoted = await Promise.all(requests.map(async (r) => {
@@ -766,11 +776,10 @@ function createWishboardRouter(mysqlPool, redis) {
                 whereParams
             );
 
-            const hasMore = requests.length > limitNum;
-            const paginatedRequests = hasMore ? requests.slice(0, limitNum) : requests;
+            const paginatedRequests = requests;
 
             // Get notes for each request and user info
-            const requestsWithNotes = await Promise.all(paginatedRequests.map(async (r) => {
+            const requestsWithNotes = await Promise.all(requests.map(async (r) => {
                 const [notes] = await mysqlPool.execute(
                     'SELECT id, admin_id, note, is_public, created_at FROM wishboard_notes WHERE request_id = ? ORDER BY created_at DESC',
                     [r.id]
@@ -800,10 +809,15 @@ function createWishboardRouter(mysqlPool, redis) {
                 return { ...r, notes, statusHistory, user };
             }));
 
-            // Filter VIP-only after fetching user data
-            const filteredRequests = vip_only === 'true'
+            // Filter VIP-only after fetching user data. Keep the extra row so
+            // hasMore reflects the filtered result set, not the raw page.
+            const filteredAll = vip_only === 'true'
                 ? requestsWithNotes.filter(r => r.user?.isVip)
                 : requestsWithNotes;
+            // hasMore is based on the raw page, so a VIP present on a later
+            // page is not hidden by a full page of non-VIP results.
+            const hasMore = requests.length > limitNum;
+            const filteredRequests = filteredAll.slice(0, limitNum);
 
             // Get stats
             const [statsResult] = await mysqlPool.execute(`

@@ -190,6 +190,25 @@ async function ensureSharedListsTable() {
           INDEX idx_shared_lists_moderation (moderation_flagged, is_public_in_catalog)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
+
+      // Compatibilité avec d'anciennes tables existantes en production.
+      const alterStatements = [
+        'ALTER TABLE shared_lists ADD COLUMN is_public_in_catalog TINYINT(1) NOT NULL DEFAULT 0',
+        'ALTER TABLE shared_lists ADD COLUMN moderation_flagged TINYINT(1) NOT NULL DEFAULT 0',
+        'ALTER TABLE shared_lists ADD COLUMN moderation_reason VARCHAR(255) NULL',
+        'ALTER TABLE shared_lists ADD COLUMN moderation_details TEXT NULL',
+        'ALTER TABLE shared_lists ADD COLUMN moderated_at BIGINT NULL'
+      ];
+      for (const statement of alterStatements) {
+        try {
+          await pool.execute(statement);
+        } catch (alterError) {
+          // Colonne déjà présente : ignorer.
+          if (alterError?.errno !== 1060 && !String(alterError?.message || '').toLowerCase().includes('duplicate column')) {
+            throw alterError;
+          }
+        }
+      }
     });
 
     console.log('✅ Table MySQL shared_lists initialisée');
@@ -777,8 +796,7 @@ router.get('/admin/public', requireAdmin, async (req, res) => {
     const offset = (safePage - 1) * safeLimit;
 
     const rows = await dbAll(
-      'SELECT * FROM shared_lists WHERE is_public_in_catalog = 1 AND moderation_flagged = 0 ORDER BY updated_at DESC LIMIT ? OFFSET ?',
-      [safeLimit, offset]
+      `SELECT * FROM shared_lists WHERE is_public_in_catalog = 1 AND moderation_flagged = 0 ORDER BY updated_at DESC LIMIT ${safeLimit} OFFSET ${offset}`
     );
 
     const totalResult = await dbGet(
@@ -819,18 +837,18 @@ router.get('/admin/public', requireAdmin, async (req, res) => {
 
     res.json({
       lists: enrichedLists,
-      total: totalResult.total,
+      total: Number(totalResult.total || 0),
       stats: {
-        total: statsResult.total,
-        publicCount: statsResult.public_count,
-        moderatedCount: statsResult.moderated_count
+        total: Number(statsResult.total || 0),
+        publicCount: Number(statsResult.public_count || 0),
+        moderatedCount: Number(statsResult.moderated_count || 0)
       },
       page: safePage,
       limit: safeLimit,
-      hasMore: offset + enrichedLists.length < totalResult.total
+      hasMore: offset + enrichedLists.length < Number(totalResult.total || 0)
     });
   } catch (error) {
-    console.error('Erreur GET /admin/public:', error.message);
+    console.error('Erreur GET /admin/public:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -869,8 +887,7 @@ router.get('/admin/moderated', requireAdmin, async (req, res) => {
     const offset = (safePage - 1) * safeLimit;
 
     const rows = await dbAll(
-      'SELECT * FROM shared_lists WHERE moderation_flagged = 1 ORDER BY moderated_at DESC LIMIT ? OFFSET ?',
-      [safeLimit, offset]
+      `SELECT * FROM shared_lists WHERE moderation_flagged = 1 ORDER BY moderated_at DESC LIMIT ${safeLimit} OFFSET ${offset}`
     );
 
     const totalResult = await dbGet(
@@ -906,13 +923,13 @@ router.get('/admin/moderated', requireAdmin, async (req, res) => {
 
     res.json({
       lists: enrichedLists,
-      total: totalResult.total,
+      total: Number(totalResult.total || 0),
       page: safePage,
       limit: safeLimit,
-      hasMore: offset + enrichedLists.length < totalResult.total
+      hasMore: offset + enrichedLists.length < Number(totalResult.total || 0)
     });
   } catch (error) {
-    console.error('Erreur GET /admin/moderated:', error.message);
+    console.error('Erreur GET /admin/moderated:', error);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

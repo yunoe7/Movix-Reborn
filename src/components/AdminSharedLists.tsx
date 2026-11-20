@@ -47,6 +47,7 @@ const AdminSharedLists: React.FC = () => {
     const [lists, setLists] = useState<SharedList[]>([]);
     const [stats, setStats] = useState<AdminStats>({ total: 0, publicCount: 0, moderatedCount: 0 });
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'public' | 'moderated'>('public');
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
@@ -91,9 +92,13 @@ const AdminSharedLists: React.FC = () => {
                 }
 
                 setHasMore(data.hasMore || false);
+                setError(null);
+            } else {
+                setError(`HTTP ${response.status}`);
             }
         } catch (error) {
             console.error('Error fetching admin shared lists:', error);
+            setError(error instanceof Error ? error.message : 'Erreur réseau');
         } finally {
             setLoading(false);
         }
@@ -237,6 +242,8 @@ const AdminSharedLists: React.FC = () => {
                     <div className="flex items-center justify-center py-20">
                         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
                     </div>
+                ) : error ? (
+                    <div className="text-center py-20 text-red-400">{error}</div>
                 ) : lists.length === 0 ? (
                     <div className="text-center py-20">
                         <List className="h-12 w-12 text-white opacity-20 mx-auto mb-4" />

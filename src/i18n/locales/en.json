@@ -4286,6 +4286,7 @@
     "unsupport": "Unsupport",
     "statusPending": "Under review",
     "statusNotFound": "Not found",
+    "statusNotFoundRecent": "Not found recently",
     "statusTooRecent": "Too recent",
     "statusSearching": "Scouting in progress",
     "statusAdded": "Greenlighted",

@@ -767,10 +767,29 @@ async function readProfileImportData(userType, userId, profileId) {
 }
 
 // Privé : seuls les résultats de sanitizeProfileData sont transmis ici.
+async function invalidateSharedListCache(userType, userId, profileId) {
+  try {
+    const pool = getPool();
+    const [rows] = await pool.execute(
+      'SELECT share_code FROM shared_lists WHERE user_id = ? AND user_type = ? AND profile_id = ?',
+      [userId, userType, profileId],
+    );
+    if (rows.length > 0) {
+      const { redis } = require('../config/redis');
+      await Promise.all(rows.map((row) => redis.del(`sharedList:${row.share_code}`).catch(() => {})));
+    }
+  } catch {
+    /* ignore cache invalidation failures */
+  }
+}
+
 async function writeProfileSnapshot(userType, userId, profileId, snapshot) {
   const profilePath = getProfileFilePath(USERS_DIR, userType, userId, profileId);
   const success = await safeWriteFile(profilePath, snapshot.serialized);
   if (!success) console.error(`Erreur de sauvegarde atomique pour le profil ${profileId}`);
+  if (success) {
+    await invalidateSharedListCache(userType, userId, profileId);
+  }
   return success;
 }
 
@@ -802,6 +821,8 @@ async function writeLockedProfileSnapshot(userType, userId, profileId, snapshot)
     console.error(`Erreur de sauvegarde atomique pour le profil ${profileId}:`, error && error.message ? error.message : error);
     return false;
   }
+  await invalidateSharedListCache(userType, userId, profileId);
+  return true;
 }
 
 async function writeProfileData(userType, userId, profileId, data) {
@@ -810,7 +831,24 @@ async function writeProfileData(userType, userId, profileId, data) {
       throw new SyncPolicyError('Donnees de profil invalides', 400, 'INVALID_PROFILE_DATA');
     }
 
-    return await writeProfileSnapshot(userType, userId, profileId, sanitizeProfileData(data));
+    const success = await writeProfileSnapshot(userType, userId, profileId, sanitizeProfileData(data));
+    if (success) {
+      // Invalidate cached shared lists for this profile (best-effort, non-blocking).
+      try {
+        const pool = getPool();
+        const [rows] = await pool.execute(
+          'SELECT share_code FROM shared_lists WHERE user_id = ? AND user_type = ? AND profile_id = ?',
+          [userId, userType, profileId],
+        );
+        if (rows.length > 0) {
+          const { redis } = require('../config/redis');
+          await Promise.all(rows.map((row) => redis.del(`sharedList:${row.share_code}`).catch(() => {})));
+        }
+      } catch {
+        /* ignore cache invalidation failures */
+      }
+    }
+    return success;
   } catch (error) {
     console.error(`Erreur de sauvegarde du profil ${profileId}:`, error.message);
     return false;

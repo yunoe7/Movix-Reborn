@@ -108,9 +108,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   expiresAt: apiExpDate
                 }));
                 setIsAuthenticated(apiExpDate === 'never' || new Date(apiExpDate) > new Date());
-                if (!setIsAuthenticated) {
-                  setError(i18n.t('auth.errors.expirationChanged'));
-                }
               } else {
                 setIsAuthenticated(true);
               }

@@ -307,7 +307,7 @@ if ('serviceWorker' in navigator) {
       registration.update().catch(() => {});
 
       // Re-souscrire au push si permission déjà accordée mais subscription perdue
-      if ('PushManager' in window && Notification.permission === 'granted' && safeLocalStorageGetItem('auth_token')) {
+      if ('PushManager' in window && Notification.permission === 'granted' && (safeLocalStorageGetItem('auth_token') || safeLocalStorageGetItem('session_id'))) {
         const subscription = await registration.pushManager.getSubscription();
         if (!subscription) {
           const { subscribeToPush } = await import('./services/pushNotificationService');

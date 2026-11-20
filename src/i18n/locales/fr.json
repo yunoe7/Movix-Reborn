@@ -4286,6 +4286,7 @@
     "unsupport": "Ne plus soutenir",
     "statusPending": "En étude",
     "statusNotFound": "Introuvable",
+    "statusNotFoundRecent": "Introuvable récemment",
     "statusTooRecent": "Trop récent",
     "statusSearching": "Repérage en cours",
     "statusAdded": "Greenlighté",

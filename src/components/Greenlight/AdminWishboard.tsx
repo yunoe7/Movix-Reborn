@@ -144,6 +144,7 @@ interface LeaderboardEntry {
 const statusOptions = [
     { value: 'pending', label: 'admin.statusPending', color: 'text-amber-400' },
     { value: 'not_found', label: 'admin.statusNotFound', color: 'text-orange-400' },
+    { value: 'not_found_recent', label: 'admin.statusNotFoundRecent', color: 'text-orange-400' },
     { value: 'searching', label: 'admin.statusSearching', color: 'text-blue-400' },
     { value: 'added', label: 'admin.statusAdded', color: 'text-green-400' },
     { value: 'rejected', label: 'admin.statusRejected', color: 'text-red-400' },
@@ -875,14 +876,25 @@ const AdminWishboard: React.FC = () => {
                     try {
                         if (request.season_number.startsWith('[')) {
                             const parsed = JSON.parse(request.season_number);
-                            if (parsed.includes(0)) {
+                            if (Array.isArray(parsed) && parsed.includes(0)) {
                                 // 0 means all seasons
                                 seasonsToCheck = Array.from({ length: numberOfSeasons }, (_, i) => i + 1);
+                            } else if (Array.isArray(parsed)) {
+                                seasonsToCheck = parsed.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value > 0);
+                                if (seasonsToCheck.length === 0) seasonsToCheck = [1];
                             } else {
-                                seasonsToCheck = parsed;
+                                seasonsToCheck = [1];
                             }
                         } else {
-                            seasonsToCheck = [parseInt(request.season_number)];
+                            const seasonNumber = parseInt(request.season_number, 10);
+                            if (seasonNumber === 0) {
+                                // 0 means all seasons
+                                seasonsToCheck = Array.from({ length: numberOfSeasons }, (_, i) => i + 1);
+                            } else if (Number.isFinite(seasonNumber) && seasonNumber > 0) {
+                                seasonsToCheck = [seasonNumber];
+                            } else {
+                                seasonsToCheck = [1];
+                            }
                         }
                     } catch {
                         seasonsToCheck = [1];

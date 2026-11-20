@@ -241,25 +241,24 @@ async function enrichWithTMDBData(contents) {
 /**
  * Middleware to verify JWT token
  */
-const verifyToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        // If no token, check if we can proceed without it (e.g. for simple tracking?)
-        // But user asked for verification "like other routes", so we enforce it.
-        // However, wrapped tracker might not have header set if useWrappedTracker uses standard fetch without setting headers.
-        // Let's check useWrappedTracker.ts... It uses fetch without custom headers?
-        // Wait, I need to check useWrappedTracker.ts. 
-        // If useWrappedTracker doesn't send Authorization header, this will break tracking.
-        return res.status(401).json({ success: false, error: 'Access denied. No token provided.' });
-    }
-
+const verifyToken = async (req, res, next) => {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-        req.user = decoded;
+        const { getAuthIfValid } = require('./middleware/auth');
+        const auth = await getAuthIfValid(req);
+        if (!auth) {
+            return res.status(401).json({ success: false, error: 'Access denied. Session invalid or revoked.' });
+        }
+        req.user = {
+            sub: auth.userId,
+            userType: auth.userType,
+            sessionId: auth.sessionId,
+            authMethod: auth.authMethod,
+        };
         next();
     } catch (error) {
+        if (error && error.code === 'AUTH_INFRASTRUCTURE_UNAVAILABLE') {
+            return res.status(503).json({ success: false, error: 'Service temporairement indisponible' });
+        }
         return res.status(403).json({ success: false, error: 'Invalid token.' });
     }
 };

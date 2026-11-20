@@ -456,6 +456,7 @@ function systemMessage(room, text) {
 // Rôle du porteur d'un token pour une room donnée : 'host', 'member' ou null.
 function resolveRoomRole(room, token) {
   if (!room || typeof token !== 'string' || !token) return null;
+  if (room.hostTokens && room.hostTokens instanceof Set && room.hostTokens.has(token)) return 'host';
   if (room.hostToken && safeCompare(token, room.hostToken)) return 'host';
   if (room.accessTokens && Object.prototype.hasOwnProperty.call(room.accessTokens, token)) return 'member';
   return null;
@@ -550,7 +551,7 @@ watchpartyIO.on('connection', (socket) => {
 
   // La capacité n'était vérifiée que dans POST /join, donc contournable en se
   // connectant directement au socket.
-  if (role !== 'host' && room.participants.length >= room.maxParticipants) {
+  if (room.participants.length >= room.maxParticipants) {
     socket.emit('error', { message: 'This watch party is full.' });
     socket.disconnect();
     return;
@@ -558,6 +559,7 @@ watchpartyIO.on('connection', (socket) => {
 
   socket.data.role = role;
   socket.data.token = token;
+  if (room._cleanupTimer) { clearTimeout(room._cleanupTimer); room._cleanupTimer = null; }
   socket.join(roomId);
 
   // L'hôte est celui qui détient le hostToken, plus « le premier socket arrivé » :
@@ -600,7 +602,7 @@ watchpartyIO.on('connection', (socket) => {
   socket.on('chat:message', (data) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
-    if (r.chatEnabled === false && socket.id !== r.hostId) return;
+    if (r.chatEnabled === false && socket.id !== r.hostId && !r.coHosts.includes(socket.id)) return;
     const me = r.participants.find(p => p.id === socket.id);
     if (!me) return;
     const text = sanitizeString(data?.text, MAX_CHAT_LENGTH);
@@ -680,6 +682,9 @@ watchpartyIO.on('connection', (socket) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return; // Only host can approve
+    // Validate that the target is a current participant.
+    const targetParticipant = r.participants.find((p) => p.id === participantId);
+    if (!targetParticipant) return;
     // Remove from pending
     r.pendingControlRequests = r.pendingControlRequests.filter(req => req.participantId !== participantId);
     // Add to co-hosts if not already
@@ -984,11 +989,11 @@ watchpartyIO.on('connection', (socket) => {
       yesVotes,
       noVotes,
       totalVotes,
-      totalParticipants: r.pauseVote.totalParticipants
+      totalParticipants: r.participants.length
     });
 
     // Check if everyone has voted
-    if (totalVotes >= r.pauseVote.totalParticipants) {
+    if (totalVotes >= r.participants.length) {
       // Clear the timeout since everyone voted
       if (r.pauseVote.timeoutId) {
         clearTimeout(r.pauseVote.timeoutId);
@@ -1003,9 +1008,12 @@ watchpartyIO.on('connection', (socket) => {
     const r = watchpartyRooms.get(roomId);
     if (!r.pauseVote) return;
 
-    const yesVotes = Object.values(r.pauseVote.votes).filter(v => v === true).length;
-    const totalVotes = Object.keys(r.pauseVote.votes).length;
-    const majority = Math.ceil(r.pauseVote.totalParticipants / 2);
+    const currentIds = new Set(r.participants.map((p) => p.id));
+    const eligibleEntries = Object.entries(r.pauseVote.votes).filter(([id]) => currentIds.has(id));
+    const yesVotes = eligibleEntries.filter(([, value]) => value === true).length;
+    const totalVotes = eligibleEntries.length;
+    const totalParticipants = r.participants.length || r.pauseVote.totalParticipants;
+    const majority = Math.ceil(totalParticipants / 2);
 
     const passed = yesVotes >= majority;
 
@@ -1041,7 +1049,7 @@ watchpartyIO.on('connection', (socket) => {
       passed,
       yesVotes,
       noVotes: totalVotes - yesVotes,
-      totalParticipants: r.pauseVote.totalParticipants
+      totalParticipants: totalParticipants
     });
 
     // Clear timeout if it exists
@@ -1072,6 +1080,8 @@ watchpartyIO.on('connection', (socket) => {
     if (socket.id !== r.hostId || !participantId || participantId === r.hostId) return;
     const target = r.participants.find(p => p.id === participantId);
     if (!target) return;
+    r.coHosts = r.coHosts.filter((id) => id !== participantId);
+    r.pendingControlRequests = r.pendingControlRequests.filter((req) => req.participantId !== participantId);
     const s = watchpartyIO.sockets.get(participantId);
     if (s) {
       // Sans révocation du token, l'exclu se reconnectait immédiatement.
@@ -1116,14 +1126,27 @@ watchpartyIO.on('connection', (socket) => {
     // ancien reste donc confinée aux membres légitimes.
     if (socket.id === r.hostId && r.participants.length > 0) {
       const newHost = r.participants.sort((a, b) => a.joinedAt - b.joinedAt)[0];
+      // Révoquer l'ancien jeton d'hôte et émettre un nouveau jeton persistant.
+      const newHostToken = generateToken();
+      r.hostToken = newHostToken;
+      r.hostTokens = new Set([newHostToken]);
       r.hostId = newHost.id; newHost.isHost = true;
+      const newHostSocket = watchpartyIO.sockets.get(newHost.id);
+      if (newHostSocket) {
+        newHostSocket.emit('host:token', { token: newHostToken });
+      }
       const newHostMsg = systemMessage(r, `${newHost.nickname} est maintenant l'hôte de la Watch Party.`);
       watchpartyIO.to(roomId).emit('room:chat', newHostMsg);
     }
 
+    // Clean stale permission/request entries for the leaving participant.
+    r.coHosts = r.coHosts.filter((id) => id !== socket.id);
+    r.pendingControlRequests = r.pendingControlRequests.filter((req) => req.participantId !== socket.id);
+
     // If empty, auto-clean after 5 min
     if (r.participants.length === 0) {
-      setTimeout(() => {
+      if (r._cleanupTimer) clearTimeout(r._cleanupTimer);
+      r._cleanupTimer = setTimeout(() => {
         const still = watchpartyRooms.get(roomId);
         if (still && still.participants.length === 0) {
           watchpartyRooms.delete(roomId);
@@ -1184,6 +1207,7 @@ app.post(
         code,
         hostId: null,
         hostToken,                // secret : ne doit jamais sortir d'ici
+        hostTokens: new Set([hostToken]), // jetons d'hôte valides (transfert révoque les anciens)
         accessTokens: {},         // token -> { nickname, issuedAt }
         createdByIp: getClientIp(req),
         maxParticipants: Math.max(2, Math.min(MAX_PARTICIPANTS_CAP, Number(maxParticipants) || 10)),
