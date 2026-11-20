@@ -3428,9 +3428,9 @@ const TVDetails: React.FC = () => {
                   <button
                     onClick={handleAnimeModeToggle}
                     disabled={loadingAnimeData}
-                    className={`w-full px-3 py-2 text-sm font-medium rounded-md transition-all flex items-center justify-center ${animeMode
-                      ? 'bg-purple-700 hover:bg-purple-600 text-white'
-                      : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                    className={`group flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a] ${animeMode
+                      ? 'border-purple-300/25 bg-gradient-to-r from-purple-600 via-purple-600 to-fuchsia-600 text-white shadow-[0_8px_24px_rgba(147,51,234,0.22)] hover:-translate-y-0.5 hover:from-purple-500 hover:via-purple-500 hover:to-fuchsia-500'
+                      : 'border-white/10 bg-white/[0.06] text-gray-200 hover:border-white/20 hover:bg-white/[0.1]'
                       } ${loadingAnimeData ? 'cursor-wait opacity-70' : ''}`}
                   >
                     {animeMode ? (
