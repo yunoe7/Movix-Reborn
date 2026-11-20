@@ -136,10 +136,10 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
                 type="button"
                 onClick={() => setOpen(!open)}
                 className={cn(
-                    "flex h-10 w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white",
+                    "flex h-10 w-full items-center justify-between rounded-xl border border-white/[0.1] bg-[#111a29]/80 px-3.5 py-2 text-sm font-medium text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]",
                     "ring-offset-black placeholder:text-white/40",
-                    "hover:bg-white/10 hover:border-white/20",
-                    "focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2",
+                    "hover:border-white/20 hover:bg-white/[0.08]",
+                    "focus:outline-none focus:ring-2 focus:ring-rose-400/45 focus:ring-offset-2 focus:ring-offset-[#0b1220]",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     "transition-all duration-200",
                     className
@@ -151,7 +151,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
                     animate={{ rotate: open ? 180 : 0 }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
                 >
-                    <ChevronDown className="h-4 w-4 text-white opacity-50" />
+                    <ChevronDown className="h-4 w-4 text-slate-400 transition-colors" />
                 </motion.div>
             </button>
         );
@@ -311,8 +311,8 @@ const SelectContent: React.FC<SelectContentProps> = ({ className, children }) =>
                     <div
                         ref={contentRef as any}
                         className={cn(
-                            "min-h-0 rounded-lg border border-white/10 bg-gray-900/95 text-white shadow-xl backdrop-blur-xl",
-                            "max-h-80 overflow-y-auto overscroll-contain",
+                            "min-h-0 rounded-xl border border-white/[0.1] bg-[#101a2a]/[0.98] text-white shadow-[0_18px_50px_rgba(0,0,0,0.5)] ring-1 ring-black/30 backdrop-blur-2xl",
+                            "max-h-80 min-w-[190px] overflow-y-auto overscroll-contain",
                             className
                         )}
                     >
@@ -369,10 +369,10 @@ const SelectItem: React.FC<SelectItemProps> = ({ value, className, children }) =
             whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
             whileTap={{ scale: 0.98 }}
             className={cn(
-                "relative flex w-full cursor-pointer select-none items-center rounded-md py-2 pl-8 pr-2 text-sm outline-none",
-                "text-white/80 hover:text-white",
+                "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2.5 pl-9 text-left text-sm leading-snug outline-none",
+                "text-slate-300 hover:text-white",
                 "transition-colors duration-150",
-                isSelected && "text-white bg-white/5",
+                isSelected && "bg-rose-500/[0.12] font-semibold text-white ring-1 ring-inset ring-rose-400/15",
                 className
             )}
         >
@@ -385,7 +385,7 @@ const SelectItem: React.FC<SelectItemProps> = ({ value, className, children }) =
                             exit={{ scale: 0, opacity: 0 }}
                             transition={{ duration: 0.15 }}
                         >
-                            <Check className="h-4 w-4 text-red-500" />
+                            <Check className="h-4 w-4 text-rose-300" />
                         </motion.div>
                     )}
                 </AnimatePresence>
