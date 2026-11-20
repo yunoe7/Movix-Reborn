@@ -118,12 +118,12 @@ export const WishboardCard: React.FC<WishboardCardProps> = ({
             exit={{ opacity: 0, y: -20 }}
             whileHover={{ y: -4 }}
             transition={{ duration: 0.2 }}
-            className="group relative flex cursor-pointer flex-col"
+            className="group relative flex cursor-pointer flex-col rounded-2xl border border-white/[0.07] bg-gradient-to-b from-[#111a29]/70 to-[#090e17]/80 p-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-all duration-200 hover:border-white/[0.15] hover:shadow-[0_18px_40px_rgba(0,0,0,0.28)]"
             onClick={onClick}
         >
-            <div className="relative w-full rounded-lg overflow-hidden">
+            <div className="relative w-full overflow-hidden rounded-xl">
                 {/* Placeholder background */}
-                <div className="absolute inset-0 bg-gray-800 rounded-lg flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-slate-800/80">
                     {mediaType === 'movie' ? (
                         <Film className="w-10 h-10 opacity-20 text-white" />
                     ) : (
@@ -132,12 +132,12 @@ export const WishboardCard: React.FC<WishboardCardProps> = ({
                 </div>
 
                 {/* Poster */}
-                <div className="relative aspect-[2/3] overflow-hidden rounded-lg">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-xl ring-1 ring-inset ring-white/[0.08]">
                     {posterUrl && (
                         <motion.img
                             src={posterUrl}
                             alt={title}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
                             loading="lazy"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -216,8 +216,8 @@ export const WishboardCard: React.FC<WishboardCardProps> = ({
             </div>
 
             {/* Info */}
-            <div className="mt-2 flex flex-col gap-0.5">
-                <p className="line-clamp-2 text-sm font-semibold leading-tight text-white group-hover:text-green-400 transition-colors">
+            <div className="mt-3 flex flex-col gap-1 px-1.5 pb-1">
+                <p className="line-clamp-2 text-sm font-bold leading-snug text-white transition-colors group-hover:text-emerald-300">
                     {title}
                 </p>
                 <p className="text-xs text-white/50">{year}</p>
@@ -225,7 +225,7 @@ export const WishboardCard: React.FC<WishboardCardProps> = ({
 
             {/* Public Notes (Admin feedback) */}
             {notes && notes.length > 0 && (
-                <div className="mt-2 bg-white/10 rounded-md p-2 text-xs text-white/80 border border-white/5">
+                <div className="mt-2 rounded-xl border border-white/[0.07] bg-white/[0.035] p-3 text-xs text-slate-300">
                     <p className="font-semibold text-green-400 mb-1 flex items-center gap-1">
                         <MessageSquare className="w-3 h-3" /> {t('greenlight.teamNote')}
                     </p>
