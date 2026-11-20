@@ -546,7 +546,7 @@ const ImagesSection = ({ movieId, images, loading }: { movieId: string; images: 
               <div>
                 {/* Tabs catégories — pattern shadcn (pastille rouge animée via layoutId).
                     Même structure que SourcePriorityPanel / sidebar Settings. */}
-                <div role="tablist" className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-white/5 overflow-x-auto">
+                <div role="tablist" className="mb-6 flex items-center gap-1 overflow-x-auto rounded-xl border border-white/[0.07] bg-black/20 p-1.5 shadow-inner">
                   {(['backdrops', 'posters', 'logos'] as const).map((category) => {
                     const isActive = selectedCategory === category;
                     const labelKey = category === 'backdrops' ? 'details.backgrounds' : `details.${category}`;
@@ -558,13 +558,13 @@ const ImagesSection = ({ movieId, images, loading }: { movieId: string; images: 
                         aria-selected={isActive}
                         onClick={() => setSelectedCategory(category)}
                         className={`relative flex-1 min-w-0 flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 ${
-                          isActive ? 'text-white' : 'text-gray-400 hover:text-white'
+                          isActive ? 'text-white' : 'text-slate-400 hover:text-white'
                         }`}
                       >
                         {isActive && (
                           <motion.div
                             layoutId="movie-images-tabs-indicator"
-                            className="absolute inset-0 bg-red-600 rounded-lg shadow-sm shadow-red-600/30"
+                            className="absolute inset-0 rounded-lg bg-gradient-to-r from-rose-600 to-red-500 shadow-[0_6px_18px_rgba(225,29,72,0.22)]"
                             transition={{ type: 'spring', bounce: 0.15, duration: 0.45 }}
                           />
                         )}
@@ -601,7 +601,7 @@ const ImagesSection = ({ movieId, images, loading }: { movieId: string; images: 
                   <div className="relative mb-6 language-dropdown">
                     <motion.button
                       onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                      className="flex items-center justify-between w-full md:w-64 px-4 py-3 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-600/50 text-white transition-all duration-200 backdrop-blur-sm"
+                      className="flex w-full items-center justify-between rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 py-3 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-white/20 hover:bg-white/[0.08] md:w-64"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -637,7 +637,7 @@ const ImagesSection = ({ movieId, images, loading }: { movieId: string; images: 
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: -10, scale: 0.95 }}
                           transition={{ duration: 0.2 }}
-                          className="absolute left-0 md:left-0 w-full md:w-64 mt-2 bg-gray-800/95 backdrop-blur-md rounded-xl border border-gray-600/50 shadow-2xl z-[9999] overflow-hidden max-h-64 overflow-y-auto"
+                          className="absolute left-0 z-[9999] mt-2 max-h-64 w-full overflow-y-auto overflow-hidden rounded-xl border border-white/[0.1] bg-[#111b2b]/95 shadow-2xl backdrop-blur-xl md:left-0 md:w-64"
                         >
                           <div className="py-2">
                             <motion.button
@@ -2790,7 +2790,7 @@ const MovieDetails = (): JSX.Element => {
                         {movie.spoken_languages.map((language, index) => (
                           <motion.div
                             key={language.iso_639_1}
-                            className="bg-gray-800 px-3 py-2 rounded-lg border border-gray-700"
+                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.1 + index * 0.05 }}
@@ -2820,7 +2820,7 @@ const MovieDetails = (): JSX.Element => {
                       {t(movieReleaseWarningsEnabled ? 'details.movieRelease.referenceDate' : 'details.releaseDateLabel')}
                     </h3>
                     <motion.div
-                      className="bg-gray-800 px-3 py-2 rounded-lg inline-block border border-gray-700"
+                      className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm"
                       whileHover={{
                         backgroundColor: "rgba(75,85,99, 0.8)",
                         y: -2,
@@ -2849,12 +2849,12 @@ const MovieDetails = (): JSX.Element => {
                         {t('details.financialStatsTitle')}
                       </h3>
                       <motion.div
-                        className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700"
+                        className="flex overflow-hidden rounded-xl border border-white/[0.09] bg-black/25 p-1 shadow-inner"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
                         <button
-                          className={`px-3 py-1 text-sm ${financialStatsMode === 'simple' ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                          className={`px-3 py-1 text-sm ${financialStatsMode === 'simple' ? 'rounded-lg bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'rounded-lg bg-transparent text-slate-400 hover:bg-white/[0.06] hover:text-white'}`}
                           onClick={() => setFinancialStatsMode('simple')}
                         >
                           {t('details.simpleMode')}
@@ -2871,7 +2871,7 @@ const MovieDetails = (): JSX.Element => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Budget */}
                       <motion.div
-                        className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                         whileHover={{
                           backgroundColor: "rgba(75,85,99, 0.8)",
                           y: -2,
@@ -2910,7 +2910,7 @@ const MovieDetails = (): JSX.Element => {
                       {/* Bénéfice/Perte */}
                       {movie.budget && movie.revenue && movie.budget > 0 && movie.revenue > 0 && (
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700 col-span-1 md:col-span-2"
+                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -2959,7 +2959,7 @@ const MovieDetails = (): JSX.Element => {
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.3 }}
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700 col-span-1 md:col-span-2 mt-4"
+                          className="col-span-1 mt-4 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm md:col-span-2"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -2989,7 +2989,7 @@ const MovieDetails = (): JSX.Element => {
                               <span className="font-semibold">{t('details.profitabilityEstimate')}</span> {t('details.forMovie', { title: movie.title })}:
                             </p>
 
-                            <div className="bg-gray-900 p-2 rounded-lg mb-2">
+                            <div className="mb-2 rounded-xl border border-white/[0.06] bg-black/20 p-3">
                               <div className="flex justify-between items-center mb-1">
                                 <span className="text-xs text-gray-400">{t('details.breakEvenEstimate')}:</span>
                                 <span className="text-xs font-semibold text-gray-300">
@@ -3034,7 +3034,7 @@ const MovieDetails = (): JSX.Element => {
                               <span className="font-semibold">{t('details.factorsImpacting')}:</span>
                             </p>
                             <div className="grid grid-cols-2 gap-2">
-                              <div className="bg-gray-900 p-2 rounded-lg">
+                              <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
                                 <h5 className="text-xs font-medium text-green-400 mb-1">{t('details.positiveFactors')}</h5>
                                 <ul className="list-disc pl-4 text-xs text-gray-300 space-y-0.5">
                                   {movie.vote_average >= 7 && <li>{t('details.highRating', { rating: movie.vote_average })}</li>}
