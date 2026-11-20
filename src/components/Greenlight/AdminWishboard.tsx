@@ -1117,9 +1117,9 @@ const AdminWishboard: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#0b1220]/95 via-[#0a0d14]/95 to-[#101321]/95 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.3)] sm:p-6">
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-5">
                 {[
                     { label: 'admin.total', value: stats.total, color: 'text-white' },
                     { label: 'admin.pending', value: stats.pending, color: 'text-amber-400' },
@@ -1130,9 +1130,9 @@ const AdminWishboard: React.FC = () => {
                     <motion.div
                         key={stat.label}
                         whileHover={{ scale: 1.02 }}
-                        className="bg-white/5 rounded-lg p-4 border border-white/10"
+                        className="group relative overflow-hidden rounded-xl border border-white/[0.09] bg-white/[0.035] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.055]"
                     >
-                        <div className={`text-2xl font-bold ${stat.color}`}>
+                        <div className={`relative z-10 text-2xl font-bold tracking-tight ${stat.color}`}>
                             <Counter
                                 value={stat.value}
                                 fontSize={24}
@@ -1146,17 +1146,17 @@ const AdminWishboard: React.FC = () => {
                                 gradientHeight={0}
                             />
                         </div>
-                        <p className="text-xs text-white/50">{t(stat.label)}</p>
+                        <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">{t(stat.label)}</p>
                     </motion.div>
                 ))}
             </div>
 
             {/* View Toggle */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 rounded-xl border border-white/[0.07] bg-black/20 p-1.5">
                 <Button
                     variant={activeView === 'requests' ? 'default' : 'ghost'}
                     onClick={() => setActiveView('requests')}
-                    className={activeView === 'requests' ? 'bg-green-600 hover:bg-green-700' : ''}
+                    className={activeView === 'requests' ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg shadow-green-900/25' : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'}
                 >
                     <ListChecks className="h-4 w-4 mr-2" />
                     Demandes
@@ -1164,7 +1164,7 @@ const AdminWishboard: React.FC = () => {
                 <Button
                     variant={activeView === 'leaderboard' ? 'default' : 'ghost'}
                     onClick={() => setActiveView('leaderboard')}
-                    className={activeView === 'leaderboard' ? 'bg-amber-600 hover:bg-amber-700' : ''}
+                    className={activeView === 'leaderboard' ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-900/25' : 'text-slate-400 hover:bg-white/[0.06] hover:text-white'}
                 >
                     <Star className="h-4 w-4 mr-2" />
                     Classement mensuel
@@ -1371,7 +1371,7 @@ const AdminWishboard: React.FC = () => {
             ) : (
             <>
             {/* Filters */}
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3 sm:gap-3.5">
                 <div className="relative flex-1 min-w-[200px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white opacity-40" />
                     <Input
@@ -1467,7 +1467,7 @@ const AdminWishboard: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4 }}
-                className="bg-white/5 rounded-lg border border-white/10 overflow-hidden"
+                className="overflow-hidden rounded-2xl border border-white/[0.09] bg-[#0c111b]/75 shadow-[0_14px_40px_rgba(0,0,0,0.2)]"
             >
                 {fetchError && (
                     <div role="alert" className="mx-4 mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -1479,16 +1479,16 @@ const AdminWishboard: React.FC = () => {
                         <Loader2 className="h-8 w-8 animate-spin text-green-500" />
                     </div>
                 ) : requests.length === 0 ? (
-                    <div className="text-center py-20">
-                        <Filter className="h-12 w-12 text-white opacity-20 mx-auto mb-4" />
-                        <p className="text-white/50">{t('admin.noRequestFound')}</p>
+                    <div className="flex min-h-[240px] flex-col items-center justify-center px-5 py-16 text-center">
+                        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.035]"><Filter className="h-7 w-7 text-slate-500" /></div>
+                        <p className="text-sm font-medium text-slate-300">{t('admin.noRequestFound')}</p>
                     </div>
                 ) : (
                     <div className="overflow-auto max-h-[72vh] custom-scrollbar" data-lenis-prevent>
                         <table className="w-full min-w-[800px]"> {/* Min width for horizontal scroll on mobile */}
                             <thead>
                                 <tr className="border-b border-white/10 bg-white/5">
-                                    <th className="sticky top-0 z-20 bg-black/95 text-left p-4 text-sm font-medium text-white/70 cursor-pointer hover:text-white" onClick={() => handleSort('title')}>
+                                    <th className="sticky top-0 z-20 cursor-pointer bg-[#111827]/95 p-4 text-left text-xs font-semibold uppercase tracking-[0.1em] text-slate-400 backdrop-blur-xl transition-colors hover:text-white" onClick={() => handleSort('title')}>
                                         <div className="flex items-center">{t('admin.content')} {getSortIcon('title')}</div>
                                     </th>
                                     <th className="sticky top-0 z-20 bg-black/95 text-left p-4 text-sm font-medium text-white/70 cursor-pointer hover:text-white" onClick={() => handleSort('media_type')}>
@@ -1521,7 +1521,7 @@ const AdminWishboard: React.FC = () => {
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: -20 }}
                                             transition={{ duration: 0.18 }}
-                                            className="border-b border-white/5 hover:bg-white/5 transition-colors"
+                                            className="border-b border-white/[0.055] transition-colors hover:bg-white/[0.035]"
                                         >
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
