@@ -3629,7 +3629,7 @@ const TVDetails: React.FC = () => {
                 >
                   {/* Synopsis */}
                   <motion.div
-                    className="mb-6"
+                    className="mb-6 rounded-2xl border border-white/[0.08] bg-slate-950/35 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1 }}
@@ -3643,7 +3643,7 @@ const TVDetails: React.FC = () => {
                     </div>
 
                     {/* TMDB Info Box */}
-                    <div data-halloween-parchment className="mb-6 p-4 border border-red-500/50 bg-red-500/10 rounded-lg flex gap-3 items-start">
+                    <div data-halloween-parchment className="mb-6 flex items-start gap-3 rounded-xl border border-rose-400/25 bg-gradient-to-r from-rose-500/[0.11] via-red-500/[0.07] to-transparent p-4 shadow-[0_8px_24px_rgba(0,0,0,0.14)] backdrop-blur-md">
                       <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-gray-300">
                         <p>
@@ -3661,8 +3661,8 @@ const TVDetails: React.FC = () => {
                       </div>
                     </div>
 
-                    <h2 className="text-xl font-bold mb-2">{t('details.synopsisTitle')}</h2>
-                    <p className="text-gray-300">
+                    <h2 className="mb-3 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.synopsisTitle')}</h2>
+                    <p className="max-w-5xl text-sm leading-7 text-slate-200/85 sm:text-[15px]">
                       {shouldHide('episodeOverviews')
                         ? getMaskedContent(tvShow.overview || t('details.noSynopsis'), 'episodeOverviews')
                         : (tvShow.overview || t('details.noSynopsis'))
@@ -3671,25 +3671,25 @@ const TVDetails: React.FC = () => {
                   </motion.div>
                   {/* Infos basiques */}
                   <motion.div
-                    className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"
+                    className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
                   >
                     {/* Nombre de saisons */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">{t('details.seasonsLabel')}</h3>
+                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.seasonsLabel')}</h3>
                       <p className="text-gray-300">{tvShow.number_of_seasons || 0}</p>
                     </div>
                     {/* Nombre d'épisodes */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">{t('details.episodesLabel')}</h3>
+                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.episodesLabel')}</h3>
                       <p className="text-gray-300">{tvShow.number_of_episodes || 0}</p>
                     </div>
                     {/* Notes */}
-                    <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="text-lg font-semibold mb-2">{t('details.ratingLabel')}</h3>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
+                      <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.ratingLabel')}</h3>
                         <div className="flex items-center gap-2">
                           <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
                           <p className="text-gray-300 text-lg font-bold">{tvShow.vote_average?.toFixed(1) || 'N/A'}<span className="text-sm font-normal text-gray-400">/10</span></p>
@@ -3697,8 +3697,8 @@ const TVDetails: React.FC = () => {
                       </div>
 
                       {movixRating != null && (
-                        <div>
-                          <h3 className="mb-2 flex items-center gap-2 text-lg font-semibold">
+                        <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+                          <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
                             {t('details.movixRatingLabel')}
                             <button
                               type="button"
@@ -3718,8 +3718,8 @@ const TVDetails: React.FC = () => {
                       )}
                     </div>
                     {/* Genres */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">{t('details.genresLabel')}</h3>
+                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.genresLabel')}</h3>
                       <div className="flex flex-wrap gap-2">
                         {tvShow.genres?.map((genre, index) => (
                           <motion.div
@@ -3730,7 +3730,7 @@ const TVDetails: React.FC = () => {
                           >
                             <Link
                               to={`/genre/tv/${genre.id}`}
-                              className="flex items-center gap-1 px-3 py-2 bg-gray-800 rounded-lg text-sm hover:bg-gray-700 transition-colors inline-block border border-gray-700 hover:border-gray-600"
+                              className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.06] px-3 py-2 text-sm font-medium text-slate-200 transition-all hover:border-rose-300/30 hover:bg-rose-500/10 hover:text-white"
                             >
                               <span className="w-2 h-2 rounded-full bg-red-500"></span>
                               {genre.name}
@@ -3742,11 +3742,11 @@ const TVDetails: React.FC = () => {
 
                     </div>
                     {/* Classification par âge */}
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">{t('details.classificationLabel')}</h3>
+                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
+                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.classificationLabel')}</h3>
                       <div className="flex items-center gap-2">
                         {certifications['FR'] ? (
-                          <span className="bg-red-600/70 text-white px-3 py-1 rounded-md font-bold">
+                          <span className="inline-flex rounded-lg border border-rose-300/20 bg-rose-500/15 px-3 py-1.5 text-sm font-semibold text-rose-100">
                             {getClassificationLabel(certifications['FR'], t)}
                           </span>
                         ) : certifications['US'] ? (
@@ -3774,14 +3774,14 @@ const TVDetails: React.FC = () => {
                       {hasNetflixLayout && !animeMode && id && (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-400">{t('details.seasonLayout')}</span>
-                          <div className="flex rounded-lg bg-gray-800 p-1" role="group">
+                          <div className="flex rounded-xl border border-white/[0.08] bg-black/25 p-1" role="group">
                             {([false, true] as const).map((netflix) => (
                               <button
                                 key={netflix ? 'netflix' : 'tmdb'}
                                 type="button"
                                 aria-pressed={usesNetflixLayout === netflix}
                                 onClick={() => chooseSeasonLayout(netflix)}
-                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${usesNetflixLayout === netflix ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${usesNetflixLayout === netflix ? 'rounded-lg bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-[0_6px_18px_rgba(225,29,72,0.22)]' : 'rounded-lg text-slate-300 hover:bg-white/[0.07]'}`}
                               >
                                 {t(netflix ? 'details.episodeListNetflix' : 'details.episodeListTmdb')}
                               </button>
