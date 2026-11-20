@@ -55,7 +55,7 @@ export const WishboardFilters: React.FC<WishboardFiltersProps> = ({
         <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-4 mb-6"
+            className="mb-6 space-y-4 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#101a2a]/80 to-[#0b1220]/75 p-4 shadow-[0_14px_36px_rgba(0,0,0,0.18)] sm:p-5"
         >
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -72,7 +72,7 @@ export const WishboardFilters: React.FC<WishboardFiltersProps> = ({
                     placeholder={t('greenlight.searchProject')}
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
-                    className="pl-10 pr-10"
+                    className="rounded-xl border-white/[0.1] bg-white/[0.045] pl-10 pr-10 shadow-inner shadow-black/10 placeholder:text-slate-500 focus-visible:ring-rose-400/40"
                 />
                 <Search className="absolute left-3 top-1/2 h-4 w-4 z-20 -translate-y-1/2 text-white opacity-40 pointer-events-none" />
                 {searchQuery && (
@@ -102,7 +102,7 @@ export const WishboardFilters: React.FC<WishboardFiltersProps> = ({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => onMediaTypeChange('all')}
-                            className="cursor-pointer"
+                            className="cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
                         >
                             <AnimatedBorderCard
                                 highlightColor="34 197 94"
@@ -118,7 +118,7 @@ export const WishboardFilters: React.FC<WishboardFiltersProps> = ({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => onMediaTypeChange('all')}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 bg-white/10 text-white/70 hover:bg-white/20 hover:text-white"
+                            className="flex items-center gap-1.5 rounded-xl border border-white/[0.07] bg-white/[0.035] px-3.5 py-2 text-sm font-medium text-slate-400 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.075] hover:text-white"
                         >
                             {t('greenlight.allFilter')}
                         </motion.button>
@@ -151,7 +151,7 @@ export const WishboardFilters: React.FC<WishboardFiltersProps> = ({
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={() => onMediaTypeChange('movie')}
-                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200 bg-white/10 text-white/70 hover:bg-white/20 hover:text-white group/icon"
+                            className="group/icon flex items-center gap-1.5 rounded-xl border border-white/[0.07] bg-white/[0.035] px-3.5 py-2 text-sm font-medium text-slate-400 transition-all duration-200 hover:border-white/15 hover:bg-white/[0.075] hover:text-white"
                         >
                             <Film className="h-4 w-4 text-white opacity-70 group-hover/icon:opacity-100 transition-[color,opacity]" />
                             {t('admin.movies')}
@@ -194,11 +194,11 @@ export const WishboardFilters: React.FC<WishboardFiltersProps> = ({
                 </div>
 
                 {/* Divider */}
-                <div className="h-6 w-px bg-white/10" />
+                <div className="mx-1 hidden h-7 w-px bg-white/[0.1] sm:block" />
 
                 {/* Status dropdown */}
                 <Select value={status} onValueChange={onStatusChange}>
-                    <SelectTrigger className="w-auto min-w-[160px]">
+                    <SelectTrigger className="w-auto min-w-[170px]">
                         <SelectValue placeholder={t('greenlight.allStatuses')} />
                     </SelectTrigger>
                     <SelectContent>
