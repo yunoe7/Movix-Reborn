@@ -33,21 +33,21 @@ const AvatarButton = memo(({
     onClick={onClick}
     whileHover={{ scale: 1.05 }}
     whileTap={{ scale: 0.95 }}
-    className={`relative w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 lg:w-22 lg:h-22 rounded-full ring-2 transition-all duration-200 ${isSelected
-        ? 'ring-yellow-500'
-        : 'ring-transparent hover:ring-red-600'
-      }`}
+    className={`group relative h-16 w-16 rounded-full p-[3px] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#0b1220] sm:h-[4.5rem] sm:w-[4.5rem] md:h-20 md:w-20 ${isSelected
+        ? 'bg-gradient-to-br from-rose-300 via-rose-500 to-orange-400 shadow-[0_0_0_3px_rgba(244,63,94,0.16),0_8px_24px_rgba(244,63,94,0.24)]'
+        : 'bg-white/[0.08] hover:bg-gradient-to-br hover:from-rose-400/80 hover:to-orange-400/80 hover:shadow-[0_8px_24px_rgba(244,63,94,0.16)]'
+      }` }
   >
     <img
       src={avatar}
       alt={`Avatar ${index + 1}`}
-      className="w-full h-full object-cover rounded-full"
+      className="h-full w-full rounded-full object-cover ring-1 ring-black/20 transition-transform duration-200 group-hover:scale-[0.96]"
       loading="lazy"
       decoding="async"
     />
     {isSelected && (
-      <div className="absolute inset-0 bg-yellow-500/20 rounded-full flex items-center justify-center">
-        <div className="w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
+      <div className="absolute inset-[3px] flex items-center justify-center rounded-full bg-black/35 backdrop-blur-[1px]">
+        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-white/70 bg-rose-500 text-white shadow-lg">
           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
           </svg>
@@ -130,7 +130,7 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
           data-lenis-prevent
-          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[100000]"
+          className="fixed inset-0 z-[100000] flex items-center justify-center bg-[#02040a]/80 p-2 backdrop-blur-md sm:p-4"
           onClick={(e) => {
             if (e.target === e.currentTarget) handleClose();
           }}
@@ -140,31 +140,35 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-gray-900 rounded-2xl p-6 max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+            className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[1.6rem] border border-white/[0.1] bg-[#0b1220] shadow-[0_30px_100px_rgba(0,0,0,0.65)] ring-1 ring-black/40 sm:rounded-[1.8rem]"
           >
             {/* Header */}
-            <div className="flex justify-between items-center mb-6 flex-shrink-0">
-              <h3 className="text-xl font-bold text-white">{t('profile.selectAvatar')}</h3>
+            <div className="relative flex flex-shrink-0 items-center justify-between border-b border-white/[0.07] px-5 py-4 sm:px-7 sm:py-5">
+              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/50 to-transparent" />
+              <div className="min-w-0">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-rose-300/75">MOVIX / PROFILE</p>
+                <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">{t('profile.selectAvatar')}</h3>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleClose}
-                className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors"
+                className="rounded-xl border border-white/[0.07] bg-white/[0.035] p-2.5 text-slate-400 transition-all hover:border-white/15 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70"
               >
                 <X className="w-5 h-5" />
               </motion.button>
+              </div>
             </div>
 
             {/* Platform Tabs */}
-            <div className="flex gap-2 mb-4 flex-wrap justify-center flex-shrink-0">
+            <div className="flex flex-shrink-0 gap-2 overflow-x-auto border-b border-white/[0.06] bg-white/[0.015] px-4 py-4 scrollbar-hidden sm:justify-center sm:px-6">
               {allPlatforms.map((platform) => (
                 <button
                   key={platform}
                   onClick={() => setSelectedPlatform(platform)}
-                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${selectedPlatform === platform
-                      ? 'bg-red-600 text-white border-red-500'
-                      : 'bg-gray-800/60 text-gray-300 border-gray-700 hover:bg-gray-800'
-                    }`}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 sm:text-sm ${selectedPlatform === platform
+                      ? 'border-rose-400/50 bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-[0_6px_18px_rgba(225,29,72,0.24)]'
+                      : 'border-white/[0.09] bg-white/[0.035] text-slate-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white'
+                    }` }
                 >
                   {platform}
                 </button>
@@ -172,7 +176,7 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
             </div>
 
             {/* Content with Categories */}
-            <div className="overflow-y-auto flex-1 scrollbar-hidden relative">
+            <div className="relative flex-1 overflow-y-auto px-5 py-4 scrollbar-hidden sm:px-7 sm:py-5">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={selectedPlatform}
@@ -180,17 +184,17 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="space-y-4"
+                  className="space-y-6"
                 >
                   {Object.entries(currentCategories).map(([category, avatars]) => (
                     <div key={category} className="relative">
                       {/* Sticky Category Title - higher z-index */}
-                      <h4 className="text-sm font-semibold text-gray-300 sticky top-0 bg-gray-900 py-2 z-20 border-b border-gray-800/50">
+                      <h4 className="sticky top-0 z-20 border-b border-white/[0.07] bg-[#0b1220]/95 py-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-300 backdrop-blur-xl">
                         {category}
                       </h4>
 
                       {/* Avatar Grid - lower z-index */}
-                      <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8 gap-3 justify-items-center py-3 relative z-0">
+                      <div className="relative z-0 grid grid-cols-4 justify-items-center gap-x-3 gap-y-4 py-4 sm:grid-cols-6 sm:gap-x-5 sm:gap-y-5 md:grid-cols-7 lg:grid-cols-8 xl:grid-cols-10">
                         {(avatars as string[]).map((avatar: string, index: number) => (
                           <AvatarButton
                             key={`${avatar}-${index}`}
