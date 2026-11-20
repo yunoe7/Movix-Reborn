@@ -777,8 +777,7 @@ router.get('/admin/public', requireAdmin, async (req, res) => {
     const offset = (safePage - 1) * safeLimit;
 
     const rows = await dbAll(
-      'SELECT * FROM shared_lists WHERE is_public_in_catalog = 1 AND moderation_flagged = 0 ORDER BY updated_at DESC LIMIT ? OFFSET ?',
-      [safeLimit, offset]
+      `SELECT * FROM shared_lists WHERE is_public_in_catalog = 1 AND moderation_flagged = 0 ORDER BY updated_at DESC LIMIT ${safeLimit} OFFSET ${offset}`
     );
 
     const totalResult = await dbGet(
@@ -869,8 +868,7 @@ router.get('/admin/moderated', requireAdmin, async (req, res) => {
     const offset = (safePage - 1) * safeLimit;
 
     const rows = await dbAll(
-      'SELECT * FROM shared_lists WHERE moderation_flagged = 1 ORDER BY moderated_at DESC LIMIT ? OFFSET ?',
-      [safeLimit, offset]
+      `SELECT * FROM shared_lists WHERE moderation_flagged = 1 ORDER BY moderated_at DESC LIMIT ${safeLimit} OFFSET ${offset}`
     );
 
     const totalResult = await dbGet(
