@@ -126,7 +126,7 @@ export const ExploreDesktopPanel: React.FC<ExploreDesktopPanelProps> = ({
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.13] to-transparent" />
       {/* Au survol, un même fond glisse de rangée en rangée, d'une colonne à
           l'autre, au lieu que chaque rangée s'allume seule. */}
-      <HoverHighlight className="relative rounded-xl border border-white/[0.07] bg-white/[0.085] shadow-[0_8px_28px_rgba(0,0,0,0.24)]">
+      <HoverHighlight className="relative rounded-xl bg-white/[0.06]">
         <nav id="explore-menu" aria-label={label} className="grid grid-cols-5 gap-5 p-5 xl:gap-7 xl:p-6">
         {groups.map((group) => (
           <section key={group.title}>
