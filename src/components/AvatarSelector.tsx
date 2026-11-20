@@ -146,8 +146,9 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
             <div className="relative flex flex-shrink-0 items-center justify-between border-b border-white/[0.07] px-5 py-4 sm:px-7 sm:py-5">
               <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/50 to-transparent" />
               <div className="min-w-0">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-rose-300/75">MOVIX / PROFILE</p>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-rose-300/75">MOVIX / PROFILE</p>
                 <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">{t('profile.selectAvatar')}</h3>
+              </div>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -156,7 +157,6 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
               >
                 <X className="w-5 h-5" />
               </motion.button>
-              </div>
             </div>
 
             {/* Platform Tabs */}
