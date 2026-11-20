@@ -895,7 +895,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
 
     return (
       <div
-        className="cursor-pointer rounded-xl bg-gray-900 p-5 transition-colors duration-150 hover:bg-gray-800"
+        className="group cursor-pointer rounded-2xl border border-white/[0.07] bg-[#111827] p-5 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition-[transform,background-color,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-white/[0.13] hover:bg-[#172033] hover:shadow-[0_22px_48px_rgba(0,0,0,0.3)]"
         onClick={() => {
           if (!isRenaming && !activeListDragId) openList(list);
         }}
@@ -908,13 +908,13 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
             openList(list);
           }}
           aria-label={t('profilePage.lists.openList', 'Ouvrir {{name}}', { name: list.name })}
-          className="grid w-full grid-cols-4 gap-1.5 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          className="grid w-full grid-cols-4 gap-1.5 overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
         >
           {Array.from({ length: 4 }, (_, index) => {
             const item = previews[index];
             const src = item ? posterUrl(item.poster_path, 185) : '';
             return (
-              <span key={index} className="block aspect-[2/3] overflow-hidden bg-gray-800">
+              <span key={index} className="block aspect-[2/3] overflow-hidden rounded-md bg-gray-800">
                 {src && <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
               </span>
             );
