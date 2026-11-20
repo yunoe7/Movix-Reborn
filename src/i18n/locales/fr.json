@@ -8351,7 +8351,7 @@
     "common": {
       "back": "Retour au hub",
       "backToHub": "Retour au hub des tutos",
-      "contactTelegram": "Contacter le support sur Matrix"
+      "contactTelegram": "Contacter le support sur Discord"
     },
     "glossary": {
       "seed": "Phrase secrète de 12 mots (standard BIP39) qui sert de clé unique à ton compte Movix. Personne côté serveur ne la connaît — si tu la perds, le compte est perdu définitivement.",
@@ -8370,7 +8370,7 @@
       "clearSearch": "Effacer la recherche",
       "foundIn": "Trouvé dans :",
       "noResults": "Aucun tuto ne correspond à ta recherche.",
-      "bottomCta": "Tu ne trouves pas ton tuto ? Contacte-nous sur Matrix.",
+      "bottomCta": "Tu ne trouves pas ton tuto ? Rejoins-nous sur Discord.",
       "cardCaMarchePlusTitle": "Ça marche plus chez moi",
       "cardCaMarchePlusSub": "Les 4 causes les plus courantes + les solutions.",
       "cardDnsTitle": "Mon FAI bloque Movix",
