@@ -39,11 +39,11 @@ export const WishboardStats: React.FC<WishboardStatsProps> = ({
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="w-full shrink-0 lg:w-80"
+            className="w-full shrink-0 rounded-2xl border border-white/[0.08] bg-gradient-to-br from-[#101a2a]/95 to-[#0b1220]/95 p-4 shadow-[0_18px_45px_rgba(0,0,0,0.24)] lg:w-80"
         >
             <div className="space-y-4">
                 {/* Header */}
-                <h3 className="flex items-center gap-2 text-lg font-semibold text-white">
+                <h3 className="flex items-center gap-2 text-base font-bold tracking-tight text-white">
                     <BarChart3 className="h-5 w-5 text-green-500" />
                     {t('greenlight.statistics')}
                 </h3>
@@ -52,7 +52,7 @@ export const WishboardStats: React.FC<WishboardStatsProps> = ({
                 <div className="grid grid-cols-2 gap-3">
                     <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className="rounded-lg bg-white/15"
+                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] shadow-inner shadow-white/[0.025]"
                     >
                         <div className="p-4">
                             <Counter
@@ -75,7 +75,7 @@ export const WishboardStats: React.FC<WishboardStatsProps> = ({
 
                     <motion.div
                         whileHover={{ scale: 1.02 }}
-                        className="rounded-lg bg-white/15"
+                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] shadow-inner shadow-white/[0.025]"
                     >
                         <div className="p-4">
                             <Counter
@@ -145,7 +145,7 @@ export const WishboardStats: React.FC<WishboardStatsProps> = ({
                         </div>
 
                         {/* Progress bar */}
-                        <div className="h-3 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-3 overflow-hidden rounded-full border border-white/[0.06] bg-black/25">
                             <div className="flex h-full">
                                 <motion.div
                                     initial={{ width: 0 }}
