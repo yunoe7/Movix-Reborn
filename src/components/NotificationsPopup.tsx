@@ -49,9 +49,9 @@ interface NotificationsPopupProps {
 // Petites actions d'une ligne et de l'en-tête : couleur pleine sur le bouton,
 // opacité sur l'icône seule (une couleur translucide éclaircirait les
 // croisements de ses tracés).
-const ACTION_CLASS = 'group/action flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white outline-none transition-colors duration-150 hover:bg-white/[0.08] focus-visible:ring-1 focus-visible:ring-white/30';
+const ACTION_CLASS = 'group/action flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.06] bg-white/[0.025] text-white outline-none transition-all duration-200 hover:border-white/[0.14] hover:bg-white/[0.08] focus-visible:ring-2 focus-visible:ring-rose-300/40';
 const ACTION_ICON_CLASS = 'opacity-45 transition-opacity duration-150 group-hover/action:opacity-100';
-const TEXT_BUTTON_CLASS = 'rounded-lg px-2 py-1.5 text-xs outline-none transition-colors duration-150 hover:bg-white/[0.06] focus-visible:ring-1 focus-visible:ring-white/30';
+const TEXT_BUTTON_CLASS = 'rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none transition-all duration-200 hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-rose-300/40';
 
 const NotificationAvatar: React.FC<{ src?: string | null; name?: string }> = ({ src, name }) => {
   const [failed, setFailed] = useState(false);
@@ -320,7 +320,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
 
   const renderRow = (notification: Notification) => (
     <div className={cn(
-      'group flex items-start gap-3 rounded-xl px-3 py-3',
+      'group flex items-start gap-3 rounded-xl border border-transparent px-3 py-3 transition-all duration-200 hover:border-white/[0.06] hover:bg-white/[0.035]',
       !isPanel && '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.05]',
     )}>
       {/* Non lue : un point rouge, la couleur du site. */}
@@ -329,7 +329,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
       <button
         type="button"
         onClick={() => handleNavigateToContent(notification)}
-        className="min-w-0 flex-1 rounded-md text-left outline-none focus-visible:ring-1 focus-visible:ring-white/25"
+        className="min-w-0 flex-1 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-rose-300/40"
       >
         <span className={cn('block text-[13.5px] leading-snug', notification.read ? 'text-white/60' : 'text-white/90')}>
           {getNotificationMessage(notification)}
@@ -370,8 +370,8 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
 
   return (
     <div data-notifications-content className={cn('flex flex-col', isPanel && 'max-h-[min(calc(100vh-6rem),40rem)]')}>
-      <div data-sheet-item className={cn('flex items-center justify-between gap-2 pb-2 pt-3', isPanel ? 'pl-5 pr-3' : 'px-3')}>
-        <h3 className="text-base font-semibold text-white">{t('notifications.title')}</h3>
+      <div data-sheet-item className={cn('flex items-center justify-between gap-3 border-b border-white/[0.07] bg-gradient-to-r from-white/[0.035] via-white/[0.015] to-transparent pb-3 pt-4', isPanel ? 'pl-5 pr-3' : 'px-4')}>
+        <h3 className="text-base font-bold tracking-tight text-white">{t('notifications.title')}</h3>
         <div className="flex min-h-8 items-center gap-1">
           {hasUnread && (
             <button type="button" onClick={handleMarkAllAsRead} className={cn(TEXT_BUTTON_CLASS, 'text-white/55 hover:text-white')}>
@@ -388,11 +388,11 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
 
       {/* Bannière d'activation des notifications push */}
       {showPushBanner && (
-        <div data-sheet-item className="mx-3 mb-2 flex gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.04] p-3">
-          <BellRing size={18} aria-hidden="true" className="mt-0.5 shrink-0 text-white opacity-55" />
+        <div data-sheet-item className="mx-3 mb-3 flex gap-3 rounded-2xl border border-rose-300/[0.14] bg-gradient-to-br from-rose-500/[0.075] via-white/[0.035] to-transparent p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+          <BellRing size={18} aria-hidden="true" className="mt-0.5 shrink-0 rounded-lg bg-rose-400/[0.12] p-2 text-rose-200" />
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-medium text-white">{t('notifications.pushBannerTitle')}</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-white/50">{t('notifications.pushBannerDesc')}</p>
+            <p className="text-[13px] font-semibold text-white">{t('notifications.pushBannerTitle')}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('notifications.pushBannerDesc')}</p>
             <div className="mt-2.5 flex flex-wrap items-center gap-1">
               <LiquidButton tone="light" size="sm" onClick={handleEnablePush} disabled={pushSubscribing}>
                 {pushSubscribing ? t('common.loading') : t('notifications.enablePush')}
@@ -411,7 +411,7 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
       <div
         ref={scrollRef}
         data-lenis-prevent={isPanel ? '' : undefined}
-        className={cn(isPanel ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2' : 'pb-2')}
+        className={cn(isPanel ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3' : 'pb-3')}
       >
         {loading ? (
           // Squelette à la forme des lignes : la hauteur bouge peu à l'arrivée
@@ -451,9 +451,11 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
             </ul>
           )
         ) : (
-          <div data-sheet-item className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-            <Bell size={28} aria-hidden="true" className="text-white opacity-20" />
-            <p className="text-sm text-white/50">{t('notifications.noNotifications')}</p>
+          <div data-sheet-item className="mx-3 my-3 flex min-h-44 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-gradient-to-b from-white/[0.025] to-transparent px-6 py-8 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.045] shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+              <Bell size={23} aria-hidden="true" className="text-slate-400" />
+            </span>
+            <p className="text-sm font-medium text-slate-300">{t('notifications.noNotifications')}</p>
           </div>
         )}
 
