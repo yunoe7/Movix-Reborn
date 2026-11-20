@@ -3446,7 +3446,7 @@ const TVDetails: React.FC = () => {
                     )}
                   </button>
                   {animeMode && ( // Afficher la note seulement quand on est en mode ANIME
-                    <p className="text-sm text-yellow-300 bg-yellow-900/40 p-3 rounded-md mt-3 text-center flex items-center justify-center gap-2 border border-yellow-700/50">
+                    <p className="mt-3 flex items-center justify-center gap-2.5 rounded-xl border border-amber-400/25 bg-gradient-to-r from-amber-500/[0.13] via-yellow-500/[0.09] to-amber-500/[0.13] px-4 py-3 text-center text-[13px] font-medium leading-relaxed text-amber-200 shadow-[0_8px_24px_rgba(245,158,11,0.07)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm">
                       <AlertTriangle className="w-4 h-4 inline-block flex-shrink-0" />
                       <span>{t('details.standardModeAvailable')}</span>
                     </p>
