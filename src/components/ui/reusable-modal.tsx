@@ -58,7 +58,7 @@ const ReusableModal: React.FC<ReusableModalProps> = ({
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2, ease: 'easeOut' }}
                     data-lenis-prevent
-                    className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100000]"
+                    className="fixed inset-0 z-[100000] flex items-center justify-center bg-[#02040a]/80 p-3 backdrop-blur-md sm:p-5"
                     onClick={(e) => {
                         if (e.target === e.currentTarget) onClose();
                     }}
@@ -70,23 +70,23 @@ const ReusableModal: React.FC<ReusableModalProps> = ({
                         exit={{ scale: 0.95, opacity: 0, y: 8 }}
                         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                         data-lenis-prevent
-                        className={`bg-gray-900 border border-white/10 rounded-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl ${className}`}
+                        className={`relative flex max-h-[92vh] w-full flex-col overflow-hidden rounded-[1.35rem] border border-white/[0.1] bg-gradient-to-b from-[#111a2b] via-[#0e1726] to-[#0b1220] shadow-[0_30px_100px_rgba(0,0,0,0.7)] ring-1 ring-black/40 ${className}`}
                     >
                         {/* Header */}
-                        <div className="flex justify-between items-center p-6 border-b border-white/10 shrink-0">
-                            <h3 className="text-xl font-bold text-white">{title}</h3>
+                        <div className="relative flex shrink-0 items-center justify-between gap-4 overflow-hidden border-b border-white/[0.08] bg-gradient-to-r from-white/[0.035] via-white/[0.015] to-transparent px-5 py-4 sm:px-6 sm:py-5">
+                            <div className="min-w-0"><p className="mb-1 text-[9px] font-extrabold uppercase tracking-[0.22em] text-rose-300/75">MOVIX / CONTROL</p><h3 className="truncate text-lg font-bold tracking-tight text-white sm:text-xl">{title}</h3></div>
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={onClose}
-                                className="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+                                className="shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.035] p-2.5 text-slate-400 transition-all hover:border-white/15 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70"
                             >
                                 <X className="w-5 h-5" />
                             </motion.button>
                         </div>
 
                         {/* Content */}
-                        <div className="overflow-y-auto p-6" data-lenis-prevent style={{ overscrollBehavior: 'contain' }}>
+                        <div className="overflow-y-auto bg-black/[0.08] p-5 sm:p-6" data-lenis-prevent style={{ overscrollBehavior: 'contain' }}>
                             {children}
                         </div>
                     </motion.div>
