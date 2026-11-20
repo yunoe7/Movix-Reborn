@@ -143,31 +143,31 @@ const AvatarSelector: React.FC<AvatarSelectorProps> = ({
             className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[1.6rem] border border-white/[0.1] bg-[#0b1220] shadow-[0_30px_100px_rgba(0,0,0,0.65)] ring-1 ring-black/40 sm:rounded-[1.8rem]"
           >
             {/* Header */}
-            <div className="relative flex flex-shrink-0 items-center justify-between border-b border-white/[0.07] px-5 py-4 sm:px-7 sm:py-5">
-              <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/50 to-transparent" />
+            <div className="relative flex flex-shrink-0 items-center justify-between overflow-hidden border-b border-white/[0.07] bg-gradient-to-r from-[#111a2c] via-[#101827] to-[#151323] px-5 py-5 sm:px-8 sm:py-6">
+              <><div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-rose-400/70 to-transparent" /><div className="pointer-events-none absolute -right-16 -top-24 h-48 w-48 rounded-full bg-rose-500/[0.09] blur-3xl" /><div className="pointer-events-none absolute -left-20 -bottom-28 h-44 w-44 rounded-full bg-indigo-500/[0.08] blur-3xl" /></>
               <div className="min-w-0">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.22em] text-rose-300/75">MOVIX / PROFILE</p>
-                <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">{t('profile.selectAvatar')}</h3>
+                <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.24em] text-rose-300">MOVIX / PROFILE</p>
+                <h3 className="text-xl font-extrabold tracking-[-0.035em] text-white sm:text-[1.4rem]">{t('profile.selectAvatar')}</h3>
               </div>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleClose}
-                className="rounded-xl border border-white/[0.07] bg-white/[0.035] p-2.5 text-slate-400 transition-all hover:border-white/15 hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70"
+                className="rounded-xl border border-white/[0.1] bg-black/20 p-3 text-slate-400 shadow-inner shadow-white/[0.03] transition-all duration-200 hover:-rotate-3 hover:border-rose-300/30 hover:bg-rose-500/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70"
               >
                 <X className="w-5 h-5" />
               </motion.button>
             </div>
 
             {/* Platform Tabs */}
-            <div className="flex flex-shrink-0 gap-2 overflow-x-auto border-b border-white/[0.06] bg-white/[0.015] px-4 py-4 scrollbar-hidden sm:justify-center sm:px-6">
+            <div className="relative flex flex-shrink-0 justify-start gap-2 overflow-x-auto border-b border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent px-4 py-4 scrollbar-hidden sm:justify-center sm:px-6 sm:py-5">
               {allPlatforms.map((platform) => (
                 <button
                   key={platform}
                   onClick={() => setSelectedPlatform(platform)}
                   className={`shrink-0 rounded-full border px-4 py-2 text-xs font-semibold tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 sm:text-sm ${selectedPlatform === platform
-                      ? 'border-rose-400/50 bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-[0_6px_18px_rgba(225,29,72,0.24)]'
-                      : 'border-white/[0.09] bg-white/[0.035] text-slate-300 hover:border-white/20 hover:bg-white/[0.08] hover:text-white'
+                      ? 'border-rose-300/60 bg-gradient-to-b from-rose-500 to-rose-600 text-white shadow-[0_7px_22px_rgba(225,29,72,0.32)] ring-1 ring-inset ring-white/20'
+                      : 'border-white/[0.08] bg-[#182234]/75 text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] hover:border-white/20 hover:bg-[#202d42] hover:text-white'
                     }` }
                 >
                   {platform}
