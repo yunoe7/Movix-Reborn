@@ -2050,17 +2050,17 @@ const TVDetails: React.FC = () => {
   };
   const WatchButtons = () => {
     return (
-      <div className="flex flex-col gap-4 mt-4">
+      <div className="mt-5 flex flex-col gap-4 relative isolate rounded-[1.6rem] border border-white/[0.10] bg-[linear-gradient(145deg,rgba(24,29,40,0.94),rgba(8,11,17,0.94))] p-3 shadow-[0_24px_65px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:p-4 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent">
         {/* Première ligne avec Regarder et Bande-annonce */}
-        <div className="flex flex-wrap gap-3 w-full min-w-0">
+        <div className="grid w-full min-w-0 grid-cols-2 gap-3">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={handleContinueWatching}
-            className="flex flex-col items-center gap-2 px-4 sm:px-6 py-4 sm:py-5 bg-red-600 hover:bg-red-700 rounded-lg flex-1 min-w-0 justify-center text-xs sm:text-sm"
+            className="group relative flex min-h-[116px] flex-1 min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-red-300/20 bg-gradient-to-br from-red-500 via-red-600 to-red-800 px-4 py-4 text-xs font-semibold text-white shadow-[0_14px_34px_rgba(185,28,28,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:border-red-200/40 hover:shadow-[0_18px_38px_rgba(220,38,38,0.32)] sm:py-5 sm:text-sm before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
           >
-            <Play className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
+            <Play className="h-6 w-6 flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110 sm:h-7 sm:w-7" />
             <div className="text-center">
               {resumeData.hasProgress ? (
                 <div className="flex flex-col items-center text-center w-full">
@@ -2086,11 +2086,11 @@ const TVDetails: React.FC = () => {
 
           {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ y: -2, scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => navigate(`/download/tv/${tvShow?.id}`)}
-              className="flex flex-col items-center gap-2 px-4 sm:px-6 py-4 sm:py-5 bg-green-600 hover:bg-green-700 rounded-lg flex-1 min-w-0 justify-center text-xs sm:text-sm"
+              className="group relative flex min-h-[104px] flex-1 min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500 via-green-600 to-emerald-800 px-4 py-4 text-xs font-semibold text-white shadow-[0_14px_34px_rgba(5,150,105,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200/40 hover:shadow-[0_18px_38px_rgba(16,185,129,0.28)] sm:py-5 sm:text-sm before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
             >
               <Download className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
               <span className="text-center">{t('details.downloadBtn')}</span>
@@ -2099,25 +2099,25 @@ const TVDetails: React.FC = () => {
         </div>
 
         {/* Deuxième ligne avec les autres boutons */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-2.5">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => setShowTrailerPopup(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-300/20 bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:from-blue-500 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-45"
             disabled={!trailerVideo}
           >
             <Video className="w-4 h-4" />
             {t('details.bandeAnnonce')}
           </motion.button>
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${watchStatus.watchlist
-              ? 'bg-red-600 text-white'
-              : 'bg-gray-800 hover:bg-gray-700'
+            className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
+              ? 'border-red-400/35 bg-red-600/90 text-white shadow-[0_8px_20px_rgba(220,38,38,0.18)]'
+              : 'border-white/[0.08] bg-[#1b2432]/90 text-white/85 hover:border-white/20 hover:bg-[#273244]'
               }`}
           >
             <List className="w-4 h-4" />
@@ -2125,12 +2125,12 @@ const TVDetails: React.FC = () => {
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${watchStatus.favorite
-              ? 'bg-red-600 text-white'
-              : 'bg-gray-800 hover:bg-gray-700'
+            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
+              ? 'border-red-400/35 bg-red-600/90 text-white shadow-[0_8px_20px_rgba(220,38,38,0.18)]'
+              : 'border-white/[0.08] bg-[#1b2432]/90 text-white/85 hover:border-white/20 hover:bg-[#273244]'
               }`}
           >
             <Star className="w-4 h-4" />
@@ -2138,12 +2138,12 @@ const TVDetails: React.FC = () => {
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg ${watchStatus.watched
-              ? 'bg-red-600 text-white'
-              : 'bg-gray-800 hover:bg-gray-700'
+            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watched
+              ? 'border-red-400/35 bg-red-600/90 text-white shadow-[0_8px_20px_rgba(220,38,38,0.18)]'
+              : 'border-white/[0.08] bg-[#1b2432]/90 text-white/85 hover:border-white/20 hover:bg-[#273244]'
               }`}
           >
             <Check className="w-4 h-4" />
@@ -2151,20 +2151,20 @@ const TVDetails: React.FC = () => {
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
             onClick={() => setShowAddToList(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] bg-[#1b2432]/90 px-4 py-2 text-sm font-medium text-white/85 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-[#273244]"
           >
             <FolderPlus className="w-4 h-4" />
             {t('details.addToAList')}
           </motion.button>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
             onClick={() => setShowAntiSpoilerModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-800 hover:bg-purple-700 rounded-lg"
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-violet-300/15 bg-gradient-to-r from-violet-700/90 to-purple-800/90 px-4 py-2 text-sm font-medium text-white shadow-[0_8px_20px_rgba(109,40,217,0.15)] transition-all duration-200 hover:-translate-y-0.5 hover:from-violet-600 hover:to-purple-700"
             title={t('details.antiSpoilConfig')}
           >
             <Shield className="w-4 h-4" />
@@ -4965,7 +4965,7 @@ const TVDetails: React.FC = () => {
                         scale: 1.05,
                         boxShadow: "0 10px 25px rgba(147, 51, 234, 0.3)"
                       }}
-                      whileTap={{ scale: 0.95 }}
+                      whileTap={{ scale: 0.985 }}
                       transition={{ type: "spring", stiffness: 400, damping: 17 }}
                       onClick={() => {
                         if (!showMultiLangView) {
@@ -5052,7 +5052,7 @@ const TVDetails: React.FC = () => {
                                       src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                       alt={video.name}
                                       className="w-full h-full object-cover"
-                                      whileHover={{ scale: 1.05 }}
+                                      whileHover={{ y: -2, scale: 1.015 }}
                                       transition={{ duration: 0.3 }}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -5152,7 +5152,7 @@ const TVDetails: React.FC = () => {
                                       src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                       alt={video.name}
                                       className="w-full h-full object-cover"
-                                      whileHover={{ scale: 1.05 }}
+                                      whileHover={{ y: -2, scale: 1.015 }}
                                       transition={{ duration: 0.3 }}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -5301,7 +5301,7 @@ const TVDetails: React.FC = () => {
                               scale: 1.05,
                               boxShadow: "0 10px 25px rgba(147, 51, 234, 0.3)"
                             }}
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.985 }}
                             transition={{ type: "spring", stiffness: 400, damping: 17 }}
                             onClick={() => {
                               if (!showSeasonMultiLangView[seasonNum]) {
@@ -5390,7 +5390,7 @@ const TVDetails: React.FC = () => {
                                             src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                             alt={video.name}
                                             className="w-full h-full object-cover"
-                                            whileHover={{ scale: 1.05 }}
+                                            whileHover={{ y: -2, scale: 1.015 }}
                                             transition={{ duration: 0.3 }}
                                           />
                                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -5476,7 +5476,7 @@ const TVDetails: React.FC = () => {
                                       src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                       alt={video.name}
                                       className="w-full h-full object-cover"
-                                      whileHover={{ scale: 1.05 }}
+                                      whileHover={{ y: -2, scale: 1.015 }}
                                       transition={{ duration: 0.3 }}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
