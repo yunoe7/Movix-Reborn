@@ -21,12 +21,12 @@ import { regionLabel, type AlternateTitle } from '../utils/tmdbMetadata';
  */
 
 /** Pastille de la fiche, identique à celle des pays et des langues. */
-const PILL = 'bg-gray-800 px-3 py-2 rounded-lg border border-gray-700 text-sm';
+const PILL = 'bg-[#1b2432] px-3.5 py-2.5 rounded-xl border border-white/[0.08] text-sm shadow-[0_5px_16px_rgba(0,0,0,0.14)] transition-colors';
 
 const PILL_HOVER = {
-  backgroundColor: 'rgba(75,85,99, 0.8)',
+  backgroundColor: 'rgba(45,55,72, 0.92)',
   y: -2,
-  borderColor: 'rgba(107,114,128, 0.8)',
+  borderColor: 'rgba(248,113,113, 0.28)',
   transition: { duration: 0.2 },
 };
 
@@ -146,7 +146,7 @@ const DetailExtraMetadata: React.FC<DetailExtraMetadataProps> = ({
                       {titlesByRegion.map(([region, entries], index) => (
                         <motion.div
                           key={region}
-                          className="bg-gray-800 p-3 rounded-lg"
+                          className="bg-[#151b26] border border-white/[0.07] p-4 rounded-2xl shadow-[0_12px_28px_rgba(0,0,0,0.18)]"
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: stagger(index) }}
