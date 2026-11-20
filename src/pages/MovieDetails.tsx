@@ -2860,7 +2860,7 @@ const MovieDetails = (): JSX.Element => {
                           {t('details.simpleMode')}
                         </button>
                         <button
-                          className={`px-3 py-1 text-sm ${financialStatsMode === 'advanced' ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
+                          className={`px-3 py-1 text-sm ${financialStatsMode === 'advanced' ? 'rounded-lg bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'rounded-lg bg-transparent text-slate-400 hover:bg-white/[0.06] hover:text-white'}`}
                           onClick={() => setFinancialStatsMode('advanced')}
                         >
                           {t('details.advancedMode')}
