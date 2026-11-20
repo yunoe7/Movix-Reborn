@@ -1457,25 +1457,25 @@ const MovieDetails = (): JSX.Element => {
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={handleWatchClick}
-            className="group relative flex min-h-[116px] flex-1 min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-red-300/20 bg-gradient-to-br from-red-500 via-red-600 to-red-800 px-4 py-4 text-xs font-semibold text-white shadow-[0_14px_34px_rgba(185,28,28,0.28)] transition-all duration-300 hover:-translate-y-0.5 hover:border-red-200/40 hover:shadow-[0_18px_38px_rgba(220,38,38,0.32)] sm:py-5 sm:text-sm before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
+            className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-rose-300/25 bg-gradient-to-br from-rose-600 via-red-600 to-red-800 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_12px_30px_rgba(185,28,28,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-200/45 hover:shadow-[0_16px_34px_rgba(220,38,38,0.3)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
           >
             {hasProgress ? (
               <>
-                <Play className="h-6 w-6 flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:scale-110 sm:h-7 sm:w-7" />
-                <div className="flex flex-col items-center text-center w-full min-w-0">
+                <Play className="h-6 w-6 flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:scale-110" />
+                <div className="flex min-w-0 flex-col items-start text-left">
                   <span>{t('details.continueBtn')}</span>
-                  <span className="text-xs bg-red-800/80 text-white px-1.5 py-0.5 rounded font-medium mt-1">
+                  <span className="mt-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] font-medium text-white/85">
                     {formatTime(watchProgress)}/{formatTime(videoDuration)}
                   </span>
                 </div>
               </>
             ) : serverResume ? (
               <>
-                <Play className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                <div className="flex flex-col items-center text-center w-full min-w-0">
+                <Play className="h-6 w-6 flex-shrink-0 text-slate-200" />
+                <div className="flex min-w-0 flex-col items-start text-left">
                   {/* Estimé seul : le lecteur repartira du début, donc « Regarder ». */}
                   <span>{serverResume.estimated ? t('details.watchBtn') : t('details.continueBtn')}</span>
-                  <span className="text-xs bg-red-800/80 text-white px-1.5 py-0.5 rounded font-medium mt-1">
+                  <span className="mt-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] font-medium text-white/85">
                     {serverResume.estimated
                       ? t('profilePage.progress.estimated', { percent: Math.round((serverResume.position / serverResume.duration) * 100), defaultValue: '≈ {{percent}} % · estimé' })
                       : `${formatTime(serverResume.position)}/${formatTime(serverResume.duration)}`}
@@ -1484,8 +1484,8 @@ const MovieDetails = (): JSX.Element => {
               </>
             ) : (
               <>
-                <Play className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-                <span className="text-center">{t('details.watchBtn')}</span>
+                <Play className="h-6 w-6 flex-shrink-0 text-slate-200" />
+                <span className="text-left">{t('details.watchBtn')}</span>
               </>
             )}
           </motion.button>
@@ -1496,10 +1496,10 @@ const MovieDetails = (): JSX.Element => {
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => navigate(`/download/movie/${id}`)}
-              className="group relative flex min-h-[104px] flex-1 min-w-0 flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-emerald-300/20 bg-gradient-to-br from-emerald-500 via-green-600 to-emerald-800 px-4 py-4 text-xs font-semibold text-white shadow-[0_14px_34px_rgba(5,150,105,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200/40 hover:shadow-[0_18px_38px_rgba(16,185,129,0.28)] sm:py-5 sm:text-sm before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
+              className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-white/[0.11] bg-gradient-to-br from-[#202632]/95 to-[#111722]/95 px-4 py-3 text-left text-sm font-bold text-slate-100 shadow-[0_10px_26px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:from-[#283242] hover:to-[#171f2c] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/15"
             >
-              <Download className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" />
-              <span className="text-center">{t('details.downloadBtn')}</span>
+              <Download className="h-6 w-6 flex-shrink-0 text-slate-200" />
+              <span className="text-left">{t('details.downloadBtn')}</span>
             </motion.button>
           )}
         </div>
@@ -1517,7 +1517,7 @@ const MovieDetails = (): JSX.Element => {
                 className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-[#171c27] px-4 py-3 text-xs font-medium text-white/90 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400/45 hover:bg-[#202838] sm:text-sm"
               >
                 <Film className="w-4 h-4 flex-shrink-0" />
-                <span className="text-center">
+                <span className="text-left">
                   {t('movieVersions.watchVersion', { version: t(version.labelKey) })}
                   {version.runtime ? ` · ${t('movieVersions.runtime', { minutes: version.runtime })}` : ''}
                 </span>
@@ -1533,7 +1533,7 @@ const MovieDetails = (): JSX.Element => {
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => setShowTrailerPopup(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-blue-300/20 bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(37,99,235,0.18)] transition-all duration-200 hover:-translate-y-0.5 hover:from-blue-500 hover:to-blue-700 disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-500/[0.09] px-4 py-2.5 text-sm font-semibold text-rose-100 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-rose-300/35 hover:bg-rose-500/[0.15] disabled:cursor-not-allowed disabled:opacity-45"
             disabled={!trailerVideoId}
           >
             <Video className="w-4 h-4" />
@@ -1545,8 +1545,8 @@ const MovieDetails = (): JSX.Element => {
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
             className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
-              ? 'border-red-400/35 bg-red-600/90 text-white shadow-[0_8px_20px_rgba(220,38,38,0.18)]'
-              : 'border-white/[0.08] bg-[#1b2432]/90 text-white/85 hover:border-white/20 hover:bg-[#273244]'
+              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
             <motion.div
@@ -1565,8 +1565,8 @@ const MovieDetails = (): JSX.Element => {
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
-              ? 'border-red-400/35 bg-red-600/90 text-white shadow-[0_8px_20px_rgba(220,38,38,0.18)]'
-              : 'border-white/[0.08] bg-[#1b2432]/90 text-white/85 hover:border-white/20 hover:bg-[#273244]'
+              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
             <motion.div
@@ -1587,8 +1587,8 @@ const MovieDetails = (): JSX.Element => {
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchedView.toggleOn
-              ? 'border-red-400/35 bg-red-600/90 text-white shadow-[0_8px_20px_rgba(220,38,38,0.18)]'
-              : 'border-white/[0.08] bg-[#1b2432]/90 text-white/85 hover:border-white/20 hover:bg-[#273244]'
+              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
             <motion.div
@@ -1855,7 +1855,7 @@ const MovieDetails = (): JSX.Element => {
     return <DetailsSkeleton />;
   }
   if (error) return <div className="text-center text-red-500">{error}</div>;
-  if (!movie) return <div className="text-center">{t('details.movieNotFound')}</div>;
+  if (!movie) return <div className="text-left">{t('details.movieNotFound')}</div>;
 
   // Age restriction check
   const contentCert = certifications['FR'] || certifications['US'] || '';
