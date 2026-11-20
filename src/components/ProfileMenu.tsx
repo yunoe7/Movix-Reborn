@@ -343,11 +343,11 @@ const ProfileMenu: React.FC = () => {
 
   const renderConnected = (variant: MenuVariant) => (
     <div className={variant === 'panel' ? 'p-2' : undefined}>
-      <div data-sheet-item className="relative isolate mb-2 flex items-center gap-3 overflow-hidden rounded-[15px] border border-white/[0.075] bg-[linear-gradient(120deg,rgba(91,112,205,0.13),rgba(255,255,255,0.035)_48%,rgba(143,98,191,0.09))] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_24px_rgba(0,0,0,0.14)] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(ellipse_at_0%_0%,rgba(125,151,255,0.16),transparent_62%)]">
+      <div data-sheet-item className="group relative isolate mb-2 flex items-center gap-3 overflow-hidden rounded-[17px] border border-white/[0.10] bg-[linear-gradient(118deg,rgba(91,112,205,0.17),rgba(255,255,255,0.045)_46%,rgba(143,98,191,0.12))] px-3.5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_30px_rgba(0,0,0,0.20)] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(ellipse_at_0%_0%,rgba(125,151,255,0.20),transparent_62%),radial-gradient(ellipse_at_100%_100%,rgba(167,117,255,0.10),transparent_58%)] after:pointer-events-none after:absolute after:inset-x-4 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/25 after:to-transparent">
         <img
           src={profileImage}
           alt=""
-          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/35 ring-offset-2 ring-offset-[#111214] shadow-[0_0_0_1px_rgba(132,153,255,0.13),0_0_22px_rgba(120,145,255,0.22)]"
+          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-white/45 ring-offset-[3px] ring-offset-[#111214] shadow-[0_0_0_1px_rgba(132,153,255,0.18),0_0_26px_rgba(120,145,255,0.28)] transition-[box-shadow,transform] duration-300 group-hover:scale-[1.025]"
           onError={onAvatarError}
         />
         <div className="min-w-0">
@@ -529,7 +529,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="relative isolate w-72 overflow-hidden rounded-[20px] border border-white/[0.105] bg-[#101116]/95 shadow-[0_28px_80px_rgba(0,0,0,0.68),0_8px_26px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.075)] backdrop-blur-2xl before:pointer-events-none before:absolute before:inset-x-5 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/30 before:to-transparent after:pointer-events-none after:absolute after:inset-0 after:-z-10 after:bg-[radial-gradient(ellipse_at_0%_0%,rgba(105,132,255,0.16),transparent_54%),radial-gradient(ellipse_at_100%_15%,rgba(163,112,222,0.10),transparent_48%)]"
+              panelClassName="relative isolate w-72 overflow-hidden rounded-[22px] border border-white/[0.12] bg-[#0d0f16]/95 shadow-[0_32px_90px_rgba(0,0,0,0.72),0_10px_30px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.09)] ring-1 ring-inset ring-white/[0.025] backdrop-blur-2xl before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/35 before:to-transparent after:pointer-events-none after:absolute after:inset-0 after:-z-10 after:bg-[radial-gradient(ellipse_at_0%_0%,rgba(105,132,255,0.20),transparent_56%),radial-gradient(ellipse_at_100%_12%,rgba(163,112,222,0.13),transparent_50%),linear-gradient(145deg,rgba(255,255,255,0.018),transparent_42%)]"
             >
               {renderContent('panel')}
             </LiquidDropdown>
