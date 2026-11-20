@@ -98,22 +98,22 @@ export default function MemberCard({
         onPointerMove={handlePointerMove}
         onPointerLeave={resetTilt}
         style={reduceMotion ? undefined : { rotateX, rotateY, transformStyle: 'preserve-3d' }}
-        className="relative flex h-full min-h-[280px] flex-col overflow-hidden rounded-2xl bg-red-600 text-white"
+        className="relative flex h-full min-h-[280px] flex-col overflow-hidden rounded-[1.6rem] bg-red-600 text-white shadow-[0_22px_60px_rgba(0,0,0,0.28)] ring-1 ring-white/15"
       >
         {/* Bande de pellicule : la seule décoration de la carte */}
-        <div aria-hidden="true" className="flex h-9 min-w-0 shrink-0 items-center justify-between gap-1.5 overflow-hidden bg-red-800 px-3">
+        <div aria-hidden="true" className="flex h-8 min-w-0 shrink-0 items-center justify-between gap-1.5 overflow-hidden border-b border-black/15 bg-red-800/90 px-3">
           {SPROCKETS.map((_, index) => (
             <span key={index} className="h-3.5 w-5 shrink-0 rounded-[3px] bg-black" />
           ))}
         </div>
 
-        <div className="flex flex-1 flex-col gap-5 p-5 sm:p-6">
+        <div className="relative flex flex-1 flex-col gap-5 bg-[radial-gradient(ellipse_at_100%_0%,rgba(255,255,255,0.13),transparent_42%)] p-5 sm:gap-6 sm:p-7">
           <div className="flex items-start justify-between gap-4">
             <div className="relative">
               <button
                 type="button"
                 onClick={onEditAvatar}
-                className="group/avatar relative block h-20 w-20 overflow-hidden rounded-full bg-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:h-24 sm:w-24"
+                className="group/avatar relative block h-20 w-20 overflow-hidden rounded-full bg-black shadow-[0_8px_28px_rgba(0,0,0,0.28)] ring-[3px] ring-white/25 transition-transform duration-300 hover:scale-[1.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:h-24 sm:w-24"
                 aria-label={t('profilePage.card.changeAvatar', 'Changer d’avatar')}
               >
                 {avatar && !avatarFailed ? (
@@ -126,7 +126,7 @@ export default function MemberCard({
                 </span>
               </button>
             </div>
-            <p className="text-right text-sm leading-snug text-white/85">
+            <p className="rounded-xl border border-white/15 bg-black/10 px-3 py-2 text-right text-xs leading-snug text-white/90 backdrop-blur-md sm:text-sm">
               {t('profilePage.card.title', 'Carte de membre')}
               <br />
               <span className="text-white/70">
