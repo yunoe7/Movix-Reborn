@@ -55,13 +55,13 @@ const onAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
 
 // Couleur pleine et opacité sur l'icône seule : une couleur translucide
 // éclaircirait les croisements de ses tracés.
-const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white opacity-45 transition-[color,opacity] duration-150 group-hover:opacity-90';
+const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/55 transition-[color,opacity,transform] duration-200 group-hover:text-white/90 group-hover:opacity-100 group-hover:scale-105';
 // Fond de survol simple du panneau mobile, seulement avec une souris
 // (fenêtre étroite sur ordinateur) : au toucher, il resterait accroché.
-const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.05]';
+const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.055] [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045)]';
 
 const rowClass = (variant: MenuVariant, extra?: string) => cn(
-  'group flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-colors duration-150 active:bg-white/[0.07] focus-visible:ring-1 focus-visible:ring-white/25',
+  'group flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[color,background-color,box-shadow] duration-200 active:bg-white/[0.07] focus-visible:ring-1 focus-visible:ring-white/30',
   variant === 'sheet' ? cn('py-3 text-base', SHEET_HOVER) : 'py-2.5 text-sm',
   extra ?? 'text-white/85',
 );
@@ -347,11 +347,11 @@ const ProfileMenu: React.FC = () => {
         <img
           src={profileImage}
           alt=""
-          className="h-10 w-10 shrink-0 rounded-full object-cover"
+          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/25 ring-offset-2 ring-offset-[#111214] shadow-[0_0_18px_rgba(120,145,255,0.12)]"
           onError={onAvatarError}
         />
         <div className="min-w-0">
-          <p className="truncate text-[15px] font-medium leading-5 text-white">{username}</p>
+          <p className="truncate text-[15px] font-semibold tracking-[-0.02em] leading-5 text-white">{username}</p>
           {isVip
             ? vipLine('mt-0.5')
             : <p className="mt-0.5 truncate text-xs text-white/45">{providerStatus()}</p>}
@@ -496,7 +496,7 @@ const ProfileMenu: React.FC = () => {
           <img
             src={isAuthenticated ? profileImage : DEFAULT_AVATAR}
             alt=""
-            className="h-7 w-7 rounded-full object-cover"
+            className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30 ring-offset-1 ring-offset-black shadow-[0_0_12px_rgba(120,145,255,0.16)]"
             onError={onAvatarError}
             key={profileImage}
           />
@@ -529,7 +529,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="w-72"
+              panelClassName="w-72 border border-white/[0.09] bg-[#111214]/95 shadow-[0_22px_70px_rgba(0,0,0,0.62),0_4px_18px_rgba(0,0,0,0.35)] backdrop-blur-2xl"
             >
               {renderContent('panel')}
             </LiquidDropdown>
