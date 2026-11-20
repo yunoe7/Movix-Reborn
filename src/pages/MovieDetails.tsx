@@ -2185,7 +2185,7 @@ const MovieDetails = (): JSX.Element => {
             <div className="relative">
               <div
                 ref={tabsContainerRef}
-                className="flex overflow-x-auto scrollbar-hide touch-pan-x gap-1.5 rounded-2xl border border-white/[0.08] bg-[#0d1017]/85 p-1.5 mb-6 shadow-[0_12px_32px_rgba(0,0,0,0.24)] backdrop-blur-xl"
+                className="flex overflow-x-auto scrollbar-hide touch-pan-x border-b border-gray-700 mb-6"
                 style={{
                   scrollbarWidth: 'none',
                   msOverflowStyle: 'none',
@@ -2195,7 +2195,7 @@ const MovieDetails = (): JSX.Element => {
               >
                 <motion.button
                   onClick={() => setActiveTab('overview')}
-                  className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'overview'
+                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'overview'
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
                     }`}
@@ -2205,15 +2205,15 @@ const MovieDetails = (): JSX.Element => {
                   {t('details.overviewTab')}
                   {activeTab === 'overview' && (
                     <motion.div
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-red-500 via-red-400 to-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
                       layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
                 </motion.button>
                 <motion.button
                   onClick={() => setActiveTab('details')}
-                  className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'details'
+                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'details'
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
                     }`}
@@ -2223,16 +2223,16 @@ const MovieDetails = (): JSX.Element => {
                   {t('details.detailsTab')}
                   {activeTab === 'details' && (
                     <motion.div
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-red-500 via-red-400 to-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
                       layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
                 </motion.button>
 
                 <motion.button
                   onClick={handleVideosTabClick}
-                  className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'videos'
+                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'videos'
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
                     }`}
@@ -2242,16 +2242,16 @@ const MovieDetails = (): JSX.Element => {
                   {t('details.videosTab')}
                   {activeTab === 'videos' && (
                     <motion.div
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-red-500 via-red-400 to-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
                       layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
                 </motion.button>
 
                 <motion.button
                   onClick={handleImagesTabClick}
-                  className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'images'
+                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'images'
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
                     }`}
@@ -2261,16 +2261,16 @@ const MovieDetails = (): JSX.Element => {
                   {t('details.imagesTab')}
                   {activeTab === 'images' && (
                     <motion.div
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-600 shadow-[0_0_12px_rgba(59,130,246,0.45)]"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
                       layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
                 </motion.button>
 
                 <motion.button
                   onClick={() => setActiveTab('cast')}
-                  className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'cast'
+                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'cast'
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
                     }`}
@@ -2280,16 +2280,16 @@ const MovieDetails = (): JSX.Element => {
                   {t('details.castTab')}
                   {activeTab === 'cast' && (
                     <motion.div
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-red-500 via-red-400 to-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
                       layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
                 </motion.button>
 
                 <motion.button
                   onClick={() => setActiveTab('crew')}
-                  className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'crew'
+                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'crew'
                     ? 'text-white'
                     : 'text-gray-400 hover:text-white'
                     }`}
@@ -2299,9 +2299,9 @@ const MovieDetails = (): JSX.Element => {
                   {t('details.crewTab')}
                   {activeTab === 'crew' && (
                     <motion.div
-                      className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-red-500 via-red-400 to-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
                       layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
                 </motion.button>
@@ -2312,7 +2312,7 @@ const MovieDetails = (): JSX.Element => {
                 {hasCharactersTab && (
                   <motion.button
                     onClick={() => setActiveTab('characters')}
-                    className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'characters'
+                    className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'characters'
                       ? 'text-white'
                       : 'text-gray-400 hover:text-white'
                       }`}
@@ -2322,9 +2322,9 @@ const MovieDetails = (): JSX.Element => {
                     {t('details.charactersTab')}
                     {activeTab === 'characters' && (
                       <motion.div
-                        className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-red-500 via-red-400 to-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
                         layoutId="activeTab"
-                        transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
                     )}
                   </motion.button>
@@ -2334,7 +2334,7 @@ const MovieDetails = (): JSX.Element => {
                 {movie?.belongs_to_collection && (
                   <motion.button
                     onClick={handleCollectionTabClick}
-                    className={`px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 relative transition-colors duration-200 ${activeTab === 'collection'
+                    className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'collection'
                       ? 'text-white'
                       : 'text-gray-400 hover:text-white'
                       }`}
@@ -2344,9 +2344,9 @@ const MovieDetails = (): JSX.Element => {
                     {t('details.sagaTab')}
                     {activeTab === 'collection' && (
                       <motion.div
-                        className="absolute bottom-0 left-3 right-3 h-[2px] rounded-full bg-gradient-to-r from-red-500 via-red-400 to-red-600 shadow-[0_0_12px_rgba(239,68,68,0.5)]"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
                         layoutId="activeTab"
-                        transition={{ type: "spring", stiffness: 520, damping: 34 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
                       />
                     )}
                   </motion.button>
@@ -2358,7 +2358,7 @@ const MovieDetails = (): JSX.Element => {
                     // Scroll vers les commentaires
                     commentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                   }}
-                  className="px-5 py-2.5 rounded-xl font-semibold text-sm flex-shrink-0 text-gray-400 hover:text-white transition-colors duration-200"
+                  className="px-6 py-3 font-medium text-sm flex-shrink-0 text-gray-400 hover:text-white"
                   whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
                   whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
                 >
