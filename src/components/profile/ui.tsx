@@ -103,8 +103,8 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-start gap-4 rounded-xl bg-gray-900 px-6 py-10 sm:flex-row sm:items-center sm:px-8">
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-red-600/15 text-red-400 [&>svg]:h-6 [&>svg]:w-6">
+    <div className="group relative isolate flex flex-col items-start gap-5 overflow-hidden rounded-[1.4rem] border border-white/[0.07] bg-[#111827] px-6 py-8 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center sm:px-8 sm:py-9">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-600/15 text-red-400 ring-1 ring-red-500/15 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-6 [&>svg]:w-6">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
@@ -242,5 +242,5 @@ export function PosterBadge({ children }: { children: React.ReactNode }) {
 
 /** Grille d'affiches commune à tous les onglets. */
 export function PosterGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">{children}</div>;
+  return <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">{children}</div>;
 }
