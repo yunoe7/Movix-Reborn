@@ -203,7 +203,7 @@ export function PosterTicket({
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-t-lg';
 
   return (
-    <article className={`group relative flex flex-col ${selected ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
+    <article className={`group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(0,0,0,0.28)] ${selected ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
       {to ? (
         <Link to={to} aria-label={title} className={`block ${focusRing}`}>{art}</Link>
       ) : onOpen ? (
@@ -217,7 +217,7 @@ export function PosterTicket({
         </div>
       )}
 
-      <div className={`relative rounded-b-lg px-3 pb-3 pt-3 ${colors.strip}`}>
+      <div className={`relative rounded-b-2xl px-3 pb-3 pt-3 ${colors.strip}`}>
         {/* Perforation et encoches du talon */}
         <span aria-hidden="true" className="absolute inset-x-3 top-0 border-t border-white/10" />
         <span aria-hidden="true" className="hidden" />
