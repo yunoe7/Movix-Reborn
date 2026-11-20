@@ -2063,7 +2063,7 @@ const TVDetails: React.FC = () => {
             <Play className="h-6 w-6 flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:scale-110" />
             <div className="text-left">
               {resumeData.hasProgress ? (
-                <div className="flex flex-col items-center text-center w-full">
+                <div className="flex min-w-0 flex-col items-start text-left">
                       {/* Estimé seul : le lecteur repartira du début de l'épisode, donc « Regarder ». */}
                       <span>{resumeData.estimated
                         ? t('details.watchBtn')
