@@ -152,7 +152,7 @@ const WishboardDetailsModal: React.FC<WishboardDetailsModalProps> = ({
             title={request.title}
             className="max-w-2xl !p-0"
         >
-            <div className="p-10">
+            <div className="space-y-5 p-5 sm:p-6">
                 <div className="flex flex-col space-y-1.5 text-center sm:text-left">
                     <h2 className="text-lg font-semibold leading-none tracking-tight light:text-black sr-only">
                         {request.title}
@@ -166,10 +166,10 @@ const WishboardDetailsModal: React.FC<WishboardDetailsModalProps> = ({
                             <img
                                 src={`https://image.tmdb.org/t/p/w342${request.poster_path}`}
                                 alt={request.title}
-                                className="h-48 w-32 sm:h-64 sm:w-44 rounded-lg object-cover shadow-lg"
+                                className="h-48 w-32 rounded-2xl border border-white/10 object-cover shadow-[0_16px_38px_rgba(0,0,0,0.4)] sm:h-64 sm:w-44"
                             />
                         ) : (
-                            <div className="h-48 w-32 sm:h-64 sm:w-44 rounded-lg bg-gray-800 flex items-center justify-center border border-white/10">
+                            <div className="flex h-48 w-32 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] sm:h-64 sm:w-44">
                                 {request.media_type === 'movie' ? <Film className="w-12 h-12 opacity-20" /> : <Tv className="w-12 h-12 opacity-20" />}
                             </div>
                         )}
@@ -188,13 +188,13 @@ const WishboardDetailsModal: React.FC<WishboardDetailsModalProps> = ({
                             </span>
                         </div>
 
-                        <h2 className="mb-1 text-xl sm:text-2xl font-bold text-white">{request.title}</h2>
+                        <h2 className="mb-1 text-xl font-extrabold tracking-tight text-white sm:text-2xl">{request.title}</h2>
                         <p className="mb-3 flex items-center gap-2 text-sm text-pantone-100/60">
                             <Calendar className="h-4 w-4 text-pantone-100 opacity-60" />
                             {request.year}
                         </p>
 
-                        <div className="mb-4 text-sm text-pantone-100/70 relative">
+                        <div className="relative mb-4 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 text-sm leading-6 text-slate-300">
                             {loading ? (
                                 <div className="h-20 flex items-center justify-center">
                                     <div className="w-5 h-5 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -245,7 +245,7 @@ const WishboardDetailsModal: React.FC<WishboardDetailsModalProps> = ({
                             href={`https://www.themoviedb.org/${request.media_type}/${request.tmdb_id}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-sm text-pantone-500 hover:underline"
+                            className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.035] px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-rose-300/25 hover:bg-rose-500/[0.07] hover:text-white"
                         >
                             {t('greenlight.viewOnTmdb')}
                             <ExternalLink className="h-3 w-3" />
@@ -258,7 +258,7 @@ const WishboardDetailsModal: React.FC<WishboardDetailsModalProps> = ({
                     const rejectedHistory = request.statusHistory?.find(h => h.status === 'rejected');
                     const reason = rejectedHistory?.reason || request.notes?.find(n => n.is_public)?.note || request.notes?.[0]?.note;
                     return reason ? (
-                        <div className="mt-4 rounded-lg bg-red-500/10 border border-red-500/20 p-4">
+                        <div className="mt-4 rounded-xl border border-rose-400/20 bg-rose-500/[0.07] p-4 shadow-inner shadow-rose-300/[0.025]">
                             <p className="text-sm font-medium text-red-400">{t('greenlight.rejectionReason')}</p>
                             <p className="mt-1 text-sm text-red-300">
                                 {reason}
@@ -269,7 +269,7 @@ const WishboardDetailsModal: React.FC<WishboardDetailsModalProps> = ({
 
                 {/* Team Notes */}
                 {request.notes && request.notes.filter(n => n.is_public).length > 0 && (
-                    <div className="mt-4 rounded-lg bg-blue-500/10 border border-blue-500/20 p-4">
+                    <div className="mt-4 rounded-xl border border-sky-400/20 bg-sky-500/[0.07] p-4 shadow-inner shadow-sky-300/[0.025]">
                         <p className="text-sm font-medium text-blue-400">{t('greenlight.teamNote')}</p>
                         {request.notes.filter(n => n.is_public).map((note, idx) => (
                             <p key={note.id || idx} className="mt-1 text-sm text-blue-300">
@@ -285,7 +285,7 @@ const WishboardDetailsModal: React.FC<WishboardDetailsModalProps> = ({
                         <Clock className="h-4 w-4 text-pantone-100 opacity-70" />
                         {t('greenlight.history')}
                     </p>
-                    <div className="relative space-y-3">
+                    <div className="relative space-y-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-4">
                         <div className="absolute bottom-2 left-[5.5px] top-2 w-[1px] bg-pantone-100/20"></div>
 
                         {request.statusHistory && request.statusHistory.length > 0 ? (
