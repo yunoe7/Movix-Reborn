@@ -219,9 +219,9 @@ export function PosterTicket({
 
       <div className={`relative rounded-b-lg px-3 pb-3 pt-3 ${colors.strip}`}>
         {/* Perforation et encoches du talon */}
-        <span aria-hidden="true" className="absolute inset-x-3 top-0 border-t-2 border-dotted border-black/45" />
-        <span aria-hidden="true" className="absolute -left-1.5 -top-1.5 h-3 w-3 rounded-full bg-black" />
-        <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 h-3 w-3 rounded-full bg-black" />
+        <span aria-hidden="true" className="absolute inset-x-3 top-0 border-t border-white/10" />
+        <span aria-hidden="true" className="hidden" />
+        <span aria-hidden="true" className="hidden" />
         <p className="line-clamp-1 text-sm font-medium" title={title}>{title}</p>
         {(metaLeft || metaRight) && (
           <p className={`mt-0.5 flex items-center justify-between gap-2 text-[13px] tabular-nums ${colors.meta}`}>
