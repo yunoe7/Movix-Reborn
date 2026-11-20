@@ -2064,7 +2064,7 @@ const AdminWishboard: React.FC = () => {
                 onClose={() => !batchChecking && !deletingBatch && setBatchCheckModalOpen(false)}
                 title={t('admin.batchCheck')}
             >
-                <div className="space-y-4">
+                <div className="space-y-5">
                     {batchChecking ? (
                         <div className="space-y-4">
                             <div className="flex flex-col items-center justify-center py-6">
@@ -2077,9 +2077,9 @@ const AdminWishboard: React.FC = () => {
                                     <span className="text-white/70">{t('admin.progress')}</span>
                                     <span className="text-white">{batchProgress}/{batchTotal}</span>
                                 </div>
-                                <div className="w-full bg-white/10 rounded-full h-2">
+                                <div className="h-2.5 w-full overflow-hidden rounded-full border border-white/[0.06] bg-black/30">
                                     <motion.div
-                                        className="bg-purple-500 h-2 rounded-full"
+                                        className="h-2.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-[0_0_14px_rgba(168,85,247,0.35)]"
                                         initial={{ width: 0 }}
                                         animate={{ width: `${(batchProgress / batchTotal) * 100}%` }}
                                         transition={{ duration: 0.3 }}
@@ -2093,20 +2093,20 @@ const AdminWishboard: React.FC = () => {
                     ) : batchCompleted ? (
                         <div className="space-y-4">
                             {/* Summary Stats */}
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                <div className="rounded-xl border border-rose-400/20 bg-rose-500/[0.09] p-4 text-center shadow-inner shadow-rose-300/[0.03]">
                                     <p className="text-2xl font-bold text-red-400">
                                         {batchResults.filter(r => r.availableCategories === 0).length}
                                     </p>
                                     <p className="text-xs text-white/50">{t('admin.noSourceLabel')}</p>
                                 </div>
-                                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center">
+                                <div className="rounded-xl border border-amber-400/20 bg-amber-500/[0.09] p-4 text-center shadow-inner shadow-amber-300/[0.03]">
                                     <p className="text-2xl font-bold text-amber-400">
                                         {batchResults.filter(r => r.availableCategories === 1).length}
                                     </p>
                                     <p className="text-xs text-white/50">{t('admin.oneCategory')}</p>
                                 </div>
-                                <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
+                                <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/[0.09] p-4 text-center shadow-inner shadow-emerald-300/[0.03]">
                                     <p className="text-2xl font-bold text-green-400">
                                         {batchResults.filter(r => r.availableCategories >= 2).length}
                                     </p>
@@ -2115,7 +2115,7 @@ const AdminWishboard: React.FC = () => {
                             </div>
 
                             {/* Results List */}
-                            <div className="max-h-[40vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                            <div className="max-h-[42vh] space-y-3 overflow-y-auto pr-2 custom-scrollbar">
                                 {/* No sources */}
                                 {batchResults.filter(r => r.availableCategories === 0).length > 0 && (
                                     <div className="space-y-2">
@@ -2124,7 +2124,7 @@ const AdminWishboard: React.FC = () => {
                                             {t('admin.noSourceLabel')} ({batchResults.filter(r => r.availableCategories === 0).length})
                                         </h4>
                                         {batchResults.filter(r => r.availableCategories === 0).map((item) => (
-                                            <div key={item.request.id} className="bg-red-500/10 border border-red-500/20 rounded-lg p-2 flex items-center gap-2">
+                                            <div key={item.request.id} className="flex items-center gap-3 rounded-xl border border-rose-400/15 bg-rose-500/[0.055] p-3 transition-colors hover:bg-rose-500/[0.09]">
                                                 {item.request.poster_path && (
                                                     <img src={`https://image.tmdb.org/t/p/w45${item.request.poster_path}`} alt="" className="w-8 h-12 rounded object-cover" />
                                                 )}
@@ -2145,7 +2145,7 @@ const AdminWishboard: React.FC = () => {
                                             {t('admin.oneCategoryLabel')} ({batchResults.filter(r => r.availableCategories === 1).length})
                                         </h4>
                                         {batchResults.filter(r => r.availableCategories === 1).map((item) => (
-                                            <div key={item.request.id} className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2 flex items-center gap-2">
+                                            <div key={item.request.id} className="flex items-center gap-3 rounded-xl border border-amber-400/15 bg-amber-500/[0.055] p-3 transition-colors hover:bg-amber-500/[0.09]">
                                                 {item.request.poster_path && (
                                                     <img src={`https://image.tmdb.org/t/p/w45${item.request.poster_path}`} alt="" className="w-8 h-12 rounded object-cover" />
                                                 )}
@@ -2170,7 +2170,7 @@ const AdminWishboard: React.FC = () => {
                                             {t('admin.twoPlusCategoriesRemove')} ({batchResults.filter(r => r.availableCategories >= 2).length})
                                         </h4>
                                         {batchResults.filter(r => r.availableCategories >= 2).map((item) => (
-                                            <div key={item.request.id} className="bg-green-500/10 border border-green-500/20 rounded-lg p-2 flex items-center gap-2">
+                                            <div key={item.request.id} className="flex items-center gap-3 rounded-xl border border-emerald-400/15 bg-emerald-500/[0.055] p-3 transition-colors hover:bg-emerald-500/[0.09]">
                                                 {item.request.poster_path && (
                                                     <img src={`https://image.tmdb.org/t/p/w45${item.request.poster_path}`} alt="" className="w-8 h-12 rounded object-cover" />
                                                 )}
@@ -2196,7 +2196,7 @@ const AdminWishboard: React.FC = () => {
                             </div>
 
                             {/* Actions */}
-                            <div className="flex justify-between items-center pt-4 border-t border-white/10">
+                            <div className="flex flex-col items-start justify-between gap-3 border-t border-white/[0.08] pt-4 sm:flex-row sm:items-center">
                                 <p className="text-white/50 text-xs">
                                     {t('admin.twoSourcesRejectNote')}
                                 </p>
