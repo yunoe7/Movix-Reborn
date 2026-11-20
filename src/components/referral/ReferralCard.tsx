@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Share2 } from 'lucide-react';
+import { Copy, Share2, Gift, Users, BadgeCheck, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyText } from '@/utils/clipboard';
 import { Button } from '@/components/profile/ui';
@@ -26,11 +26,14 @@ function formatCode(code: string): string {
   return `${code.slice(0, 4)} ${code.slice(4)}`;
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({ value, label, icon: Icon }: { value: number; label: string; icon: React.ElementType }) {
   return (
-    <div className="min-w-0">
-      <p className="text-2xl font-semibold tabular-nums text-white">{value}</p>
-      <p className="mt-0.5 text-[13px] text-white/50">{label}</p>
+    <div className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.035] px-3 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:px-4">
+      <div className="flex items-center gap-2 text-white/40">
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">{label}</p>
+      </div>
+      <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-white sm:text-[1.7rem]">{value}</p>
     </div>
   );
 }
@@ -180,11 +183,21 @@ export default function ReferralCard({ className = '' }: { className?: string })
   }
 
   return (
-    <section className={`rounded-xl bg-gray-900 p-5 sm:p-6 ${className}`} aria-labelledby={`${inputId}-title`}>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+    <section className={`relative isolate overflow-hidden rounded-2xl border border-white/[0.09] bg-[linear-gradient(135deg,#171c2b_0%,#111725_48%,#0d111c_100%)] p-5 shadow-[0_22px_65px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.045)] sm:p-7 ${className}`} aria-labelledby={`${inputId}-title`}>
+      <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-28 -z-10 h-72 w-72 rounded-full bg-red-500/[0.09] blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 left-[28%] -z-10 h-64 w-64 rounded-full bg-indigo-500/[0.07] blur-3xl" />
+      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.9fr)] lg:items-center">
         <div className="min-w-0">
-          <h2 id={`${inputId}-title`} className="text-xl font-semibold text-white">{t('referral.card.title')}</h2>
-          <p className="mt-1.5 max-w-xl text-[15px] leading-relaxed text-white/60">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-400/20 bg-red-500/10 text-red-300 shadow-[0_0_24px_rgba(239,68,68,0.09)]">
+              <Gift className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-300/75">MOVIX REWARDS</p>
+              <h2 id={`${inputId}-title`} className="mt-0.5 text-xl font-semibold tracking-tight text-white sm:text-[1.35rem]">{t('referral.card.title')}</h2>
+            </div>
+          </div>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300/75 sm:text-[15px]">
             {t('referral.card.pitch', {
               duration: formatWatchDuration(data.requiredMinutes),
               days: formatDistinctDays(t, data.requiredDays),
@@ -192,13 +205,16 @@ export default function ReferralCard({ className = '' }: { className?: string })
             })}
           </p>
 
-          <div className="mt-5 flex flex-wrap items-stretch gap-3">
-            {/* Talon de ticket : le code, à lire ou à dicter. */}
-            <div className="relative rounded-lg bg-white px-5 py-3 text-black">
-              <span aria-hidden="true" className="absolute -left-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-gray-900" />
-              <span aria-hidden="true" className="absolute -right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-gray-900" />
-              <p className="text-xs text-black/55">{t('referral.card.yourCode')}</p>
-              <p className="mt-0.5 font-semibold tabular-nums tracking-[0.18em] text-2xl" aria-label={data.code.split('').join(' ')}>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {/* Code de parrainage présenté comme un billet premium. */}
+            <div className="relative min-w-[12.5rem] overflow-hidden rounded-xl border border-white/15 bg-[linear-gradient(135deg,#f8fafc_0%,#e2e8f0_100%)] px-5 py-3.5 text-slate-950 shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
+              <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#151a28]" />
+              <span aria-hidden="true" className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#151a28]" />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('referral.card.yourCode')}</p>
+                <Sparkles className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
+              </div>
+              <p className="mt-1 font-mono text-[1.45rem] font-bold tabular-nums tracking-[0.16em]" aria-label={data.code.split('').join(' ')}>
                 {formatCode(data.code)}
               </p>
             </div>
@@ -222,15 +238,15 @@ export default function ReferralCard({ className = '' }: { className?: string })
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-6 lg:w-[22rem]">
-          <Stat value={data.stats.invited} label={t('referral.card.statInvited')} />
-          <Stat value={data.stats.rewarded} label={t('referral.card.statRewarded')} />
-          <Stat value={data.stats.daysEarned} label={t('referral.card.statDays')} />
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-full">
+          <Stat value={data.stats.invited} label={t('referral.card.statInvited')} icon={Users} />
+          <Stat value={data.stats.rewarded} label={t('referral.card.statRewarded')} icon={BadgeCheck} />
+          <Stat value={data.stats.daysEarned} label={t('referral.card.statDays')} icon={Gift} />
         </div>
       </div>
 
       {data.referee && (
-        <div className="mt-6 border-t border-white/[0.08] pt-5">
+        <div className="mt-7 rounded-xl border border-white/[0.08] bg-black/15 p-4 sm:p-5">
           <h3 className="mb-3 text-sm font-medium text-white">
             {data.referee.status === 'pending'
               ? t('referral.card.progressTitle', { reward: formatDays(t, data.rewardDays) })
@@ -241,7 +257,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
       )}
 
       {!data.referee && data.canEnterCode && (
-        <form onSubmit={handleClaim} className="mt-6 border-t border-white/[0.08] pt-5">
+        <form onSubmit={handleClaim} className="mt-7 rounded-xl border border-white/[0.08] bg-black/15 p-4 sm:p-5">
           <label htmlFor={inputId} className="block text-sm font-medium text-white">{t('referral.card.enterTitle')}</label>
           {deadline && <p className="mt-1 text-[13px] text-white/50">{t('referral.card.enterDeadline', { date: deadline })}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -254,7 +270,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
               value={codeInput}
               onChange={(event) => setCodeInput(event.target.value.slice(0, 300))}
               placeholder={t('referral.field.placeholder')}
-              className="h-10 min-w-0 flex-1 rounded-full border border-white/10 bg-white/[0.04] px-4 text-[15px] uppercase tracking-[0.12em] text-white placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 focus:border-white/30 focus:outline-none sm:max-w-xs"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-[#0b101b]/80 px-4 text-[15px] uppercase tracking-[0.12em] text-white outline-none transition-colors placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 hover:border-white/20 focus:border-red-400/60 focus:ring-2 focus:ring-red-500/10 sm:max-w-sm"
             />
             <Button type="submit" variant="light" pending={claiming} disabled={!codeInput.trim()}>
               {t('referral.card.enterSubmit')}
@@ -263,7 +279,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
         </form>
       )}
 
-      <p className="mt-5 text-xs text-white/40">{t('referral.card.vipNote')}</p>
+      <p className="mt-5 flex items-center gap-2 text-xs leading-relaxed text-slate-400/70"><Gift className="h-3.5 w-3.5 shrink-0 text-red-300/70" aria-hidden="true" />{t('referral.card.vipNote')}</p>
     </section>
   );
 }
