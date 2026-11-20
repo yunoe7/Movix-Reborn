@@ -280,10 +280,10 @@ const Profile: React.FC = () => {
     });
 
   return (
-    <main className="mx-auto w-full max-w-[1440px] px-4 pb-24 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+    <main className="mx-auto w-full max-w-[1480px] px-4 pb-24 pt-5 sm:px-6 sm:pt-7 lg:px-9">
       {/* grid-cols-1 = minmax(0, 1fr) : sans lui, la bande perforée de la carte
           (largeur min-content ~566 px) élargit la colonne au-delà de l'écran. */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-5">
         <motion.div className="min-w-0" {...rise(0)}>
           <MemberCard
             name={displayName}
@@ -305,7 +305,7 @@ const Profile: React.FC = () => {
       {/* Parrainage : rien pour un compte à code d'accès seul ou si l'admin l'a coupé. */}
       <ReferralCard className="mt-3" />
 
-      <section className="mt-12 sm:mt-16" aria-labelledby={tabButtonId(activeTab)}>
+      <section className="mt-12 sm:mt-14" aria-labelledby={tabButtonId(activeTab)}>
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">{t('profilePage.library.title', 'Ta bibliothèque')}</h2>
         </div>
@@ -313,7 +313,7 @@ const Profile: React.FC = () => {
           <ProfileTabs tabs={tabs} active={activeTab} onChange={changeTab} label={t('profilePage.library.title', 'Ta bibliothèque')} />
         </div>
 
-        <div id={tabPanelId} role="tabpanel" aria-labelledby={tabButtonId(activeTab)} className="mt-6 min-h-[40vh]">
+        <div id={tabPanelId} role="tabpanel" aria-labelledby={tabButtonId(activeTab)} className="mt-6 min-h-[40vh] rounded-[1.5rem] border border-white/[0.045] bg-white/[0.012] p-3 sm:p-4">
           {activeFilter && activeSource.length > 0 && (
             <FilterSystem
               onFiltersChange={handleFiltersChange}
