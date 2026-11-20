@@ -4046,13 +4046,14 @@ const TVDetails: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
-                  <h3 className="text-lg font-semibold mb-4">{t('details.castTab')}</h3>
+                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.castTab')}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {cast.map((actor, index) => (
                       <motion.div
                         key={actor.id}
-                        className="flex items-center gap-3 p-2 rounded-lg cursor-pointer"
+                        className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
                         onClick={() => navigate(`/person/${actor.id}`)}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -4099,6 +4100,7 @@ const TVDetails: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   <CharactersSection data={characters} loading={charactersLoading} />
                 </motion.div>
@@ -4109,13 +4111,14 @@ const TVDetails: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
-                  <h3 className="text-lg font-semibold mb-4">{t('details.crewTab')}</h3>
+                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.crewTab')}</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {crew.map((member, index) => (
                       <motion.div
                         key={member.id}
-                        className="flex items-center gap-3 p-2 rounded-lg cursor-pointer"
+                        className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 + index * 0.05 }}
@@ -4162,6 +4165,7 @@ const TVDetails: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   {/* Sociétés de production */}
                   <motion.div
@@ -4179,7 +4183,7 @@ const TVDetails: React.FC = () => {
                         ((tvShow as any).production_companies || []).map((company: any, index: number) => (
                           <motion.div
                             key={company.id}
-                            className="flex items-center gap-3 bg-gray-800 p-3 rounded-lg"
+                            className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.045] p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.07]"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 + index * 0.1 }}
@@ -4233,7 +4237,7 @@ const TVDetails: React.FC = () => {
                         {((tvShow as any).origin_country || []).map((country: string, index: number) => (
                           <motion.div
                             key={country}
-                            className="bg-gray-800 px-3 py-2 rounded-lg border border-gray-700"
+                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.1 + index * 0.05 }}
@@ -4267,7 +4271,7 @@ const TVDetails: React.FC = () => {
                         {((tvShow as any).spoken_languages || []).map((lang: any, index: number) => (
                           <motion.div
                             key={lang.iso_639_1}
-                            className="bg-gray-800 px-3 py-2 rounded-lg border border-gray-700"
+                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.1 + index * 0.05 }}
@@ -4297,7 +4301,7 @@ const TVDetails: React.FC = () => {
                       {t('details.firstAirDateLabel')}
                     </h3>
                     <motion.div
-                      className="bg-gray-800 px-3 py-2 rounded-lg inline-block border border-gray-700"
+                      className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm"
                       whileHover={{
                         backgroundColor: "rgba(75,85,99, 0.8)",
                         y: -2,
@@ -4327,7 +4331,7 @@ const TVDetails: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Nombre de saisons */}
                       <motion.div
-                        className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                         whileHover={{
                           backgroundColor: "rgba(75,85,99, 0.8)",
                           y: -2,
@@ -4343,7 +4347,7 @@ const TVDetails: React.FC = () => {
 
                       {/* Nombre d'épisodes */}
                       <motion.div
-                        className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                         whileHover={{
                           backgroundColor: "rgba(75,85,99, 0.8)",
                           y: -2,
@@ -4360,7 +4364,7 @@ const TVDetails: React.FC = () => {
                       {/* Popularité */}
                       {tvShow.popularity && (
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4378,7 +4382,7 @@ const TVDetails: React.FC = () => {
                       {/* Durée moyenne des épisodes */}
                       {tvShow.episode_run_time && tvShow.episode_run_time.length > 0 && (
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4396,7 +4400,7 @@ const TVDetails: React.FC = () => {
                       {/* Statut */}
                       {tvShow.status && (
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700 col-span-1 md:col-span-2"
+                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4420,7 +4424,7 @@ const TVDetails: React.FC = () => {
                       {/* Dernière diffusion */}
                       {lastBroadcastEpisode && lastBroadcastAiring && (
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700 col-span-1 md:col-span-2"
+                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4447,7 +4451,7 @@ const TVDetails: React.FC = () => {
                       {/* Prochain épisode */}
                       {nextBroadcastEpisode && nextBroadcastAiring && (
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700 col-span-1 md:col-span-2"
+                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4490,7 +4494,7 @@ const TVDetails: React.FC = () => {
                         {t('details.financialStatsTitle')}
                       </h3>
                       <motion.div
-                        className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700"
+                        className="flex overflow-hidden rounded-xl border border-white/[0.09] bg-black/25 p-1 shadow-inner"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -4518,7 +4522,7 @@ const TVDetails: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Coût estimé par épisode */}
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4541,7 +4545,7 @@ const TVDetails: React.FC = () => {
 
                         {/* Budget total estimé */}
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4564,7 +4568,7 @@ const TVDetails: React.FC = () => {
 
                         {/* Section des revenus - affichée différemment selon le mode */}
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700 col-span-1 md:col-span-2"
+                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4575,7 +4579,7 @@ const TVDetails: React.FC = () => {
                           <h4 className="text-gray-400 text-sm mb-1">{t('details.revenueAndProfits')}</h4>
 
                           {financialStatsMode === 'simple' ? (
-                            <div className="bg-gray-900 p-2 rounded-lg">
+                            <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
                               <div className="flex justify-between items-center">
                                 <span className="text-sm text-gray-300">{t('details.profitabilityStatus')}</span>
                                 <span className={`text-sm font-semibold ${tvShow.number_of_seasons && tvShow.vote_average &&
@@ -4628,7 +4632,7 @@ const TVDetails: React.FC = () => {
                                   <span className="font-semibold">{t('details.profitabilityEstimate')}</span> {t('details.tv.finance.forShow', { name: tvShow.name })}
                                 </p>
 
-                                <div className="bg-gray-900 p-2 rounded-lg mb-2">
+                                <div className="mb-2 rounded-xl border border-white/[0.06] bg-black/20 p-3">
                                   <div className="flex justify-between items-center mb-1">
                                     <span className="text-xs text-gray-400">{t('details.breakEvenEstimate')}</span>
                                     <span className="text-xs font-semibold text-gray-300">
@@ -4678,7 +4682,7 @@ const TVDetails: React.FC = () => {
                                   <span className="font-semibold">{t('details.factorsImpacting')}</span>
                                 </p>
                                 <div className="grid grid-cols-2 gap-2">
-                                  <div className="bg-gray-900 p-2 rounded-lg">
+                                  <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
                                     <h5 className="text-xs font-medium text-green-400 mb-1">{t('details.positiveFactors')}</h5>
                                     <ul className="list-disc pl-4 text-xs text-gray-300 space-y-0.5">
                                       <li>{t('details.highRating')} ({tvShow.vote_average}/10)</li>
@@ -4691,7 +4695,7 @@ const TVDetails: React.FC = () => {
                                       }
                                     </ul>
                                   </div>
-                                  <div className="bg-gray-900 p-2 rounded-lg">
+                                  <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
                                     <h5 className="text-xs font-medium text-red-400 mb-1">{t('details.negativeFactors')}</h5>
                                     <ul className="list-disc pl-4 text-xs text-gray-300 space-y-0.5">
                                       {!tvShow.in_production &&
@@ -4735,7 +4739,7 @@ const TVDetails: React.FC = () => {
                         </h4>
 
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4792,7 +4796,7 @@ const TVDetails: React.FC = () => {
                         </h4>
 
                         <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700"
+                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
                           whileHover={{
                             backgroundColor: "rgba(75,85,99, 0.8)",
                             y: -2,
@@ -4902,7 +4906,7 @@ const TVDetails: React.FC = () => {
                         {tvShow.networks.map((network, index) => (
                           <motion.div
                             key={network.id}
-                            className="flex items-center gap-3 bg-gray-800 p-3 rounded-lg"
+                            className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.045] p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.07]"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 + index * 0.1 }}
@@ -4953,6 +4957,7 @@ const TVDetails: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -5024,7 +5029,7 @@ const TVDetails: React.FC = () => {
                               {videos.map((video: any, videoIndex: number) => (
                                 <motion.div
                                   key={video.id}
-                                  className="group bg-gray-800/70 rounded-xl overflow-hidden border border-gray-700/50 hover:border-purple-500/30"
+                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-violet-400/30"
                                   initial={{ opacity: 0, y: 20, scale: 0.9 }}
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{
@@ -5051,7 +5056,7 @@ const TVDetails: React.FC = () => {
                                     <motion.img
                                       src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                       alt={video.name}
-                                      className="w-full h-full object-cover"
+                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                                       whileHover={{ y: -2, scale: 1.015 }}
                                       transition={{ duration: 0.3 }}
                                     />
@@ -5075,7 +5080,7 @@ const TVDetails: React.FC = () => {
                                     </motion.div>
                                   </div>
                                   <motion.div
-                                    className="p-4"
+                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: videoIndex * 0.05 + 0.2 }}
@@ -5124,7 +5129,7 @@ const TVDetails: React.FC = () => {
                               {filteredVideos.map((video: any, index: number) => (
                                 <motion.div
                                   key={video.id || video.key}
-                                  className="group bg-gray-800/70 rounded-xl overflow-hidden border border-gray-700/50 hover:border-red-500/30"
+                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
                                   initial={{ opacity: 0, y: 20, scale: 0.9 }}
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{
@@ -5151,7 +5156,7 @@ const TVDetails: React.FC = () => {
                                     <motion.img
                                       src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                       alt={video.name}
-                                      className="w-full h-full object-cover"
+                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                                       whileHover={{ y: -2, scale: 1.015 }}
                                       transition={{ duration: 0.3 }}
                                     />
@@ -5175,7 +5180,7 @@ const TVDetails: React.FC = () => {
                                     </motion.div>
                                   </div>
                                   <motion.div
-                                    className="p-4"
+                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: index * 0.1 + 0.2 }}
@@ -5226,7 +5231,7 @@ const TVDetails: React.FC = () => {
                                 .map((video: any, index: number) => (
                                   <motion.div
                                     key={video.id || video.key}
-                                    className="bg-gray-800 rounded-lg overflow-hidden cursor-pointer"
+                                    className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.1 * index, duration: 0.3 }}
@@ -5244,7 +5249,7 @@ const TVDetails: React.FC = () => {
                                       <img
                                         src={`https://img.youtube.com/vi/${video.key}/hqdefault.jpg`}
                                         alt={video.name}
-                                        className="w-full h-full object-cover"
+                                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                                       />
                                       <div className="absolute inset-0 flex items-center justify-center">
                                         <div className="w-16 h-16 rounded-full bg-red-600/80 flex items-center justify-center">
@@ -5252,7 +5257,7 @@ const TVDetails: React.FC = () => {
                                         </div>
                                       </div>
                                     </div>
-                                    <div className="p-4">
+                                    <div className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4">
                                       <h4 className="font-medium mb-1">{video.name}</h4>
                                       <div className="flex items-center gap-2">
                                         <span className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300">
@@ -5362,7 +5367,7 @@ const TVDetails: React.FC = () => {
                                     {videos.map((video: any, videoIndex: number) => (
                                       <motion.div
                                         key={video.id}
-                                        className="group bg-gray-800/70 rounded-xl overflow-hidden border border-gray-700/50 hover:border-purple-500/30"
+                                        className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-violet-400/30"
                                         initial={{ opacity: 0, y: 20, scale: 0.9 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         transition={{
@@ -5389,7 +5394,7 @@ const TVDetails: React.FC = () => {
                                           <motion.img
                                             src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                             alt={video.name}
-                                            className="w-full h-full object-cover"
+                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                                             whileHover={{ y: -2, scale: 1.015 }}
                                             transition={{ duration: 0.3 }}
                                           />
@@ -5413,7 +5418,7 @@ const TVDetails: React.FC = () => {
                                           </motion.div>
                                         </div>
                                         <motion.div
-                                          className="p-4"
+                                          className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
                                           initial={{ opacity: 0 }}
                                           animate={{ opacity: 1 }}
                                           transition={{ delay: videoIndex * 0.05 + 0.2 }}
@@ -5448,7 +5453,7 @@ const TVDetails: React.FC = () => {
                               {seasonVideos[seasonNum].map((video: any, index: number) => (
                                 <motion.div
                                   key={video.id || video.key}
-                                  className="group bg-gray-800/70 rounded-xl overflow-hidden border border-gray-700/50 hover:border-red-500/30"
+                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
                                   initial={{ opacity: 0, y: 20, scale: 0.9 }}
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{
@@ -5475,7 +5480,7 @@ const TVDetails: React.FC = () => {
                                     <motion.img
                                       src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
                                       alt={video.name}
-                                      className="w-full h-full object-cover"
+                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                                       whileHover={{ y: -2, scale: 1.015 }}
                                       transition={{ duration: 0.3 }}
                                     />
@@ -5499,7 +5504,7 @@ const TVDetails: React.FC = () => {
                                     </motion.div>
                                   </div>
                                   <motion.div
-                                    className="p-4"
+                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: index * 0.1 + 0.2 }}
@@ -5550,6 +5555,7 @@ const TVDetails: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   <TVImagesSection tvId={id!} />
                 </motion.div>
