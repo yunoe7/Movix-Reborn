@@ -536,7 +536,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
       <div
         ref={imageContainerRef}
         data-hero-frame
-        className="relative isolate w-full h-[55vh] supports-[height:100svh]:h-[55svh] max-h-[620px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[340px] sm:min-h-[400px] md:min-h-[480px]"
+        className="relative isolate w-full h-[62vh] supports-[height:100svh]:h-[62svh] max-h-[760px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[360px] sm:min-h-[440px] md:min-h-[540px]"
       >
         {isMorph && (
           <div className="pointer-events-none absolute inset-0" aria-hidden="true">
@@ -621,6 +621,9 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
             </>
           )}
         </div>
+
+        {/* Fondu inférieur : prolonge visuellement l’image sans masquer le sujet. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[12] h-[18%] bg-gradient-to-b from-transparent via-black/10 to-black/45" />
 
         {/* Lueur intérieure du thème Halloween, sous le texte. Masquée hors thème. */}
         <div aria-hidden="true" className="halloween-hero-inner pointer-events-none absolute inset-0 z-[15]" />
