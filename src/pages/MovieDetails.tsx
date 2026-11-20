@@ -2545,13 +2545,14 @@ const MovieDetails = (): JSX.Element => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
-                  <h3 className="text-lg font-semibold mb-4">{t('details.castTab')}</h3>
+                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.castTab')}</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {cast.map((actor, index) => (
                       <motion.div
                         key={actor.id}
-                        className="flex items-center gap-3 p-2 rounded-lg cursor-pointer"
+                        className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
                         onClick={() => navigate(`/person/${actor.id}`)}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -2598,6 +2599,7 @@ const MovieDetails = (): JSX.Element => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   <CharactersSection data={characters} loading={charactersLoading} />
                 </motion.div>
@@ -2608,8 +2610,9 @@ const MovieDetails = (): JSX.Element => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
-                  <h3 className="text-lg font-semibold mb-4">{t('details.crewTab')}</h3>
+                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.crewTab')}</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {crew.map((member, index) => (
                       <motion.div
@@ -2683,6 +2686,7 @@ const MovieDetails = (): JSX.Element => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   {/* Production Companies */}
                   {movie.production_companies && movie.production_companies.length > 0 && (
@@ -2700,7 +2704,7 @@ const MovieDetails = (): JSX.Element => {
                         {movie.production_companies.map((company, index) => (
                           <motion.div
                             key={company.id}
-                            className="flex items-center gap-3 bg-gray-800 p-3 rounded-lg"
+                            className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.045] p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.07]"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.1 + index * 0.1 }}
@@ -2752,7 +2756,7 @@ const MovieDetails = (): JSX.Element => {
                         {movie.production_countries.map((country, index) => (
                           <motion.div
                             key={country.iso_3166_1}
-                            className="bg-gray-800 px-3 py-2 rounded-lg border border-gray-700"
+                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: 0.1 + index * 0.05 }}
@@ -3081,8 +3085,9 @@ const MovieDetails = (): JSX.Element => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <h3 className="text-lg font-semibold flex items-center gap-2">
                       <Video className="w-5 h-5" />
                       {t('details.videosAndTrailers')}
@@ -3151,7 +3156,7 @@ const MovieDetails = (): JSX.Element => {
                               {videos.map((video: any, videoIndex: number) => (
                                 <motion.div
                                   key={video.id}
-                                  className="group bg-gray-800/70 rounded-xl overflow-hidden border border-gray-700/50 hover:border-purple-500/30"
+                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-violet-400/30"
                                   initial={{ opacity: 0, y: 20, scale: 0.9 }}
                                   animate={{ opacity: 1, y: 0, scale: 1 }}
                                   transition={{
@@ -3202,7 +3207,7 @@ const MovieDetails = (): JSX.Element => {
                                     </motion.div>
                                   </div>
                                   <motion.div
-                                    className="p-4"
+                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
                                     transition={{ delay: videoIndex * 0.05 + 0.2 }}
@@ -3237,7 +3242,7 @@ const MovieDetails = (): JSX.Element => {
                         {videos.map((video: any, index: number) => (
                           <motion.div
                             key={video.id}
-                            className="group bg-gray-800/70 rounded-xl overflow-hidden border border-gray-700/50 hover:border-red-500/30"
+                            className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
                             initial={{ opacity: 0, y: 20, scale: 0.9 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             transition={{
@@ -3322,6 +3327,7 @@ const MovieDetails = (): JSX.Element => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   <ImagesSection movieId={id!} images={images} loading={loadingImages} />
                 </motion.div>
@@ -3332,6 +3338,7 @@ const MovieDetails = (): JSX.Element => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
                 >
                   {loadingCollection ? (
                     <div className="flex items-center justify-center h-40 w-full">
