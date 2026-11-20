@@ -1449,7 +1449,7 @@ const MovieDetails = (): JSX.Element => {
     };
 
     return (
-      <div className="mt-5 flex flex-col gap-4 relative isolate rounded-[1.6rem] border border-white/[0.10] bg-[linear-gradient(145deg,rgba(24,29,40,0.94),rgba(8,11,17,0.94))] p-3 shadow-[0_24px_65px_rgba(0,0,0,0.42)] backdrop-blur-2xl sm:p-4 before:pointer-events-none before:absolute before:inset-x-8 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/25 before:to-transparent">
+      <div className="mt-5 flex flex-col gap-4 bg-transparent p-0">
         {/* Première ligne avec Regarder et Bande-annonce */}
         <div className="grid w-full min-w-0 grid-cols-2 gap-3">
           <motion.button
