@@ -10,6 +10,7 @@ const { verifyAccessKey } = require("./checkVip");
 // Réutiliser l'instance Redis partagée au lieu d'en créer une nouvelle (évite les fuites mémoire)
 const { redis } = require("./config/redis");
 const { verifyTurnstileFromRequest } = require("./utils/turnstile");
+const { getUserDataFilePath } = require("./utils/syncPolicy");
 // Signalement d'une proposition de sequence deposee depuis le lecteur : elle
 // n'a rien d'un commentaire, mais elle se modere au meme endroit, avec les
 // memes etats et les memes notifications. Voir `target_type = 'segment'`.
@@ -490,45 +491,31 @@ async function ensureNotificationTables() {
   }
 }
 
+// Même racine de stockage que le middleware d'authentification et la synchronisation.
+// Sur Railway, DATA_DIR peut pointer vers le volume persistant : ne pas reconstruire
+// le chemin sous __dirname, sinon les contrôles de propriété lisent un dossier vide.
+const USER_DATA_DIR = process.env.DATA_DIR
+  ? path.resolve(process.env.DATA_DIR)
+  : path.join(__dirname, "data");
+const USER_DATA_DIRS = {
+  usersDir: path.join(USER_DATA_DIR, "users"),
+  guestsDir: path.join(USER_DATA_DIR, "guests"),
+};
+
 // Helper to get allowed profile IDs (security check)
 async function getProfileIds(userId, userType) {
   try {
-    // Sanitize userId to prevent path traversal
-    const safeUserId = String(userId).replace(/[^a-zA-Z0-9_\-]/g, "");
-    let userFilePath;
-    if (userType === "bip39") {
-      userFilePath = path.join(
-        __dirname,
-        "data",
-        "users",
-        `bip39-${safeUserId}.json`,
-      );
-    } else {
-      userFilePath = path.join(
-        __dirname,
-        "data",
-        "users",
-        `${safeUserId}.json`,
-      );
-    }
-
-    try {
-      const userFile = await fs.readFile(userFilePath, "utf8");
-      const user = JSON.parse(userFile);
-
-      const profileIds = [];
-      if (user.profiles) {
-        user.profiles.forEach((p) => profileIds.push(p.id));
-      } else {
-        // Fallback for old structure might be needed but typically not for profileId spoofing protection
-      }
-      return profileIds;
-    } catch (err) {
-      // if (err.code !== 'ENOENT') console.error('Error reading user file:', err);
-      return [];
-    }
+    const userFilePath = getUserDataFilePath(USER_DATA_DIRS, userType, String(userId));
+    const userFile = await fs.readFile(userFilePath, "utf8");
+    const user = JSON.parse(userFile);
+    if (!Array.isArray(user?.profiles)) return [];
+    return user.profiles
+      .filter((profile) => profile && profile.id != null)
+      .map((profile) => String(profile.id));
   } catch (error) {
-    console.error("Error getting profile IDs:", error);
+    if (error?.code !== "ENOENT") {
+      console.error("[comments] Failed to load authorized profile IDs:", error.message || error);
+    }
     return [];
   }
 }
