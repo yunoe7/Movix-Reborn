@@ -388,12 +388,12 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
 
       {/* Bannière d'activation des notifications push */}
       {showPushBanner && (
-        <div data-sheet-item className="mx-3 mb-2 flex gap-3 rounded-2xl border border-rose-300/[0.14] bg-gradient-to-br from-rose-500/[0.075] via-white/[0.035] to-transparent p-3">
-          <BellRing size={18} aria-hidden="true" className="mt-0.5 shrink-0 rounded-lg bg-rose-400/[0.12] p-1.5 text-rose-200" />
+        <div data-sheet-item className="mx-3 mb-3 flex gap-3 rounded-2xl border border-rose-300/[0.14] bg-gradient-to-br from-rose-500/[0.075] via-white/[0.035] to-transparent p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+          <BellRing size={18} aria-hidden="true" className="mt-0.5 shrink-0 rounded-lg bg-rose-400/[0.12] p-2 text-rose-200" />
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-semibold text-white">{t('notifications.pushBannerTitle')}</p>
             <p className="mt-1 text-xs leading-relaxed text-slate-400">{t('notifications.pushBannerDesc')}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-1">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1">
               <LiquidButton tone="light" size="sm" onClick={handleEnablePush} disabled={pushSubscribing}>
                 {pushSubscribing ? t('common.loading') : t('notifications.enablePush')}
               </LiquidButton>
@@ -451,9 +451,9 @@ const NotificationsPopup: React.FC<NotificationsPopupProps> = ({ onClose, onNoti
             </ul>
           )
         ) : (
-          <div data-sheet-item className="mx-3 my-2 flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/[0.08] bg-gradient-to-b from-white/[0.025] to-transparent px-5 py-4 text-center">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.045] shadow-[0_6px_18px_rgba(0,0,0,0.16)]">
-              <Bell size={19} aria-hidden="true" className="text-slate-400" />
+          <div data-sheet-item className="mx-3 my-3 flex min-h-44 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.08] bg-gradient-to-b from-white/[0.025] to-transparent px-6 py-8 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.045] shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
+              <Bell size={23} aria-hidden="true" className="text-slate-400" />
             </span>
             <p className="text-sm font-medium text-slate-300">{t('notifications.noNotifications')}</p>
           </div>
