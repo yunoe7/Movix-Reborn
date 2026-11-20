@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Share2, Gift, Users, BadgeCheck, Sparkles } from 'lucide-react';
+import { Copy, Share2, Gift, Users, BadgeCheck, Sparkles, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyText } from '@/utils/clipboard';
 import { Button } from '@/components/profile/ui';
@@ -28,8 +28,8 @@ function formatCode(code: string): string {
 
 function Stat({ value, label, icon: Icon }: { value: number; label: string; icon: React.ElementType }) {
   return (
-    <div className="min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.035] px-3 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:px-4">
-      <div className="flex items-center gap-2 text-white/40">
+    <div className="min-w-0 rounded-xl border border-white/[0.09] bg-black/25 px-3 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-4">
+      <div className="flex items-center gap-2 text-white/45">
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">{label}</p>
       </div>
@@ -183,17 +183,24 @@ export default function ReferralCard({ className = '' }: { className?: string })
   }
 
   return (
-    <section className={`relative isolate overflow-hidden rounded-2xl border border-white/[0.09] bg-[linear-gradient(135deg,#171c2b_0%,#111725_48%,#0d111c_100%)] p-5 shadow-[0_22px_65px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.045)] sm:p-7 ${className}`} aria-labelledby={`${inputId}-title`}>
-      <div aria-hidden="true" className="pointer-events-none absolute -right-20 -top-28 -z-10 h-72 w-72 rounded-full bg-red-500/[0.09] blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 left-[28%] -z-10 h-64 w-64 rounded-full bg-indigo-500/[0.07] blur-3xl" />
+    <section className={`relative isolate overflow-hidden rounded-[1.65rem] border border-red-300/[0.17] bg-[radial-gradient(ellipse_at_88%_0%,rgba(127,29,29,0.22),transparent_43%),linear-gradient(125deg,#171316_0%,#111116_52%,#171116_100%)] px-5 pb-5 pt-10 shadow-[0_24px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.055)] sm:px-7 sm:pb-7 sm:pt-11 ${className}`} aria-labelledby={`${inputId}-title`}>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-7 border-b border-red-300/[0.12] bg-black/35">
+        <div className="mx-3 flex h-full items-center gap-2 overflow-hidden sm:mx-4 sm:gap-2.5">
+          {Array.from({ length: 22 }, (_, index) => (
+            <span key={index} className="h-3.5 w-4 shrink-0 rounded-[4px] bg-black/80 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] sm:w-[18px]" />
+          ))}
+        </div>
+      </div>
+      <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-28 -z-10 h-80 w-80 rounded-full bg-red-700/[0.13] blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 left-[30%] -z-10 h-64 w-64 rounded-full bg-rose-950/[0.16] blur-3xl" />
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.9fr)] lg:items-center">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-400/20 bg-red-500/10 text-red-300 shadow-[0_0_24px_rgba(239,68,68,0.09)]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-300/25 bg-red-950/45 text-red-200 shadow-[0_0_26px_rgba(185,28,28,0.13)]">
               <Gift className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-300/75">MOVIX REWARDS</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-300/80">MOVIX REWARDS</p>
               <h2 id={`${inputId}-title`} className="mt-0.5 text-xl font-semibold tracking-tight text-white sm:text-[1.35rem]">{t('referral.card.title')}</h2>
             </div>
           </div>
@@ -205,14 +212,14 @@ export default function ReferralCard({ className = '' }: { className?: string })
             })}
           </p>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             {/* Code de parrainage présenté comme un billet premium. */}
-            <div className="relative min-w-[12.5rem] overflow-hidden rounded-xl border border-white/15 bg-[linear-gradient(135deg,#f8fafc_0%,#e2e8f0_100%)] px-5 py-3.5 text-slate-950 shadow-[0_8px_24px_rgba(0,0,0,0.2)]">
-              <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#151a28]" />
-              <span aria-hidden="true" className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#151a28]" />
+            <div className="relative min-w-[12.5rem] overflow-hidden rounded-xl border border-white/25 bg-[linear-gradient(135deg,#fff7f7_0%,#e7e2e5_100%)] px-5 py-3.5 text-[#171116] shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+              <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#171316]" />
+              <span aria-hidden="true" className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#171316]" />
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('referral.card.yourCode')}</p>
-                <Sparkles className="h-3.5 w-3.5 text-red-500" aria-hidden="true" />
+                <Film className="h-3.5 w-3.5 text-red-600" aria-hidden="true" />
               </div>
               <p className="mt-1 font-mono text-[1.45rem] font-bold tabular-nums tracking-[0.16em]" aria-label={data.code.split('').join(' ')}>
                 {formatCode(data.code)}
@@ -246,7 +253,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
       </div>
 
       {data.referee && (
-        <div className="mt-7 rounded-xl border border-white/[0.08] bg-black/15 p-4 sm:p-5">
+        <div className="mt-7 rounded-2xl border border-white/[0.09] bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-5">
           <h3 className="mb-3 text-sm font-medium text-white">
             {data.referee.status === 'pending'
               ? t('referral.card.progressTitle', { reward: formatDays(t, data.rewardDays) })
@@ -257,7 +264,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
       )}
 
       {!data.referee && data.canEnterCode && (
-        <form onSubmit={handleClaim} className="mt-7 rounded-xl border border-white/[0.08] bg-black/15 p-4 sm:p-5">
+        <form onSubmit={handleClaim} className="mt-7 rounded-2xl border border-white/[0.09] bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-5">
           <label htmlFor={inputId} className="block text-sm font-medium text-white">{t('referral.card.enterTitle')}</label>
           {deadline && <p className="mt-1 text-[13px] text-white/50">{t('referral.card.enterDeadline', { date: deadline })}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
@@ -270,7 +277,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
               value={codeInput}
               onChange={(event) => setCodeInput(event.target.value.slice(0, 300))}
               placeholder={t('referral.field.placeholder')}
-              className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-[#0b101b]/80 px-4 text-[15px] uppercase tracking-[0.12em] text-white outline-none transition-colors placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 hover:border-white/20 focus:border-red-400/60 focus:ring-2 focus:ring-red-500/10 sm:max-w-sm"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-[#100d11]/85 px-4 text-[15px] uppercase tracking-[0.12em] text-white outline-none transition-colors placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 hover:border-white/20 focus:border-rose-400/65 focus:ring-2 focus:ring-red-500/15 sm:max-w-sm"
             />
             <Button type="submit" variant="light" pending={claiming} disabled={!codeInput.trim()}>
               {t('referral.card.enterSubmit')}
@@ -279,7 +286,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
         </form>
       )}
 
-      <p className="mt-5 flex items-center gap-2 text-xs leading-relaxed text-slate-400/70"><Gift className="h-3.5 w-3.5 shrink-0 text-red-300/70" aria-hidden="true" />{t('referral.card.vipNote')}</p>
+      <p className="mt-5 flex items-center gap-2 text-xs leading-relaxed text-white/45"><Gift className="h-3.5 w-3.5 shrink-0 text-rose-300/75" aria-hidden="true" />{t('referral.card.vipNote')}</p>
     </section>
   );
 }
