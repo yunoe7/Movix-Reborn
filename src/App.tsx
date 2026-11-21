@@ -1514,9 +1514,14 @@ const PersistenceManager = () => {
   // Determine user type, ID, and profile ID (only oauth and bip39 users can sync)
   const getUserInfo = () => {
     try {
-      const profileId = localStorage.getItem('selected_profile_id');
       const account = getResolvedAccountContext();
-      if (account.userType) {
+      if (account.userType && account.userId) {
+        // The legacy global key can belong to a different account. Use only
+        // the account-scoped profile selection for authenticated sync writes.
+        // ProfileContext populates it after validating the profile against
+        // the server's current profile list.
+        const scopedProfileKey = `movix_selected_profile:${account.userType}:${encodeURIComponent(account.userId)}`;
+        const profileId = localStorage.getItem(scopedProfileKey);
         return {
           type: account.userType,
           id: account.userId,
