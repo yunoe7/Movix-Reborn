@@ -132,3 +132,47 @@
 @media(prefers-reduced-motion:reduce) {
   .mx-xmas-snow,.mx-xmas-light-string span,.mx-xmas-ornament,.mx-xmas-sparkle { animation:none!important; }
 }
+
+
+/* Santa's sleigh: one calm, cinematic fly-by, matching the Halloween witch. */
+.mx-xmas-sleigh-flight {
+  position: absolute;
+  top: clamp(105px, 16vh, 190px);
+  left: 0;
+  width: clamp(330px, 43vw, 620px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-115%, 2vh, 0);
+  animation: mx-xmas-sleigh-cross 38s linear 4s infinite;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 12px 20px rgba(0,0,0,.38));
+}
+.mx-xmas-sleigh-bob { display:block; animation: mx-xmas-sleigh-bob 2.8s ease-in-out infinite; }
+.mx-xmas-sleigh-bob svg { display:block; width:100%; height:auto; overflow:visible; }
+.mx-xmas-reindeer { transform-origin: 50% 70%; animation: mx-xmas-reindeer-gallop .72s ease-in-out infinite alternate; }
+.mx-xmas-sleigh-stars { opacity:.8; animation: mx-xmas-star-glint 2.2s ease-in-out infinite alternate; }
+@keyframes mx-xmas-sleigh-cross {
+  0% { opacity:0; transform:translate3d(-115%, 3vh, 0); }
+  4% { opacity:1; }
+  52% { opacity:1; transform:translate3d(112vw, -5vh, 0); }
+  55%,100% { opacity:0; transform:translate3d(112vw, -5vh, 0); }
+}
+@keyframes mx-xmas-sleigh-bob {
+  0%,100% { transform:translate3d(0,0,0) rotate(-1deg); }
+  50% { transform:translate3d(0,-9px,0) rotate(1deg); }
+}
+@keyframes mx-xmas-reindeer-gallop {
+  from { transform:translateY(0) rotate(-1deg); }
+  to { transform:translateY(-4px) rotate(1deg); }
+}
+@keyframes mx-xmas-star-glint {
+  from { opacity:.35; }
+  to { opacity:1; }
+}
+@media(max-width:700px) {
+  .mx-xmas-sleigh-flight { top:clamp(100px, 17vh, 160px); width:min(82vw, 390px); animation-duration:44s; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .mx-xmas-sleigh-flight,.mx-xmas-sleigh-bob,.mx-xmas-reindeer,.mx-xmas-sleigh-stars { animation:none!important; }
+  .mx-xmas-sleigh-flight { display:none; }
+}
