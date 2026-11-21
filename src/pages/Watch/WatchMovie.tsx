@@ -614,6 +614,12 @@ const WatchMovie: React.FC = () => {
   const [showEmbedQuality, setShowEmbedQuality] = useState(false);
   const [hasConfirmedInitialSource, setHasConfirmedInitialSource] = useState(false);
 
+  // A route can reuse this component when navigating from one film to another.
+  // Re-open the initial source picker for the new film without changing source logic.
+  useEffect(() => {
+    setHasConfirmedInitialSource(false);
+  }, [encodedId]);
+
   useEffect(() => {
     if (!embedUrl) return;
     const normalizedEmbedUrl = normalizeUqloadEmbedUrl(embedUrl);
