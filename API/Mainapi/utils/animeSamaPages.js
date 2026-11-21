@@ -129,7 +129,7 @@ function infosOf(html) {
 const EMPTY_TITLE = Object.freeze({
   valid: false, name: '', altNames: [], synopsis: '', genres: [], image: '', posterPath: null,
   tmdb: null, anilistId: null, malId: null, format: '', status: '', year: null, languages: [],
-  seasons: [], hiddenSeasons: 0, hasScans: false,
+  seasons: [], unavailableSeasons: [], hiddenSeasons: 0, hasScans: false,
 });
 
 /**
@@ -144,8 +144,11 @@ function parseTitlePage(html, { slug = '' } = {}) {
 
   const { kept, removed } = splitHtmlComments(html);
   let hiddenSeasons = 0;
+  const hiddenPanels = [];
   const countHidden = (chunk) => {
-    hiddenSeasons += panelsOf(chunk).filter(panel => panel.kind === 'Anime').length;
+    const animePanels = panelsOf(chunk).filter(panel => panel.kind === 'Anime');
+    hiddenSeasons += animePanels.length;
+    hiddenPanels.push(...animePanels);
     return '';
   };
   removed.forEach(countHidden);
@@ -162,6 +165,19 @@ function parseTitlePage(html, { slug = '' } = {}) {
     if (panel.kind !== 'Anime') continue;
     const target = parseSeasonTarget(panel.target, slug);
     if (target) seasons.push({ name: panel.name, path: target.path, lang: target.lang });
+  }
+
+  // Les panneaux placés en commentaire par Anime-Sama sont des saisons
+  // annoncées mais temporairement masquées (« Bientôt de retour »). Les
+  // conserver séparément évite de les confondre avec des saisons jouables.
+  const visibleKeys = new Set(seasons.map(season => `${season.path.toLowerCase()}|${season.lang}`));
+  const unavailableSeasons = [];
+  for (const panel of hiddenPanels) {
+    const target = parseSeasonTarget(panel.target, slug);
+    if (!target) continue;
+    const key = `${target.path.toLowerCase()}|${target.lang}`;
+    if (visibleKeys.has(key) || unavailableSeasons.some(season => `${season.path.toLowerCase()}|${season.lang}` === key)) continue;
+    unavailableSeasons.push({ name: panel.name, path: target.path, lang: target.lang });
   }
 
   const isTitlePage = /id=["']titreOeuvre["']/.test(kept) && /\bvar\s+OE_BASE\b|\bfunction\s+panneauAnime\b/.test(kept);
@@ -200,6 +216,7 @@ function parseTitlePage(html, { slug = '' } = {}) {
     year: yearText ? Number(yearText) : null,
     languages: siteLanguages.length ? siteLanguages : uniq(seasons.map(season => season.lang)),
     seasons,
+    unavailableSeasons,
     hiddenSeasons,
     hasScans: panels.some(panel => panel.kind === 'Scan'),
   };
