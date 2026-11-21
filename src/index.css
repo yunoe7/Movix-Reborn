@@ -1697,3 +1697,206 @@ html.tv-mode :focus {
   border-radius: 6px;
   box-shadow: 0 0 0 8px rgba(168, 85, 247, 0.28);
 }
+
+
+/* ──────────────────────────────────────────────────────────────────────────
+   MOVIX — cinematic source picker
+   A shared visual layer for the initial picker and the in-player source menu.
+   ────────────────────────────────────────────────────────────────────────── */
+.movix-source-picker-backdrop {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(38, 52, 72, 0.26), transparent 58%),
+    rgba(2, 3, 6, 0.88);
+  -webkit-backdrop-filter: blur(20px) saturate(125%);
+  backdrop-filter: blur(20px) saturate(125%);
+}
+
+.movix-source-picker {
+  color: #f7f8fb;
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(55, 72, 96, 0.18), transparent 42%),
+    linear-gradient(145deg, #11151d 0%, #090c12 48%, #07090e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 40px 140px rgba(0, 0, 0, 0.78),
+    0 1px 0 rgba(255, 255, 255, 0.07) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.025);
+  isolation: isolate;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.movix-source-picker::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse at 90% 12%, rgba(16, 185, 129, 0.055), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018), transparent 24%);
+}
+
+.movix-source-hero {
+  min-height: 220px;
+  background-size: cover !important;
+  background-position: center 28% !important;
+  isolation: isolate;
+}
+
+.movix-source-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(3, 5, 9, 0.42), transparent 78%),
+    linear-gradient(180deg, rgba(4, 6, 10, 0.03) 0%, rgba(4, 6, 10, 0.12) 34%, rgba(7, 9, 14, 0.88) 82%, #090c12 100%);
+}
+
+.movix-source-hero-copy {
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.48);
+}
+
+.movix-source-eyebrow {
+  color: rgba(241, 245, 249, 0.9);
+  background: rgba(7, 10, 15, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.22), 0 0 22px rgba(16, 185, 129, 0.08);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+.movix-source-title {
+  max-width: 860px;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+  text-shadow: 0 4px 26px rgba(0, 0, 0, 0.58);
+}
+
+.movix-source-meta {
+  color: rgba(226, 232, 240, 0.78);
+  letter-spacing: 0.01em;
+}
+
+.movix-source-toolbar {
+  background: linear-gradient(180deg, rgba(15, 19, 27, 0.98), rgba(11, 14, 20, 0.94));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.movix-source-toolbar h3 {
+  letter-spacing: -0.025em;
+}
+
+.movix-source-close {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.movix-source-close:hover {
+  color: #fff;
+  border-color: rgba(248, 113, 113, 0.42);
+  background: rgba(220, 38, 38, 0.16);
+}
+
+.movix-source-picker [data-source-menu] .mb-5.rounded-2xl {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.085);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    rgba(9, 12, 18, 0.78);
+  box-shadow:
+    0 16px 36px rgba(0, 0, 0, 0.19),
+    0 1px 0 rgba(255, 255, 255, 0.045) inset;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.movix-source-picker [data-source-menu] .mb-5.rounded-2xl:hover {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+.movix-source-picker [data-source-menu] button.min-h-11,
+.movix-source-picker [data-source-menu] button.min-h-10 {
+  min-height: 48px;
+  border-color: rgba(255, 255, 255, 0.09);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12), 0 1px 0 rgba(255, 255, 255, 0.035) inset;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.movix-source-picker [data-source-menu] button.min-h-11:hover,
+.movix-source-picker [data-source-menu] button.min-h-10:hover {
+  transform: translateY(-1px);
+  border-color: rgba(148, 163, 184, 0.32);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+  box-shadow: 0 9px 22px rgba(0, 0, 0, 0.22);
+}
+
+.movix-source-picker [data-source-menu] button:focus-visible,
+.movix-anime-source-choice:focus-visible {
+  outline: 2px solid rgba(52, 211, 153, 0.9);
+  outline-offset: 3px;
+}
+
+.movix-anime-source-choice {
+  min-height: 58px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14), 0 1px 0 rgba(255, 255, 255, 0.035) inset;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.movix-anime-source-choice:hover {
+  transform: translateY(-1px);
+  border-color: rgba(148, 163, 184, 0.3);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035));
+}
+
+.movix-anime-source-choice[class*="border-red-600"] {
+  border-color: rgba(248, 113, 113, 0.58);
+  background: linear-gradient(110deg, rgba(220, 38, 38, 0.19), rgba(255, 255, 255, 0.035));
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.12), 0 12px 28px rgba(127, 29, 29, 0.16);
+}
+
+@media (max-width: 640px) {
+  .movix-source-picker {
+    border-bottom: 0;
+  }
+
+  .movix-source-hero {
+    min-height: 210px;
+  }
+
+  .movix-source-title {
+    font-size: clamp(1.45rem, 6vw, 2rem);
+    line-height: 1.08;
+  }
+
+  .movix-source-picker [data-source-menu] .mb-5.rounded-2xl {
+    border-radius: 18px;
+  }
+
+  .movix-source-picker [data-source-menu] button.min-h-11,
+  .movix-source-picker [data-source-menu] button.min-h-10 {
+    min-height: 46px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .movix-source-picker *,
+  .movix-source-picker *::before,
+  .movix-source-picker *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
