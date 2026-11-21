@@ -2672,18 +2672,16 @@ const TVDetails: React.FC = () => {
   }, [id, isAnime, loadAnimeData]);
 
   useEffect(() => {
-    if (animeMode && animeData) {
-      // Filter out seasons without episodes
-      const filteredSeasons = animeData.seasons.filter((season: any) =>
-        season && season.episodes && season.episodes.length > 0
-      );
-
-      // Check if we need to update animeData with filtered seasons
-      if (filteredSeasons.length !== animeData.seasons.length) {
-        setAnimeData({
-          ...animeData,
-          seasons: filteredSeasons
-        });
+    if (animeMode && animeData && Array.isArray(animeData.seasons)) {
+      // Les saisons annoncées sans lecteur restent visibles : on complète leur
+      // statut quand le serveur ne l'a pas encore envoyé.
+      const normalized = animeData.seasons.map((season: any) => (
+        season && (!Array.isArray(season.episodes) || season.episodes.length === 0)
+          ? { ...season, episodes: [], available: false, status: 'unavailable' }
+          : season
+      ));
+      if (normalized.some((season: any, index: number) => season !== animeData.seasons[index])) {
+        setAnimeData({ ...animeData, seasons: normalized });
       }
     }
   }, [animeMode, animeData]);
@@ -4058,6 +4056,7 @@ const TVDetails: React.FC = () => {
                               tvShow?.poster_path,
                             );
                             const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${seasonNumber}`);
+                            const seasonUnavailable = season?.available === false || season?.status === 'unavailable';
                             const imageUrl = detailsMediaSlot.width > 0
                               ? getTmdbImageUrl(seasonImageSource, {
                                 kind: 'poster',
@@ -4077,7 +4076,7 @@ const TVDetails: React.FC = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 transition={{ duration: 0.3, delay: index * 0.05 }}
-                                className={`group cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 bg-gray-900 ${selectedSeason === seasonNumber ? 'border-red-600' : 'border-gray-800 hover:border-red-500'}`}
+                                className={`group cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 bg-gray-900 ${selectedSeason === seasonNumber ? 'border-red-600' : seasonUnavailable ? 'border-amber-800/70 hover:border-amber-500' : 'border-gray-800 hover:border-red-500'}`}
                                 onClick={() => handleSeasonChange(seasonNumber)}
                                 whileHover={{ y: -5 }}
                               >
@@ -4111,16 +4110,24 @@ const TVDetails: React.FC = () => {
                             <span className="text-xs text-gray-400 ml-auto">{season.episodes.length} épisodes</span>
                           </div>
                         </div> */}
-                                  {selectedSeason === seasonNumber && (
+                                  {selectedSeason === seasonNumber ? (
                                     <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">{t('details.currentSeasonBadge')}</div>
-                                  )}
+                                  ) : seasonUnavailable ? (
+                                    <div className="absolute top-2 right-2 bg-amber-700/90 text-white text-xs px-2 py-1 rounded-full">
+                                      {t('details.seasonUnavailableShort')}
+                                    </div>
+                                  ) : null}
                                 </div>
                                 {/* Nom complet de la saison affiché en dessous pour les animes */}
                                 <div className="p-3 bg-gray-900">
                                   <h3 className="text-base font-bold text-white">
                                     {shouldHide('episodeNames') ? getMaskedContent(season.name, 'episodeNames') : season.name}
                                   </h3>
-                                  <span className="text-xs text-gray-400 mt-1 block">{season.episodes.length} {t('details.episodes')}</span>
+                                  <span className={`text-xs mt-1 block ${seasonUnavailable ? 'text-amber-400' : 'text-gray-400'}`}>
+                                    {seasonUnavailable
+                                      ? t('details.seasonUnavailableShort')
+                                      : `${season.episodes.length} ${t('details.episodes')}`}
+                                  </span>
                                 </div>
                               </motion.div>
                             );

@@ -80,8 +80,15 @@ interface AnimeSeason {
   url: string;
   /** Chemin de la saison sur anime-sama : sert à demander les adresses d'un épisode. */
   path?: string;
+  /** Une saison annoncée mais sans lecteur reste visible, sans épisode. */
+  available?: boolean;
+  status?: 'available' | 'unavailable';
+  unavailableReason?: 'hidden' | 'empty' | 'absent' | 'unplayable' | string;
   episodes: AnimeEpisode[];
 }
+
+const isUnavailableAnimeSeason = (season: AnimeSeason): boolean =>
+  season.available === false || season.status === 'unavailable';
 
 interface AnimeData {
   name: string;
@@ -108,7 +115,7 @@ const findAnimeEpisodeTarget = (
       s.name.toLowerCase().includes(`saison ${season}`) ||
       s.name.toLowerCase() === `season ${season}`
     );
-  if (!seasonEntry) return null;
+  if (!seasonEntry || isUnavailableAnimeSeason(seasonEntry)) return null;
   const episodeIndex = Number(episode) - 1;
   const episodeEntry = episodeIndex >= 0 && episodeIndex < seasonEntry.episodes.length
     ? seasonEntry.episodes[episodeIndex]
@@ -711,7 +718,10 @@ const WatchAnime: React.FC = () => {
         ) || null;
       }
 
-      if (finalSeason) {
+      if (finalSeason && isUnavailableAnimeSeason(finalSeason)) {
+        setError(t('watch.seasonUnavailable', { season: finalSeason.name }));
+        setLoading(false);
+      } else if (finalSeason) {
         console.log(`Found season: ${finalSeason.name}`);
         // Now find the matching episode by index
         const episodeIndex = Number(episode) - 1;
@@ -1467,26 +1477,35 @@ const WatchAnime: React.FC = () => {
               <div className="mb-6">
                 <h3 className="text-xl font-semibold mb-4">{t('watch.availableSeasons')}</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {animeData.seasons.map((s, idx) => (
-                    <div key={idx} className="bg-gray-700 p-4 rounded-lg">
-                      <h4 className="text-lg font-medium mb-2">{s.name}</h4>
-                      <p className="text-sm text-gray-300 mb-3">{t('watch.episodesCount', { count: s.episodes.length })}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {[...Array(Math.min(5, s.episodes.length))].map((_, i) => (
-                          <button
-                            key={i}
-                            className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-sm"
-                            onClick={() => id && navigate(`/watch/anime/${encodeId(id)}/season/${idx + 1}/episode/${i + 1}`)}
-                          >
-                            Ep {i + 1}
-                          </button>
-                        ))}
-                        {s.episodes.length > 5 && (
-                          <span className="text-gray-400 self-center">...</span>
+                  {animeData.seasons.map((s, idx) => {
+                    const unavailable = isUnavailableAnimeSeason(s);
+                    return (
+                      <div key={idx} className="bg-gray-700 p-4 rounded-lg">
+                        <h4 className="text-lg font-medium mb-2">{s.name}</h4>
+                        <p className={`text-sm mb-3 ${unavailable ? 'text-amber-400' : 'text-gray-300'}`}>
+                          {unavailable
+                            ? t('watch.seasonUnavailable', { season: s.name })
+                            : t('watch.episodesCount', { count: s.episodes.length })}
+                        </p>
+                        {!unavailable && (
+                          <div className="flex flex-wrap gap-2">
+                            {[...Array(Math.min(5, s.episodes.length))].map((_, i) => (
+                              <button
+                                key={i}
+                                className="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-sm"
+                                onClick={() => id && navigate(`/watch/anime/${encodeId(id)}/season/${idx + 1}/episode/${i + 1}`)}
+                              >
+                                Ep {i + 1}
+                              </button>
+                            ))}
+                            {s.episodes.length > 5 && (
+                              <span className="text-gray-400 self-center">...</span>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1666,22 +1685,31 @@ const WatchAnime: React.FC = () => {
                           className="absolute top-full left-0 right-0 mt-1 bg-gray-900/95 border border-gray-700 rounded-lg shadow-xl max-h-60 overflow-y-auto z-20 custom-scrollbar"
                           data-lenis-prevent
                         >
-                          {animeData.seasons.map((s, index) => (
-                            <button
-                              key={index}
-                              onClick={() => {
-                                setDisplayedSeasonNumber(index + 1);
-                                setShowSeasonDropdown(false); // Close dropdown on selection
-                              }}
-                              className={`w-full text-left px-4 py-3 text-sm transition-colors duration-150 ${displayedSeasonNumber === index + 1
-                                ? 'bg-red-800/50 text-red-100 font-semibold'
-                                : 'text-gray-200 hover:bg-gray-700/50'
-                                }`}
-                            >
-                              {s.name}
-                              <span className="text-xs text-gray-400 ml-1">({t('watch.episodesCount', { count: s.episodes.length })})</span>
-                            </button>
-                          ))}
+                          {animeData.seasons.map((s, index) => {
+                            const unavailable = isUnavailableAnimeSeason(s);
+                            return (
+                              <button
+                                key={index}
+                                onClick={() => {
+                                  setDisplayedSeasonNumber(index + 1);
+                                  setShowSeasonDropdown(false); // Close dropdown on selection
+                                }}
+                                className={`w-full text-left px-4 py-3 text-sm transition-colors duration-150 ${displayedSeasonNumber === index + 1
+                                  ? 'bg-red-800/50 text-red-100 font-semibold'
+                                  : unavailable
+                                    ? 'text-amber-300/80 hover:bg-gray-700/50'
+                                    : 'text-gray-200 hover:bg-gray-700/50'
+                                  }`}
+                              >
+                                {s.name}
+                                <span className={`text-xs ml-1 ${unavailable ? 'text-amber-400/80' : 'text-gray-400'}`}>
+                                  {unavailable
+                                    ? `(${t('watch.seasonUnavailableShort')})`
+                                    : `(${t('watch.episodesCount', { count: s.episodes.length })})`}
+                                </span>
+                              </button>
+                            );
+                          })}
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -1699,7 +1727,13 @@ const WatchAnime: React.FC = () => {
                 {/* Episodes List (uses displayedSeasonNumber) */}
                 <div className="flex-1 overflow-y-auto p-1" data-lenis-prevent>
                   <div className="grid gap-2 p-2">
-                    {animeData.seasons[displayedSeasonNumber - 1]?.episodes.map((ep, index) => (
+                    {isUnavailableAnimeSeason(animeData.seasons[displayedSeasonNumber - 1] ?? { name: '', episodes: [] })
+                      ? (
+                        <p className="px-2 py-6 text-center text-sm text-amber-400">
+                          {t('watch.seasonUnavailable', { season: animeData.seasons[displayedSeasonNumber - 1]?.name || '' })}
+                        </p>
+                      )
+                      : animeData.seasons[displayedSeasonNumber - 1]?.episodes.map((ep, index) => (
                       <button
                         key={index}
                         onClick={() => {
