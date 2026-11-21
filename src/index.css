@@ -1928,3 +1928,126 @@ html.tv-mode :focus {
   border-color: rgba(248, 113, 113, 0.48);
   background: linear-gradient(110deg, rgba(220, 38, 38, 0.15), rgba(255, 255, 255, 0.025));
 }
+
+
+/* MOVIX source picker — editorial / poster-led redesign */
+.movix-source-picker {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 85% 5%, rgba(36, 91, 82, .16), transparent 34%),
+    linear-gradient(160deg, #111722 0%, #090d14 52%, #07090e 100%);
+  border: 1px solid rgba(255,255,255,.13);
+  box-shadow: 0 34px 100px rgba(0,0,0,.72), 0 1px 0 rgba(255,255,255,.08) inset;
+}
+
+.movix-source-hero {
+  min-height: 250px;
+  isolation: isolate;
+  background-size: cover !important;
+  background-position: center 30% !important;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+
+.movix-source-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(5,8,13,.72) 0%, rgba(5,8,13,.36) 58%, rgba(5,8,13,.2) 100%),
+    linear-gradient(0deg, #090d14 0%, rgba(9,13,20,.82) 12%, rgba(9,13,20,.08) 78%, rgba(5,8,13,.18) 100%);
+}
+
+.movix-source-poster-wrap {
+  width: clamp(88px, 17vw, 142px);
+  aspect-ratio: 2 / 3;
+  border-radius: 15px;
+  padding: 3px;
+  background: linear-gradient(145deg, rgba(255,255,255,.62), rgba(255,255,255,.08) 45%, rgba(52,211,153,.4));
+  box-shadow: 0 18px 42px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.12);
+  transform: translateY(4px);
+}
+
+.movix-source-poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #141a23;
+}
+
+.movix-source-hero-copy {
+  text-shadow: 0 3px 22px rgba(0,0,0,.6);
+}
+
+.movix-source-eyebrow {
+  color: #d5e9e2;
+  background: rgba(4,12,13,.62);
+  border: 1px solid rgba(153,220,199,.25);
+  letter-spacing: .22em;
+  font-size: 9px;
+  box-shadow: 0 8px 26px rgba(0,0,0,.22);
+}
+
+.movix-source-title {
+  max-width: 720px;
+  font-size: clamp(1.35rem, 3.8vw, 2.45rem);
+  line-height: 1.04;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+.movix-source-meta {
+  color: rgba(208,224,220,.76);
+  letter-spacing: .17em;
+}
+
+.movix-source-group {
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(62,111,101,.12), transparent 62%),
+    linear-gradient(145deg, rgba(255,255,255,.055), rgba(255,255,255,.012));
+  border-color: rgba(255,255,255,.095);
+  box-shadow: 0 16px 36px rgba(0,0,0,.22), 0 1px 0 rgba(255,255,255,.045) inset;
+}
+
+.movix-source-group-heading h4 {
+  color: #d7e4e4;
+  font-size: 10px;
+  letter-spacing: .23em;
+}
+
+.movix-source-option {
+  min-height: 54px;
+  color: #e9f0f1;
+  background: linear-gradient(135deg, rgba(255,255,255,.075), rgba(255,255,255,.022));
+  border-color: rgba(255,255,255,.10);
+  box-shadow: 0 5px 15px rgba(0,0,0,.16), 0 1px 0 rgba(255,255,255,.045) inset;
+}
+
+.movix-source-option:hover {
+  transform: translateY(-2px);
+  border-color: rgba(161,211,196,.42);
+  background: linear-gradient(135deg, rgba(69,124,108,.2), rgba(255,255,255,.04));
+  box-shadow: 0 12px 26px rgba(0,0,0,.24);
+}
+
+.movix-source-option[class*="border-emerald-400"] {
+  border-color: rgba(75,220,170,.8);
+  background: linear-gradient(120deg, rgba(16,185,129,.2), rgba(13,148,136,.08));
+  box-shadow: 0 0 0 1px rgba(52,211,153,.12), 0 10px 26px rgba(16,185,129,.10);
+}
+
+@media (max-width: 640px) {
+  .movix-source-hero { min-height: 218px; gap: 15px; }
+  .movix-source-poster-wrap { width: 88px; border-radius: 12px; }
+  .movix-source-poster { border-radius: 9px; }
+  .movix-source-title { font-size: clamp(1.25rem, 5.5vw, 1.8rem); }
+  .movix-source-group { border-radius: 19px; padding: 14px; }
+  .movix-source-option { min-height: 50px; padding: 11px 13px; border-radius: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .movix-source-option { transition: none !important; }
+}
