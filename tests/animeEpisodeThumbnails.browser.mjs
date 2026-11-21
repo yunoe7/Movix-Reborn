@@ -118,19 +118,19 @@ const animeFixture = {
 };
 
 const expectedAnimeSources = [
-  ['Épisode 1', ['VF']],
-  ['Épisode 2', ['VOSTFR']],
-  ['Épisode 3', ['VF', 'VOSTFR']],
-  ['Épisode 4', ['VF']],
-  ['Épisode 5', ['VOSTFR']],
-  ['Épisode 0', ['VF']],
+  ['Episode 1', ['VF']],
+  ['Episode 2', ['VOSTFR']],
+  ['Episode 3', ['VF', 'VOSTFR']],
+  ['Episode 4', ['VF']],
+  ['Episode 5', ['VOSTFR']],
+  ['Episode 0', ['VF']],
 ];
 
 const expectedStillByEpisode = {
-  'Épisode 1': 'TMDB-STILL-1',
-  'Épisode 2': 'TMDB-STILL-2',
-  'Épisode 3': 'TMDB-STILL-3',
-  'Épisode 4': 'TMDB-STILL-4',
+  'Episode 1': 'TMDB-STILL-1',
+  'Episode 2': 'TMDB-STILL-2',
+  'Episode 3': 'TMDB-STILL-3',
+  'Episode 4': 'TMDB-STILL-4',
 };
 
 const fixture = `
@@ -328,8 +328,8 @@ const distinctAnimeStills = animeCards
 assert.equal(new Set(distinctAnimeStills).size, 4, 'Les 4 épisodes doivent afficher 4 miniatures distinctes');
 observations.push('4 miniatures TMDB distinctes, associées par numéro d’épisode malgré l’ordre désordonné du tableau TMDB.');
 
-const episodeFive = animeCards.find((item) => item.name === 'Épisode 5');
-const specialEpisode = animeCards.find((item) => item.name === 'Épisode 0');
+const episodeFive = animeCards.find((item) => item.name === 'Episode 5');
+const specialEpisode = animeCards.find((item) => item.name === 'Episode 0');
 assert.ok(episodeFive?.src?.includes('ANIME-SEASON-POSTER'), 'L’épisode sans still TMDB doit replier sur l’affiche de saison');
 assert.ok(specialEpisode?.src?.includes('ANIME-SEASON-POSTER'), 'L’épisode spécial sans correspondance TMDB doit replier sur l’affiche de saison');
 observations.push('Replis corrects : épisode sans miniature et épisode spécial affichent l’affiche de saison.');
