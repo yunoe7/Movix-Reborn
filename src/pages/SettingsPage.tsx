@@ -7,7 +7,7 @@ import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import {
   ArrowLeft, Settings, Shield, Monitor, Smartphone, Tablet, Tv,
   Copy, X, Snowflake, Activity, Trash2, Crown, Volume2,
-  Database, Key, Lock, Palette, Eye, Download, Upload, Globe, AlertTriangle, History, CalendarClock, Clapperboard, Link2, MessageCircle, BellOff, Sparkles,
+  Database, Key, Lock, Palette, Eye, Download, Upload, Globe, AlertTriangle, History, CalendarClock, Clapperboard, TreePine, Link2, MessageCircle, BellOff, Sparkles,
   Zap, RefreshCw, ChevronDown, ListOrdered, Gauge, Megaphone, Square, Captions, Ghost, Leaf, CloudRain, Flower2, Popcorn,
   type LucideIcon,
 } from 'lucide-react';
@@ -86,6 +86,7 @@ import {
 import { BgColorPickerPanel } from '../components/Settings/BgColorPickerPanel';
 import { useLightMode } from '../context/LightModeContext';
 import { setHalloweenTheme, useHalloweenTheme } from '../hooks/useHalloweenTheme';
+import { setChristmasTheme, useChristmasTheme } from '../hooks/useChristmasTheme';
 import { SettingsSearchBar } from '../components/Settings/SettingsSearchBar';
 import { SubtitlePreview } from '../components/subtitles/SubtitlePreview';
 import { SubtitleStyleControls } from '../components/subtitles/SubtitleStyleControls';
@@ -566,6 +567,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const halloweenThemeEnabled = useHalloweenTheme();
+  const christmasThemeEnabled = useChristmasTheme();
 
   // Liste d'épisodes par défaut des séries (TVmaze ou TMDB).
   const [episodeListSource, setEpisodeListSourceState] = useState<EpisodeListSource>(() => getDefaultEpisodeListSource());
@@ -2199,6 +2201,25 @@ const SettingsPage: React.FC = () => {
                     </p>
                   </div>
                   {renderToggle(halloweenThemeEnabled, () => setHalloweenTheme(!halloweenThemeEnabled))}
+                </motion.div>
+
+                {/* Thème de Noël */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.17 }}
+                  className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-700/40 hover:border-gray-600/50 transition-colors group"
+                >
+                  <div className="flex-1 mr-4">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <TreePine className="w-3.5 h-3.5 text-emerald-400" />
+                      <h4 className="font-medium text-white text-sm">{t('settings.christmasTheme', 'Thème de Noël')}</h4>
+                    </div>
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      {t('settings.christmasThemeDesc', "Neige qui tombe, guirlandes lumineuses, boules de Noël, sapins et cadeaux dans une ambiance hivernale. Activé automatiquement du 1er décembre au 6 janvier. Le lecteur n'est pas modifié.")}
+                    </p>
+                  </div>
+                  {renderToggle(christmasThemeEnabled, () => setChristmasTheme(!christmasThemeEnabled))}
                 </motion.div>
 
                 {/* Coins carrés */}
