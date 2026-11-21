@@ -11,7 +11,7 @@
 .mx-xmas-wire{fill:none;stroke:#b88b48;stroke-width:2}
 .mx-xmas-pine{fill:none;stroke:#2d7650;stroke-width:5;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
 .mx-xmas-light-string{position:absolute;top:0;left:4%;right:4%;height:75px;display:flex;justify-content:space-around;align-items:flex-start}
-.mx-xmas-light-string span{position:relative;margin-top:calc(12px + sin(var(--light-index)*.55)*18px);width:8px;height:12px;border-radius:50% 50% 45% 45%;background:var(--bulb,#f6d58a);box-shadow:0 0 7px 2px var(--bulb),0 0 19px 4px color-mix(in srgb,var(--bulb),transparent 55%);animation:mx-xmas-twinkle 2.4s ease-in-out infinite alternate;animation-delay:calc(var(--light-index)*-.21s)}
+.mx-xmas-light-string span{position:relative;margin-top:0;width:8px;height:12px;border-radius:50% 50% 45% 45%;background:var(--bulb,#f6d58a);box-shadow:0 0 7px 2px var(--bulb),0 0 19px 4px color-mix(in srgb,var(--bulb),transparent 55%);animation:mx-xmas-twinkle 2.4s ease-in-out infinite alternate;animation-delay:calc(var(--light-index)*-.21s)}
 .mx-xmas-light-string span:nth-child(4n+1){--bulb:#f5c76a}.mx-xmas-light-string span:nth-child(4n+2){--bulb:#e85b61}.mx-xmas-light-string span:nth-child(4n+3){--bulb:#72c99a}.mx-xmas-light-string span:nth-child(4n){--bulb:#e9f4ff}
 @keyframes mx-xmas-twinkle{from{opacity:.55;filter:brightness(.8)}to{opacity:1;filter:brightness(1.5)}}
 .mx-xmas-ornament{position:absolute;top:80px;width:23px;height:29px;border-radius:48% 48% 50% 50%;background:radial-gradient(circle at 32% 25%,rgba(255,255,255,.8),transparent 22%),linear-gradient(115deg,#8d1e2a,#e94b53 48%,#741a26);box-shadow:0 8px 18px #0008,0 0 18px #e84d5540;transform-origin:top center;animation:mx-xmas-sway 4s ease-in-out infinite alternate}
