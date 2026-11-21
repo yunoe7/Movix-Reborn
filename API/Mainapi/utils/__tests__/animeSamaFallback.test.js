@@ -68,7 +68,7 @@ test('does not merge different searches that happen at the same time', async () 
     get: async (_url, options) => {
       queries.push(options.params.q);
       await new Promise(resolve => { releases.push(resolve); });
-      return { data: [{ name: options.params.q, url: 'https://anime-sama.fr/catalogue/' + options.params.q.toLowerCase().replace(/\\s+/g, '-') + '/' }] };
+      return { data: [{ name: options.params.q, url: 'https://anime-sama.fr/catalogue/' + options.params.q.toLowerCase().replace(/\s+/g, '-') + '/' }] };
     },
   };
   const fallback = createAnimeSamaFallback({ baseUrl: 'https://api.example.test', http, logger: { warn() {} } });
