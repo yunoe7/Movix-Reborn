@@ -63,11 +63,11 @@ test('uses a bounded timeout and coalesces concurrent identical fallback work', 
 
 test('does not merge different searches that happen at the same time', async () => {
   const queries = [];
-  let release;
+  const releases = [];
   const http = {
     get: async (_url, options) => {
       queries.push(options.params.q);
-      await new Promise(resolve => { release = resolve; });
+      await new Promise(resolve => { releases.push(resolve); });
       return { data: [{ name: options.params.q, url: 'https://anime-sama.fr/catalogue/' + options.params.q.toLowerCase().replace(/\\s+/g, '-') + '/' }] };
     },
   };
@@ -76,8 +76,7 @@ test('does not merge different searches that happen at the same time', async () 
   const second = fallback.search('Naruto');
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(queries.sort(), ['Naruto', 'One Piece']);
-  release();
-  // Resolve any still-pending mocked request.
+  releases.forEach(resolve => resolve());
   await Promise.all([first, second]);
 });
 
