@@ -32,12 +32,23 @@ test('normalizes only valid Anime-Sama catalogue entries', () => {
   assert.equal(results[0].fallbackSource, 'atomic-anime-sama-api');
 });
 
-test('rejects non-catalogue paths and non-http images', () => {
+test('rejects subdomains, credential URLs, and non-catalogue paths', () => {
   const results = normalizeSearchResults([
+    { name: 'Subdomain', url: 'https://fake.anime-sama.fr/catalogue/fake/' },
+    { name: 'Credential URL', url: 'https://user:pass@anime-sama.fr/catalogue/fake/' },
     { name: 'Season page', url: 'https://anime-sama.fr/catalogue/one-piece/saison1/vostfr/' },
-    { name: 'Safe title', url: 'https://anime-sama.fr/catalogue/safe/', image: 'data:image/png;base64,AAAA' },
+    { name: 'Safe title', url: 'https://anime-sama.fr/catalogue/safe/' },
   ], BASE);
   assert.equal(results.length, 1);
+  assert.equal(results[0].name, 'Safe title');
+});
+
+test('rejects non-http images and safely falls back from an invalid catalogue base', () => {
+  const results = normalizeSearchResults([
+    { name: 'Safe title', id: 'safe', image: 'data:image/png;base64,AAAA' },
+  ], 'javascript:alert(1)');
+  assert.equal(results.length, 1);
+  assert.equal(results[0].url, 'https://anime-sama.to/catalogue/safe/');
   assert.equal(results[0].image, '');
 });
 
@@ -68,7 +79,7 @@ test('does not merge different searches that happen at the same time', async () 
     get: async (_url, options) => {
       queries.push(options.params.q);
       await new Promise(resolve => { releases.push(resolve); });
-      return { data: [{ name: options.params.q, url: 'https://anime-sama.fr/catalogue/' + options.params.q.toLowerCase().replace(/\s+/g, '-') + '/' }] };
+      return { data: [{ name: options.params.q, url: 'https://anime-sama.fr/catalogue/' + options.params.q.toLowerCase().replace(/\\s+/g, '-') + '/' }] };
     },
   };
   const fallback = createAnimeSamaFallback({ baseUrl: 'https://api.example.test', http, logger: { warn() {} } });
@@ -80,7 +91,10 @@ test('does not merge different searches that happen at the same time', async () 
   await Promise.all([first, second]);
 });
 
-test('rejects insecure and malformed fallback endpoints', () => {
+test('rejects insecure, credentialed, path-based, and malformed fallback endpoints', () => {
   assert.equal(createAnimeSamaFallback({ baseUrl: 'http://api.example.test' }).enabled, false);
+  assert.equal(createAnimeSamaFallback({ baseUrl: 'https://user:pass@api.example.test' }).enabled, false);
+  assert.equal(createAnimeSamaFallback({ baseUrl: 'https://api.example.test/proxy' }).enabled, false);
+  assert.equal(createAnimeSamaFallback({ baseUrl: 'https://api.example.test/?target=evil' }).enabled, false);
   assert.equal(createAnimeSamaFallback({ baseUrl: 'not a url' }).enabled, false);
 });
