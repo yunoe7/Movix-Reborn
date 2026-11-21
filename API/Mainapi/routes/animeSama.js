@@ -1152,11 +1152,16 @@ async function attachCachedSeasons(animes, searchCacheKey = null) {
         // domaine courant ; les repères prennent leur adresse au carnet.
         const episodes = (seasonData.episodes || []).map(episode => ({
           ...episode,
-          streaming_links: (episode.streaming_links || []).map(linkObj => (Array.isArray(linkObj?.refs)
-            ? materializeLink(linkObj, links, hostStatus)
-            : deps.normalizeAnimeSamaUrls({ streaming_links: [linkObj] }).streaming_links[0]
-          )).filter(Boolean),
-        }));
+          streaming_links: (episode.streaming_links || []).map(linkObj => {
+            if (Array.isArray(linkObj?.refs)) return materializeLink(linkObj, links, hostStatus);
+            const normalized = deps.normalizeAnimeSamaUrls({ streaming_links: [linkObj] }).streaming_links[0];
+            if (!normalized || !Array.isArray(normalized.players)) return null;
+            const players = normalized.players.filter(url =>
+              !isEmptyPlayerUrl(url) && !isDeadPlayerUrl(url, hostStatus)
+            );
+            return players.length ? { ...normalized, players } : null;
+          }).filter(Boolean),
+        })).filter(episode => episode.streaming_links.some(hasPlayable));
         return {
           name: seasonName,
           ...(typeof seasonData.path === 'string' ? { path: seasonData.path } : {}),
