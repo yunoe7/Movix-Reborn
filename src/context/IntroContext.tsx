@@ -21,7 +21,7 @@ const introSupported = (): boolean =>
 // L'intro se joue à chaque chargement complet du site quand le réglage est actif.
 // Elle n'est montée qu'au démarrage : la navigation interne ne la rejoue pas.
 const shouldShowIntro = (): boolean =>
-  readLocalStorage('movix_intro_enabled') === 'true' && introSupported();
+  readLocalStorage('movix_intro_enabled') !== 'false' && introSupported();
 
 export const IntroProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { effectivePrefs } = useLightMode();

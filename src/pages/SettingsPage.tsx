@@ -580,7 +580,7 @@ const SettingsPage: React.FC = () => {
   };
 
   const [introEnabled, setIntroEnabled] = useState(() => {
-    return localStorage.getItem('movix_intro_enabled') === 'true';
+    return localStorage.getItem('movix_intro_enabled') !== 'false';
   });
 
   const [screensaverEnabled, setScreensaverEnabled] = useState(() => {
