@@ -45,7 +45,7 @@ export const ChristmasAtmosphere = ({ suspended }: { suspended: boolean }) => {
         </svg>
       </div>
       <div className="mx-xmas-light-string">
-        {LIGHTS.map((light) => <span key={light} style={{ '--light-index': light } as React.CSSProperties} />)}
+        {LIGHTS.map((light) => <span key={light} style={{ '--light-index': light, marginTop: `${12 + Math.sin(light * 0.55) * 18}px` } as React.CSSProperties} />)}
       </div>
       <div className="mx-xmas-ornament mx-xmas-ornament-one"><i /></div>
       <div className="mx-xmas-ornament mx-xmas-ornament-two"><i /></div>
