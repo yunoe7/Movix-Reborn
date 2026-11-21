@@ -39,7 +39,7 @@ function extractRows(payload) {
   return [];
 }
 
-function normalizeSearchResults(payload, baseUrl) {
+function normalizeSearchResults(payload, sourceBaseUrl = 'https://anime-sama.to') {
   const rows = extractRows(payload);
   const seen = new Set();
   const results = [];
@@ -52,13 +52,13 @@ function normalizeSearchResults(payload, baseUrl) {
     const rawUrl = row.url || row.href || row.link || row.id;
     let url = safeHttpUrl(rawUrl);
     if (!url && typeof rawUrl === 'string' && /^[a-z0-9][a-z0-9._-]{0,180}$/i.test(rawUrl)) {
-      url = new URL(`/catalogue/${encodeURIComponent(rawUrl)}/`, baseUrl).toString();
+      url = new URL(`/catalogue/${encodeURIComponent(rawUrl)}/`, sourceBaseUrl).toString();
     }
     if (!url) continue;
 
     let parsed;
     try { parsed = new URL(url); } catch { continue; }
-    if (parsed.hostname !== new URL(baseUrl).hostname) continue;
+    if (!/(^|\\.)anime-sama\\.[a-z]{2,}$/i.test(parsed.hostname)) continue;
     if (!/^\/catalogue\/[^/]+\/?$/i.test(parsed.pathname)) continue;
 
     const key = parsed.pathname.toLowerCase();
@@ -83,7 +83,7 @@ function normalizeSearchResults(payload, baseUrl) {
 
 function createAnimeSamaFallback({
   baseUrl = process.env.ANIME_SAMA_FALLBACK_URL || '',
-  timeoutMs = DEFAULT_TIMEOUT_MS,
+  sourceBaseUrl = process.env.ANIME_SAMA_URL || 'https://anime-sama.to',\n  timeoutMs = DEFAULT_TIMEOUT_MS,
   http = axios,
   logger = console,
 } = {}) {
@@ -115,7 +115,7 @@ function createAnimeSamaFallback({
           maxBodyLength: 2 * 1024 * 1024,
           validateStatus: status => status >= 200 && status < 300,
         });
-        const results = normalizeSearchResults(response?.data, parsedBase.origin);
+        const results = normalizeSearchResults(response?.data, sourceBaseUrl);
         if (!results.length) throw new Error('Réponse de secours vide ou incompatible');
         failures = 0;
         return results;
