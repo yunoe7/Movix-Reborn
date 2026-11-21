@@ -185,6 +185,12 @@ if (readHalloweenTheme()) {
   loadHalloweenTheme();
 }
 
+// Thème de Noël : activation avant le premier rendu pour éviter un flash.
+if (readChristmasTheme()) {
+  document.documentElement.classList.add(CHRISTMAS_THEME_CLASS);
+  document.documentElement.setAttribute(CHRISTMAS_ENABLED_ATTR, '');
+}
+
 // Register block detection on both the default axios (used by most services)
 // and the api instance (used by contentAPI). Both need their own interceptors
 // since instances created via axios.create() don't inherit from the default.
