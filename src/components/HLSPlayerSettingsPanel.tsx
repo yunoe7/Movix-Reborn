@@ -676,9 +676,9 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
 
                     {/* Sources HLS d'abord */}
                     {sourceGroups .map((group: any, groupIndex: any) => (
-                      <div key={`group_${groupIndex}`} className="mb-6">
-                        <div className="flex items-center justify-between gap-2 mb-2 px-2">
-                          <h4 className="text-gray-400 text-xs uppercase tracking-wider">{group.title}</h4>
+                      <div key={`group_${groupIndex}`} className="mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-3 shadow-[0_12px_32px_rgba(0,0,0,0.16)] sm:mb-6 sm:p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                          <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">{group.title}</h4>
                           {group.type === 'hls' && (
                             hlsQualityScan?.status === 'running' ? (
                               <span className="flex items-center gap-1.5 text-xs text-gray-400 whitespace-nowrap">
@@ -743,12 +743,12 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                             : null;
                           return (
                             <React.Fragment key={source.id}>
-                              <div className="mb-2 flex items-stretch gap-2">
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
                                 <button
                                   onClick={() => handleSourceChange(source.type, source.id, source.url)}
                                   disabled={source.type === 'kisskh_main' && loadingKisskh}
-                                  className={`w-full flex-1 px-4 py-3 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center ${isActive ? 'bg-gray-800 border-l-4 border-red-600 pl-3' : 'bg-gray-900/60 text-white'
-                                    } ${onlyQualityMenu && embedType && embedUrl && source.type === embedType && source.url === embedUrl ? 'ring-2 ring-red-500 bg-gray-800/80' : ''} ${''
+                                  className={`min-h-11 min-w-[8.5rem] flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2.5 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isActive ? 'border-emerald-400/70 bg-emerald-400/10 text-white shadow-[0_0_22px_rgba(52,211,153,0.10)]' : ''
+                                    } ${onlyQualityMenu && embedType && embedUrl && source.type === embedType && source.url === embedUrl ? 'ring-1 ring-emerald-400/50' : ''} ${''
                                     }`}
                                 >
                                   <div className="min-w-0 flex flex-1 flex-col">
@@ -816,7 +816,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
-                                            className="mb-2 flex items-stretch gap-2"
+                                            className="mb-2 flex flex-wrap items-center gap-2"
                                           >
                                             <button
                                               onClick={() => handleSourceChange('darkino', `darkino_${index}`, darkiSource.m3u8 || '')}
@@ -899,7 +899,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={getTransition({ duration: 0.2, delay: index * 0.03 })}
-                                            className="mb-2 flex items-stretch gap-2"
+                                            className="mb-2 flex flex-wrap items-center gap-2"
                                           >
                                             <button
                                               onClick={() => handleSourceChange('nexus_hls', `nexus_hls_${sourceIndex}`, nexusSource.url || '')}
@@ -932,7 +932,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={getTransition({ duration: 0.2, delay: index * 0.03 })}
-                                            className="mb-2 flex items-stretch gap-2"
+                                            className="mb-2 flex flex-wrap items-center gap-2"
                                           >
                                             <button
                                               onClick={() => handleSourceChange('nexus_file', `nexus_file_${index}`, nexusSource.url || '')}
@@ -979,13 +979,13 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                         const isEmbedActive = onlyQualityMenu && embedType === 'omega' && embedUrl === omegaSource.link;
                                         const hosterId = detectHosterFromUrl(omegaSource.link, omegaSource.player);
                                         return (
-                                          <div key={`omega_${index}`} className="mb-2 flex items-stretch gap-2">
+                                          <div key={`omega_${index}`} className="mb-2 flex flex-wrap items-center gap-2">
                                             <motion.button
                                               initial={{ opacity: 0 }}
                                               animate={{ opacity: 1 }}
                                               transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                               onClick={() => handleSourceChange('omega', `omega_${index}`, omegaSource.link || '')}
-                                              className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isEmbedActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                              className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isEmbedActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                             >
                                               <span>
                                                 {capitalizeFirstLetter(omegaSource.player || t('watch.playerN', { n: index + 1 }))}
@@ -1021,13 +1021,13 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                         const isCoflixActive = embedType === 'coflix' && embedUrl === coflixUrl;
                                         const hosterId = detectHosterFromUrl(coflixUrl, coflixSource.quality);
                                         return (
-                                          <div key={`coflix_${index}`} className="mb-2 flex items-stretch gap-2">
+                                          <div key={`coflix_${index}`} className="mb-2 flex flex-wrap items-center gap-2">
                                             <motion.button
                                               initial={{ opacity: 0 }}
                                               animate={{ opacity: 1 }}
                                               transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                               onClick={() => handleSourceChange('coflix', `coflix_${index}`, coflixUrl)}
-                                              className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isCoflixActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                              className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isCoflixActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                             >
                                               <span>
                                                 {(coflixSource.quality || `Source ${index + 1}`).split('/')[0].trim() || `Source ${index + 1}`}
@@ -1075,9 +1075,9 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                           if (!categorySources || categorySources.length === 0) return null;
                                           return (
                                             <div key={`fstream_category_${cat.key}`} className="mb-3">
-                                              <div className="flex items-center gap-2 mb-2 px-2">
+                                              <div className="mb-2 flex items-center gap-2 px-1">
                                                 <span className="text-lg">{'flagCode' in cat && cat.flagCode ? <ReactCountryFlag countryCode={cat.flagCode as string} svg style={{ width: '1.2em', height: '1.2em', borderRadius: '2px' }} /> : cat.emoji}</span>
-                                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{cat.label} ({categorySources.length})</span>
+                                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{cat.label} ({categorySources.length})</span>
                                               </div>
                                               {categorySources.map((fstreamSource: any) => {
                                                 const index = fstreamSources.findIndex((s: any) => s === fstreamSource);
@@ -1090,7 +1090,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                                       animate={{ opacity: 1 }}
                                                       transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                                       onClick={() => handleSourceChange('fstream', `fstream_${index}`, fstreamSource.decoded_url || '')}
-                                                      className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isFstreamActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                                      className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isFstreamActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                                     >
                                                       <span>
                                                         {fstreamSource.label}
@@ -1142,9 +1142,9 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                           if (!categorySources || categorySources.length === 0) return null;
                                           return (
                                             <div key={`wiflix_category_${cat.key}`} className="mb-3">
-                                              <div className="flex items-center gap-2 mb-2 px-2">
+                                              <div className="mb-2 flex items-center gap-2 px-1">
                                                 <span className="text-lg"><ReactCountryFlag countryCode={cat.flagCode} svg style={{ width: '1.2em', height: '1.2em', borderRadius: '2px' }} /></span>
-                                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{cat.label} ({categorySources.length})</span>
+                                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{cat.label} ({categorySources.length})</span>
                                               </div>
                                               {categorySources.map((wiflixSource: any) => {
                                                 const index = wiflixSources.findIndex((s: any) => s === wiflixSource);
@@ -1157,7 +1157,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                                       animate={{ opacity: 1 }}
                                                       transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                                       onClick={() => handleSourceChange('wiflix', `wiflix_${index}`, wiflixSource.url || '')}
-                                                      className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isWiflixActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                                      className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isWiflixActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                                     >
                                                       <span>
                                                         {wiflixSource.label}
@@ -1209,9 +1209,9 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                           if (!categorySources || categorySources.length === 0) return null;
                                           return (
                                             <div key={`j1f_category_${cat.key}`} className="mb-3">
-                                              <div className="flex items-center gap-2 mb-2 px-2">
+                                              <div className="mb-2 flex items-center gap-2 px-1">
                                                 <span className="text-lg"><ReactCountryFlag countryCode={cat.flagCode} svg style={{ width: '1.2em', height: '1.2em', borderRadius: '2px' }} /></span>
-                                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{cat.label} ({categorySources.length})</span>
+                                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{cat.label} ({categorySources.length})</span>
                                               </div>
                                               {categorySources.map((j1fSource: any) => {
                                                 const index = j1fSources.findIndex((s: any) => s === j1fSource);
@@ -1224,7 +1224,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                                       animate={{ opacity: 1 }}
                                                       transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                                       onClick={() => handleSourceChange('j1f', `j1f_${index}`, j1fSource.url || '')}
-                                                      className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isJ1fActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                                      className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isJ1fActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                                     >
                                                       <span>
                                                         {j1fSource.label}
@@ -1276,9 +1276,9 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                           if (!categorySources || categorySources.length === 0) return null;
                                           return (
                                             <div key={`swiftflow_category_${cat.key}`} className="mb-3">
-                                              <div className="flex items-center gap-2 mb-2 px-2">
+                                              <div className="mb-2 flex items-center gap-2 px-1">
                                                 <span className="text-lg"><ReactCountryFlag countryCode={cat.flagCode} svg style={{ width: '1.2em', height: '1.2em', borderRadius: '2px' }} /></span>
-                                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{cat.label} ({categorySources.length})</span>
+                                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{cat.label} ({categorySources.length})</span>
                                               </div>
                                               {categorySources.map((swiftflowSource: any) => {
                                                 const index = swiftflowSources.findIndex((s: any) => s === swiftflowSource);
@@ -1291,7 +1291,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                                       animate={{ opacity: 1 }}
                                                       transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                                       onClick={() => handleSourceChange('swiftflow', `swiftflow_${index}`, swiftflowSource.url || '')}
-                                                      className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isSwiftflowActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                                      className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isSwiftflowActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                                     >
                                                       <span>
                                                         {swiftflowSource.label}
@@ -1330,13 +1330,13 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                       {viperSources && viperSources.length > 0 && sortedViperMemo.map((viperSource: any, index: number) => {
                                         const isViperActive = embedType === 'viper' && embedUrl === viperSource.url;
                                         return (
-                                          <div key={`viper_${index}`} className="mb-2 flex items-stretch gap-2">
+                                          <div key={`viper_${index}`} className="mb-2 flex flex-wrap items-center gap-2">
                                             <motion.button
                                               initial={{ opacity: 0 }}
                                               animate={{ opacity: 1 }}
                                               transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                               onClick={() => handleSourceChange('viper', `viper_${index}`, viperSource.url || '')}
-                                              className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isViperActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                              className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isViperActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                             >
                                               <span>
                                                 {viperSource.label}
@@ -1379,7 +1379,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                               animate={{ opacity: 1, x: 0 }}
                                               transition={getTransition({ duration: 0.2, delay: index * 0.03 })}
                                               onClick={() => handleSourceChange('vox', index.toString(), vSource.link)}
-                                              className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isVoxSourceActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                              className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isVoxSourceActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                             >
                                               <div className="flex flex-col">
                                                 <span className={isVoxSourceActive ? 'text-red-600 font-medium' : 'text-white'}>
@@ -1448,7 +1448,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                             animate={{ opacity: 1 }}
                                             transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
                                             onClick={() => handleSourceChange('vostfr', vostfrSource.id, sourceUrl)}
-                                            className={`w-full px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg mb-2 flex justify-between items-center bg-gray-900/40 text-gray-300 ${isVostfrActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                            className={`w-full px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg mb-2 flex justify-between items-center bg-gray-900/40 text-gray-300 ${isVostfrActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                           >
                                             <span>{vostfrSource.label}</span>
                                             <span className="text-xs text-gray-400">{t('watch.voVostfr')}</span>
@@ -1480,11 +1480,11 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                               initial={{ opacity: 0, x: -20 }}
                                               animate={{ opacity: 1, x: 0 }}
                                               transition={getTransition({ duration: 0.2, delay: index * 0.03 })}
-                                              className="mb-1 ml-4 flex items-stretch gap-2"
+                                              className="mb-2 mr-2 inline-flex max-w-full items-center gap-2"
                                             >
                                               <button
                                                 onClick={() => handleSourceChange('bravo', `bravo_${index}`, bravoSource.url)}
-                                                className={`w-full flex-1 px-4 py-2 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center bg-gray-900/40 text-gray-300 ${isBravoActive ? 'ring-2 ring-red-500 bg-gray-800/80' : ''}`}
+                                                className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isBravoActive ? 'ring-1 ring-emerald-400/50' : ''}`}
                                               >
                                                 <div className="min-w-0 flex flex-1 flex-col">
                                                   <span className={isBravoActive ? 'text-red-600 font-medium' : 'text-white'}>
