@@ -4032,7 +4032,7 @@ const WatchTv: React.FC = () => {
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 className="fixed inset-0 z-[10001] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10002]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10002]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -4384,7 +4384,7 @@ const WatchTv: React.FC = () => {
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 className="fixed inset-0 z-[10001] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10002]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10002]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -4526,7 +4526,7 @@ const WatchTv: React.FC = () => {
                 transition={{ duration: 0.3, ease: 'easeOut' }}
                 className="fixed inset-0 z-[10001] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10002]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10002]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
