@@ -193,6 +193,27 @@ const getClassificationLabel = getClassificationLabelUtil;
 const getAnimeLanguageLabel = (language: string, t: TFunction): string =>
   t(`details.languages.${language.toLowerCase()}`, { defaultValue: language.toUpperCase() });
 
+interface AnimeEpisodeImageData {
+  still_path?: string | null;
+  still_url?: string | null;
+  tmdb_episode_number?: number | string | null;
+  tmdbEpisodeNumber?: number | string | null;
+  episode_number?: number | string | null;
+  episodeNumber?: number | string | null;
+  index?: number | string | null;
+}
+
+interface AnimeSeasonImageData {
+  number?: number | string | null;
+  season_number?: number | string | null;
+  seasonNumber?: number | string | null;
+  episodes?: AnimeEpisodeImageData[];
+}
+
+interface AnimeImageData {
+  seasons?: readonly unknown[];
+}
+
 const getSeasonDisplayName = (
   seasonNumber: number,
   t: TFunction,
@@ -2404,6 +2425,68 @@ const TVDetails: React.FC = () => {
    */
   const hasCharactersTab = characters?.source === 'anilist' && characters.total > 0;
 
+  /**
+   * Enrichit les épisodes anime avec la vignette TMDB du même épisode.
+   *
+   * La correspondance se fait uniquement par identifiants explicites : ID TMDB
+   * de la série, numéro de saison et numéro d'épisode. Les listes anime-sama et
+   * TMDB n'ont ni le même ordre ni le même nombre d'entrées (épisodes spéciaux,
+   * chapitres découpés, etc.) : une association par position est interdite.
+   * Une fiche sans numéro d'épisode exploitable est laissée telle quelle pour
+   * éviter d'attribuer une image à un épisode spécial non correspondant.
+   */
+  const attachTmdbStillsToAnime = useCallback((data: AnimeImageData | null | undefined) => {
+    if (!data || !Array.isArray(data.seasons) || !tvShow?.id) return data;
+    const animeSeasons = data.seasons as AnimeSeasonImageData[];
+
+    const tmdbSeriesId = String(tvShow.id);
+    const stillBySeasonAndEpisode = new Map<string, string>();
+    for (const [seasonNumber, details] of Object.entries(seasonsDetails)) {
+      if (String(seasonNumber) === '0' || !Array.isArray(details?.episodes)) continue;
+      for (const episode of details.episodes) {
+        const still = firstNonEmptyImage(episode?.still_path, episode?.still_url);
+        const episodeNumber = Number(episode?.episode_number);
+        if (!still || !Number.isInteger(episodeNumber) || episodeNumber <= 0) continue;
+        stillBySeasonAndEpisode.set(`${seasonNumber}:${episodeNumber}`, still);
+      }
+    }
+    if (stillBySeasonAndEpisode.size === 0) return data;
+
+    const seasons = animeSeasons.map((season) => {
+      if (!Array.isArray(season.episodes)) return season;
+      const seasonNumber = Number(season.number ?? season.season_number ?? season.seasonNumber);
+      if (!Number.isInteger(seasonNumber) || seasonNumber <= 0) return season;
+      const episodes = season.episodes.map((episode) => {
+        if (firstNonEmptyImage(episode.still_path, episode.still_url)) return episode;
+        const animeEpisodeNumber = Number(
+          episode.tmdb_episode_number ?? episode.tmdbEpisodeNumber ??
+          episode.episode_number ?? episode.episodeNumber ?? episode.index,
+        );
+        if (!Number.isInteger(animeEpisodeNumber) || animeEpisodeNumber <= 0) return episode;
+        const still = stillBySeasonAndEpisode.get(`${seasonNumber}:${animeEpisodeNumber}`);
+        if (!still) return episode;
+        return {
+          ...episode,
+          still_path: still,
+          tmdbSeriesId,
+          tmdbSeasonNumber: seasonNumber,
+          tmdbEpisodeNumber: animeEpisodeNumber,
+        };
+      });
+      return { ...season, episodes };
+    });
+
+    return { ...data, seasons };
+  }, [tvShow?.id, seasonsDetails]);
+
+  // Recalcule les vignettes quand les détails TMDB arrivent, même si les données
+  // anime ont été chargées avant eux. La sélection et la lecture gardent leur
+  // source d'origine : seul le tableau affiché est enrichi.
+  const animeSeasonsWithStills = useMemo<AnimeSeasonImageData[]>(() => {
+    const enriched = attachTmdbStillsToAnime(animeData);
+    return Array.isArray(enriched?.seasons) ? enriched.seasons as AnimeSeasonImageData[] : [];
+  }, [animeData, attachTmdbStillsToAnime]);
+
   const loadAnimeData = useCallback(async () => {
     if (!tvShow?.name) return;
 
@@ -2464,8 +2547,9 @@ const TVDetails: React.FC = () => {
         }
 
         if (bestMatch && Array.isArray(bestMatch.seasons) && bestMatch.seasons.length > 0) {
-          setAnimeData(bestMatch);
-          return bestMatch;
+          const enrichedMatch = attachTmdbStillsToAnime(bestMatch);
+          setAnimeData(enrichedMatch);
+          return enrichedMatch;
         } else {
           setAnimeData(null);
           setShowAnimeNotFoundMessage(true);
@@ -2492,7 +2576,7 @@ const TVDetails: React.FC = () => {
     } finally {
       setLoadingAnimeData(false);
     }
-  }, [tvShow?.id, tvShow?.name, tvShow, tmdbEnglishName, tmdbAlternativeTitles, MAIN_API]);
+  }, [tvShow?.id, tvShow?.name, tvShow, tmdbEnglishName, tmdbAlternativeTitles, MAIN_API, attachTmdbStillsToAnime]);
 
   const syncSelectedAnimeEpisode = useCallback((nextAnimeData: any) => {
     if (selectedSeason === null || !selectedEpisode || !nextAnimeData?.seasons) {
@@ -2549,14 +2633,14 @@ const TVDetails: React.FC = () => {
       return;
     }
 
-    const resolvedAnimeData = animeData || await loadAnimeData();
+    const resolvedAnimeData = attachTmdbStillsToAnime(animeData || await loadAnimeData());
     if (!resolvedAnimeData?.seasons?.length) {
       return;
     }
 
     syncSelectedAnimeEpisode(resolvedAnimeData);
     setAnimeMode(true);
-  }, [animeData, animeMode, loadAnimeData, syncSelectedAnimeEpisode, availableSeasons, selectedSeason, defaultStartSeason, availableEpisodes]);
+  }, [animeData, animeMode, loadAnimeData, attachTmdbStillsToAnime, syncSelectedAnimeEpisode, availableSeasons, selectedSeason, defaultStartSeason, availableEpisodes]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -4147,7 +4231,7 @@ const TVDetails: React.FC = () => {
                                   )}
                                 {/* Render Dropdown or Grid */}
                                 {(() => {
-                                  const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
+                                  const currentSeason = animeSeasonsWithStills.find((s) => (s.number || (animeSeasonsWithStills.indexOf(s) + 1)) === selectedSeason);
                                   return renderEpisodes(currentSeason?.episodes || [], 'anime');
                                 })()}
                               </motion.div>
