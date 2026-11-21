@@ -360,8 +360,8 @@ observations.push('4 miniatures TMDB distinctes, associées par numéro d’épi
 
 const episodeFive = animeCards.find((item) => item.name === 'Episode 5');
 const specialEpisode = animeCards.find((item) => item.name === 'Episode 0');
-assert.ok(episodeFive?.src?.includes('ANIME-SEASON-POSTER'), 'L’épisode sans still TMDB doit replier sur l’affiche de saison');
-assert.ok(specialEpisode?.src?.includes('ANIME-SEASON-POSTER'), 'L’épisode spécial sans correspondance TMDB doit replier sur l’affiche de saison');
+assert.ok(episodeFive?.src?.includes('TMDB-SEASON-POSTER-1'), 'L’épisode sans still TMDB doit replier sur l’affiche TMDB de sa saison');
+assert.ok(specialEpisode?.src?.includes('TMDB-SEASON-POSTER-1'), 'L’épisode spécial sans correspondance TMDB doit replier sur l’affiche TMDB de sa saison');
 observations.push('Replis corrects : épisode sans miniature et épisode spécial affichent l’affiche de saison.');
 
 assert.deepEqual(
