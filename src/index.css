@@ -2052,3 +2052,50 @@ html.tv-mode :focus {
 @media (prefers-reduced-motion: reduce) {
   .movix-source-option { transition: none !important; }
 }
+
+
+/* MOVIX — full-screen initial movie source selection.
+   Scoped to the first movie picker so in-player menus keep their modal layout. */
+.movix-source-picker--fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+}
+
+.movix-source-picker-backdrop:has(.movix-source-picker--fullscreen) {
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+}
+
+.movix-source-picker--fullscreen > .movix-source-hero {
+  flex: 0 0 clamp(290px, 39vh, 440px);
+  min-height: 290px;
+  border-bottom: 1px solid #252a33;
+}
+
+.movix-source-picker--fullscreen > .p-4 {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(16px, 2.4vw, 36px);
+}
+
+@media (max-width: 640px) {
+  .movix-source-picker--fullscreen > .movix-source-hero {
+    flex-basis: 34vh;
+    min-height: 250px;
+    padding: 28px 20px 24px;
+  }
+
+  .movix-source-picker--fullscreen > .p-4 {
+    padding: 14px;
+  }
+}
