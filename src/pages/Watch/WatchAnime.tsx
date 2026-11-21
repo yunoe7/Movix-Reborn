@@ -1761,7 +1761,7 @@ const WatchAnime: React.FC = () => {
           <AnimatePresence>
             {showEmbedQuality && (
               <div
-                className="fixed inset-0 z-[10001] bg-black/50 flex justify-end"
+                className="fixed inset-0 z-[10001] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6"
                 style={{ pointerEvents: 'none' }}
               >
                 <motion.div
