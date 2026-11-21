@@ -354,7 +354,10 @@ const AdminTeam: React.FC = () => {
         title={t('admin.team.removeTitle', 'Retirer cet uploader ?')}
         message={
           removeCandidate
-            ? t('admin.team.removeConfirm', `Retirer @${removeCandidate.username} de l'équipe ?`)
+            ? t('admin.team.removeConfirm', {
+                username: removeCandidate.username,
+                defaultValue: `Retirer @${removeCandidate.username} de l'équipe ?`,
+              })
             : ''
         }
         variant="destructive"
@@ -514,7 +517,10 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
     <ReusableModal
       isOpen
       onClose={onClose}
-      title={t('admin.team.historyTitle', `Historique — ${member.username}`)}
+      title={t('admin.team.historyTitle', {
+        username: member.username,
+        defaultValue: `Historique — ${member.username}`,
+      })}
       className="max-w-2xl"
     >
       {loading ? (
@@ -528,7 +534,10 @@ const HistoryModal: React.FC<HistoryModalProps> = ({
       ) : (
         <div className="space-y-4">
           <p className="text-xs text-white/40">
-            {t('admin.team.historyCount', `${total} action(s) au total`)}
+            {t('admin.team.historyCount', {
+              count: total,
+              defaultValue: `${total} action(s) au total`,
+            })}
           </p>
 
           <div className="space-y-2">
