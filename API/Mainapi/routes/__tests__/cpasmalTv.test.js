@@ -31,7 +31,10 @@ function harness({ cached = null, request, tmdb = { name: 'Chicago Fire', first_
   const requests = [];
   const logs = [];
   const routes = new Map();
-  const router = { get: (route, handler) => routes.set(route, handler) };
+  const router = {
+    get: (route, handler) => routes.set(route, handler),
+    use: (handler) => routes.set('fallback', handler),
+  };
   const module = { exports: {} };
   const stubs = {
     express: { Router: () => router }, cheerio, path, axios: {},
@@ -108,6 +111,18 @@ function harness({ cached = null, request, tmdb = { name: 'Chicago Fire', first_
       await routes.get('/movie/:tmdbid')({ params: { tmdbid }, query: {} }, res);
       return res;
     },
+    async callUnknown() {
+      const res = {
+        statusCode: 200,
+        setHeader() {},
+        status(code) { this.statusCode = code; return this; },
+        json(data) { this.body = JSON.parse(JSON.stringify(data)); return this; },
+      };
+      const fallback = routes.get('fallback');
+      assert.ok(fallback, 'un repli JSON doit être enregistré pour les routes Cpasmal inconnues');
+      await fallback({ method: 'GET', path: '/inconnu', url: '/inconnu' }, res);
+      return res;
+    },
     async retrieve(seasonNumber, episodeNumber) {
       assert.equal((await this.call(seasonNumber, episodeNumber)).statusCode, 202);
       for (let i = 0; i < 20; i++) {
@@ -120,13 +135,14 @@ function harness({ cached = null, request, tmdb = { name: 'Chicago Fire', first_
   };
 }
 
-test('Cpasmal coupé par défaut : aucune requête, 404 sans cache, cache servi sans actualisation', async () => {
+test('Cpasmal coupé par défaut : aucune requête, 503 PROVIDER_DISABLED sans cache, cache servi sans actualisation', async () => {
   const request = async () => assert.fail('Cpasmal coupé ne doit rien demander au site');
   const empty = harness({ enabled: false, request });
   const movie = await empty.callMovie();
-  assert.equal(movie.statusCode, 404);
+  assert.equal(movie.statusCode, 503);
+  assert.equal(movie.body.code, 'PROVIDER_DISABLED');
   assert.equal(movie.body.error, 'Cpasmal désactivé');
-  assert.equal((await empty.call()).statusCode, 404);
+  assert.equal((await empty.call()).body.code, 'PROVIDER_DISABLED');
 
   const links = { vf: [{ server: 'voe', url: 'https://player.test/voe_vf' }], vostfr: [] };
   const cached = harness({ enabled: false, stale: true, request,
@@ -374,4 +390,33 @@ test('un titre alternatif TMDB suffit à valider la fiche', async () => {
   const res = await retrieveMovie(h);
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body.links.vf, [{ server: 'voe', url: 'https://player.test/voe' }]);
+});
+
+test('un identifiant TMDB invalide est rejeté avant toute recherche', async () => {
+  const request = async () => assert.fail('aucune requête ne doit partir pour un identifiant invalide');
+  for (const tmdbid of ['abc', '0', '-1', '1.5', '']) {
+    const h = harness({ enabled: false, request });
+    const res = await h.callMovie(tmdbid);
+    assert.equal(res.statusCode, 400, tmdbid);
+    assert.equal(res.body.code, 'INVALID_TMDB_ID');
+  }
+});
+
+test('un cache négatif est une 404 CONTENT_NOT_FOUND, pas une panne', async () => {
+  const h = harness({
+    enabled: false,
+    cached: { notFound: true, tmdbId: '1229906' },
+    request: async () => assert.fail('le cache négatif ne doit rien demander'),
+  });
+  const res = await h.callMovie();
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.body.code, 'CONTENT_NOT_FOUND');
+  assert.match(res.body.error, /not found/i);
+});
+
+test('une route Cpasmal inconnue est une 404 ROUTE_NOT_FOUND JSON', async () => {
+  const h = harness({ request: async () => assert.fail('aucune recherche pour une route inconnue') });
+  const res = await h.callUnknown();
+  assert.equal(res.statusCode, 404);
+  assert.equal(res.body.code, 'ROUTE_NOT_FOUND');
 });

@@ -50,6 +50,16 @@ let deps = {
 // aucune requête ne part vers le site et le cache disque déjà rempli reste servi.
 const CPASMAL_ENABLED = ['true', '1'].includes(String(process.env.CPASMAL_ENABLED ?? '').trim().toLowerCase());
 
+function sendCpasmalError(res, status, code, error, extra = {}) {
+  return res.status(status).json({ code, error, ...extra });
+}
+
+function isCanonicalTmdbId(value) {
+  return typeof value === 'string'
+    && /^[1-9]\d*$/.test(value)
+    && Number.isSafeInteger(Number(value));
+}
+
 /**
  * Toutes les requêtes Cpasmal passent par CycleTLS (JA3 Chrome), avec priorité
  * aux SOCKS5 dédiés et repli sur le pool partagé dans makeCpasmalRequest.
@@ -845,7 +855,9 @@ const updateCpasmalCache = async (cacheKey, type, ...args) => {
 function respondWithRetrieval(res, cacheKey, type, ...args) {
   res.setHeader('Cache-Control', 'no-store');
   if (!CPASMAL_ENABLED) {
-    return res.status(404).json({ error: 'Cpasmal désactivé', tmdb_id: args[0] });
+    return sendCpasmalError(res, 503, 'PROVIDER_DISABLED', 'Cpasmal désactivé', {
+      tmdb_id: args[0],
+    });
   }
   // Un échec récent doit être visible au prochain appel, pas rester un 202.
   const failure = cpasmalRefresh.getFailure(cacheKey);
@@ -869,6 +881,11 @@ function respondWithRetrieval(res, cacheKey, type, ...args) {
 
 router.get('/movie/:tmdbid', async (req, res) => {
   const { tmdbid } = req.params;
+  if (!isCanonicalTmdbId(tmdbid)) {
+    return sendCpasmalError(res, 400, 'INVALID_TMDB_ID', 'Identifiant TMDB invalide', {
+      tmdb_id: tmdbid,
+    });
+  }
   const cacheKey = generateCacheKey(`movie_${tmdbid}`);
 
   if (process.env.DEBUG_CPASMAL) {
@@ -883,7 +900,9 @@ router.get('/movie/:tmdbid', async (req, res) => {
       const cacheFilePath = path.join(CACHE_DIR.CPASMAL, `${cacheKey}.json`);
 
       if (cachedData.notFound) {
-        res.status(404).json({ error: 'Movie not found on Cpasmal (Cached)' });
+        sendCpasmalError(res, 404, 'CONTENT_NOT_FOUND', 'Movie not found on Cpasmal (Cached)', {
+          tmdb_id: tmdbid,
+        });
       } else {
         // Calculer la prochaine mise à jour
         let prochaineMiseAJour = null;
@@ -907,17 +926,24 @@ router.get('/movie/:tmdbid', async (req, res) => {
 
   } catch (error) {
     if (error.code === 'CPASMAL_UPSTREAM_ERROR' || error.code === 'SOURCE_REFRESH_UNAVAILABLE') {
-      return res.status(503).json({ error: error.message });
+      return sendCpasmalError(res, 503, 'UPSTREAM_ERROR', error.message);
     }
     if (error.message && error.message.includes('not found')) {
-      return res.status(404).json({ error: error.message });
+      return sendCpasmalError(res, 404, 'CONTENT_NOT_FOUND', error.message, { tmdb_id: tmdbid });
     }
-    res.status(500).json({ error: 'Internal Server Error' });
+    return sendCpasmalError(res, 500, 'INTERNAL_ERROR', 'Internal Server Error');
   }
 });
 
 router.get('/tv/:tmdbid/:season/:episode', async (req, res) => {
   const { tmdbid, season, episode } = req.params;
+  const validSeason = typeof season === 'string' && /^\d+$/.test(season) && Number.isSafeInteger(Number(season));
+  const validEpisode = typeof episode === 'string' && /^[1-9]\d*$/.test(episode) && Number.isSafeInteger(Number(episode));
+  if (!isCanonicalTmdbId(tmdbid) || !validSeason || !validEpisode) {
+    return sendCpasmalError(res, 400, 'INVALID_TMDB_ID', 'Identifiant Cpasmal invalide', {
+      tmdb_id: tmdbid, season, episode,
+    });
+  }
   const cacheKey = generateCacheKey(`tv_${tmdbid}_s${season}_e${episode}`);
 
   try {
@@ -927,7 +953,9 @@ router.get('/tv/:tmdbid/:season/:episode', async (req, res) => {
       const cacheFilePath = path.join(CACHE_DIR.CPASMAL, `${cacheKey}.json`);
 
       if (cachedData.notFound) {
-        res.status(404).json({ error: 'TV Show not found on Cpasmal (Cached)' });
+        sendCpasmalError(res, 404, 'CONTENT_NOT_FOUND', 'TV Show not found on Cpasmal (Cached)', {
+          tmdb_id: tmdbid, season, episode,
+        });
       } else {
         // Calculer la prochaine mise à jour
         let prochaineMiseAJour = null;
@@ -956,14 +984,23 @@ router.get('/tv/:tmdbid/:season/:episode', async (req, res) => {
 
   } catch (error) {
     if (error.code === 'CPASMAL_UPSTREAM_ERROR' || error.code === 'SOURCE_REFRESH_UNAVAILABLE') {
-      return res.status(503).json({ error: error.message });
+      return sendCpasmalError(res, 503, 'UPSTREAM_ERROR', error.message);
     }
     if (error.message && error.message.includes('not found')) {
-      return res.status(404).json({ error: error.message });
+      return sendCpasmalError(res, 404, 'CONTENT_NOT_FOUND', error.message, {
+        tmdb_id: tmdbid, season, episode,
+      });
     }
-    res.status(500).json({ error: 'Internal Server Error' });
+    return sendCpasmalError(res, 500, 'INTERNAL_ERROR', 'Internal Server Error');
   }
+});
+
+// Une URL Cpasmal inconnue doit rester distinguishable d'une absence métier.
+router.use((req, res) => {
+  console.warn(`[Cpasmal] Route inconnue: ${req.method} ${req.path || req.url}`);
+  return sendCpasmalError(res, 404, 'ROUTE_NOT_FOUND', 'Route Cpasmal inconnue');
 });
 
 module.exports = router;
 module.exports.configure = configure;
+module.exports.isEnabled = () => CPASMAL_ENABLED;

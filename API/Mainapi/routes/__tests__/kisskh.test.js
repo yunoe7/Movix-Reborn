@@ -565,6 +565,26 @@ test('movie route returns direct URLs for free access and proxy descendants for 
   assert.deepEqual(calls, [{ proxyMedia: false }, { proxyMedia: true }]);
 });
 
+test('disabled KissKH keeps its 503 contract but exposes a machine-readable marker', async (t) => {
+  const { createKisskhRouter } = require('../kisskh');
+  const server = await serve(createKisskhRouter({ enabled: false, publicProxyUrl: 'https://proxy.example' }));
+  t.after(server.close);
+  const response = await fetch(`${server.url}/api/kisskh/movie/1`);
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get('x-kisskh-disabled'), '1');
+  assert.deepEqual(await response.json(), { code: 'proxy_unavailable', message: 'KissKH desactive' });
+});
+
+test('unknown KissKH route returns a JSON 404 distinct from a missing title', async (t) => {
+  const { createKisskhRouter } = require('../kisskh');
+  const server = await serve(createKisskhRouter({ enabled: false, publicProxyUrl: 'https://proxy.example' }));
+  t.after(server.close);
+  const response = await fetch(`${server.url}/api/kisskh/inconnu`);
+  assert.equal(response.status, 404);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await response.json(), { code: 'ROUTE_NOT_FOUND', message: 'Route KissKH inconnue' });
+});
+
 test('route status mapping is normalized', async (t) => {
   const { createKisskhRouter } = require('../kisskh');
   const cases = [

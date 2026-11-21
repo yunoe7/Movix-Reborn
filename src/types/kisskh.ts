@@ -13,10 +13,13 @@ export type KisskhSubtitleFormat = 'srt' | 'txt' | 'txt1' | 'txt2';
 
 export type KisskhErrorCode =
   | 'retrieval_in_progress'
+  | 'invalid_input'
   | 'not_found'
+  | 'route_missing'
   | 'episode_missing'
   | 'provider_rate_limited'
   | 'provider_changed'
+  | 'provider_disabled'
   | 'proxy_unavailable'
   | 'subtitle_unsupported'
   | 'subtitle_decrypt_failed'

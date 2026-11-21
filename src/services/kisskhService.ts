@@ -1,5 +1,6 @@
 import { MAIN_API, PROXIES_EMBED_API } from '../config/runtime';
 import { getVipHeaders } from '../utils/vipUtils';
+import { classifyKisskhResponse } from '../utils/kisskhError';
 import type {
   KisskhCipher,
   KisskhErrorCode,
@@ -17,23 +18,15 @@ const RESOLUTION_MAX_BYTES = 256 * 1024;
 const ERROR_MAX_BYTES = 4 * 1024;
 const KISSKH_SUBTITLE_MAX_BYTES = 2 * 1024 * 1024;
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-const ERROR_CODES = new Set<KisskhErrorCode>([
-  'retrieval_in_progress',
-  'not_found',
-  'episode_missing',
-  'provider_rate_limited',
-  'provider_changed',
-  'proxy_unavailable',
-  'subtitle_unsupported',
-  'subtitle_decrypt_failed',
-  'upstream_unavailable',
-]);
 const SAFE_MESSAGES: Readonly<Record<KisskhErrorCode, string>> = Object.freeze({
   retrieval_in_progress: 'Récupération KissKH en cours',
+  invalid_input: 'Identifiant KissKH invalide',
   not_found: 'Serie KissKH introuvable',
+  route_missing: 'Route KissKH introuvable',
   episode_missing: 'Episode KissKH indisponible',
   provider_rate_limited: 'KissKH est temporairement limite',
   provider_changed: 'KissKH a change de version',
+  provider_disabled: 'KissKH est désactivé',
   proxy_unavailable: 'Relais KissKH indisponible',
   subtitle_unsupported: 'Sous-titre KissKH non pris en charge',
   subtitle_decrypt_failed: 'Sous-titre KissKH illisible',
@@ -353,21 +346,19 @@ function decodeJson(raw: ArrayBuffer): unknown {
 }
 
 async function readErrorCode(response: Response): Promise<KisskhErrorCode> {
+  let payload: unknown = null;
   try {
-    const raw = await readBoundedResponse(response, ERROR_MAX_BYTES);
-    const payload = decodeJson(raw);
-    if (isRecord(payload)) {
-      const candidate = typeof payload.code === 'string' ? payload.code : payload.error;
-      if (typeof candidate === 'string' && ERROR_CODES.has(candidate as KisskhErrorCode)) {
-        return candidate as KisskhErrorCode;
-      }
-    }
+    payload = decodeJson(await readBoundedResponse(response, ERROR_MAX_BYTES));
   } catch {
     // Deliberately discard untrusted upstream error bodies.
   }
-  if (response.status === 404) return 'not_found';
-  if (response.status === 429) return 'provider_rate_limited';
-  return 'upstream_unavailable';
+  // Le marqueur HTTP prime sur le corps pour distinguer un fournisseur désactivé
+  // d'une panne de relais, sans casser les clients qui lisent le JSON historique.
+  return classifyKisskhResponse(
+    response.status,
+    payload,
+    response.headers.get('x-kisskh-disabled'),
+  ).code;
 }
 
 async function readKisskhResolution(

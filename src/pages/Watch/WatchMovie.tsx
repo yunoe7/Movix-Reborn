@@ -50,6 +50,8 @@ import {
 } from '../../utils/hlsAutoFallbackGuard';
 import { readLocalStorage, writeLocalStorage } from '../../utils/browserStorage';
 import { classifyPurstreamError } from '../../utils/purstreamError';
+import { classifyCpasmalError } from '../../utils/cpasmalError';
+import { getSourceCapabilities, isSourceEnabled } from '../../services/sourceCapabilities';
 const MAIN_API = import.meta.env.VITE_MAIN_API;
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
@@ -716,6 +718,17 @@ const WatchMovie: React.FC = () => {
 
     const resolveMovie = async () => {
       try {
+        const capabilities = await getSourceCapabilities(MAIN_API, kisskhController.signal);
+        if (
+          kisskhController.signal.aborted
+          || kisskhRequestGenerationRef.current !== kisskhGeneration
+        ) {
+          return;
+        }
+        if (!isSourceEnabled(capabilities, 'kisskh')) {
+          console.info('[KissKH] Fournisseur désactivé, source ignorée', { tmdbId: id });
+          return;
+        }
         const resolution = await resolveKisskhMovie(Number(id), { signal: kisskhController.signal });
         if (
           kisskhController.signal.aborted
@@ -735,7 +748,19 @@ const WatchMovie: React.FC = () => {
         if (error instanceof KisskhServiceError && error.code === 'retrieval_in_progress') {
           return;
         }
+        if (error instanceof KisskhServiceError && error.code === 'provider_disabled') {
+          console.info('[KissKH] Fournisseur désactivé par Main API', { tmdbId: id });
+          return;
+        }
+        if (error instanceof KisskhServiceError && error.code === 'route_missing') {
+          console.error('[KissKH] Route Main API introuvable', {
+            url: `${MAIN_API}/api/kisskh/movie/${id}`,
+          });
+          return;
+        }
         // KissKH is additive; other provider sources remain usable on failure.
+        const code = error instanceof KisskhServiceError ? error.code : 'unknown';
+        console.warn('[KissKH] Résolution indisponible, fallback conservé', { tmdbId: id, code });
       } finally {
         if (
           !kisskhController.signal.aborted
@@ -1033,12 +1058,34 @@ const WatchMovie: React.FC = () => {
         }).finally(() => setLoadingSwiftflow(false));
 
       // =========== CHECK VIPER (CPASMAL) SOURCE ===========
-      const viperPromise: Promise<ViperMovieResponse | null> = fetchCatalog(`${MAIN_API}/api/cpasmal/movie/${id}`, resolveRequest())
-        .then(response => response.data as ViperMovieResponse)
-        .catch(error => {
-          console.error('Error fetching Viper/Cpasmal source:', error);
+      const viperPromise: Promise<ViperMovieResponse | null> = (async () => {
+        const capabilities = await getSourceCapabilities(MAIN_API);
+        if (!isSourceEnabled(capabilities, 'cpasmal')) {
+          console.info('[Cpasmal] Fournisseur désactivé, source ignorée', { tmdbId: id });
           return null;
-        }).finally(() => setLoadingViper(false));
+        }
+        try {
+          const response = await fetchCatalog(`${MAIN_API}/api/cpasmal/movie/${id}`, resolveRequest());
+          return response.data as ViperMovieResponse;
+        } catch (error) {
+          const info = classifyCpasmalError(error);
+          if (info.kind === 'disabled') {
+            console.info('[Cpasmal] Fournisseur désactivé par Main API', { tmdbId: id });
+          } else if (info.kind === 'not_found' || info.kind === 'invalid_id') {
+            console.info('[Cpasmal] Aucune source pour ce film', { tmdbId: id, kind: info.kind });
+          } else if (info.kind === 'route_missing') {
+            console.error('[Cpasmal] Route Main API introuvable', {
+              url: `${MAIN_API}/api/cpasmal/movie/${id}`,
+            });
+          } else {
+            console.warn('[Cpasmal] Récupération indisponible, fallback conservé', {
+              tmdbId: id,
+              kind: info.kind,
+            });
+          }
+          return null;
+        }
+      })().finally(() => setLoadingViper(false));
 
       // =========== AWAIT ALL SOURCE CHECKS TO COMPLETE ===========
       const [

@@ -59,15 +59,23 @@ function redisDouble(now) {
 // Executer le service frontend reel : seules sa configuration runtime et la cle
 // VIP viennent de la fixture. Son fetch, ses validations et ses erreurs restent reels.
 const frontendFile = path.resolve(__dirname, '../../../../src/services/kisskhService.ts');
-const frontendSource = ts.transpileModule(fs.readFileSync(frontendFile, 'utf8'), {
+const transpile = (file) => ts.transpileModule(fs.readFileSync(file, 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
+const frontendSource = transpile(frontendFile);
+const kisskhErrorFile = path.resolve(__dirname, '../../../../src/utils/kisskhError.ts');
+const kisskhErrorSource = transpile(kisskhErrorFile);
 
 function frontendService(url, vip = false) {
   const loaded = new Module(frontendFile, module);
   loaded.require = (name) => {
     if (name === '../config/runtime') return { MAIN_API: url, PROXIES_EMBED_API: PUBLIC_PROXY };
     if (name === '../utils/vipUtils') return { getVipHeaders: () => vip ? { 'x-access-key': 'test-vip' } : {} };
+    if (name === '../utils/kisskhError') {
+      const errorModule = new Module(kisskhErrorFile, module);
+      errorModule._compile(kisskhErrorSource, kisskhErrorFile);
+      return errorModule.exports;
+    }
     throw new Error(`Unexpected frontend dependency: ${name}`);
   };
   loaded._compile(frontendSource, frontendFile);

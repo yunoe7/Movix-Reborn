@@ -343,6 +343,7 @@ function createKisskhRouter(deps = {}) {
 
   router.use((_req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
+    if (!enabled) res.setHeader('X-Kisskh-Disabled', '1');
     next();
   });
 
@@ -460,6 +461,11 @@ function createKisskhRouter(deps = {}) {
     } catch (error) {
       return sendError(res, error);
     }
+  });
+
+  router.use((req, res) => {
+    console.warn(`[KissKH] Route inconnue: ${req.method} ${req.path || req.url}`);
+    return res.status(404).json({ code: 'ROUTE_NOT_FOUND', message: 'Route KissKH inconnue' });
   });
 
   return router;
@@ -632,6 +638,7 @@ function createRuntimeDependencies(deps = {}) {
 }
 
 let configuredRouter = null;
+let configuredEnabled = false;
 const exportedRouter = express.Router();
 exportedRouter.use((req, res, next) => {
   if (configuredRouter) return configuredRouter(req, res, next);
@@ -640,12 +647,15 @@ exportedRouter.use((req, res, next) => {
 });
 
 function configure(deps) {
-  configuredRouter = createKisskhRouter(createRuntimeDependencies(deps));
+  const runtime = createRuntimeDependencies(deps);
+  configuredEnabled = runtime.enabled === true;
+  configuredRouter = createKisskhRouter(runtime);
   return exportedRouter;
 }
 
 module.exports = exportedRouter;
 module.exports.configure = configure;
+module.exports.isEnabled = () => configuredEnabled;
 module.exports.createFallbackCapabilityStore = createFallbackCapabilityStore;
 module.exports.createKisskhRouter = createKisskhRouter;
 module.exports.createRuntimeDependencies = createRuntimeDependencies;

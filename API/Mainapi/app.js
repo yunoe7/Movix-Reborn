@@ -565,6 +565,15 @@ kisskhRouter.configure({
 });
 app.use('/api/kisskh', kisskhRouter);
 
+// Capacités des lecteurs optionnels : le frontend évite d'appeler un fournisseur
+// désactivé côté backend, sans jamais retirer une source dont l'état est inconnu.
+app.get('/api/source-capabilities', (_req, res) => {
+  res.json({
+    kisskh: { enabled: kisskhRouter.isEnabled?.() === true },
+    cpasmal: { enabled: cpasmalRouter.isEnabled?.() === true },
+  });
+});
+
 // Passerelle VIP vers proxiesembed : le frontend n'appelle plus le service
 // d'extraction en direct, il passe par ici avec sa clé VIP (cf. routes/mediaExtract.js).
 app.use('/api/media', require('./routes/mediaExtract'));
