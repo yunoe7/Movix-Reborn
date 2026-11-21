@@ -403,6 +403,10 @@ export const ProfileProvider: React.FC<ProfileProviderProps> = ({ children }) =>
 
         if (selectedProfile) {
           setCurrentProfile(selectedProfile);
+          // Keep the legacy key aligned for older features that still read it
+          // (comments, Wrapped, history and sync diagnostics). The account-
+          // scoped ID has already been validated against this account's list.
+          persistSelectedProfileId(selectedProfile.id);
           if (!isWatchRoute) {
             await loadProfileData(selectedProfile.id);
           } else {
