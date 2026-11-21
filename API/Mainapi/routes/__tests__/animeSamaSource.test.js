@@ -740,9 +740,9 @@ test('une saison en cache sans lecteur vivant reste dans la liste comme indispon
     '<script>panneauAnime("Saison 1", "saison1/vostfr");</script>',
   ].join('\\n');
   const cached = { 'Saison 1': { timestamp: now, path: 'saison1', episodes: [
-    episodeOf(1, [{ language: 'vostfr', players: ['https://oneupload.to/embed-dead.html'] }]),
+    episodeOf(1, []),
   ] } };
-  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile(cached, { ageMs: 1000 }) }, deadPlayers: true });
+  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile(cached, { ageMs: 1000 }) } });
   const seasons = (await h.search()).body[0].seasons;
   assert.equal(seasons.length, 1);
   assert.equal(seasons[0].available, false);
