@@ -90,18 +90,21 @@ export const MagicParticles: React.FC<MagicParticlesProps> = ({
   useEffect(() => { onMouseMoveRef.current(); }, [mousePosition.x, mousePosition.y]);
   useEffect(() => { initCanvasRef.current(); }, [refresh]);
 
-  const circleParams = (): Circle => ({
-    x: Math.floor(Math.random() * canvasSize.current.w),
-    y: Math.floor(Math.random() * canvasSize.current.h),
-    translateX: 0,
-    translateY: 0,
-    size: Math.random() * 1.1 + size,
-    alpha: 0,
-    targetAlpha: Number((Math.random() * 0.48 + 0.18).toFixed(2)),
-    dx: (Math.random() - 0.5) * 0.12,
-    dy: (Math.random() - 0.5) * 0.12,
-    magnetism: 0.6 + Math.random() * 2.2,
-  });
+  const circleParams = (): Circle => {
+    const targetAlpha = Number((Math.random() * 0.48 + 0.18).toFixed(2));
+    return {
+      x: Math.floor(Math.random() * canvasSize.current.w),
+      y: Math.floor(Math.random() * canvasSize.current.h),
+      translateX: 0,
+      translateY: 0,
+      size: Math.random() * 1.1 + size,
+      alpha: reducedMotion.current ? targetAlpha : 0,
+      targetAlpha,
+      dx: (Math.random() - 0.5) * 0.12,
+      dy: (Math.random() - 0.5) * 0.12,
+      magnetism: 0.6 + Math.random() * 2.2,
+    };
+  };
 
   const drawCircle = (circle: Circle, add = false) => {
     if (!context.current) return;
