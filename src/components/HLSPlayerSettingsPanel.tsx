@@ -676,8 +676,8 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
 
                     {/* Sources HLS d'abord */}
                     {sourceGroups .map((group: any, groupIndex: any) => (
-                      <div key={`group_${groupIndex}`} className="mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-3 shadow-[0_12px_32px_rgba(0,0,0,0.16)] sm:mb-6 sm:p-4">
-                        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                      <div key={`group_${groupIndex}`} className="movix-source-group mb-5 rounded-[22px] border border-white/[0.08] p-4 sm:mb-6 sm:p-5">
+                        <div className="movix-source-group-heading mb-4 flex items-center justify-between gap-3 px-1">
                           <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">{group.title}</h4>
                           {group.type === 'hls' && (
                             hlsQualityScan?.status === 'running' ? (
@@ -747,7 +747,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                 <button
                                   onClick={() => handleSourceChange(source.type, source.id, source.url)}
                                   disabled={source.type === 'kisskh_main' && loadingKisskh}
-                                  className={`min-h-11 min-w-[8.5rem] flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2.5 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isActive ? 'border-emerald-400/70 bg-emerald-400/10 text-white shadow-[0_0_22px_rgba(52,211,153,0.10)]' : ''
+                                  className={`movix-source-option min-h-12 min-w-[8.5rem] flex-1 rounded-2xl border border-white/10 px-4 py-3 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 ${isActive ? 'border-emerald-400/70 bg-emerald-400/10 text-white shadow-[0_0_22px_rgba(52,211,153,0.10)]' : ''
                                     } ${onlyQualityMenu && embedType && embedUrl && source.type === embedType && source.url === embedUrl ? 'ring-1 ring-emerald-400/50' : ''} ${''
                                     }`}
                                 >
