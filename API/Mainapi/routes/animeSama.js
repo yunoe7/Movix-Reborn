@@ -36,6 +36,8 @@ const {
 } = require('../utils/animeSamaPages');
 const { createLinkResolver, isLinkTokenError, isLinkRateError } = require('../utils/animeSamaLinks');
 const { canReuseSeasonCache, hasMissingSeasonPaths } = require('../utils/animeSamaCache');
+const { createAnimeSamaFallback } = require('../utils/animeSamaFallback');
+const animeSamaFallback = createAnimeSamaFallback();
 const DEBUG_ANIMESAMA = process.env.DEBUG_ANIMESAMA === 'true';
 
 // Anime-Sama est le seul catalogue dont les lecteurs sont des chaînes brutes
@@ -1261,12 +1263,35 @@ router.get('/search/:query', async (req, res) => {
           alternative_names: cat.alternative_names,
           alternative_names_string: cat.alternative_names_string
         }));
+
+        // Secours optionnel : uniquement si la recherche native échoue ou ne trouve rien.
+        // Les résultats restent des fiches catalogue et passent ensuite dans le pipeline existant.
+        if (!serializedResults.length) {
+          const fallbackResults = await animeSamaFallback.search(query);
+          if (fallbackResults?.length) {
+            serializedResults = fallbackResults.map(({ url, name, image, alternative_names, alternative_names_string }) => ({
+              url, name, image, alternative_names, alternative_names_string
+            }));
+            console.warn(`[ANIME-SAMA FALLBACK] ${serializedResults.length} résultat(s) de secours pour "${String(query).slice(0, 80)}"`);
+          }
+        }
+
         if (staleEntries && !serializedResults.length) serializedResults = uniqueTitles(cachedResults.map(repairSearchEntry));
         await deps.saveToCache(animeCacheDir, cacheKey, serializedResults);
         cachedResults = serializedResults;
       } catch (err) {
         console.error('Erreur scraping Anime Sama:', err);
-        return res.status(500).json({ error: 'Erreur lors de la recherche Anime Sama' });
+        const fallbackResults = await animeSamaFallback.search(query);
+        if (fallbackResults?.length) {
+          const serializedResults = fallbackResults.map(({ url, name, image, alternative_names, alternative_names_string }) => ({
+            url, name, image, alternative_names, alternative_names_string
+          }));
+          await deps.saveToCache(animeCacheDir, cacheKey, serializedResults);
+          cachedResults = serializedResults;
+          console.warn(`[ANIME-SAMA FALLBACK] ${serializedResults.length} résultat(s) après échec de la source principale`);
+        } else {
+          return res.status(500).json({ error: 'Erreur lors de la recherche Anime Sama' });
+        }
       }
     }
 
