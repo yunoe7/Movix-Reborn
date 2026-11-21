@@ -1,14 +1,5 @@
 'use strict';
 
-// Adaptateur de secours strict pour l'API Atomic-tech/Anime-Sama.
-// IMPORTANT : désactivé par défaut et volontairement indépendant des routes
-// existantes. Cette API scrape elle aussi Anime-Sama : elle ne remplace pas
-// l'origine du catalogue et ne garantit pas la lecture vidéo.
-//
-// Activation future uniquement après validation réelle de l'endpoint et de son
-// format : ANIME_SAMA_FALLBACK_URL=https://api-anime-sama.onrender.com
-// Aucun code de cette dépendance externe n'est copié dans Movix (licence MIT).
-
 const axios = require('axios');
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -52,13 +43,13 @@ function normalizeSearchResults(payload, sourceBaseUrl = 'https://anime-sama.to'
     const rawUrl = row.url || row.href || row.link || row.id;
     let url = safeHttpUrl(rawUrl);
     if (!url && typeof rawUrl === 'string' && /^[a-z0-9][a-z0-9._-]{0,180}$/i.test(rawUrl)) {
-      url = new URL(`/catalogue/${encodeURIComponent(rawUrl)}/`, sourceBaseUrl).toString();
+      url = new URL('/catalogue/' + encodeURIComponent(rawUrl) + '/', sourceBaseUrl).toString();
     }
     if (!url) continue;
 
     let parsed;
     try { parsed = new URL(url); } catch { continue; }
-    if (!/(^|\\.)anime-sama\\.[a-z]{2,}$/i.test(parsed.hostname)) continue;
+    if (!/(^|\.)anime-sama\.[a-z]{2,}$/i.test(parsed.hostname)) continue;
     if (!/^\/catalogue\/[^/]+\/?$/i.test(parsed.pathname)) continue;
 
     const key = parsed.pathname.toLowerCase();
@@ -83,7 +74,8 @@ function normalizeSearchResults(payload, sourceBaseUrl = 'https://anime-sama.to'
 
 function createAnimeSamaFallback({
   baseUrl = process.env.ANIME_SAMA_FALLBACK_URL || '',
-  sourceBaseUrl = process.env.ANIME_SAMA_URL || 'https://anime-sama.to',\n  timeoutMs = DEFAULT_TIMEOUT_MS,
+  sourceBaseUrl = process.env.ANIME_SAMA_URL || 'https://anime-sama.to',
+  timeoutMs = DEFAULT_TIMEOUT_MS,
   http = axios,
   logger = console,
 } = {}) {
@@ -125,7 +117,7 @@ function createAnimeSamaFallback({
           circuitUntil = Date.now() + 60 * 1000;
           failures = 0;
         }
-        logger?.warn?.(`[ANIME-SAMA FALLBACK] Recherche indisponible: ${String(error?.message || error).slice(0, 160)}`);
+        logger?.warn?.('[ANIME-SAMA FALLBACK] Recherche indisponible: ' + String(error?.message || error).slice(0, 160));
         return null;
       } finally {
         inFlight = null;
