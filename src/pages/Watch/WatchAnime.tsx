@@ -1792,7 +1792,15 @@ const WatchAnime: React.FC = () => {
                     </button>
                   </div>
 
-                  <div className="p-4">
+                  <div className="movix-source-content">
+                    <div className="movix-source-section-heading">
+                      <div>
+                        <span className="movix-source-section-kicker">VOTRE SÉANCE COMMENCE ICI</span>
+                        <h3>Choisissez votre expérience</h3>
+                        <p>Choisissez d'abord votre langue, puis le lecteur de votre choix.</p>
+                      </div>
+                      <span className="movix-source-live-indicator"><span /> SÉLECTION DES LECTEURS</span>
+                    </div>
                     {/* Current info */}
                     <div className="movix-anime-current-source rounded-2xl p-4 sm:p-5 mb-6">
                       <h4 className="text-white text-md font-medium mb-1">{showDetails?.name}</h4>
@@ -1907,6 +1915,20 @@ const WatchAnime: React.FC = () => {
                               )}
                             </motion.button>
                           ))}
+                      </div>
+                    </div>
+                    <div className="movix-source-guidance">
+                      <div className="movix-source-guidance-item">
+                        <span className="movix-source-guidance-number">01</span>
+                        <div><strong>Choisissez une langue</strong><span>Affichez les lecteurs disponibles dans votre version.</span></div>
+                      </div>
+                      <div className="movix-source-guidance-item">
+                        <span className="movix-source-guidance-number">02</span>
+                        <div><strong>Sélectionnez un lecteur</strong><span>Comparez les sources et les qualités proposées.</span></div>
+                      </div>
+                      <div className="movix-source-guidance-item">
+                        <span className="movix-source-guidance-number">03</span>
+                        <div><strong>Changez si nécessaire</strong><span>Vous pourrez revenir à ce menu à tout moment.</span></div>
                       </div>
                     </div>
                   </div>
