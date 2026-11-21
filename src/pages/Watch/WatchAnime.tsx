@@ -1175,14 +1175,14 @@ const WatchAnime: React.FC = () => {
     acceptAnimeSource(sourceToSelect);
   }, [acceptAnimeSource, videoSources, selectedLanguage]);
 
-  // Sélection automatique du premier lecteur disponible (seulement au chargement initial)
+  // Le premier chargement ouvre directement le nouveau sélecteur.
+  // Aucun lecteur n'est lancé avant le choix explicite de l'utilisateur.
   useEffect(() => {
     if (videoSources.length > 0 && isInitialLoad) {
-      selectBestSource();
-      // Marquer que la sélection initiale est terminée
+      setShowEmbedQuality(true);
       setIsInitialLoad(false);
     }
-  }, [videoSources, isInitialLoad, selectBestSource]);
+  }, [videoSources, isInitialLoad]);
 
   // DÉSACTIVÉ: Ne plus sélectionner automatiquement un lecteur quand on change de langue
   // L'utilisateur doit maintenant choisir manuellement le lecteur dans la langue sélectionnée
