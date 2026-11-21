@@ -1945,7 +1945,8 @@ html.tv-mode :focus {
   isolation: isolate;
   background-size: cover !important;
   background-position: center 30% !important;
-  border-bottom: 1px solid rgba(255,255,255,.08);
+  /* Opaque neutral separator: prevents backdrop colors bleeding into the seam. */
+  border-bottom: 1px solid #252a33;
 }
 
 .movix-source-hero::before {
