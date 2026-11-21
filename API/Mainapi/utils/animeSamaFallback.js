@@ -5,6 +5,7 @@ const axios = require('axios');
 const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_RESULTS = 20;
 const MAX_QUERY_LENGTH = 120;
+const ANIME_SAMA_HOST_RE = /^anime-sama\.[a-z]{2,}$/i;
 
 function cleanText(value, max = 300) {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
@@ -15,6 +16,7 @@ function safeHttpUrl(value) {
   if (!text) return '';
   try {
     const url = new URL(text);
+    if (url.username || url.password) return '';
     return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : '';
   } catch {
     return '';
@@ -30,10 +32,23 @@ function extractRows(payload) {
   return [];
 }
 
+function normalizeSourceBaseUrl(value) {
+  try {
+    const url = new URL(value);
+    if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) {
+      return 'https://anime-sama.to';
+    }
+    return url.origin;
+  } catch {
+    return 'https://anime-sama.to';
+  }
+}
+
 function normalizeSearchResults(payload, sourceBaseUrl = 'https://anime-sama.to') {
   const rows = extractRows(payload);
   const seen = new Set();
   const results = [];
+  const safeSourceBase = normalizeSourceBaseUrl(sourceBaseUrl);
 
   for (const row of rows.slice(0, MAX_RESULTS * 2)) {
     if (!row || typeof row !== 'object') continue;
@@ -43,16 +58,17 @@ function normalizeSearchResults(payload, sourceBaseUrl = 'https://anime-sama.to'
     const rawUrl = row.url || row.href || row.link || row.id;
     let url = safeHttpUrl(rawUrl);
     if (!url && typeof rawUrl === 'string' && /^[a-z0-9][a-z0-9._-]{0,180}$/i.test(rawUrl)) {
-      url = new URL('/catalogue/' + encodeURIComponent(rawUrl) + '/', sourceBaseUrl).toString();
+      url = new URL('/catalogue/' + encodeURIComponent(rawUrl) + '/', safeSourceBase).toString();
     }
     if (!url) continue;
 
     let parsed;
     try { parsed = new URL(url); } catch { continue; }
-    if (!/(^|\.)anime-sama\.[a-z]{2,}$/i.test(parsed.hostname)) continue;
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) continue;
+    if (!ANIME_SAMA_HOST_RE.test(parsed.hostname)) continue;
     if (!/^\/catalogue\/[^/]+\/?$/i.test(parsed.pathname)) continue;
 
-    const key = parsed.pathname.toLowerCase();
+    const key = parsed.hostname.toLowerCase() + parsed.pathname.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
 
@@ -82,9 +98,20 @@ function createAnimeSamaFallback({
   let parsedBase = null;
   try {
     const candidate = new URL(baseUrl);
-    if (candidate.protocol === 'https:' && candidate.hostname) parsedBase = candidate;
+    // The configured API base must be a plain HTTPS origin, without credentials,
+    // query parameters, fragments, or a path that could redirect the API route.
+    if (
+      candidate.protocol === 'https:' &&
+      candidate.hostname &&
+      !candidate.username &&
+      !candidate.password &&
+      candidate.pathname === '/' &&
+      !candidate.search &&
+      !candidate.hash
+    ) parsedBase = candidate;
   } catch { /* fallback disabled */ }
 
+  const safeSourceBaseUrl = normalizeSourceBaseUrl(sourceBaseUrl);
   const enabled = Boolean(parsedBase);
   let circuitUntil = 0;
   let failures = 0;
@@ -108,7 +135,7 @@ function createAnimeSamaFallback({
           maxBodyLength: 2 * 1024 * 1024,
           validateStatus: status => status >= 200 && status < 300,
         });
-        const results = normalizeSearchResults(response?.data, sourceBaseUrl);
+        const results = normalizeSearchResults(response?.data, safeSourceBaseUrl);
         if (!results.length) throw new Error('Réponse de secours vide ou incompatible');
         failures = 0;
         return results;
