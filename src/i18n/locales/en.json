@@ -1224,6 +1224,8 @@
     "episodeListSwitchHint": "Missing episodes, or an episode that is already out won't play? Switch the list.",
     "standardMode": "Standard mode",
     "animeModeLabel": "Anime mode",
+    "animeModeActiveBadge": "ANIME MODE ACTIVE",
+    "backToStandardMode": "Back to standard mode",
     "standardModeAvailable": "Standard Mode available. Try it if episodes/seasons are missing.",
     "cinemaModeEnabled": "Cinema Mode enabled",
     "enableCinemaMode": "Enable Cinema Mode",
