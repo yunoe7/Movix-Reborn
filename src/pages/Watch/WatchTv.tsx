@@ -771,6 +771,12 @@ const WatchTv: React.FC = () => {
   const [showEmbedQuality, setShowEmbedQuality] = useState(false); // For the embed source menu
   const [hasConfirmedInitialSource, setHasConfirmedInitialSource] = useState(false);
 
+  // Re-open the picker when the user navigates to a different series.
+  // Episode/source selection and playback state remain untouched.
+  useEffect(() => {
+    setHasConfirmedInitialSource(false);
+  }, [encodedId]);
+
   useEffect(() => {
     if (!embedUrl) return;
     const normalizedEmbedUrl = normalizeUqloadEmbedUrl(embedUrl);
@@ -4000,17 +4006,26 @@ const WatchTv: React.FC = () => {
         </div>
       ) : !hasConfirmedInitialSource && !onlyVostfrAvailable ? (
         <PlayerOverlayPortal>
-          <div className="movix-source-picker-backdrop fixed inset-0 z-[10001] flex items-end sm:items-center justify-center p-0 sm:p-6">
-            <div className="movix-source-picker relative isolate w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px]">
-              <div className="movix-source-hero relative flex items-end gap-5 sm:gap-8 px-5 pt-12 pb-7 sm:px-9 sm:pt-16 sm:pb-10 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+          <div className="movix-source-picker-backdrop movix-source-picker-backdrop--fullscreen fixed inset-0 z-[10001] flex items-stretch justify-stretch p-0">
+            <div className="movix-source-picker movix-source-picker--fullscreen relative isolate w-full h-full">
+              <div className="movix-source-hero movix-source-hero--cinematic relative flex items-end gap-5 sm:gap-8 px-5 pt-12 pb-7 sm:px-9 sm:pt-16 sm:pb-10 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.72) 0%, rgba(5,8,12,.28) 48%, rgba(5,8,12,.08) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
                 <div className="movix-source-poster-wrap relative z-10 shrink-0"><img src={playerPoster} alt="" className="movix-source-poster" /></div>
                 <div className="movix-source-hero-copy relative z-10 min-w-0 flex-1 pb-1">
                   <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX ORIGINAL EXPERIENCE</span>
                   <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{showTitle}</h2>
                   <p className="movix-source-meta mt-2 text-sm text-white/75 sm:text-base">S{seasonNumber} · E{episodeNumber}{episodeTitle ? ` — ${episodeTitle}` : ''}</p>
+                  <p className="movix-source-meta mt-3 text-xs font-semibold uppercase tracking-[.18em]">CHOISISSEZ VOTRE LECTEUR</p>
                 </div>
               </div>
-              <div className="p-4">
+              <div className="movix-source-content">
+                <div className="movix-source-section-heading">
+                  <div>
+                    <span className="movix-source-section-kicker">VOTRE SÉANCE COMMENCE ICI</span>
+                    <h3>Choisissez votre expérience</h3>
+                    <p>Plusieurs lecteurs sont disponibles pour lancer votre épisode.</p>
+                  </div>
+                  <span className="movix-source-live-indicator"><span /> SÉLECTION DES LECTEURS</span>
+                </div>
                 <HLSPlayer priorityCategory="moviesTv" autoFallbackGuard={autoFallbackGuard} src="" className="hidden" movieId={undefined}
                   tvShowId={id ?? undefined} seasonNumber={seasonNumber} episodeNumber={episodeNumber} controls={false}
                   nexusHlsSources={nexusHlsSources} nexusFileSources={nexusFileSources} darkinoSources={darkinoSources}
@@ -4020,6 +4035,20 @@ const WatchTv: React.FC = () => {
                   swiftflowSources={sortedSwiftflow} purstreamSources={purstreamSources} kisskhSources={kisskhSources} kisskhSubtitles={kisskhSubtitles}
                   loadingKisskh={loadingKisskh} adFreeM3u8Url={adFreeM3u8Url} autoPlay={false} onlyQualityMenu={true}
                   embedType={embedType || undefined} embedUrl={embedUrl || undefined} />
+                <div className="movix-source-guidance">
+                  <div className="movix-source-guidance-item">
+                    <span className="movix-source-guidance-number">01</span>
+                    <div><strong>Choisissez un lecteur</strong><span>Parcourez les services disponibles ci-dessus.</span></div>
+                  </div>
+                  <div className="movix-source-guidance-item">
+                    <span className="movix-source-guidance-number">02</span>
+                    <div><strong>Lancez votre épisode</strong><span>Sélectionnez le lecteur qui vous convient.</span></div>
+                  </div>
+                  <div className="movix-source-guidance-item">
+                    <span className="movix-source-guidance-number">03</span>
+                    <div><strong>Changez si nécessaire</strong><span>Vous pourrez choisir une autre source à tout moment.</span></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
