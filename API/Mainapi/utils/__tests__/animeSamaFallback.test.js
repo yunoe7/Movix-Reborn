@@ -61,6 +61,26 @@ test('uses a bounded timeout and coalesces concurrent identical fallback work', 
   assert.deepEqual(await first, await second);
 });
 
+test('does not merge different searches that happen at the same time', async () => {
+  const queries = [];
+  let release;
+  const http = {
+    get: async (_url, options) => {
+      queries.push(options.params.q);
+      await new Promise(resolve => { release = resolve; });
+      return { data: [{ name: options.params.q, url: 'https://anime-sama.fr/catalogue/' + options.params.q.toLowerCase().replace(/\\s+/g, '-') + '/' }] };
+    },
+  };
+  const fallback = createAnimeSamaFallback({ baseUrl: 'https://api.example.test', http, logger: { warn() {} } });
+  const first = fallback.search('One Piece');
+  const second = fallback.search('Naruto');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(queries.sort(), ['Naruto', 'One Piece']);
+  release();
+  // Resolve any still-pending mocked request.
+  await Promise.all([first, second]);
+});
+
 test('rejects insecure and malformed fallback endpoints', () => {
   assert.equal(createAnimeSamaFallback({ baseUrl: 'http://api.example.test' }).enabled, false);
   assert.equal(createAnimeSamaFallback({ baseUrl: 'not a url' }).enabled, false);
