@@ -181,6 +181,7 @@ test('fiche : le mode d’emploi et les saisons masquées ne sont pas des saison
     ['Kai - Saga 1 (East Blue)', 'kai', 'vf'],
   ]);
   assert.equal(fiche.hiddenSeasons, 4);
+  assert.deepEqual(fiche.unavailableSeasons.map(season => season.name), ['Ancienne', 'Film', 'OAV', 'Retirée']);
   assert.equal(fiche.hasScans, false, 'le bloc Manga est en commentaire');
 });
 
@@ -188,6 +189,7 @@ test('fiche : toutes les saisons masquées ou seulement des scans, la fiche rest
   const masked = parseTitlePage(`${ficheHead}\n${animeBlock(['<!--panneauAnime("Saison 1", "saison1/vostfr");-->'])}`);
   assert.equal(masked.valid, true);
   assert.deepEqual(masked.seasons, []);
+  assert.deepEqual(masked.unavailableSeasons, [{ name: 'Saison 1', path: 'saison1', lang: 'vostfr' }]);
   assert.equal(masked.hiddenSeasons, 1);
 
   const scansOnly = parseTitlePage(`${ficheHead}\n${scanBlock}`);
