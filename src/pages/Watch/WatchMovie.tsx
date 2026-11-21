@@ -618,6 +618,8 @@ const WatchMovie: React.FC = () => {
   // Re-open the initial source picker for the new film without changing source logic.
   useEffect(() => {
     setHasConfirmedInitialSource(false);
+    setOnlyVostfrAvailable(false);
+    setShowEmbedQuality(false);
   }, [encodedId]);
 
   useEffect(() => {
