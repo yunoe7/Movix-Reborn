@@ -1025,14 +1025,165 @@ const WatchAnime: React.FC = () => {
     // L'utilisateur doit maintenant sélectionner manuellement une nouvelle source dans la langue choisie
   };
 
-  // Le premier chargement ouvre directement le nouveau sélecteur.
-  // Aucun lecteur n'est lancé avant le choix explicite de l'utilisateur.
+    // Fonction pour sélectionner automatiquement la meilleure source
+  const selectBestSource = useCallback(() => {
+    if (videoSources.length === 0) return;
+
+    // Filtrer les sources par langue sélectionnée
+    const filteredSources = videoSources.filter(source =>
+      source.language?.toLowerCase() === selectedLanguage.toLowerCase()
+    );
+
+    let sourceToSelect = null;
+
+    console.log('Auto-selecting source. Available sources:', videoSources.map(s => ({
+      player: s.player,
+      language: s.language,
+      isM3u8: s.isM3u8,
+      label: s.label
+    })));
+    console.log('Selected language:', selectedLanguage);
+    console.log('Filtered sources for language:', filteredSources.map(s => ({
+      player: s.player,
+      language: s.language,
+      isM3u8: s.isM3u8,
+      label: s.label
+    })));
+
+    // Utiliser les sources filtrées pour la sélection
+    const sourcesToSearch = filteredSources.length > 0 ? filteredSources : videoSources;
+
+    // Priority 1: Vidmoly HLS source in VF (always prioritize VF if available)
+    if (!sourceToSelect) {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.player === 'Vidmoly' &&
+        source.language?.toLowerCase() === 'vf'
+      );
+      if (sourceToSelect) {
+        console.log('Selected Vidmoly VF HLS source:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 2: Vidmoly HLS source in current language (non-VF)
+    if (!sourceToSelect && selectedLanguage && selectedLanguage !== 'vf') {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.player === 'Vidmoly' &&
+        source.language?.toLowerCase() === selectedLanguage.toLowerCase()
+      );
+      if (sourceToSelect) {
+        console.log('Selected Vidmoly HLS source in current language:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 3: Sibnet HLS source in VF (always prioritize VF if available)
+    if (!sourceToSelect) {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.player === 'Sibnet' &&
+        source.language?.toLowerCase() === 'vf'
+      );
+      if (sourceToSelect) {
+        console.log('Selected Sibnet VF HLS source:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 4: Sibnet HLS source in current language (non-VF)
+    if (!sourceToSelect && selectedLanguage && selectedLanguage !== 'vf') {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.player === 'Sibnet' &&
+        source.language?.toLowerCase() === selectedLanguage.toLowerCase()
+      );
+      if (sourceToSelect) {
+        console.log('Selected Sibnet HLS source in current language:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 5: OneUpload HLS source in VF (always prioritize VF if available)
+    if (!sourceToSelect) {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.player === 'OneUpload' &&
+        source.language?.toLowerCase() === 'vf'
+      );
+      if (sourceToSelect) {
+        console.log('Selected OneUpload VF HLS source:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 6: OneUpload HLS source in current language (non-VF)
+    if (!sourceToSelect && selectedLanguage && selectedLanguage !== 'vf') {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.player === 'OneUpload' &&
+        source.language?.toLowerCase() === selectedLanguage.toLowerCase()
+      );
+      if (sourceToSelect) {
+        console.log('Selected OneUpload HLS source in current language:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 7: Any HLS source in VF (always prioritize VF if available)
+    if (!sourceToSelect) {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.language?.toLowerCase() === 'vf'
+      );
+      if (sourceToSelect) {
+        console.log('Selected VF HLS source:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 8: Any HLS source in current language
+    if (!sourceToSelect && selectedLanguage) {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.isM3u8 &&
+        source.language?.toLowerCase() === selectedLanguage.toLowerCase()
+      );
+      if (sourceToSelect) {
+        console.log('Selected HLS source in current language:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 9: Any HLS source
+    if (!sourceToSelect) {
+      sourceToSelect = sourcesToSearch.find(source => source.isM3u8);
+      if (sourceToSelect) {
+        console.log('Selected any HLS source:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 10: First available source in current language
+    if (!sourceToSelect && selectedLanguage) {
+      sourceToSelect = sourcesToSearch.find(source =>
+        source.language?.toLowerCase() === selectedLanguage.toLowerCase()
+      );
+      if (sourceToSelect) {
+        console.log('Selected first source in current language:', sourceToSelect.label);
+      }
+    }
+
+    // Priority 11: First available source
+    if (!sourceToSelect) {
+      sourceToSelect = sourcesToSearch[0];
+      console.log('Selected first available source:', sourceToSelect.label);
+    }
+
+    console.log('Final selected source:', sourceToSelect);
+    acceptAnimeSource(sourceToSelect);
+  }, [acceptAnimeSource, videoSources, selectedLanguage]);
+
+  // Sélection automatique du premier lecteur disponible (seulement au chargement initial)
   useEffect(() => {
     if (videoSources.length > 0 && isInitialLoad) {
-      setShowEmbedQuality(true);
+      selectBestSource();
+      // Marquer que la sélection initiale est terminée
       setIsInitialLoad(false);
     }
-  }, [videoSources, isInitialLoad]);
+  }, [videoSources, isInitialLoad, selectBestSource]);
+
 
   // DÉSACTIVÉ: Ne plus sélectionner automatiquement un lecteur quand on change de langue
   // L'utilisateur doit maintenant choisir manuellement le lecteur dans la langue sélectionnée
