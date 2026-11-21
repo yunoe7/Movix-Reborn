@@ -1774,9 +1774,10 @@ const WatchAnime: React.FC = () => {
                   className="movix-source-picker relative isolate w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] pointer-events-auto"
                   data-lenis-prevent
                 >
-                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${showDetails?.backdrop_path ? `https://image.tmdb.org/t/p/w1280${showDetails.backdrop_path}` : showDetails?.poster_path ? `https://image.tmdb.org/t/p/w780${showDetails.poster_path}` : ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
-                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                  <div className="movix-source-hero relative flex items-end gap-5 sm:gap-8 px-5 pt-12 pb-7 sm:px-9 sm:pt-16 sm:pb-10 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${showDetails?.backdrop_path ? `https://image.tmdb.org/t/p/w1280${showDetails.backdrop_path}` : showDetails?.poster_path ? `https://image.tmdb.org/t/p/w780${showDetails.poster_path}` : ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div <div className="movix-source-poster-wrap relative z-10 shrink-0"><img src={showDetails?.poster_path ? "https://image.tmdb.org/t/p/w500" + showDetails.poster_path : ""} alt="" className="movix-source-poster" /></div>
+                <div className="movix-source-hero-copy relative z-10 min-w-0 flex-1 pb-1">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX ORIGINAL EXPERIENCE</span>
                       <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{showDetails?.name}</h2>
                       <p className="movix-source-meta mt-2 text-sm text-white/75 sm:text-base">S{season} · E{episode}{episodeDetails?.name ? ` — ${episodeDetails.name}` : ''}</p>
                     </div>
