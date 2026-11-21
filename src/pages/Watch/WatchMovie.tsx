@@ -612,6 +612,7 @@ const WatchMovie: React.FC = () => {
 
   // Ajouter un état pour afficher le menu qualité embed
   const [showEmbedQuality, setShowEmbedQuality] = useState(false);
+  const [hasConfirmedInitialSource, setHasConfirmedInitialSource] = useState(false);
 
   useEffect(() => {
     if (!embedUrl) return;
@@ -2279,7 +2280,10 @@ const WatchMovie: React.FC = () => {
       // client à cet instant. On repasse par la porte d'entrée, qui la
       // demandera au serveur une fois la pub vue et le Turnstile validé.
       if (type === 'swiftflux') {
-        if (!isAutomaticFallback) setLastPlayer('swiftflux');
+        if (!isAutomaticFallback) {
+          setLastPlayer('swiftflux');
+          setHasConfirmedInitialSource(true);
+        }
         setShowEmbedQuality(false);
         // Déjà débloquée pour ce film : rien à redemander, on bascule.
         if (swiftfluxPlayback) {
@@ -2358,6 +2362,8 @@ const WatchMovie: React.FC = () => {
       })();
 
       if (!acceptedPlaybackUrl) return;
+
+      if (!isAutomaticFallback) setHasConfirmedInitialSource(true);
 
       if (acceptedPlaybackUrl) {
         syncHlsActiveSource(
@@ -2899,6 +2905,25 @@ const WatchMovie: React.FC = () => {
         </div>
       ) : adPopupTriggered && !shouldLoadIframe && !hasClickedAd ? (
         <AdWaitingScreen />
+      ) : !hasConfirmedInitialSource && !onlyVostfrAvailable ? (
+        <PlayerOverlayPortal>
+          <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+            <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl">
+              <div className="p-5 border-b border-white/10">
+                <h2 className="text-white text-xl font-bold">{t('watch.changeSource')}</h2>
+                <p className="text-gray-400 text-sm mt-1">{movieTitle}</p>
+              </div>
+              <div className="p-4">
+                <HLSPlayer priorityCategory="moviesTv" autoFallbackGuard={autoFallbackGuard} src="" className="hidden" movieId={id || undefined} controls={false}
+                  nexusHlsSources={nexusHlsSources} nexusFileSources={nexusFileSources} purstreamSources={purstreamSources} darkinoSources={darkinoSources} mp4Sources={mp4Sources}
+                  swiftfluxAvailable={swiftfluxEntries.length > 0} swiftfluxUrl={swiftfluxPlayback?.url} frembedAvailable={frembedAvailable} customSources={customSources}
+                  omegaSources={sortedOmega} coflixSources={sortedCoflix} fstreamSources={sortedFstream} wiflixSources={sortedWiflix} j1fSources={sortedJ1f}
+                  swiftflowSources={sortedSwiftflow} viperSources={sortedViper} kisskhSources={kisskhSources} kisskhSubtitles={kisskhSubtitles} loadingKisskh={loadingKisskh}
+                  autoPlay={false} onlyQualityMenu={true} embedType={embedType || undefined} embedUrl={embedUrl || undefined} title={movieTitle} initialTime={watchProgress} />
+              </div>
+            </div>
+          </div>
+        </PlayerOverlayPortal>
       ) : onlyVostfrAvailable ? (
         <div className="h-full bg-black text-white flex flex-col items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-gray-900/95 rounded-xl p-8 text-center shadow-2xl border border-gray-800 relative">
