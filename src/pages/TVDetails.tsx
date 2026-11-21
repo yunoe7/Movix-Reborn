@@ -4033,8 +4033,17 @@ const TVDetails: React.FC = () => {
                         {animeMode && animeData?.seasons ? (
                           /* Affichage des saisons pour les animes */
                           animeData.seasons.map((season: any, index: number) => {
-                            const seasonNumber = season.number || (index + 1);
+                            const seasonNumber = Number(
+                              season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)
+                            );
+                            // Les fiches Anime-Sama peuvent réutiliser l'affiche de la série
+                            // pour toutes les saisons. Priorité à l'affiche TMDB de la saison
+                            // portant exactement le même numéro, puis aux données Anime-Sama.
+                            const matchingTmdbSeason = tvShow?.seasons?.find(
+                              (tmdbSeason) => Number(tmdbSeason.season_number) === seasonNumber
+                            );
                             const seasonImageSource = firstNonEmptyImage(
+                              matchingTmdbSeason?.poster_path,
                               season?.poster_path,
                               season?.posterPath,
                               animeData?.poster_path,
