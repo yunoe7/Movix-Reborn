@@ -147,9 +147,12 @@
   will-change: transform, opacity;
   filter: drop-shadow(0 12px 20px rgba(0,0,0,.38));
 }
-.mx-xmas-sleigh-bob { display:block; animation: mx-xmas-sleigh-bob 2.8s ease-in-out infinite; }
+.mx-xmas-sleigh-particles { position:absolute; z-index:0; inset:-24px -30px; pointer-events:none; opacity:.78; }
+.mx-xmas-sleigh-particles canvas { display:block; width:100%; height:100%; }
+.mx-xmas-sleigh-bob { position:relative; z-index:1; display:block; animation: mx-xmas-sleigh-bob 2.8s ease-in-out infinite; }
 .mx-xmas-sleigh-bob svg { display:block; width:100%; height:auto; overflow:visible; }
 .mx-xmas-reindeer { transform-origin: 50% 70%; animation: mx-xmas-reindeer-gallop .72s ease-in-out infinite alternate; }
+.mx-xmas-santa { transform-origin: 50% 100%; animation: mx-xmas-santa-wave 2.4s ease-in-out infinite; }
 .mx-xmas-sleigh-stars { opacity:.8; animation: mx-xmas-star-glint 2.2s ease-in-out infinite alternate; }
 @keyframes mx-xmas-sleigh-cross {
   0% { opacity:0; transform:translate3d(-115%, 3vh, 0); }
@@ -169,10 +172,14 @@
   from { opacity:.35; }
   to { opacity:1; }
 }
+@keyframes mx-xmas-santa-wave {
+  0%,100% { transform:translateY(0) rotate(-.5deg); }
+  50% { transform:translateY(-2px) rotate(.5deg); }
+}
 @media(max-width:700px) {
   .mx-xmas-sleigh-flight { top:clamp(100px, 17vh, 160px); width:min(82vw, 390px); animation-duration:44s; }
 }
 @media(prefers-reduced-motion:reduce) {
-  .mx-xmas-sleigh-flight,.mx-xmas-sleigh-bob,.mx-xmas-reindeer,.mx-xmas-sleigh-stars { animation:none!important; }
+  .mx-xmas-sleigh-flight,.mx-xmas-sleigh-bob,.mx-xmas-reindeer,.mx-xmas-sleigh-stars,.mx-xmas-santa { animation:none!important; }
   .mx-xmas-sleigh-flight { display:none; }
 }
