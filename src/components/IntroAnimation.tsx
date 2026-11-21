@@ -83,12 +83,6 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onAnimationComplete }) 
     onAnimationComplete();
   }, [onAnimationComplete]);
 
-  const canVibrate = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
-  const vibe = useCallback((pattern: number[], strength: 'medium' | 'heavy') => {
-    if (canVibrate) navigator.vibrate(pattern);
-    else haptic(strength as never);
-  }, [canVibrate, haptic]);
-
   // Verrouillage du scroll pendant l'intro
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -110,9 +104,9 @@ const IntroAnimation: React.FC<IntroAnimationProps> = ({ onAnimationComplete }) 
       startedRef.current = true;
       armSafety(SAFETY_START_MS);
     }
-    // mx-kick (coup de caméra) et mx-wave (onde) n'existent qu'une fois chacun.
-    if (e.animationName === 'mx-kick') vibe([40], 'medium');
-    else if (e.animationName === 'mx-wave') vibe([90, 40, 130], 'heavy');
+    // Les animations automatiques ne déclenchent pas de vibration :
+    // Chrome exige une activation utilisateur transitoire pour navigator.vibrate.
+    // Les effets visuels restent inchangés. Le bouton « Passer » conserve son retour haptique.
   };
 
   const onAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
