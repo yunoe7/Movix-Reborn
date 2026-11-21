@@ -984,7 +984,10 @@ const fetchSeasonDetails = async (
     try {
       const { data } = await axios.get(`${base}&language=${lang}`);
       if (data && Array.isArray(data.episodes)) return data;
-    } catch {
+    } catch (error) {
+      // Un 404 signifie que cette saison n'existe pas pour la série :
+      // changer de langue ne peut pas rendre la ressource disponible.
+      if (axios.isAxiosError(error) && error.response?.status === 404) return null;
       // erreur réseau / décodage : on tente la langue suivante
     }
   }
@@ -1400,9 +1403,28 @@ const TVDetails: React.FC = () => {
         setCertifications({});
       }
 
-      const numberOfSeasons = tmdbResponse.data.number_of_seasons;
       const newSeasonsDetails: Record<number, any> = {};
       const newSeasonVideos: Record<number, any[]> = {}; // Temporary storage for season videos
+
+      // TMDB fournit la liste exacte des saisons disponibles. La saison 0
+      // correspond aux spéciaux et n'existe pas pour toutes les séries.
+      // Ne jamais fabriquer son numéro à partir de number_of_seasons.
+      const listedSeasonNumbers = Array.from(new Set<number>(
+        (Array.isArray(tmdbResponse.data.seasons) ? tmdbResponse.data.seasons : [])
+          .map((season: { season_number?: unknown }) => season?.season_number)
+          .filter((seasonNumber: unknown): seasonNumber is number =>
+            typeof seasonNumber === 'number'
+            && Number.isInteger(seasonNumber)
+            && seasonNumber >= 0,
+          ),
+      )).sort((a, b) => a - b);
+
+      // Filet de sécurité pour une réponse TMDB sans métadonnées de saisons :
+      // number_of_seasons compte les saisons normales, qui commencent à 1.
+      const seasonCount = Math.max(0, Number(tmdbResponse.data.number_of_seasons) || 0);
+      const seasonNumbersToFetch = listedSeasonNumbers.length > 0
+        ? listedSeasonNumbers
+        : Array.from({ length: seasonCount }, (_, index) => index + 1);
 
       // Fetch general videos
       try {
@@ -1422,17 +1444,19 @@ const TVDetails: React.FC = () => {
         setVideos([]);
       }
 
-      // Fetch season details and videos
+      // Fetch season details and videos only for seasons actually listed by TMDB.
       const seasonPromises = [];
-      for (let season = 0; season <= numberOfSeasons; season++) {
+      for (const season of seasonNumbersToFetch) {
         seasonPromises.push(
           (async () => {
             try {
               // Fetch season details (bascule sur en-US si la réponse fr-FR est corrompue)
               const seasonData = await fetchSeasonDetails(id, season);
-              if (seasonData) {
-                newSeasonsDetails[season] = seasonData;
+              if (!seasonData) {
+                newSeasonVideos[season] = [];
+                return;
               }
+              newSeasonsDetails[season] = seasonData;
 
               // Fetch season videos
               try {
