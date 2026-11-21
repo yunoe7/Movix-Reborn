@@ -2858,14 +2858,20 @@ const TVDetails: React.FC = () => {
     const showToggle = true; // Toujours afficher le bouton de menu déroulant
     const isAnime = type === 'anime';
 
-    // Replis d'image des vignettes : affiche de saison, puis affiche de la série.
+    // Replis d'image des vignettes : affiche TMDB de la saison, puis Anime-Sama,
+    // puis l'affiche de la série. Les numéros sont normalisés comme dans les cartes.
     const currentAnimeSeason = type === 'anime'
-      ? animeData?.seasons?.find((season: SeasonPosterSource, index: number) => (season.number ?? index + 1) === selectedSeason)
+      ? animeData?.seasons?.find((season: SeasonPosterSource & { season_number?: number | string | null; seasonNumber?: number | string | null }, index: number) =>
+        Number(season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)) === Number(selectedSeason))
+      : null;
+    const currentAnimeTmdbSeason = type === 'anime'
+      ? tvShow?.seasons?.find((season) => Number(season.season_number) === Number(selectedSeason))
       : null;
     const currentStandardSeason = type === 'standard'
       ? (seasonsDetails[selectedSeason as number] || seasonCards.find((item) => item.season_number === selectedSeason))
       : null;
     const episodeSeasonPoster = firstNonEmptyImage(
+      currentAnimeTmdbSeason?.poster_path,
       currentAnimeSeason?.poster_path,
       currentAnimeSeason?.posterPath,
       currentAnimeSeason?.image,
