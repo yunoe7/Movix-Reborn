@@ -217,6 +217,8 @@ function loadAnimeSama({ site = createSite(), animes = ['Example'], files = {}, 
     '../utils/animeSamaDeadPlayers': require('../../utils/animeSamaDeadPlayers'),
     '../utils/animeSamaPages': require('../../utils/animeSamaPages'),
     '../utils/animeSamaLinks': require('../../utils/animeSamaLinks'),
+    '../utils/animeSamaCache': require('../../utils/animeSamaCache'),
+    '../utils/animeSamaFallback': { createAnimeSamaFallback: () => ({ enabled: false, search: async () => null }) },
     '../utils/concurrency': require('../../utils/concurrency'),
   };
   const module = { exports: {} };
