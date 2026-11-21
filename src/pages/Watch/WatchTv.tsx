@@ -775,6 +775,8 @@ const WatchTv: React.FC = () => {
   // Episode/source selection and playback state remain untouched.
   useEffect(() => {
     setHasConfirmedInitialSource(false);
+    setOnlyVostfrAvailable(false);
+    setShowEmbedQuality(false);
   }, [encodedId]);
 
   useEffect(() => {
