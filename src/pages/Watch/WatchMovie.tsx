@@ -2907,12 +2907,12 @@ const WatchMovie: React.FC = () => {
         <AdWaitingScreen />
       ) : !hasConfirmedInitialSource && !onlyVostfrAvailable ? (
         <PlayerOverlayPortal>
-          <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5">
-            <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px]">
-              <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                  <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                  <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+          <div className="movix-source-picker-backdrop fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-6">
+            <div className="movix-source-picker relative isolate w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px]">
+              <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                  <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                  <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                   
                 </div>
               </div>
@@ -2967,20 +2967,20 @@ const WatchMovie: React.FC = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
+                className="movix-source-picker-backdrop fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                <div className="movix-source-picker relative isolate w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -3087,17 +3087,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -3251,17 +3251,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -3381,17 +3381,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -3500,17 +3500,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -3620,17 +3620,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -3743,17 +3743,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -3870,17 +3870,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -4002,17 +4002,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
@@ -4116,17 +4116,17 @@ const WatchMovie: React.FC = () => {
                 className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
               >
                 <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
-                  <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
-                    <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
-                      <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
-                      <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                    <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
+                      <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
+                      <h2 className="movix-source-title max-w-3xl text-2xl font-bold leading-[1.08] text-white sm:text-4xl">{movieTitle}</h2>
                     </div>
                   </div>
-                  <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
+                  <div className="movix-source-toolbar flex justify-between items-center p-4 sm:px-6 sticky top-0 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
                       onClick={() => setShowEmbedQuality(false)}
-                      className="text-gray-400 hover:text-red-500 transition-colors text-2xl font-bold focus:outline-none"
+                      className="movix-source-close text-gray-400 transition-colors text-2xl font-bold focus:outline-none"
                     >
                       ×
                     </button>
