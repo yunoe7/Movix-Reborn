@@ -295,7 +295,8 @@ test('une œuvre jamais vue : la fiche et une page par saison et par langue, auc
   site.pages['film/vf'] = { langs: ['vf'], token: 'j-film', eps: [['lien:21']] };
   const h = loadAnimeSama({ site });
 
-  assert.deepEqual((await h.search()).body[0].seasons, [], 'rien en cache : la première réponse est vide');
+  const firstResponse = (await h.search()).body[0].seasons;
+  assert.deepEqual(firstResponse.map(season => season.name), ['Saison 1', 'Films'], 'le premier scan est attendu avant la réponse');
   await settle();
 
   assert.deepEqual(h.ficheCalls(), [`${SITE}catalogue/example/`]);
@@ -684,7 +685,13 @@ test('fiche sans anime (saisons masquées, scans seuls) : le cache est vidé san
     await h.refresh();
     assert.deepEqual(h.failures(), [], `${label} : aucun échec journalisé`);
     assert.deepEqual(h.pageCalls(), [], `${label} : aucune page de saison lue`);
-    assert.deepEqual((await h.search()).body[0].seasons, [], `${label} : plus rien n’est servi`);
+    const seasons = (await h.search()).body[0].seasons;
+    if (label === 'saison masquée') {
+      assert.deepEqual(seasons.map(season => [season.name, season.available, season.status]), [['Saison 1', false, 'unavailable']]);
+      assert.deepEqual(seasons[0].episodes, []);
+    } else {
+      assert.deepEqual(seasons, [], `${label} : plus rien n’est servi`);
+    }
     await settle();
 
     // Les recherches suivantes ne relisent rien avant une heure, et ne logguent plus rien.
