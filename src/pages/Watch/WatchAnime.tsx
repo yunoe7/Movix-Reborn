@@ -1793,7 +1793,7 @@ const WatchAnime: React.FC = () => {
 
                   <div className="p-4">
                     {/* Current info */}
-                    <div className="bg-gray-800/60 rounded-lg p-4 mb-6">
+                    <div className="movix-anime-current-source rounded-2xl p-4 sm:p-5 mb-6">
                       <h4 className="text-white text-md font-medium mb-1">{showDetails?.name}</h4>
                       <p className="text-gray-400 text-sm">
                         S{season} E{episode} {episodeDetails?.name ? `- ${episodeDetails.name}` : ''}
@@ -1813,7 +1813,7 @@ const WatchAnime: React.FC = () => {
                           {availableLanguages.map(lang => (
                             <div
                               key={lang}
-                              className={`relative flex items-center rounded-lg transition-all duration-200 ${selectedLanguage === lang
+                              className={`movix-anime-language-choice relative flex items-center rounded-xl transition-all duration-200 ${selectedLanguage === lang
                                 ? 'bg-gray-800 border-l-4 border-red-600 pl-3 font-medium'
                                 : 'bg-gray-900/60 hover:bg-gray-800/80 text-gray-200 hover:text-white'
                                 }`}
@@ -1851,7 +1851,7 @@ const WatchAnime: React.FC = () => {
 
                       {/* Current Selected Source Info */}
                       {selectedSource && (
-                        <div className="bg-gray-800/60 rounded-lg p-3 mb-4 border-l-4 border-red-600">
+                        <div className="movix-anime-current-source rounded-2xl p-4 mb-4">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-red-400 text-sm font-medium">{t('watch.currentSource')}</p>
