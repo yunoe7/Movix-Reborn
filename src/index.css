@@ -2248,3 +2248,134 @@ html.tv-mode :focus {
     background: linear-gradient(135deg, rgba(91,214,173,.075), rgba(255,255,255,.02));
   }
 }
+
+
+/* Cinematic hero refinement — stronger artwork presence, while keeping title readable. */
+.movix-source-picker--fullscreen > .movix-source-hero--cinematic {
+  flex-basis: clamp(360px, 46vh, 520px);
+  min-height: 360px;
+  gap: clamp(24px, 3.2vw, 54px);
+  padding-left: clamp(28px, 4vw, 76px);
+  padding-right: clamp(28px, 4vw, 76px);
+  background-position: center 34% !important;
+  background-size: cover !important;
+  isolation: isolate;
+}
+
+.movix-source-picker--fullscreen > .movix-source-hero--cinematic::before {
+  background:
+    linear-gradient(90deg, rgba(3, 6, 10, .34) 0%, rgba(3, 6, 10, .08) 46%, rgba(3, 6, 10, .20) 100%),
+    linear-gradient(180deg, rgba(4, 6, 10, .02) 0%, rgba(4, 6, 10, .06) 38%, rgba(5, 8, 12, .74) 100%);
+}
+
+.movix-source-picker--fullscreen .movix-source-poster-wrap {
+  width: clamp(132px, 13vw, 196px);
+  border-radius: 19px;
+  padding: 4px;
+  background: linear-gradient(145deg, #f1f5f9 0%, rgba(255,255,255,.35) 32%, #54d9ad 100%);
+  box-shadow: 0 28px 70px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.2), 0 0 38px rgba(70,218,174,.16);
+  transform: translateY(0);
+}
+
+.movix-source-picker--fullscreen .movix-source-poster {
+  border-radius: 15px;
+  object-position: center;
+  filter: saturate(1.08) contrast(1.04);
+}
+
+.movix-source-picker--fullscreen .movix-source-hero-copy {
+  max-width: 1050px;
+  padding-bottom: clamp(8px, 1.5vh, 20px);
+  text-shadow: 0 3px 32px rgba(0,0,0,.9);
+}
+
+.movix-source-picker--fullscreen .movix-source-eyebrow {
+  margin-bottom: 16px;
+  padding: 8px 15px;
+  background: rgba(4,10,12,.72);
+  border-color: rgba(122,231,194,.36);
+  box-shadow: 0 8px 32px rgba(0,0,0,.32), 0 0 24px rgba(63,211,164,.10);
+}
+
+.movix-source-picker--fullscreen .movix-source-title {
+  max-width: 1050px;
+  font-size: clamp(30px, 3.1vw, 52px);
+  line-height: 1.04;
+  letter-spacing: -.045em;
+  text-wrap: balance;
+}
+
+.movix-source-picker--fullscreen .movix-source-meta {
+  color: rgba(233,244,241,.84);
+  margin-top: 15px;
+  letter-spacing: .2em;
+}
+
+.movix-source-picker--fullscreen > .movix-source-content {
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(38, 151, 119, .15), transparent 42%),
+    radial-gradient(ellipse at 90% 30%, rgba(55, 91, 137, .09), transparent 38%),
+    linear-gradient(145deg, #0d131c 0%, #090d14 54%, #07090e 100%);
+}
+
+.movix-source-picker--fullscreen .movix-source-section-heading {
+  max-width: 1500px;
+  margin-bottom: 26px;
+}
+
+.movix-source-picker--fullscreen .movix-source-section-heading h3 {
+  font-size: clamp(24px, 2.3vw, 34px);
+}
+
+.movix-source-picker--fullscreen .movix-source-guidance-item {
+  min-height: 96px;
+  padding: 20px 22px;
+  border-color: rgba(255,255,255,.09);
+  background: linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.018)), rgba(10,15,22,.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04), 0 12px 28px rgba(0,0,0,.12);
+}
+
+@media (max-width: 760px) {
+  .movix-source-picker--fullscreen > .movix-source-hero--cinematic {
+    flex-basis: 42vh;
+    min-height: 320px;
+    gap: 16px;
+    padding: 30px 20px 24px;
+    background-position: center 30% !important;
+  }
+
+  .movix-source-picker--fullscreen .movix-source-poster-wrap {
+    width: clamp(104px, 29vw, 140px);
+    border-radius: 14px;
+  }
+
+  .movix-source-picker--fullscreen .movix-source-poster {
+    border-radius: 10px;
+  }
+
+  .movix-source-picker--fullscreen .movix-source-title {
+    font-size: clamp(23px, 6vw, 32px);
+  }
+
+  .movix-source-picker--fullscreen .movix-source-eyebrow {
+    font-size: 8px;
+    letter-spacing: .14em;
+  }
+}
+
+@media (max-width: 480px) {
+  .movix-source-picker--fullscreen > .movix-source-hero--cinematic {
+    align-items: flex-end;
+    gap: 14px;
+    min-height: 300px;
+    flex-basis: 40vh;
+  }
+
+  .movix-source-picker--fullscreen .movix-source-poster-wrap {
+    width: 94px;
+  }
+
+  .movix-source-picker--fullscreen .movix-source-title {
+    font-size: 22px;
+  }
+}
