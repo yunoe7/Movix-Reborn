@@ -61,6 +61,7 @@ export const MagicParticles: React.FC<MagicParticlesProps> = ({
   const canvasSize = useRef({ w: 0, h: 0 });
   const dpr = typeof window === "undefined" ? 1 : Math.min(window.devicePixelRatio || 1, 2);
   const rafId = useRef<number | null>(null);
+  const reducedMotion = useRef(false);
   const resizeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initCanvasRef = useRef<() => void>(() => {});
   const onMouseMoveRef = useRef<() => void>(() => {});
@@ -68,8 +69,10 @@ export const MagicParticles: React.FC<MagicParticlesProps> = ({
   const rgb = hexToRgb(color);
 
   useEffect(() => {
+    reducedMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (canvasRef.current) context.current = canvasRef.current.getContext("2d");
     initCanvasRef.current();
+    if (reducedMotion.current) circles.current.forEach((circle) => { circle.alpha = circle.targetAlpha; });
     animateRef.current();
 
     const onResize = () => {
@@ -157,7 +160,7 @@ export const MagicParticles: React.FC<MagicParticlesProps> = ({
         drawCircle(circleParams(), true);
       }
     });
-    rafId.current = requestAnimationFrame(animateRef.current);
+    if (!reducedMotion.current) rafId.current = requestAnimationFrame(animateRef.current);
   };
 
   useLayoutEffect(() => {
