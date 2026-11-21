@@ -707,6 +707,49 @@ test('fiche sans anime (saisons masquées, scans seuls) : le cache est vidé san
   }
 });
 
+test('les saisons masquées sur la fiche restent visibles et ordonnées sans être lues', async () => {
+  const site = createSite();
+  site.fiche = [
+    '<h1 id="titreOeuvre">Example</h1>',
+    '<script>var OE_BASE = "/catalogue/example/"; function panneauAnime(nom, url) {}</script>',
+    '<script>',
+    'panneauAnime("Saison 1", "saison1/vostfr");',
+    '<!-- panneauAnime("Saison 2", "saison2/vostfr"); -->',
+    'panneauAnime("Saison 3", "saison3/vostfr");',
+    '</script>',
+  ].join('\\n');
+  simpleSeason(site, 'saison1', ['vostfr'], 1);
+  simpleSeason(site, 'saison3', ['vostfr'], 1);
+
+  const h = loadAnimeSama({ site });
+  await h.refresh();
+  const seasons = (await h.search()).body[0].seasons;
+  assert.deepEqual(seasons.map(season => season.name), ['Saison 1', 'Saison 2', 'Saison 3']);
+  assert.equal(seasons[1].available, false);
+  assert.equal(seasons[1].status, 'unavailable');
+  assert.equal(seasons[1].episodeCount, 0);
+  assert.deepEqual(h.pageCalls().filter(url => url.includes('saison2')), [], 'la saison masquée ne déclenche aucune lecture réseau');
+  await settle();
+});
+
+test('une saison en cache sans lecteur vivant reste dans la liste comme indisponible', async () => {
+  const site = createSite();
+  site.fiche = [
+    '<h1 id="titreOeuvre">Example</h1>',
+    '<script>var OE_BASE = "/catalogue/example/"; function panneauAnime(nom, url) {}</script>',
+    '<script>panneauAnime("Saison 1", "saison1/vostfr");</script>',
+  ].join('\\n');
+  const cached = { 'Saison 1': { timestamp: now, path: 'saison1', episodes: [
+    episodeOf(1, [{ language: 'vostfr', players: ['https://oneupload.to/embed-dead.html'] }]),
+  ] } };
+  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile(cached, { ageMs: 1000 }) }, deadPlayers: true });
+  const seasons = (await h.search()).body[0].seasons;
+  assert.equal(seasons.length, 1);
+  assert.equal(seasons[0].available, false);
+  assert.equal(seasons[0].episodeCount, 0);
+  await settle();
+});
+
 test('un hébergeur marqué hors service n’est ni demandé, ni servi, ni compté en attente', async () => {
   const site = createSite();
   site.links = { 1: 'https://video.sibnet.ru/shell.php?videoid=1', 2: 'https://ansembed.invalid/embed-a.html', 3: 'https://lecteur.mort.invalid/e/3', 4: 'https://ansembed.invalid/embed-b.html' };
