@@ -10141,9 +10141,9 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
             {settingsTab === 'quality' && (
               <>
                 {sourceGroups.map((group, groupIndex) => (
-                  <div key={`group_${groupIndex}`} className="mb-6">
-                    <div className="flex items-center justify-between gap-2 mb-2 px-2">
-                      <h4 className="text-gray-400 text-xs uppercase tracking-wider">{group.title}</h4>
+                  <div key={`group_${groupIndex}`} className="mb-5 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-3 shadow-[0_12px_32px_rgba(0,0,0,0.16)] sm:mb-6 sm:p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                      <h4 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">{group.title}</h4>
                       {group.type === 'hls' && (
                         hlsQualityScan.status === 'running' ? (
                           <span className="flex items-center gap-1.5 text-xs text-gray-400 whitespace-nowrap">
@@ -10187,12 +10187,12 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
                       const topLevelForPin: TopLevelSourceId | null = SOURCE_MAIN_TO_TOP_LEVEL[source.type] ?? null;
                       return (
                         <React.Fragment key={source.id}>
-                          <div className="mb-2 flex items-stretch gap-2">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
                             <button
                               onClick={() => handleSourceChange(source.type, source.id, source.url)}
                               disabled={source.type === 'kisskh_main' && loadingKisskh}
-                              className={`w-full flex-1 px-4 py-3 text-sm text-left hover:bg-gray-800/80 rounded-lg flex justify-between items-center ${isActive ? 'bg-gray-800 border-l-4 border-red-600 pl-3' : 'bg-gray-900/60 text-white'
-                                } ${onlyQualityMenu && embedType && embedUrl && source.type === embedType && source.url === embedUrl ? 'ring-2 ring-red-500 bg-gray-800/80' : ''} ${''
+                              className={`min-h-11 min-w-[8.5rem] flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2.5 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isActive ? 'border-emerald-400/70 bg-emerald-400/10 text-white shadow-[0_0_22px_rgba(52,211,153,0.10)]' : ''
+                                } ${onlyQualityMenu && embedType && embedUrl && source.type === embedType && source.url === embedUrl ? 'ring-1 ring-emerald-400/50' : ''} ${''
                                 }`}
                             >
                               <div className="min-w-0 flex flex-1 flex-col">
