@@ -2967,9 +2967,9 @@ const WatchMovie: React.FC = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5 pointer-events-auto"
+                className="movix-source-picker-backdrop fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
+                <div className="movix-source-picker relative isolate w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px] z-[10000]">
                   <div className="movix-source-hero relative h-52 sm:h-72 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
                     <div className="movix-source-hero-copy absolute inset-x-0 bottom-0 p-5 sm:p-8">
                       <span className="movix-source-eyebrow mb-3 inline-flex rounded-full px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[.24em]">MOVIX · LECTEURS</span>
