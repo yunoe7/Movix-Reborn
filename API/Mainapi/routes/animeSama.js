@@ -1003,6 +1003,7 @@ function refreshAnime(anime, client) {
       const existingAnimeCache = existingData.seasons || {};
       const catalogueObj = new Catalogue(anime.url, anime.name, client, anime);
       const seasonsList = await catalogueObj.seasons(true);
+      const unavailableSeasons = Array.isArray(catalogueObj.fiche?.unavailableSeasons) ? catalogueObj.fiche.unavailableSeasons : [];
       // La fiche vient d'être lue : l'index du catalogue en profite (ID TMDB…).
       if (catalogueObj.slug && typeof deps.animeIndex?.recordTitle === 'function') {
         Promise.resolve().then(() => deps.animeIndex.recordTitle(catalogueObj.slug, catalogueObj.fiche)).catch(() => {});
@@ -1015,7 +1016,8 @@ function refreshAnime(anime, client) {
       }
 
       // Un cache encore rangé par nom est repris sous son slug.
-      let animeDataUpdated = Boolean(source?.legacy);
+      let animeDataUpdated = Boolean(source?.legacy)
+        || JSON.stringify(existingData.unavailableSeasons || []) !== JSON.stringify(unavailableSeasons);
       let updatedAnimeCache = { ...existingAnimeCache };
       const unreadable = [];
       const usedLinkIds = new Set();
@@ -1093,6 +1095,7 @@ function refreshAnime(anime, client) {
           timestamp: Date.now(),
           lastCheckedAt: Date.now(),
           seasons: updatedAnimeCache,
+          unavailableSeasons,
         });
         // Ancien rangement (fichier au nom de l'œuvre) : repris, puis retiré.
         if (source?.legacy) await fsp.unlink(source.file).catch(() => {});
@@ -1163,6 +1166,20 @@ async function attachCachedSeasons(animes, searchCacheKey = null) {
           timestamp: seasonData.timestamp || cached.data.timestamp || null
         };
       });
+      // Les saisons commentées sur la fiche restent visibles dans l'ordre
+      // annoncé, avec un état explicite plutôt que d'être perdues du catalogue.
+      const unavailable = Array.isArray(cached.data.unavailableSeasons) ? cached.data.unavailableSeasons : [];
+      const knownSeasonKeys = new Set(saisons.map(season => `${String(season.path || season.name).toLowerCase()}|${String(season.name).toLowerCase()}`));
+      for (const season of unavailable) {
+        const key = `${String(season.path || season.name).toLowerCase()}|${String(season.name || '').toLowerCase()}`;
+        if (knownSeasonKeys.has(key)) continue;
+        saisons.push({
+          name: season.name, path: season.path, episodes: [], episodeCount: 0,
+          available: false, status: 'unavailable',
+          cacheFile: path.basename(cached.file), timestamp: cached.data.timestamp || null,
+        });
+        knownSeasonKeys.add(key);
+      }
     } else {
       // Très anciens caches : un fichier par saison (<nom>_<saison>.json).
       const safeAnimeName = safeFilename(String(anime.name || ''));
@@ -1222,9 +1239,17 @@ function stripUnplayable(animesWithSeasons) {
         }
       });
 
-      anime.seasons = anime.seasons.filter(season =>
-        Array.isArray(season.episodes) && season.episodes.length > 0
-      );
+      // Une saison annoncée reste visible même sans lecteur exploitable.
+      anime.seasons.forEach(season => {
+        if (!Array.isArray(season.episodes) || season.episodes.length === 0) {
+          season.episodes = [];
+          season.episodeCount = 0;
+          season.available = false;
+          season.status = season.status || 'unavailable';
+        } else if (season.available === undefined) {
+          season.available = true;
+        }
+      });
     }
   });
 }
