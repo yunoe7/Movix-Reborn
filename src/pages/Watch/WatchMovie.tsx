@@ -2918,13 +2918,35 @@ const WatchMovie: React.FC = () => {
                   
                 </div>
               </div>
-              <div className="p-4">
+              <div className="movix-source-content">
+                <div className="movix-source-section-heading">
+                  <div>
+                    <span className="movix-source-section-kicker">VOTRE SÉANCE COMMENCE ICI</span>
+                    <h3>Choisissez votre expérience</h3>
+                    <p>Plusieurs lecteurs sont disponibles pour lancer votre film.</p>
+                  </div>
+                  <span className="movix-source-live-indicator"><span /> SÉLECTION DES LECTEURS</span>
+                </div>
                 <HLSPlayer priorityCategory="moviesTv" autoFallbackGuard={autoFallbackGuard} src="" className="hidden" movieId={id || undefined} controls={false}
                   nexusHlsSources={nexusHlsSources} nexusFileSources={nexusFileSources} purstreamSources={purstreamSources} darkinoSources={darkinoSources} mp4Sources={mp4Sources}
                   swiftfluxAvailable={swiftfluxEntries.length > 0} swiftfluxUrl={swiftfluxPlayback?.url} frembedAvailable={frembedAvailable} customSources={customSources}
                   omegaSources={sortedOmega} coflixSources={sortedCoflix} fstreamSources={sortedFstream} wiflixSources={sortedWiflix} j1fSources={sortedJ1f}
                   swiftflowSources={sortedSwiftflow} viperSources={sortedViper} kisskhSources={kisskhSources} kisskhSubtitles={kisskhSubtitles} loadingKisskh={loadingKisskh}
                   autoPlay={false} onlyQualityMenu={true} embedType={embedType || undefined} embedUrl={embedUrl || undefined} title={movieTitle} initialTime={watchProgress} />
+                <div className="movix-source-guidance">
+                  <div className="movix-source-guidance-item">
+                    <span className="movix-source-guidance-number">01</span>
+                    <div><strong>Choisissez un lecteur</strong><span>Parcourez les services disponibles ci-dessus.</span></div>
+                  </div>
+                  <div className="movix-source-guidance-item">
+                    <span className="movix-source-guidance-number">02</span>
+                    <div><strong>Lancez votre film</strong><span>Sélectionnez le lecteur qui vous convient.</span></div>
+                  </div>
+                  <div className="movix-source-guidance-item">
+                    <span className="movix-source-guidance-number">03</span>
+                    <div><strong>Changez si nécessaire</strong><span>Vous pourrez choisir une autre source à tout moment.</span></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
