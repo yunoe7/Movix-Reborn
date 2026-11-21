@@ -2069,7 +2069,7 @@ html.tv-mode :focus {
   border-radius: 0;
 }
 
-.movix-source-picker-backdrop:has(.movix-source-picker--fullscreen) {
+.movix-source-picker-backdrop--fullscreen {
   align-items: stretch;
   justify-content: stretch;
   padding: 0;
