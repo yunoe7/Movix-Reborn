@@ -2935,13 +2935,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3046,13 +3046,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3204,13 +3204,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3328,13 +3328,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3441,13 +3441,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3555,13 +3555,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3672,13 +3672,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3793,13 +3793,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -3919,13 +3919,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
@@ -4027,13 +4027,13 @@ const WatchMovie: React.FC = () => {
             {showEmbedQuality && (
               <motion.div
                 key="embed-quality-menu"
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 12, scale: 0.98 }}
                 transition={{ duration: 0.3, ease: 'easeOut' }}
-                className="fixed inset-0 z-[10000] bg-black/50 flex justify-end pointer-events-auto"
+                className="fixed inset-0 z-[10000] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 pointer-events-auto"
               >
-                <div className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto z-[10000]">
+                <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl z-[10000]">
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
                     <h3 className="text-white text-lg font-bold">{t('watch.changeSource')}</h3>
                     <button
