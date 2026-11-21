@@ -1179,6 +1179,9 @@ const WatchAnime: React.FC = () => {
   useEffect(() => {
     if (videoSources.length > 0 && isInitialLoad) {
       selectBestSource();
+      // Keep the existing automatic first-source selection, then open the
+      // unified picker so the user can choose another language/source.
+      setShowEmbedQuality(true);
       // Marquer que la sélection initiale est terminée
       setIsInitialLoad(false);
     }
