@@ -2458,10 +2458,17 @@ const TVDetails: React.FC = () => {
       if (!Number.isInteger(seasonNumber) || seasonNumber <= 0) return season;
       const episodes = season.episodes.map((episode) => {
         if (firstNonEmptyImage(episode.still_path, episode.still_url)) return episode;
-        const animeEpisodeNumber = Number(
+        // `index` est le rang de lecture Anime-Sama (1, 2, 3…), pas
+        // nécessairement le numéro TMDB : certaines saisons commencent à 62,
+        // comportent des spéciaux ou découpent différemment les épisodes.
+        // On n'utilise donc que des numéros TMDB explicites ou le libellé publié
+        // par Anime-Sama (« Episode 62 »). Sans numéro fiable, pas d'association.
+        const explicitEpisodeNumber =
           episode.tmdb_episode_number ?? episode.tmdbEpisodeNumber ??
-          episode.episode_number ?? episode.episodeNumber ?? episode.index,
-        );
+          episode.episode_number ?? episode.episodeNumber;
+        const labelEpisodeNumber = /(?:episode|épisode|ep\.?)[\s:#-]*(\d{1,4})\b/i
+          .exec(String((episode as { name?: unknown }).name ?? ''))?.[1];
+        const animeEpisodeNumber = Number(explicitEpisodeNumber ?? labelEpisodeNumber);
         if (!Number.isInteger(animeEpisodeNumber) || animeEpisodeNumber <= 0) return episode;
         const still = stillBySeasonAndEpisode.get(`${seasonNumber}:${animeEpisodeNumber}`);
         if (!still) return episode;
