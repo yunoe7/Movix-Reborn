@@ -88,16 +88,17 @@ function createAnimeSamaFallback({
   const enabled = Boolean(parsedBase);
   let circuitUntil = 0;
   let failures = 0;
-  let inFlight = null;
+  const inFlight = new Map();
 
   async function search(query) {
     if (!enabled) return null;
     const normalizedQuery = cleanText(query, MAX_QUERY_LENGTH);
     if (!normalizedQuery) return null;
     if (Date.now() < circuitUntil) return null;
-    if (inFlight) return inFlight;
+    const requestKey = normalizedQuery.toLocaleLowerCase();
+    if (inFlight.has(requestKey)) return inFlight.get(requestKey);
 
-    inFlight = (async () => {
+    const pending = (async () => {
       try {
         const response = await http.get(new URL('/api/search', parsedBase).toString(), {
           params: { q: normalizedQuery },
@@ -120,10 +121,11 @@ function createAnimeSamaFallback({
         logger?.warn?.('[ANIME-SAMA FALLBACK] Recherche indisponible: ' + String(error?.message || error).slice(0, 160));
         return null;
       } finally {
-        inFlight = null;
+        inFlight.delete(requestKey);
       }
     })();
-    return inFlight;
+    inFlight.set(requestKey, pending);
+    return pending;
   }
 
   return Object.freeze({
@@ -133,7 +135,7 @@ function createAnimeSamaFallback({
       enabled,
       paused: Date.now() < circuitUntil,
       retryAfterMs: Math.max(0, circuitUntil - Date.now()),
-      inFlight: Boolean(inFlight),
+      inFlight: inFlight.size > 0,
     }),
   });
 }
