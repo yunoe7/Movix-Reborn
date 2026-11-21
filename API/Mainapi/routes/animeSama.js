@@ -1330,12 +1330,15 @@ router.get('/search/:query', async (req, res) => {
     // demander les liens de l'épisode. Les réparer avant de construire la
     // réponse (avec une attente bornée, comme pour le premier scan TMDB).
     const searchClient = new AnimeSama(deps.ANIME_SAMA_URL);
-    await Promise.all(cachedResults.map(async (anime) => {
+    // Les premières lectures sont séquencées : lancer quatre fiches en
+    // parallèle permettait à chacune de passer le contrôle du disjoncteur
+    // avant que les trois premières pages de saison ne l'ouvrent.
+    for (const anime of cachedResults) {
       const cached = await readTitleCache(anime);
       if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
         await waitAtMost(refreshAnime(anime, searchClient.client), deps.firstScanWaitMs);
       }
-    }));
+    }
     const animesWithSeasons = await attachCachedSeasons(cachedResults, cacheKey);
     stripUnplayable(animesWithSeasons);
 
