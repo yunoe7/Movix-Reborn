@@ -2503,6 +2503,8 @@
     "ambientClear": "Tout balayer",
     "halloweenTheme": "Thème Halloween",
     "halloweenThemeDesc": "Ciel de nuit brumeux, arbres morts, citrouilles, bonbons et touches orange sur tout le site. Activé d'office en octobre, et aussi depuis la citrouille de l'en-tête. Le lecteur n'est pas modifié.",
+    "christmasTheme": "Thème de Noël",
+    "christmasThemeDesc": "Neige qui tombe, guirlandes lumineuses, boules de Noël, sapins et cadeaux dans une ambiance hivernale. Activé automatiquement du 1er décembre au 6 janvier. Le lecteur n'est pas modifié.",
     "squareCorners": "Coins carrés",
     "squareCornersDesc": "Supprime tous les coins arrondis de l'interface (cartes, carrousels, boutons, avatars…).",
     "backgroundStyle": "Style de fond",

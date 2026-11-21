@@ -2503,6 +2503,8 @@
     "ambientClear": "Sweep everything",
     "halloweenTheme": "Halloween theme",
     "halloweenThemeDesc": "Misty night sky, dead trees, pumpkins, candies and orange accents across the site. On by default in October, and also from the pumpkin in the header. The player is not affected.",
+    "christmasTheme": "Christmas theme",
+    "christmasThemeDesc": "Falling snow, glowing fairy lights, Christmas baubles, pine branches and gifts for a festive winter atmosphere. Enabled automatically from December 1 to January 6. The player is not affected.",
     "squareCorners": "Square corners",
     "squareCornersDesc": "Removes all rounded corners from the interface (cards, carousels, buttons, avatars…).",
     "backgroundStyle": "Background style",

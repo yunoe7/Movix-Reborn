@@ -41,6 +41,7 @@ import { DelayedSuspense } from './components/DelayedSuspense';
 import { RouteProgressBar } from './components/RouteProgressBar';
 import ScreenSaver from './components/ScreenSaver';
 import { HalloweenAtmosphere } from './components/HalloweenAtmosphere';
+import { ChristmasAtmosphere } from './components/ChristmasAtmosphere';
 import { useIdleTimer } from './hooks/useIdleTimer';
 import { startVipVerification } from './utils/vipUtils';
 import { readLocalStorage, readSessionStorage } from './utils/browserStorage';
@@ -1910,6 +1911,7 @@ const AppWithIntro: React.FC = () => {
       {shouldShowHeader && <Header />}
       {/* Thème Halloween : coupé sur les mêmes routes que le Header */}
       <HalloweenAtmosphere suspended={!shouldShowHeader} />
+      <ChristmasAtmosphere suspended={!shouldShowHeader} />
       <PersistenceManager />
       <div className={shouldShowHeader && !isHeroHeaderPage ? 'pt-20' : ''}>
         <AlertNotificationManager />
