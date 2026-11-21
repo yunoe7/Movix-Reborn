@@ -1770,7 +1770,7 @@ const WatchAnime: React.FC = () => {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 12, scale: 0.98 }}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
-                  className="bg-black/95 border-l border-gray-800 shadow-2xl w-full max-w-md h-full overflow-y-auto pointer-events-auto"
+                  className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl pointer-events-auto"
                   data-lenis-prevent
                 >
                   <div className="flex justify-between items-center p-4 border-b border-gray-700/60 sticky top-0 bg-black/95 z-10" data-source-panel-header>
