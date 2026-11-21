@@ -1180,12 +1180,8 @@ async function attachCachedSeasons(animes, searchCacheKey = null) {
         });
         knownSeasonKeys.add(key);
       }
-      // Les chemins Anime-Sama sont stables (« saison1 », « saison2 », …).
-      // Un tri naturel réinsère les saisons temporairement masquées entre
-      // leurs voisines au lieu de les ajouter toutes à la fin.
-      saisons.sort((a, b) => String(a.path || a.name).localeCompare(
-        String(b.path || b.name), 'fr', { numeric: true, sensitivity: 'base' }
-      ));
+      // L'ordre de la fiche est conservé : il reflète celui du catalogue,
+      // contrairement à un tri alphabétique des chemins (film avant saison1).
     } else {
       // Très anciens caches : un fichier par saison (<nom>_<saison>.json).
       const safeAnimeName = safeFilename(String(anime.name || ''));
@@ -1333,9 +1329,11 @@ router.get('/search/:query', async (req, res) => {
     // Les premières lectures sont séquencées : lancer quatre fiches en
     // parallèle permettait à chacune de passer le contrôle du disjoncteur
     // avant que les trois premières pages de saison ne l'ouvrent.
+    const firstScanAttempted = new Set();
     for (const anime of cachedResults) {
       const cached = await readTitleCache(anime);
       if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
+        firstScanAttempted.add(cachePathsFor(anime).titlePath);
         await waitAtMost(refreshAnime(anime, searchClient.client), deps.firstScanWaitMs);
       }
     }
@@ -1343,7 +1341,10 @@ router.get('/search/:query', async (req, res) => {
     stripUnplayable(animesWithSeasons);
 
     await respondWithAnimeSources(req, res, animesWithSeasons);
-    refreshInBackground(animesWithSeasons);
+    // Ne pas relancer immédiatement un scan qui vient d'être tenté (notamment
+    // si un autre worker détenait le verrou). Les caches anciens restent
+    // actualisés en arrière-plan comme avant.
+    refreshInBackground(animesWithSeasons.filter(anime => !firstScanAttempted.has(cachePathsFor(anime).titlePath)));
 
   } catch (error) {
     console.error('Erreur /anime/search/:query:', error);
