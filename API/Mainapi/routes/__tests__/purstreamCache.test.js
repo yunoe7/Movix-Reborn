@@ -27,13 +27,32 @@ function createFixture(type, { negativeMapping = false, streamCache, stale = fal
   if (streamCache) cache.set(streamKey, streamCache);
   let now = 10 * sixHours;
   const modifiedAt = new Map([...cache.keys()].map((key) => [key, now - (stale ? sixHours : cacheAge)]));
+  const retryAt = new Map();
   const shouldUpdateCache = createRefreshCheck(async (filePath) => {
     const key = path.basename(filePath, '.json');
     if (!cache.has(key)) throw new Error('Cache absent');
     return { mtime: new Date(modifiedAt.get(key)) };
   }, () => now);
+  // La route utilise createWiflixRefreshState (et non plus shouldUpdateCache).
+  // Le mock reproduit sa fenêtre de six heures et son délai de reprise sans
+  // écrire de sidecars sur le disque.
+  const refreshState = {
+    async remaining(_dir, key, cachedData) {
+      const modified = modifiedAt.get(key);
+      if (cachedData && modified !== undefined) {
+        const freshFor = modified + sixHours - now;
+        if (freshFor > 0) return freshFor;
+      }
+      const retry = retryAt.get(key);
+      return retry === undefined ? 0 : Math.max(0, retry - now);
+    },
+    async defer(_dir, key) { retryAt.set(key, now + 60 * 1000); },
+    async clear(_dir, key) { retryAt.delete(key); },
+  };
   const writes = [];
   const warnings = [];
+  const infos = [];
+  const failures = [];
   const calls = { searches: 0, streams: [] };
   const upstream = { status: 200, searchStatus: 200, emptySearch: false, emptyStream: false };
 
@@ -61,15 +80,26 @@ function createFixture(type, { negativeMapping = false, streamCache, stale = fal
     '../utils/tmdbCache': {
       fetchTmdbDetails: async () => ({ title: 'Titre test', name: 'Titre test', poster_path: '/poster.jpg' }),
       fetchTmdbImages: async () => null,
+      isTmdbDetailsMissing: async () => false,
     },
-    '../utils/proxyManager': { pickRandomProxy: () => null },
-    '../utils/mediaSigning': {},
+    '../utils/proxyManager': { pickRandomProxy: () => null, getProxyAgent: () => null },
+    '../utils/mediaSigning': { buildSignedProxyUrl: (_base, _path, url) => url, signingConfigured: () => false },
+    '../utils/wiflixRefreshState': { createWiflixRefreshState: () => refreshState },
+    '../utils/sourceRefreshTelemetry': {
+      reportRefreshFailure: (reason, error, context) => failures.push({ reason, error, context }),
+    },
+    '../config/redis': { redis: { status: 'end' } },
   };
   const routeModule = { exports: {} };
   vm.compileFunction(routeSource, ['require', 'module', 'console'], { filename: routePath })((request) => {
     assert.ok(Object.hasOwn(modules, request), `Dépendance non simulée : ${request}`);
     return modules[request];
-  }, routeModule, { ...console, warn: (...args) => warnings.push(args) });
+  }, routeModule, {
+    ...console,
+    info: (...args) => infos.push(args),
+    warn: (...args) => warnings.push(args),
+    error: (...args) => warnings.push(args),
+  });
   const router = routeModule.exports;
   router.configure({
     getFromCacheNoExpiration: async (_dir, key) => cache.get(key) || null,
@@ -81,16 +111,25 @@ function createFixture(type, { negativeMapping = false, streamCache, stale = fal
     shouldUpdateCache,
   });
   const handler = router.stack.find((layer) => layer.route?.path === `/${type}/:tmdbId/stream`).route.stack[0].handle;
+  const newResponse = () => ({
+    statusCode: 200,
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+  });
   const request = async () => {
-    const response = {
-      statusCode: 200,
-      status(code) { this.statusCode = code; return this; },
-      json(body) { this.body = body; return this; },
-    };
+    const response = newResponse();
     await handler({ params: { tmdbId: '1433583' }, query: { season: '2', episode: '3' }, headers: {} }, response);
     return response;
   };
-  return { cache, mapKey, streamKey, writes, warnings, calls, upstream, request, advanceTime: (ms) => { now += ms; } };
+  const unknownRequest = async () => {
+    const response = newResponse();
+    const fallback = router.stack.findLast((layer) => !layer.route && typeof layer.handle === 'function');
+    assert.ok(fallback, 'un gestionnaire de route inconnue doit être enregistré');
+    await fallback.handle({ method: 'GET', path: '/inconnu', url: '/inconnu' }, response);
+    return response;
+  };
+  return { cache, mapKey, streamKey, writes, warnings, infos, failures, calls, upstream, request, unknownRequest,
+    advanceTime: (ms) => { now += ms; } };
 }
 
 test('shouldUpdateCache conserve le délai de 40 minutes par défaut pour les autres sources', async () => {
@@ -156,7 +195,10 @@ for (const type of ['movie', 'tv']) {
     fixture.upstream.status = 404;
     assert.equal((await fixture.request()).statusCode, 404);
     await nextTurn();
-    assert.deepEqual(fixture.writes, [{ key: fixture.streamKey, value: notFound }]);
+    // La 404 amont déclenche aussi une revalidation du mapping : une écriture
+    // de mapping valide est attendue en plus du négatif du stream.
+    assert.ok(fixture.writes.some(({ key, value }) => key === fixture.streamKey && value.__not_found));
+    assert.equal(fixture.cache.get(fixture.mapKey).purstream_id, 123);
 
     fixture.upstream.status = 200;
     fixture.advanceTime(sixHours - 1);
@@ -179,6 +221,9 @@ for (const type of ['movie', 'tv']) {
     assert.deepEqual(fixture.writes, []);
 
     fixture.upstream.searchStatus = 200;
+    // Le délai de reprise du refreshstate (60 s) est respecté avant une
+    // nouvelle recherche : on ne retry pas immédiatement une panne amont.
+    fixture.advanceTime(61 * 1000);
     assert.equal((await fixture.request()).statusCode, 404);
     await nextTurn();
     assert.equal(fixture.calls.searches, 2);
@@ -194,7 +239,7 @@ for (const type of ['movie', 'tv']) {
     assert.equal(fixture.writes.some(({ key }) => key === fixture.streamKey), false);
   });
 
-  test(`${type}: une 404 de refresh conserve les liens et attend six heures avant le prochain essai`, async () => {
+  test(`${type}: une 404 de refresh conserve les liens sans écrire de négatif`, async () => {
     const playable = { purstream_id: 123, sources: [{ url: 'https://video.test/cached.m3u8' }] };
     const fixture = createFixture(type, { streamCache: playable, stale: true });
     fixture.upstream.status = 404;
@@ -204,11 +249,17 @@ for (const type of ['movie', 'tv']) {
     await nextTurn();
     assert.equal(fixture.calls.streams.length, 1);
     assert.equal(fixture.cache.get(fixture.streamKey), playable);
-    assert.equal(fixture.writes.find(({ key }) => key === fixture.streamKey)?.value, playable);
+    assert.equal(fixture.writes.some(({ key }) => key === fixture.streamKey), false,
+      'une 404 en refresh ne doit pas écraser les liens encore valides');
+
+    // Aucune écriture signifie que la date du cache reste ancienne : un
+    // prochain refresh est tenté, mais le film reste lisible entre-temps.
     fixture.advanceTime(sixHours - 1);
-    assert.equal((await fixture.request()).statusCode, 200);
+    const later = await fixture.request();
+    assert.equal(later.statusCode, 200);
+    assert.deepEqual(later.body.sources, playable.sources);
     await nextTurn();
-    assert.equal(fixture.calls.streams.length, 1);
+    assert.equal(fixture.calls.streams.length, 2);
   });
 
   test(`${type}: un stream utilisable attend six heures avant son actualisation`, async () => {
@@ -252,16 +303,45 @@ for (const type of ['movie', 'tv']) {
     assert.equal(fixture.warnings.length, warningCount);
   });
 
-  test(`${type}: un stream vide renouvelle le délai sans perdre les liens utilisables`, async () => {
+  test(`${type}: un stream vide ne détruit pas les liens utilisables`, async () => {
     const playable = { purstream_id: 123, sources: [{ url: 'https://video.test/cached.m3u8' }] };
     const fixture = createFixture(type, { streamCache: playable, stale: true });
     fixture.upstream.emptyStream = true;
     assert.equal((await fixture.request()).statusCode, 200);
     await nextTurn();
     assert.equal(fixture.cache.get(fixture.streamKey), playable);
-    fixture.advanceTime(sixHours - 1);
-    assert.equal((await fixture.request()).statusCode, 200);
-    await nextTurn();
+    assert.equal(fixture.writes.some(({ key }) => key === fixture.streamKey), false);
     assert.equal(fixture.calls.streams.length, 1);
   });
+
+  test(`${type}: une route PurStream inconnue n'est pas confondue avec une absence de source`, async () => {
+    const fixture = createFixture(type);
+    const response = await fixture.unknownRequest();
+    assert.equal(response.statusCode, 404);
+    assert.equal(response.body.code, 'ROUTE_NOT_FOUND');
+    assert.equal(fixture.calls.searches, 0);
+    assert.equal(fixture.calls.streams.length, 0);
+  });
+
+  if (type === 'movie') {
+    test('movie: un titre absent est une 404 CONTENT_NOT_FOUND journalisée en info', async () => {
+      const fixture = createFixture('movie', { negativeMapping: true });
+      const response = await fixture.request();
+      assert.equal(response.statusCode, 404);
+      assert.equal(response.body.code, 'CONTENT_NOT_FOUND');
+      assert.match(response.body.error, /non trouvé/i);
+      assert.deepEqual(fixture.failures, []);
+      assert.equal(fixture.warnings.length, 0);
+      assert.ok(fixture.infos.length > 0, 'une absence normale doit être tracée sans alerte');
+    });
+
+    test('movie: un titre sans flux est une 404 NO_SOURCES distincte du contenu absent', async () => {
+      const fixture = createFixture('movie');
+      fixture.upstream.emptyStream = true;
+      const response = await fixture.request();
+      assert.equal(response.statusCode, 404);
+      assert.equal(response.body.code, 'NO_SOURCES');
+      assert.match(response.body.error, /aucun stream/i);
+    });
+  }
 }

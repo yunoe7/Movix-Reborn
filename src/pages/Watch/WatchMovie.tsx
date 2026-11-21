@@ -49,6 +49,7 @@ import {
   syncHlsActiveSource,
 } from '../../utils/hlsAutoFallbackGuard';
 import { readLocalStorage, writeLocalStorage } from '../../utils/browserStorage';
+import { classifyPurstreamError } from '../../utils/purstreamError';
 const MAIN_API = import.meta.env.VITE_MAIN_API;
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
@@ -974,7 +975,22 @@ const WatchMovie: React.FC = () => {
           });
           return purstreamResponse.data;
         } catch (error) {
-          console.error('Error fetching PurStream movie sources:', error);
+          const info = classifyPurstreamError(error);
+          if (info.kind === 'absent' || info.kind === 'no_sources') {
+            // 404 métier : le film n'est simplement pas présent sur PurStream.
+            // Les autres lecteurs restent proposés normalement.
+            console.info('[PurStream] Aucune source pour ce film', { tmdbId: id, ...info });
+          } else if (info.kind === 'route_missing') {
+            // 404 sans payload PurStream : la route Main API a disparu ou le
+            // frontend appelle la mauvaise URL. C'est une vraie régression.
+            console.error('[PurStream] Route Main API introuvable', {
+              tmdbId: id,
+              url: `${MAIN_API}/api/purstream/movie/${id}/stream`,
+              ...info,
+            });
+          } else {
+            console.error('Error fetching PurStream movie sources:', error);
+          }
           return null;
         }
       })();

@@ -155,6 +155,16 @@ async function purstreamRequest(urlPath) {
 const NOT_FOUND_MARKER = { __not_found: true };
 const ongoingCacheUpdates = new Map();
 
+/**
+ * Une 404 PurStream a trois sens très différents : titre absent, titre connu
+ * mais sans flux, ou route inexistante. On les étiquette pour que le frontend
+ * (et les logs) fassent la différence au lieu d'afficher une panne d'extraction.
+ */
+function sendNotFound(res, { error, code, context = {} }) {
+  console.info(`[PURSTREAM] ${code}: ${error}`, JSON.stringify(context));
+  return res.status(404).json({ error, code });
+}
+
 // Partager les actualisations simultanées d'une même entrée dans ce worker.
 function refreshCache(cacheKey, update) {
   if (ongoingCacheUpdates.has(cacheKey)) return ongoingCacheUpdates.get(cacheKey);
@@ -417,7 +427,11 @@ router.get('/movie/:tmdbId/stream', async (req, res) => {
       const stale = await refreshState.remaining(PURSTREAM_CACHE_DIR, cacheKey, cached) <= 0;
       if (stale) refreshCache(cacheKey, () => backgroundUpdateStreamMovie(tmdbId, cacheKey)).catch(() => {});
       if (cached.__not_found) {
-        return res.status(404).json({ error: 'Film non trouvé sur PurStream' });
+        return sendNotFound(res, {
+          error: 'Film non trouvé sur PurStream',
+          code: 'CONTENT_NOT_FOUND',
+          context: { tmdbId, source: 'cache' },
+        });
       }
       // Appliquer le proxy VIP au moment de la réponse (le cache stocke les URLs brutes)
       const response = { ...cached, sources: cached.sources.map(s => ({ ...s, url: wrapSourceUrl(s.url, isVip) })) };
@@ -426,7 +440,11 @@ router.get('/movie/:tmdbId/stream', async (req, res) => {
 
     const initialMapping = await resolvePurstreamId(tmdbId, 'movie');
     if (!initialMapping) {
-      return res.status(404).json({ error: 'Film non trouvé sur PurStream' });
+      return sendNotFound(res, {
+        error: 'Film non trouvé sur PurStream',
+        code: 'CONTENT_NOT_FOUND',
+        context: { tmdbId, source: 'mapping' },
+      });
     }
 
     const { mapping, streamData } = await fetchMappedStream(tmdbId, 'movie', initialMapping);
@@ -434,13 +452,17 @@ router.get('/movie/:tmdbId/stream', async (req, res) => {
     if (streamData?.__error) {
       if (streamData.status === 404) {
         await saveToCache(PURSTREAM_CACHE_DIR, cacheKey, NOT_FOUND_MARKER);
-        return res.status(404).json({ error: 'Film non trouvé sur PurStream' });
+        return sendNotFound(res, {
+          error: 'Film non trouvé sur PurStream',
+          code: 'CONTENT_NOT_FOUND',
+          context: { tmdbId, source: 'upstream' },
+        });
       }
-      return res.status(502).json({ error: 'Erreur temporaire PurStream' });
+      return res.status(502).json({ error: 'Erreur temporaire PurStream', code: 'UPSTREAM_ERROR' });
     }
 
     if (!streamData) {
-      return res.status(502).json({ error: 'Réponse invalide de PurStream' });
+      return res.status(502).json({ error: 'Réponse invalide de PurStream', code: 'INVALID_RESPONSE' });
     }
 
     const sources = streamData.sources || [];
@@ -451,7 +473,11 @@ router.get('/movie/:tmdbId/stream', async (req, res) => {
 
     if (sources.length === 0) {
       await saveToCache(PURSTREAM_CACHE_DIR, cacheKey, NOT_FOUND_MARKER);
-      return res.status(404).json({ error: 'Aucun stream disponible pour ce film' });
+      return sendNotFound(res, {
+        error: 'Aucun stream disponible pour ce film',
+        code: 'NO_SOURCES',
+        context: { tmdbId, purstreamId: mapping.purstream_id },
+      });
     }
 
     await saveToCache(PURSTREAM_CACHE_DIR, cacheKey, result);
@@ -460,7 +486,7 @@ router.get('/movie/:tmdbId/stream', async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error('[PURSTREAM] Erreur stream film:', error.message);
-    res.status(502).json({ error: 'Erreur lors de la récupération du stream' });
+    res.status(502).json({ error: 'Erreur lors de la récupération du stream', code: 'INTERNAL_ERROR' });
   }
 });
 
@@ -609,6 +635,14 @@ async function backgroundUpdateStreamTv(tmdbId, season, episode, cacheKey) {
       cachePresent: Boolean(existing), cacheUsable: Boolean(hasValidCache) }, redis);
   }
 }
+
+// Une URL sous /api/purstream qui ne correspond à aucune route est une
+// erreur d'intégration, pas une absence de source : on la distingue ici au
+// lieu de laisser Express répondre un HTML « Cannot GET ».
+router.use((req, res) => {
+  console.warn(`[PURSTREAM] Route inconnue: ${req.method} ${req.path || req.url}`);
+  return res.status(404).json({ error: 'Route PurStream inconnue', code: 'ROUTE_NOT_FOUND' });
+});
 
 module.exports = router;
 module.exports.configure = configure;
