@@ -10187,7 +10187,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
                       const topLevelForPin: TopLevelSourceId | null = SOURCE_MAIN_TO_TOP_LEVEL[source.type] ?? null;
                       return (
                         <React.Fragment key={source.id}>
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                          <div className="mb-2 mr-2 inline-flex max-w-full align-middle items-center gap-2">
                             <button
                               onClick={() => handleSourceChange(source.type, source.id, source.url)}
                               disabled={source.type === 'kisskh_main' && loadingKisskh}
@@ -10196,7 +10196,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
                                 }`}
                             >
                               <div className="min-w-0 flex flex-1 flex-col">
-                                <span className={`${isActive ? 'text-red-600 font-medium' : 'text-white'} ${''
+                                <span className={`${isActive ? 'text-emerald-300 font-semibold' : 'text-white'} ${''
                                   }`}>
                                   {source.label}
                                   {topLevelForPin && __pinnedSourceId === topLevelForPin && (
