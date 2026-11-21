@@ -769,6 +769,7 @@ const WatchTv: React.FC = () => {
   const [embedType, setEmbedType] = useState<string | null>(null);
 
   const [showEmbedQuality, setShowEmbedQuality] = useState(false); // For the embed source menu
+  const [hasConfirmedInitialSource, setHasConfirmedInitialSource] = useState(false);
 
   useEffect(() => {
     if (!embedUrl) return;
@@ -2774,7 +2775,10 @@ const WatchTv: React.FC = () => {
       // client. On repasse par la porte d'entrée, qui la demandera au serveur
       // une fois la pub vue et le Turnstile validé.
       if (type === 'swiftflux') {
-        if (!isAutomaticFallback) setLastPlayer('swiftflux');
+        if (!isAutomaticFallback) {
+          setLastPlayer('swiftflux');
+          setHasConfirmedInitialSource(true);
+        }
         setShowEmbedQuality(false);
         // Déjà débloquée pour cet épisode : rien à redemander, on bascule.
         if (swiftfluxPlayback) {
@@ -2865,6 +2869,8 @@ const WatchTv: React.FC = () => {
       })();
 
       if (!acceptedPlaybackUrl) return;
+
+      if (!isAutomaticFallback) setHasConfirmedInitialSource(true);
 
       // M11 — track last manually-picked player for "remember last player".
       // Filtre les events auto-fallback ; setLastPlayer valide les ids en interne.
@@ -3992,6 +3998,28 @@ const WatchTv: React.FC = () => {
           </div>
           <div className="text-white text-xl font-medium mt-6">{vipRetryMessage || loadingText}</div>
         </div>
+      ) : !hasConfirmedInitialSource && !onlyVostfrAvailable ? (
+        <PlayerOverlayPortal>
+          <div className="fixed inset-0 z-[10001] bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
+            <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl">
+              <div className="p-5 border-b border-white/10">
+                <h2 className="text-white text-xl font-bold">{t('watch.changeSource')}</h2>
+                <p className="text-gray-400 text-sm mt-1">{showTitle}</p>
+              </div>
+              <div className="p-4">
+                <HLSPlayer priorityCategory="moviesTv" autoFallbackGuard={autoFallbackGuard} src="" className="hidden" movieId={undefined}
+                  tvShowId={id ?? undefined} seasonNumber={seasonNumber} episodeNumber={episodeNumber} controls={false}
+                  nexusHlsSources={nexusHlsSources} nexusFileSources={nexusFileSources} darkinoSources={darkinoSources}
+                  mp4Sources={[...(sibnetUrl ? [{ url: sibnetUrl, label: "Sibnet (Anime)", language: "VOSTFR" }] : []), ...mp4Sources]}
+                  swiftfluxAvailable={swiftfluxEntries.length > 0} swiftfluxUrl={swiftfluxPlayback?.url} frembedAvailable={frembedAvailable} customSources={customSources}
+                  omegaSources={sortedOmega} coflixSources={sortedCoflix} fstreamSources={sortedFstream} wiflixSources={sortedWiflix} j1fSources={sortedJ1f}
+                  swiftflowSources={sortedSwiftflow} purstreamSources={purstreamSources} kisskhSources={kisskhSources} kisskhSubtitles={kisskhSubtitles}
+                  loadingKisskh={loadingKisskh} adFreeM3u8Url={adFreeM3u8Url} autoPlay={false} onlyQualityMenu={true}
+                  embedType={embedType || undefined} embedUrl={embedUrl || undefined} />
+              </div>
+            </div>
+          </div>
+        </PlayerOverlayPortal>
       ) : onlyVostfrAvailable ? (
         <div className="h-full bg-black text-white flex flex-col items-center justify-center p-4">
           <div className="max-w-2xl w-full bg-gray-900/95 rounded-xl p-8 text-center shadow-2xl border border-gray-800">
