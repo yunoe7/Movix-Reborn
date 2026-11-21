@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useCallback, useState } from 'react';
-import { useWebHaptics } from 'web-haptics/react';
 
 interface HapticsContextValue {
   enabled: boolean;
@@ -25,7 +24,6 @@ export const HapticsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return localStorage.getItem(STORAGE_KEY) !== 'false';
   });
   const enabledRef = useRef(enabled);
-  const { trigger } = useWebHaptics();
 
   const setEnabled = useCallback((v: boolean) => {
     setEnabledState(v);
@@ -34,14 +32,35 @@ export const HapticsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     window.dispatchEvent(new CustomEvent('haptics_settings_changed'));
   }, []);
 
+  // Do not use web-haptics here: its deferred vibration calls can run after
+  // transient user activation has expired, which Chrome blocks in embedded
+  // frames. Call the native API synchronously from the originating click only.
   const triggerHaptic = useCallback((pattern?: string | number | number[]) => {
-    if (!enabledRef.current) return;
+    if (!enabledRef.current || typeof navigator === 'undefined') return;
+    if (typeof navigator.vibrate !== 'function') return;
+
+    // Chrome requires a fresh user gesture for vibration in embedded contexts.
+    // When the browser exposes UserActivation, refuse calls outside that gesture.
+    const activation = (navigator as Navigator & {
+      userActivation?: { isActive: boolean };
+    }).userActivation;
+    if (activation && !activation.isActive) return;
+
+    const vibrationPattern: number | number[] =
+      typeof pattern === 'number' || Array.isArray(pattern)
+        ? pattern
+        : pattern === 'error'
+          ? [24, 36, 24]
+          : pattern === 'success'
+            ? [12, 28, 18]
+            : [10];
+
     try {
-      trigger(pattern ?? 'nudge');
+      navigator.vibrate(vibrationPattern);
     } catch {
-      // Silently fail on unsupported devices
+      // Vibration is optional; unsupported devices must never affect the UI.
     }
-  }, [trigger]);
+  }, []);
 
   // Global click interceptor for all interactive elements
   useEffect(() => {
@@ -63,17 +82,17 @@ export const HapticsProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const role = interactive.getAttribute('role');
 
       if (tag === 'select' || role === 'option') {
-        trigger('nudge');
+        triggerHaptic('nudge');
       } else if (interactive.classList.contains('destructive') || interactive.getAttribute('data-variant') === 'destructive') {
-        trigger('error');
+        triggerHaptic('error');
       } else {
-        trigger('nudge');
+        triggerHaptic('nudge');
       }
     };
 
     document.addEventListener('click', handler, { passive: true, capture: true });
     return () => document.removeEventListener('click', handler, true);
-  }, [enabled, trigger]);
+  }, [enabled, triggerHaptic]);
 
   // Sync with localStorage changes from other tabs
   useEffect(() => {
