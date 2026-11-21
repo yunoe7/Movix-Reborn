@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
@@ -202,6 +202,17 @@ const getSeasonDisplayName = (
 // 1. Update DEFAULT_IMAGE to a custom SVG string for fallback
 const getSeasonFallbackSvg = (label: string) =>
   `data:image/svg+xml;utf8,<svg width="500" height="750" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 750" preserveAspectRatio="xMidYMid meet"><rect width="100%" height="100%" fill="%23222"/><g><rect x="80" y="180" width="340" height="260" rx="32" fill="%23333" stroke="%23555" stroke-width="8"/><rect x="120" y="220" width="260" height="180" rx="16" fill="%23444"/><rect x="180" y="420" width="140" height="20" rx="8" fill="%23555"/></g><text x="50%" y="70%" fill="%23777" font-size="48" font-family="Arial, sans-serif" text-anchor="middle" dy=".3em">${encodeURIComponent(label)}</text></svg>`;
+
+type SeasonPosterSource = {
+  number?: number;
+  poster_path?: string | null;
+  posterPath?: string | null;
+  image?: string | null;
+};
+
+/** Première source d'image utilisable, sans confondre les chemins TMDB et les URL complètes. */
+const firstNonEmptyImage = (...sources: Array<string | null | undefined>): string | null =>
+  sources.find((source) => typeof source === 'string' && source.trim().length > 0)?.trim() ?? null;
 
 // Résumé d'épisode replié sur deux lignes. « Voir plus » n'apparaît que si
 // le texte dépasse vraiment ces deux lignes (mesuré, pas deviné).
@@ -2184,17 +2195,6 @@ const TVDetails: React.FC = () => {
             {t('details.addToAList')}
           </motion.button>
 
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => setShowAntiSpoilerModal(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-300/15 bg-violet-500/[0.08] px-4 py-2.5 text-sm font-medium text-violet-100 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-500/[0.14]"
-            title={t('details.antiSpoilConfig')}
-          >
-            <Shield className="w-4 h-4" />
-            {t('details.antiSpoil')}
-          </motion.button>
-
           {showAddToList && (
             <AddToListMenu
               mediaId={Number(id)}
@@ -2767,6 +2767,28 @@ const TVDetails: React.FC = () => {
     const showToggle = true; // Toujours afficher le bouton de menu déroulant
     const isAnime = type === 'anime';
 
+    // Replis d'image des vignettes : affiche de saison, puis affiche de la série.
+    const currentAnimeSeason = type === 'anime'
+      ? animeData?.seasons?.find((season: SeasonPosterSource, index: number) => (season.number ?? index + 1) === selectedSeason)
+      : null;
+    const currentStandardSeason = type === 'standard'
+      ? (seasonsDetails[selectedSeason as number] || seasonCards.find((item) => item.season_number === selectedSeason))
+      : null;
+    const episodeSeasonPoster = firstNonEmptyImage(
+      currentAnimeSeason?.poster_path,
+      currentAnimeSeason?.posterPath,
+      currentAnimeSeason?.image,
+      currentStandardSeason?.poster_path,
+      currentStandardSeason?.posterPath,
+    );
+    const episodeSeriesPoster = firstNonEmptyImage(
+      type === 'anime' ? animeData?.poster_path : null,
+      type === 'anime' ? animeData?.posterPath : null,
+      type === 'anime' ? animeData?.image : null,
+      tvShow?.poster_path,
+    );
+    const episodeFallbackPoster = episodeSeasonPoster || episodeSeriesPoster;
+
     // Déterminer le mode par défaut basé sur le nombre d'épisodes
     const defaultDropdownMode = nonEmptyEpisodes.length > 15;
 
@@ -2887,6 +2909,21 @@ const TVDetails: React.FC = () => {
 
                   // Récupérer toutes les langues disponibles pour cet épisode
                   const availableLanguages = ep.streaming_links.map((link: any) => link.language);
+                  const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
+                  const episodeImageSource = episodeStillSource || episodeFallbackPoster;
+                  const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
+                  const episodeImageUrl = detailsMediaSlot.width > 0 && episodeImageSource
+                    ? getTmdbImageUrl(episodeImageSource, {
+                      kind: episodeStillSource ? 'still' : 'poster',
+                      quality: effectiveImageQuality,
+                      width: Math.ceil(episodeCardCssWidth * imageDpr),
+                      role: 'card',
+                      fallback: fallbackSvg,
+                    })
+                    : fallbackSvg;
+                  const episodeImageKey = `anime-episode-s${selectedSeason || 'unknown'}-e${ep.index}-${episodeStillSource ? 'still' : (episodeSeasonPoster ? 'season-poster' : 'series-poster')}`;
+                  const episodeImageFailed = failedImages[episodeImageKey];
+                  const episodeRetryUrl = episodeImageFailed ? `${episodeImageUrl}?retry=${Date.now()}` : episodeImageUrl;
 
                   return (
                     <motion.div
@@ -2901,6 +2938,28 @@ const TVDetails: React.FC = () => {
                         onClick={() => handleAnimeGridClick(ep)}
                       >
                         <div className="flex flex-col">
+                          {shouldHide('episodeImages') ? (
+                            <div className="mb-3 flex aspect-video w-full items-center justify-center gap-2 rounded-lg bg-gray-900/80 text-xs text-gray-400">
+                              <EyeOff className="h-4 w-4 flex-shrink-0" />
+                              <span>{t('details.imageMasked')}</span>
+                            </div>
+                          ) : episodeImageSource ? (
+                            <div className="relative mb-3 aspect-video w-full overflow-hidden rounded-lg bg-gray-900">
+                              <img
+                                src={episodeImageFailed ? fallbackSvg : episodeRetryUrl}
+                                alt={shouldHide('episodeNames') ? `${t('details.episode')} ${ep.index}` : (ep.name || `${t('details.episode')} ${ep.index}`)}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  if (!episodeImageFailed) {
+                                    setFailedImages(prev => ({ ...prev, [episodeImageKey]: true }));
+                                  } else {
+                                    e.currentTarget.src = fallbackSvg;
+                                  }
+                                }}
+                                key={episodeRetryUrl}
+                              />
+                            </div>
+                          ) : null}
                           <h4 className="text-lg font-medium group-hover:text-red-500 transition-colors mb-2">
                             {ep.name || ep.index}
                           </h4>
@@ -2990,49 +3049,66 @@ const TVDetails: React.FC = () => {
                         {/* ... Grid item content for standard episodes ... */}
                         <div className="flex flex-col flex-1">
                           <div className="relative aspect-video w-full">
-                            {(ep.still_path || ep.still_url) && !shouldHide('episodeImages') ? (
-                              (() => {
-                                // `still_url` : image TVmaze complète, laissée telle quelle.
-                                const imageUrl = detailsMediaSlot.width > 0
-                                  ? getTmdbImageUrl(ep.still_path || ep.still_url, {
-                                    kind: 'still',
-                                    quality: effectiveImageQuality,
-                                    width: Math.ceil(episodeCardCssWidth * imageDpr),
-                                    role: 'card',
-                                  })
-                                  : getSeasonFallbackSvg(t('details.season').toUpperCase());
-                                // Source dans la clé : un échec TVmaze ne doit pas masquer l'image TMDB.
-                                const imageKey = `episode-s${selectedSeason || 'unknown'}-e${ep.episode_number}-${ep.still_path ? 'tmdb' : 'tvmaze'}-still`;
-                                const hasFailed = failedImages[imageKey];
-                                const retryUrl = hasFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
+                            {(() => {
+                              if (shouldHide('episodeImages')) {
                                 return (
-                                  <img
-                                    src={hasFailed ? getSeasonFallbackSvg(t('details.season').toUpperCase()) : retryUrl}
-                                    alt={ep.name || `Épisode ${ep.episode_number}`}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      if (!hasFailed) {
-                                        setFailedImages(prev => ({ ...prev, [imageKey]: true }));
-                                      } else {
-                                        e.currentTarget.src = getSeasonFallbackSvg(t('details.season').toUpperCase());
-                                      }
-                                    }}
-                                    key={retryUrl}
-                                  />
-                                );
-                              })()
-                            ) : (
-                              <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
-                                {shouldHide('episodeImages') ? (
-                                  <div className="flex flex-col items-center gap-2 text-gray-400">
-                                    <EyeOff className="w-8 h-8" />
-                                    <span className="text-sm">{t('details.imageMasked')}</span>
+                                  <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                                    <div className="flex flex-col items-center gap-2 text-gray-400">
+                                      <EyeOff className="w-8 h-8" />
+                                      <span className="text-sm">{t('details.imageMasked')}</span>
+                                    </div>
                                   </div>
-                                ) : (
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
-                                )}
-                              </div>
-                            )}
+                                );
+                              }
+
+                              const stillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
+                              const imageSource = stillSource || episodeFallbackPoster;
+                              const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
+                              if (!imageSource) {
+                                return (
+                                  <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+                                  </div>
+                                );
+                              }
+
+                              // `still_url` : image TVmaze complète, laissée telle quelle.
+                              // Le repli utilise la même logique TMDB/URL que les affiches.
+                              const imageUrl = detailsMediaSlot.width > 0
+                                ? getTmdbImageUrl(imageSource, {
+                                  kind: stillSource ? 'still' : 'poster',
+                                  quality: effectiveImageQuality,
+                                  width: Math.ceil(episodeCardCssWidth * imageDpr),
+                                  role: 'card',
+                                  fallback: fallbackSvg,
+                                })
+                                : fallbackSvg;
+                              // Source dans la clé : un échec TVmaze ne doit pas masquer l'image TMDB.
+                              const sourceKey = stillSource
+                                ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
+                                : (episodeSeasonPoster ? 'season-poster' : 'series-poster');
+                              const imageKey = `episode-s${selectedSeason || 'unknown'}-e${ep.episode_number}-${sourceKey}`;
+                              const hasFailed = failedImages[imageKey];
+                              const retryUrl = hasFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
+                              const episodeLabel = shouldHide('episodeNames')
+                                ? `${t('details.episode')} ${ep.episode_number}`
+                                : (ep.name || `${t('details.episode')} ${ep.episode_number}`);
+                              return (
+                                <img
+                                  src={hasFailed ? fallbackSvg : retryUrl}
+                                  alt={episodeLabel}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    if (!hasFailed) {
+                                      setFailedImages(prev => ({ ...prev, [imageKey]: true }));
+                                    } else {
+                                      e.currentTarget.src = fallbackSvg;
+                                    }
+                                  }}
+                                  key={retryUrl}
+                                />
+                              );
+                            })()}
                             {airing.kind !== 'unconfirmed' && (
                               <div className={`absolute top-2 left-2 max-w-[calc(100%-1rem)] text-xs px-2 py-1 rounded-full ${airing.kind === 'aired' ? 'bg-green-700 text-white' : 'bg-yellow-800 text-yellow-50'}`}>
                                 {t(`details.airing.${airing.kind}`)}
@@ -3446,36 +3522,60 @@ const TVDetails: React.FC = () => {
             {/* Boutons d'action en-dessous du poster */}
             <div className="mt-6">
               <WatchButtons />
-              {/* Bouton pour basculer le mode anime + Note */}
-              {isAnime() && (
-                <div className="mt-4"> {/* Ajout d'un div pour grouper */}
-                  <button
+              {/* Anti-Spoil et mode Anime : deux réglages indépendants, côte à côte. */}
+              <div className="mt-4 flex flex-wrap gap-2.5">
+                <motion.button
+                  whileHover={{ y: -2, scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
+                  onClick={() => setShowAntiSpoilerModal(true)}
+                  className="inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-violet-300/15 bg-violet-500/[0.08] px-3 py-2.5 text-xs font-semibold text-violet-100 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-500/[0.14] sm:text-sm"
+                  title={t('details.antiSpoilConfig')}
+                >
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{t('details.antiSpoil')}</span>
+                </motion.button>
+
+                {isAnime() && (
+                  <motion.button
+                    whileHover={{ y: -2, scale: 1.015 }}
+                    whileTap={{ scale: 0.985 }}
                     onClick={handleAnimeModeToggle}
                     disabled={loadingAnimeData}
-                    className={`group flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a] ${animeMode
-                      ? 'border-purple-300/25 bg-gradient-to-r from-purple-600 via-purple-600 to-fuchsia-600 text-white shadow-[0_8px_24px_rgba(147,51,234,0.22)] hover:-translate-y-0.5 hover:from-purple-500 hover:via-purple-500 hover:to-fuchsia-500'
-                      : 'border-white/10 bg-white/[0.06] text-gray-200 hover:border-white/20 hover:bg-white/[0.1]'
+                    aria-pressed={animeMode}
+                    className={`inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a] sm:text-sm ${animeMode
+                      ? 'border-rose-300/40 bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 text-white shadow-[0_8px_24px_rgba(225,29,72,0.32)] ring-1 ring-inset ring-white/20 hover:-translate-y-0.5 hover:from-rose-500 hover:via-red-500 hover:to-rose-500'
+                      : 'border-white/10 bg-white/[0.06] text-gray-200 hover:border-rose-300/25 hover:bg-white/[0.1]'
                       } ${loadingAnimeData ? 'cursor-wait opacity-70' : ''}`}
                   >
                     {animeMode ? (
                       <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
-                        {t('details.standardMode')}
+                        <Video className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{t('details.backToStandardMode')}</span>
                       </>
                     ) : (
                       <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1.5"><path d="M22 8.5c0-.28-.22-.5-.5-.5h-3.8l-1.65-3.29a.5.5 0 0 0-.9 0L13.5 8h-3a.5.5 0 0 0-.4.8l2.1 2.8-1 4.17a.5.5 0 0 0 .76.53L16 13.96l4.04 2.33a.5.5 0 0 0 .76-.53l-1-4.17 2.1-2.8a.5.5 0 0 0 .1-.3z" /></svg>
-                        {t('details.animeModeLabel')}
+                        <Sparkles className="h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">{t('details.animeModeLabel')}</span>
                       </>
                     )}
-                  </button>
-                  {animeMode && ( // Afficher la note seulement quand on est en mode ANIME
-                    <p className="mt-3 flex items-center justify-center gap-2.5 rounded-xl border border-amber-400/25 bg-gradient-to-r from-amber-500/[0.13] via-yellow-500/[0.09] to-amber-500/[0.13] px-4 py-3 text-center text-[13px] font-medium leading-relaxed text-amber-200 shadow-[0_8px_24px_rgba(245,158,11,0.07)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm">
-                      <AlertTriangle className="w-4 h-4 inline-block flex-shrink-0" />
-                      <span>{t('details.standardModeAvailable')}</span>
-                    </p>
-                  )}
+                  </motion.button>
+                )}
+              </div>
+
+              {animeMode && (
+                <div className="mt-3 rounded-xl border border-rose-400/25 bg-rose-500/[0.08] px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-rose-100 shadow-[0_8px_24px_rgba(225,29,72,0.12)] sm:text-sm">
+                  <span className="inline-flex max-w-full items-center justify-center gap-2">
+                    <Sparkles className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{t('details.animeModeActiveBadge')}</span>
+                  </span>
                 </div>
+              )}
+
+              {animeMode && ( // Afficher la note seulement quand on est en mode ANIME
+                <p className="mt-3 flex items-start justify-center gap-2.5 rounded-xl border border-amber-400/25 bg-gradient-to-r from-amber-500/[0.13] via-yellow-500/[0.09] to-amber-500/[0.13] px-4 py-3 text-center text-[13px] font-medium leading-relaxed text-amber-200 shadow-[0_8px_24px_rgba(245,158,11,0.07)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm">
+                  <AlertTriangle className="w-4 h-4 inline-block flex-shrink-0" />
+                  <span>{t('details.standardModeAvailable')}</span>
+                </p>
               )}
 
             </div>
@@ -3788,31 +3888,52 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className="mb-6 rounded-2xl border border-white/[0.08] bg-slate-950/25 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm seasons-section"
+                    className={`mb-6 rounded-2xl border bg-slate-950/25 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm seasons-section ${animeMode ? 'border-rose-400/35 ring-1 ring-rose-500/20' : 'border-white/[0.08]'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                      <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.seasonsLabel')}</h3>
-                      {hasNetflixLayout && !animeMode && id && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-400">{t('details.seasonLayout')}</span>
-                          <div className="flex rounded-xl border border-white/[0.08] bg-black/25 p-1" role="group">
-                            {([false, true] as const).map((netflix) => (
-                              <button
-                                key={netflix ? 'netflix' : 'tmdb'}
-                                type="button"
-                                aria-pressed={usesNetflixLayout === netflix}
-                                onClick={() => chooseSeasonLayout(netflix)}
-                                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${usesNetflixLayout === netflix ? 'rounded-lg bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-[0_6px_18px_rgba(225,29,72,0.22)]' : 'rounded-lg text-slate-300 hover:bg-white/[0.07]'}`}
-                              >
-                                {t(netflix ? 'details.episodeListNetflix' : 'details.episodeListTmdb')}
-                              </button>
-                            ))}
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.seasonsLabel')}</h3>
+                        {animeMode && (
+                          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-rose-300/40 bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-100 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] sm:text-xs">
+                            <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+                            <span className="truncate">{t('details.animeModeActiveBadge')}</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        {animeMode && (
+                          <button
+                            type="button"
+                            onClick={handleAnimeModeToggle}
+                            disabled={loadingAnimeData}
+                            className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-100 transition-colors hover:border-rose-300/50 hover:bg-rose-500/20 disabled:cursor-wait disabled:opacity-60 sm:text-sm"
+                          >
+                            <Video className="h-4 w-4 flex-shrink-0" />
+                            <span className="truncate">{t('details.backToStandardMode')}</span>
+                          </button>
+                        )}
+                        {hasNetflixLayout && !animeMode && id && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm text-gray-400">{t('details.seasonLayout')}</span>
+                            <div className="flex rounded-xl border border-white/[0.08] bg-black/25 p-1" role="group">
+                              {([false, true] as const).map((netflix) => (
+                                <button
+                                  key={netflix ? 'netflix' : 'tmdb'}
+                                  type="button"
+                                  aria-pressed={usesNetflixLayout === netflix}
+                                  onClick={() => chooseSeasonLayout(netflix)}
+                                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${usesNetflixLayout === netflix ? 'rounded-lg bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-[0_6px_18px_rgba(225,29,72,0.22)]' : 'rounded-lg text-slate-300 hover:bg-white/[0.07]'}`}
+                                >
+                                  {t(netflix ? 'details.episodeListNetflix' : 'details.episodeListTmdb')}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </div>
 
                     {/* Grid of seasons with animations */}
@@ -3822,6 +3943,27 @@ const TVDetails: React.FC = () => {
                           /* Affichage des saisons pour les animes */
                           animeData.seasons.map((season: any, index: number) => {
                             const seasonNumber = season.number || (index + 1);
+                            const seasonImageSource = firstNonEmptyImage(
+                              season?.poster_path,
+                              season?.posterPath,
+                              animeData?.poster_path,
+                              animeData?.posterPath,
+                              animeData?.image,
+                              tvShow?.poster_path,
+                            );
+                            const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${seasonNumber}`);
+                            const imageUrl = detailsMediaSlot.width > 0
+                              ? getTmdbImageUrl(seasonImageSource, {
+                                kind: 'poster',
+                                quality: effectiveImageQuality,
+                                width: Math.ceil(seasonCardCssWidth * imageDpr),
+                                role: 'card',
+                                fallback: fallbackSvg,
+                              })
+                              : fallbackSvg;
+                            const imageKey = `anime-season-${seasonNumber}-poster`;
+                            const hasFailed = failedImages[imageKey];
+                            const retryUrl = hasFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
                             return (
                               <motion.div
                                 key={`anime-season-${seasonNumber}`}
@@ -3835,15 +3977,19 @@ const TVDetails: React.FC = () => {
                               >
                                 <div className="relative pb-[150%] bg-gray-900">
                                   {!shouldHide('seasonImages') ? (
-                                    <div className="absolute inset-0 w-full h-full bg-gradient-to-tr from-purple-900 to-indigo-800 flex items-center justify-center p-4">
-                                      <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-                                      <div className="text-center z-10">
-                                        <div className="w-16 h-16 mx-auto mb-2 rounded-full bg-white/10 flex items-center justify-center">
-                                          <span className="text-2xl font-bold text-white">{seasonNumber}</span>
-                                        </div>
-                                        {/* Nom de la saison dans l'image retiré */}
-                                      </div>
-                                    </div>
+                                    <img
+                                      src={hasFailed ? fallbackSvg : retryUrl}
+                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : (season.name || getSeasonDisplayName(seasonNumber, t))}
+                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      onError={(e) => {
+                                        if (!hasFailed) {
+                                          setFailedImages(prev => ({ ...prev, [imageKey]: true }));
+                                        } else {
+                                          e.currentTarget.src = fallbackSvg;
+                                        }
+                                      }}
+                                      key={retryUrl}
+                                    />
                                   ) : (
                                     <div className="absolute inset-0 w-full h-full bg-gray-800 flex items-center justify-center">
                                       <div className="flex flex-col items-center gap-2 text-gray-400">
@@ -3880,15 +4026,21 @@ const TVDetails: React.FC = () => {
                             .map((seasonMeta) => {
                             const season = seasonMeta.season_number;
                             const details = seasonsDetails[season] || seasonMeta;
+                            const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${season}`);
+                            const seasonImageSource = firstNonEmptyImage(
+                              details?.poster_path,
+                              seasonMeta?.poster_path,
+                              tvShow?.poster_path,
+                            );
                             const imageUrl = detailsMediaSlot.width > 0
-                              ? getTmdbImageUrl(details?.poster_path, {
+                              ? getTmdbImageUrl(seasonImageSource, {
                                 kind: 'poster',
                                 quality: effectiveImageQuality,
                                 width: Math.ceil(seasonCardCssWidth * imageDpr),
                                 role: 'card',
-                                fallback: getSeasonFallbackSvg(t('details.season').toUpperCase()),
+                                fallback: fallbackSvg,
                               })
-                              : getSeasonFallbackSvg(t('details.season').toUpperCase());
+                              : fallbackSvg;
                             const imageKey = `season-${season}-poster`;
                             const hasFailed = failedImages[imageKey];
                             const retryUrl = hasFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
@@ -3907,14 +4059,14 @@ const TVDetails: React.FC = () => {
                                 <div className="relative pb-[150%] bg-gray-900">
                                   {!shouldHide('seasonImages') ? (
                                     <img
-                                      src={hasFailed ? getSeasonFallbackSvg(t('details.season').toUpperCase()) : retryUrl}
-                                      alt={details?.name || `${t('details.season')} ${season}`}
+                                      src={hasFailed ? fallbackSvg : retryUrl}
+                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${season}` : (details?.name || `${t('details.season')} ${season}`)}
                                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                       onError={(e) => {
                                         if (!hasFailed) {
                                           setFailedImages(prev => ({ ...prev, [imageKey]: true }));
                                         } else {
-                                            e.currentTarget.src = getSeasonFallbackSvg(t('details.season').toUpperCase());
+                                          e.currentTarget.src = fallbackSvg;
                                         }
                                       }}
                                       key={retryUrl}

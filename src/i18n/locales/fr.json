@@ -1224,6 +1224,8 @@
     "episodeListSwitchHint": "Il manque des épisodes, ou un épisode déjà sorti ne se lance pas ? Change de liste.",
     "standardMode": "Mode standard",
     "animeModeLabel": "Mode anime",
+    "animeModeActiveBadge": "MODE ANIME ACTIF",
+    "backToStandardMode": "Retour au mode standard",
     "standardModeAvailable": "Mode Standard disponible. Essayez-le si des épisodes/saisons manquent.",
     "cinemaModeEnabled": "Mode Cinéma activé",
     "enableCinemaMode": "Activer Mode Cinéma",
