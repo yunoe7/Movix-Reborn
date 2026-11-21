@@ -44,6 +44,12 @@ const svgDataUrl = (name, fill) =>
 
 const tmdbSeriesPoster = svgDataUrl('SERIES-POSTER', '#be123c');
 const tmdbSeasonPoster = svgDataUrl('TMDB-SEASON-POSTER', '#7c3aed');
+const tmdbSeasonPosters = {
+  1: svgDataUrl('TMDB-SEASON-POSTER-1', '#7c3aed'),
+  2: svgDataUrl('TMDB-SEASON-POSTER-2', '#2563eb'),
+  3: svgDataUrl('TMDB-SEASON-POSTER-3', '#059669'),
+  4: svgDataUrl('TMDB-SEASON-POSTER-4', '#d97706'),
+};
 const animeSeasonPoster = svgDataUrl('ANIME-SEASON-POSTER', '#9333ea');
 const stills = {
   1: svgDataUrl('TMDB-STILL-1', '#ef4444'),
@@ -66,7 +72,13 @@ const tv = {
   original_language: 'ja',
   number_of_seasons: 1,
   number_of_episodes: 5,
-  seasons: [{ season_number: 1, name: 'Saison 1', poster_path: tmdbSeasonPoster, air_date: '2024-01-01', episode_count: 5 }],
+  seasons: [1, 2, 3, 4].map((season_number) => ({
+    season_number,
+    name: `Saison ${season_number}`,
+    poster_path: tmdbSeasonPosters[season_number],
+    air_date: '2024-01-01',
+    episode_count: 5,
+  })),
   status: 'Returning Series',
   type: 'Scripted',
   external_ids: {},
@@ -114,6 +126,12 @@ const animeFixture = {
         { index: 16, name: 'Episode 0', streaming_links: [{ language: 'vf', players: ['fixture-vf-6'] }] },
       ],
     },
+    ...[2, 3, 4].map((number) => ({
+      number,
+      name: `Saison Anime ${number}`,
+      poster_path: animeSeasonPoster,
+      episodes: [{ index: number * 10, name: `Episode saison ${number}`, streaming_links: [{ language: 'vf', players: ['fixture-extra'] }] }],
+    })),
   ],
 };
 
@@ -294,6 +312,18 @@ async function cardSnapshot() {
 }
 
 const animeCards = await cardSnapshot();
+// Les affiches TMDB de chaque saison doivent primer sur l'affiche Anime-Sama
+// commune aux quatre saisons : aucune association par position n'est utilisée.
+for (const seasonNumber of [1, 2, 3, 4]) {
+  const seasonImage = page.locator(`.seasons-section img[alt="Saison Anime ${seasonNumber}"]`).first();
+  await seasonImage.waitFor({ state: 'visible', timeout: 15000 });
+  const src = await seasonImage.getAttribute('src');
+  assert.ok(
+    src?.includes(`TMDB-SEASON-POSTER-${seasonNumber}`),
+    `La saison ${seasonNumber} doit afficher son affiche TMDB dédiée, reçu : ${src}`,
+  );
+}
+observations.push('4 affiches de saisons TMDB distinctes priment sur l’affiche Anime-Sama commune.');
 await page.screenshot({ path: path.join(artifactDir, `${label}-anime.png`), fullPage: true });
 
 await page.goto('http://details.test/', { waitUntil: 'load' });
