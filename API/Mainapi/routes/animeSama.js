@@ -1180,6 +1180,12 @@ async function attachCachedSeasons(animes, searchCacheKey = null) {
         });
         knownSeasonKeys.add(key);
       }
+      // Les chemins Anime-Sama sont stables (« saison1 », « saison2 », …).
+      // Un tri naturel réinsère les saisons temporairement masquées entre
+      // leurs voisines au lieu de les ajouter toutes à la fin.
+      saisons.sort((a, b) => String(a.path || a.name).localeCompare(
+        String(b.path || b.name), 'fr', { numeric: true, sensitivity: 'base' }
+      ));
     } else {
       // Très anciens caches : un fichier par saison (<nom>_<saison>.json).
       const safeAnimeName = safeFilename(String(anime.name || ''));
