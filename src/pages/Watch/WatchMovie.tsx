@@ -2907,11 +2907,14 @@ const WatchMovie: React.FC = () => {
         <AdWaitingScreen />
       ) : !hasConfirmedInitialSource && !onlyVostfrAvailable ? (
         <PlayerOverlayPortal>
-          <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6">
-            <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-3xl">
-              <div className="p-5 border-b border-white/10">
-                <h2 className="text-white text-xl font-bold">{t('watch.changeSource')}</h2>
-                <p className="text-gray-400 text-sm mt-1">{movieTitle}</p>
+          <div className="fixed inset-0 z-[10000] bg-black/85 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-5">
+            <div className="bg-[#090b10] border border-white/10 shadow-2xl w-full max-w-5xl max-h-[94dvh] sm:max-h-[90vh] overflow-y-auto rounded-t-[28px] sm:rounded-[28px]">
+              <div className="relative h-40 sm:h-56 shrink-0 overflow-hidden bg-[#10151b]" style={{ backgroundImage: `linear-gradient(0deg, rgba(5,8,12,.98) 0%, rgba(5,8,12,.62) 48%, rgba(5,8,12,.12) 100%), url(${backdropPath ? `https://image.tmdb.org/t/p/w1280${backdropPath}` : playerPoster || ''})`, backgroundSize: 'cover', backgroundPosition: 'center 25%' }}>
+                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7">
+                  <span className="mb-2 inline-flex rounded-full border border-white/20 bg-black/35 px-3 py-1 text-[10px] font-bold uppercase tracking-[.22em] text-white/75">MOVIX · LECTEURS</span>
+                  <h2 className="max-w-3xl text-xl font-bold leading-tight text-white sm:text-3xl">{movieTitle}</h2>
+                  
+                </div>
               </div>
               <div className="p-4">
                 <HLSPlayer priorityCategory="moviesTv" autoFallbackGuard={autoFallbackGuard} src="" className="hidden" movieId={id || undefined} controls={false}
