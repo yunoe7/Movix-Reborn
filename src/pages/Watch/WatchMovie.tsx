@@ -2200,7 +2200,7 @@ const WatchMovie: React.FC = () => {
         currentSourceRef.current = type; // 'type' is a string here from the includes check
 
         // Handle Wiflix source selection
-        else if (type === 'wiflix') {
+        if (type === 'wiflix') {
           const index = sortedWiflix.findIndex(s => s.url === url);
           if (index !== -1) {
             setSelectedWiflixSource(index);
