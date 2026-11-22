@@ -3209,7 +3209,7 @@ const TVDetails: React.FC = () => {
                     : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
                   const imageSource = isAnime ? episodeStillSource : (episodeStillSource || episodeFallbackPoster);
-                  const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
+                  const fallbackSvg = getSeasonFallbackSvg(`${t('details.episode').toUpperCase()} ${episodeNumber}`.trim());
                   const sourceKey = episodeStillSource
                     ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
                     : (isAnime ? 'no-still' : (episodeSeasonPoster ? 'season-poster' : 'series-poster'));
@@ -3306,8 +3306,13 @@ const TVDetails: React.FC = () => {
                                 key={retryUrl}
                               />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+                              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#24242a] via-[#17171b] to-[#0f0f11] text-white/40">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                                  <Play className="ml-0.5 h-4 w-4" />
+                                </span>
+                                <span className="text-[9px] font-semibold uppercase tracking-[0.16em]">
+                                  {t('details.episode')} {episodeNumber}
+                                </span>
                               </div>
                             )}
 
