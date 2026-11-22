@@ -293,20 +293,22 @@ await page.getByText('Saison Anime 1', { exact: true }).first().evaluate((elemen
   const clickable = element.closest('button') || element.closest('[role="tab"]') || element;
   clickable.click();
 });
-await page.locator('.seasons-section').getByRole('button').nth(1).waitFor({ state: 'visible', timeout: 15000 });
+await page.locator('h4').filter({ hasText: 'Episode 1' }).first().waitFor({ state: 'visible', timeout: 15000 });
 
 async function cardSnapshot() {
   return page.locator('.seasons-section').evaluate((section) => {
     const animeMode = Boolean(section.querySelector('[class*="ring-rose-500"]'));
-    const cards = animeMode
-      ? [...section.querySelectorAll('button')].filter((button) => button.querySelector('h4'))
-      : [...section.querySelectorAll('h4')].map((heading) => heading.closest('div.group') ?? heading.parentElement?.parentElement?.parentElement);
+    const headings = [...section.querySelectorAll('h4')];
+    const cards = headings
+      .map((heading) => heading.closest('div.group') ?? heading.closest('button') ?? heading.parentElement?.parentElement?.parentElement)
+      .filter((card, index, all) => card && all.indexOf(card) === index);
     return cards.map((card) => ({
       name: card?.querySelector('h4')?.textContent?.trim() ?? '',
       languages: [...(card?.querySelectorAll('span') ?? [])]
         .map((span) => span.textContent?.trim())
         .filter((text) => text === 'VF' || text === 'VOSTFR'),
       src: card?.querySelector('img')?.getAttribute('src') ?? null,
+      animeMode,
     }));
   });
 }
@@ -323,6 +325,7 @@ for (const seasonNumber of [1, 2, 3, 4]) {
     `La saison ${seasonNumber} doit afficher son affiche TMDB dédiée, reçu : ${src}`,
   );
 }
+const observations = [];
 observations.push('4 affiches de saisons TMDB distinctes priment sur l’affiche Anime-Sama commune.');
 await page.screenshot({ path: path.join(artifactDir, `${label}-anime.png`), fullPage: true });
 
@@ -333,12 +336,16 @@ await page.getByText('Saison 1', { exact: true }).first().evaluate((element) => 
   const clickable = element.closest('button') || element.closest('[role="tab"]') || element;
   clickable.click();
 });
-await page.locator('.seasons-section').getByRole('button').nth(1).waitFor({ state: 'visible', timeout: 15000 });
-await page.locator('.seasons-section img').first().waitFor({ state: 'visible', timeout: 15000 });
+await page.locator('h4').filter({ hasText: '1. Épisode 1' }).first().waitFor({ state: 'visible', timeout: 15000 });
+await page.waitForFunction(
+  () => ['TMDB-STILL-1', 'TMDB-STILL-2', 'TMDB-STILL-3', 'TMDB-STILL-4'].every((marker) =>
+    [...document.querySelectorAll('.seasons-section img')].some((img) => (img.getAttribute('src') || '').includes(marker)),
+  ),
+  { timeout: 15000 },
+).catch(() => {});
 const standardCards = await cardSnapshot();
 await page.screenshot({ path: path.join(artifactDir, `${label}-standard.png`), fullPage: true });
 
-const observations = [];
 assert.deepEqual(
   animeCards.map(({ name, languages }) => [name, languages]),
   expectedAnimeSources,
@@ -370,8 +377,8 @@ assert.deepEqual(
   'La liste standard doit rester inchangée',
 );
 for (const [name, marker] of Object.entries(expectedStillByEpisode)) {
-  const number = name.replace('Épisode ', '');
-  const card = standardCards.find((item) => item.name === `${number}. ${name}`);
+  const number = name.replace('Episode ', '');
+  const card = standardCards.find((item) => item.name === `${number}. Épisode ${number}`);
   assert.ok(card?.src?.includes(marker), `La carte standard ${number} doit afficher ${marker}, reçu : ${card?.src}`);
 }
 const episodeFiveStandard = standardCards.find((item) => item.name === '5. Épisode 5');

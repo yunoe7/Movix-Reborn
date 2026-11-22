@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles, Tv } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
@@ -3001,14 +3001,21 @@ const TVDetails: React.FC = () => {
                 // ... grid item rendering ...
                 if (isAnime) {
                   const isSelected = selectedEpisode === ep.index;
-
-                  // Récupérer toutes les langues disponibles pour cet épisode
-                  const availableLanguages = ep.streaming_links.map((link: any) => link.language);
+                  const episodeKey = `s${selectedSeason}e${ep.index}`;
+                  const episodeNumber = Number(ep.index);
+                  const availableLanguages = Array.isArray(ep.streaming_links)
+                    ? ep.streaming_links.map((link: any) => link.language).filter(Boolean)
+                    : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
-                  const episodeImageSource = episodeStillSource || episodeFallbackPoster;
+                  const imageSource = episodeStillSource || episodeFallbackPoster;
                   const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
-                  const episodeImageUrl = detailsMediaSlot.width > 0 && episodeImageSource
-                    ? getTmdbImageUrl(episodeImageSource, {
+                  const sourceKey = episodeStillSource
+                    ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
+                    : (episodeSeasonPoster ? 'season-poster' : 'series-poster');
+                  const episodeImageKey = `anime-episode-s${selectedSeason || 'unknown'}-e${ep.index}-${sourceKey}`;
+                  const episodeImageFailed = failedImages[episodeImageKey];
+                  const imageUrl = detailsMediaSlot.width > 0 && imageSource
+                    ? getTmdbImageUrl(imageSource, {
                       kind: episodeStillSource ? 'still' : 'poster',
                       quality: effectiveImageQuality,
                       width: Math.ceil(episodeCardCssWidth * imageDpr),
@@ -3016,34 +3023,77 @@ const TVDetails: React.FC = () => {
                       fallback: fallbackSvg,
                     })
                     : fallbackSvg;
-                  const episodeImageKey = `anime-episode-s${selectedSeason || 'unknown'}-e${ep.index}-${episodeStillSource ? 'still' : (episodeSeasonPoster ? 'season-poster' : 'series-poster')}`;
-                  const episodeImageFailed = failedImages[episodeImageKey];
-                  const episodeRetryUrl = episodeImageFailed ? `${episodeImageUrl}?retry=${Date.now()}` : episodeImageUrl;
+                  const retryUrl = episodeImageFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
+                  const episodeLabel = shouldHide('episodeNames')
+                    ? `${t('details.episode')} ${episodeNumber}`
+                    : (ep.name || `${t('details.episode')} ${episodeNumber}`);
+                  const episodeTitle = shouldHide('episodeNames')
+                    ? getMaskedContent(ep.name || `${t('details.episode')} ${episodeNumber}`, 'episodeNames', undefined, episodeNumber)
+                    : (ep.name || `${t('details.episode')} ${episodeNumber}`);
+
+                  // Progression locale/serveur : même format de clé que les épisodes standard.
+                  let progressPercentage = 0;
+                  let hasProgress = false;
+                  try {
+                    if (typeof window !== 'undefined' && id) {
+                      const progressKey = `progress_tv_${id}_s${selectedSeason}_e${episodeNumber}`;
+                      const saved = localStorage.getItem(progressKey);
+                      if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && parsed.position && parsed.duration && parsed.duration > 0) {
+                          progressPercentage = Math.round((parsed.position / parsed.duration) * 100);
+                          hasProgress = parsed.position > 0 && progressPercentage > 0;
+                        }
+                      }
+                    }
+                  } catch {
+                    // ignore localStorage/parsing errors
+                  }
+                  const mergedEpisode = mergeEpisode(
+                    { percent: progressPercentage, hasProgress, watched: Boolean(watchStatus?.episodeWatched?.[episodeKey]) },
+                    serverEpisodes.get(`${selectedSeason}:${episodeNumber}`),
+                    seriesMarked,
+                  );
+                  progressPercentage = mergedEpisode.percent;
+                  hasProgress = mergedEpisode.hasProgress;
+                  const isEpisodeWatched = mergedEpisode.watched;
+                  const seenOnServer = mergedEpisode.serverWatched;
+                  const displayProgress = isEpisodeWatched || seenOnServer ? 100 : progressPercentage;
 
                   return (
                     <motion.div
                       key={`anime-${selectedSeason}-${ep.index}`}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1, transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 } }}
-                      className={`group relative rounded-xl overflow-hidden border border-white/10 hover:border-red-500 transition-all duration-300 bg-gray-800 flex flex-col ${isSelected ? 'ring-2 ring-red-500' : ''}`}
+                      className={`group relative rounded-xl overflow-hidden border border-white/10 hover:border-red-500 transition-all duration-300 bg-white/10 flex flex-col ${isSelected ? 'ring-2 ring-red-500' : ''}`}
                       whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                      layout={false}
                     >
-                      <button
-                        className="block w-full text-left p-4"
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="flex flex-col flex-1 w-full text-left cursor-pointer"
                         onClick={() => handleAnimeGridClick(ep)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            handleAnimeGridClick(ep);
+                          }
+                        }}
                       >
-                        <div className="flex flex-col">
-                          {shouldHide('episodeImages') ? (
-                            <div className="mb-3 flex aspect-video w-full items-center justify-center gap-2 rounded-lg bg-gray-900/80 text-xs text-gray-400">
-                              <EyeOff className="h-4 w-4 flex-shrink-0" />
-                              <span>{t('details.imageMasked')}</span>
-                            </div>
-                          ) : episodeImageSource ? (
-                            <div className="relative mb-3 aspect-video w-full overflow-hidden rounded-lg bg-gray-900">
+                        <div className="flex flex-col flex-1">
+                          <div className="relative aspect-video w-full">
+                            {shouldHide('episodeImages') ? (
+                              <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                                <div className="flex flex-col items-center gap-2 text-gray-400">
+                                  <EyeOff className="w-8 h-8" />
+                                  <span className="text-sm">{t('details.imageMasked')}</span>
+                                </div>
+                              </div>
+                            ) : imageSource ? (
                               <img
-                                src={episodeImageFailed ? fallbackSvg : episodeRetryUrl}
-                                alt={shouldHide('episodeNames') ? `${t('details.episode')} ${ep.index}` : (ep.name || `${t('details.episode')} ${ep.index}`)}
-                                className="h-full w-full object-cover"
+                                src={episodeImageFailed ? fallbackSvg : retryUrl}
+                                alt={episodeLabel}
+                                className="w-full h-full object-cover"
                                 onError={(e) => {
                                   if (!episodeImageFailed) {
                                     setFailedImages(prev => ({ ...prev, [episodeImageKey]: true }));
@@ -3051,28 +3101,124 @@ const TVDetails: React.FC = () => {
                                     e.currentTarget.src = fallbackSvg;
                                   }
                                 }}
-                                key={episodeRetryUrl}
+                                key={retryUrl}
                               />
-                            </div>
-                          ) : null}
-                          <h4 className="text-lg font-medium group-hover:text-red-500 transition-colors mb-2">
-                            {ep.name || ep.index}
-                          </h4>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {availableLanguages.map((language: string, i: number) => (
-                              <span
-                                key={`lang-badge-${language}-${i}`}
-                                className={`text-white text-xs px-2 py-1 rounded ${language === 'vostfr' ? 'bg-blue-600/70' :
-                                  language === 'vf' ? 'bg-green-600/70' :
-                                    'bg-purple-600/70'
-                                  }`}
-                              >
-                                {getAnimeLanguageLabel(language, t)}
+                            ) : (
+                              <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+                              </div>
+                            )}
+
+                            {((isEpisodeWatched) || (hasProgress && displayProgress >= 95)) ? (
+                              <span className="px-3 py-1.5 absolute top-2 right-2 rounded-lg whitespace-nowrap text-xs font-medium flex gap-1 items-center bg-green-500 text-green-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" aria-hidden="true" className="w-3.5 h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                {t('details.alreadyWatched')}
+                              </span>
+                            ) : (hasProgress && displayProgress > 0 && displayProgress < 95 && (
+                              <span className="px-3 py-1.5 absolute top-2 right-2 rounded-lg whitespace-nowrap text-xs font-medium flex gap-1 items-center bg-yellow-500 text-yellow-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" aria-hidden="true" className="w-3.5 h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                {t('details.currentlyWatching')}
                               </span>
                             ))}
+
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="bg-red-600/90 rounded-full p-3 transform scale-0 group-hover:scale-100 transition-transform duration-300">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-play h-6 w-6 text-white"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+                                </div>
+                              </div>
+                            </div>
+
+                            {displayProgress > 0 && (
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
+                                <div
+                                  className={`h-full ${displayProgress >= 95 ? 'bg-green-500' : 'bg-red-600'} transition-all`}
+                                  style={{ width: `${displayProgress}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="p-4 flex flex-col flex-1">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-red-500 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
+                                  {episodeTitle}
+                                </h4>
+                                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
+                                  <div className="flex items-center gap-1.5">
+                                    <Tv className="h-3.5 w-3.5 text-red-400 opacity-70" />
+                                    <span>{t('details.episode')} {episodeNumber}</span>
+                                  </div>
+                                </div>
+                                {ep.overview && (
+                                  <EpisodeOverview
+                                    text={shouldHide('episodeOverviews') ? getMaskedContent(ep.overview, 'episodeOverviews') : ep.overview}
+                                    expanded={!!expandedCards[episodeKey]}
+                                    onToggle={toggleCardExpansion(episodeKey)}
+                                    t={t}
+                                  />
+                                )}
+                                <div className="flex flex-wrap gap-2 mt-3">
+                                  {availableLanguages.map((language: string, i: number) => (
+                                    <span
+                                      key={`lang-badge-${language}-${i}`}
+                                      className={`text-white text-xs px-2 py-1 rounded ${language === 'vostfr' ? 'bg-blue-600/70' :
+                                        language === 'vf' ? 'bg-green-600/70' :
+                                          'bg-purple-600/70'
+                                        }`}
+                                    >
+                                      {getAnimeLanguageLabel(language, t)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-auto pt-3 justify-end">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (watchStatus && watchStatus.episodeWatchlist) {
+                                    updateWatchStatus('episodeWatchlist', !watchStatus.episodeWatchlist[episodeKey], episodeKey);
+                                  }
+                                }}
+                                className={`p-2 rounded ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                title={t('details.addToWatchlistTitle')}
+                              >
+                                <List className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (watchStatus && watchStatus.episodeWatched) {
+                                    updateWatchStatus('episodeWatched', !watchStatus.episodeWatched[episodeKey], episodeKey);
+                                  }
+                                }}
+                                className={`p-2 rounded ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                title={t('details.markAsWatched')}
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              {seenOnServer && (
+                                <span
+                                  role="img"
+                                  aria-label={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
+                                  title={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
+                                  className="inline-flex h-8 items-center gap-1 self-center rounded border border-dashed border-white/25 px-1.5 text-[11px] text-white/60"
+                                >
+                                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                                  {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </button>
+                      </div>
                     </motion.div>
                   );
                 } else {
