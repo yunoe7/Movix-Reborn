@@ -5,10 +5,7 @@ import { safeEmbedUrl } from '../../utils/safeEmbedUrl';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios';
-import HLSPlayer from '../../components/HLSPlayer';
 import VidyPlayer from '../../components/VidyPlayer';
-import PlayerOverlayPortal from '../../components/PlayerOverlayPortal';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
@@ -35,7 +32,6 @@ import { useProfile } from '../../context/ProfileContext';
 import { isContentAllowed, getClassificationLabel } from '../../utils/certificationUtils';
 import { getCoflixPreferredUrl } from '../../utils/coflix';
 import { KisskhServiceError, resolveKisskhMovie } from '../../services/kisskhService';
-import SwiftfluxGate from '../../components/SwiftfluxGate';
 import {
   readSwiftflux,
   type SwiftfluxEntry,
