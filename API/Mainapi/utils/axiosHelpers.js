@@ -3,7 +3,7 @@
  * Extracted from server.js — wraps proxy logic with site-specific headers and cookies.
  *
  * Some helpers depend on axios instances / session state that live in route modules
- * (e.g. axiosFStream, axiosAnimeSama, axiosCoflix, cookieJar).
+ * (e.g. axiosAnimeSama, axiosCoflix, cookieJar).
  * Call `configure(deps)` once at startup to inject those dependencies.
  */
 
