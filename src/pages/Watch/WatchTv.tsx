@@ -28,7 +28,7 @@ import { serverResolveRequest } from '../../utils/serverResolveRequest';
 import { isExtensionAvailable } from '../../utils/extensionProxy';
 import { getTmdbLanguage } from '../../i18n';
 import { useProfile } from '../../context/ProfileContext';
-import { getClassificationLabel } from '../../utils/certificationUtils';
+import { getClassificationLabel, isContentAllowed } from '../../utils/certificationUtils';
 import { getCoflixPreferredUrl } from '../../utils/coflix';
 import { createHlsAutoFallbackGuard, resolveAcceptedWatchSource, resolveRenderedWatchSource, syncHlsActiveSource } from '../../utils/hlsAutoFallbackGuard';
 
@@ -441,8 +441,8 @@ const WatchTv: React.FC = () => {
   const autoFallbackGuard = useMemo(() => createHlsAutoFallbackGuard(2), [id, seasonNumber, episodeNumber]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [contentCert] = useState<string>('');
-  const [isBlocked] = useState(false);
+  const [contentCert, setContentCert] = useState<string>('');
+  const [isBlocked, setIsBlocked] = useState(false);
   const [loadingText, setLoadingText] = useState(t('watch.loadingSources'));
   const [showTitle, setShowTitle] = useState<string>('');
   const [episodeTitle, setEpisodeTitle] = useState<string>('');
@@ -1125,6 +1125,8 @@ const WatchTv: React.FC = () => {
     const initialFetch = async () => {
       setIsLoading(true);
       setLoadingError(false); // Reset error on new fetch
+      setIsBlocked(false);
+      setContentCert('');
 
       try {
         // Fetch show information and episode details
@@ -1141,6 +1143,31 @@ const WatchTv: React.FC = () => {
         ]);
         const tvmazeEpisode = tvmazeSeasons?.[seasonNumber]?.find((item) => item.episode_number === episodeNumber);
         if (!tvmazeEpisode && !tmdbEpisode) throw new Error(`Episode S${seasonNumber}E${episodeNumber} not found`);
+
+        // Apply the same profile age restriction used by movie playback.
+        const profileAge = currentProfile?.ageRestriction ?? 0;
+        if (profileAge > 0) {
+          try {
+            const ratingsResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}/content_ratings`, {
+              params: { api_key: TMDB_API_KEY },
+            });
+            const ratings = Array.isArray(ratingsResponse.data?.results) ? ratingsResponse.data.results : [];
+            const frenchRating = ratings.find((item: any) => item.iso_3166_1 === 'FR')?.rating?.trim() ?? '';
+            const usRating = ratings.find((item: any) => item.iso_3166_1 === 'US')?.rating?.trim() ?? '';
+            const cert = frenchRating || usRating;
+
+            // Unknown or missing certifications are blocked for restricted profiles.
+            if (!isContentAllowed(cert, profileAge)) {
+              setContentCert(cert || 'Non classé');
+              setIsBlocked(true);
+              setIsLoading(false);
+              return;
+            }
+          } catch {
+            // Keep the same fail-open behavior as movie playback if TMDB ratings are unavailable.
+            console.warn('Could not fetch TV certifications for age check');
+          }
+        }
 
         // Set show info
         const show = showResponse.data;
