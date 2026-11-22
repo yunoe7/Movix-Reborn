@@ -1411,6 +1411,9 @@ const WatchMovie: React.FC = () => {
 const WatchMovieRoute: React.FC = () => {
   const { tmdbid: encodedId, version: versionKey } = useParams<{ tmdbid: string; version?: string }>();
   const id = encodedId ? getTmdbId(encodedId) : null;
+  if (!id || !/^\d+$/.test(id)) {
+    return <Navigate replace to="/" />;
+  }
   const retired = getVersionForRetiredId(id);
   if (retired) {
     return <Navigate replace to={buildWatchMoviePath(encodeId(retired.tmdbId), retired.key)} />;
