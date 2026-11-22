@@ -23,7 +23,6 @@ const {
   DARKINO_PROXIES,
   PROXIES,
   HTTP_PROXIES,
-  withFStreamProxy,
   getDarkinoHttpProxyAgent,
   makeCoflixRequest,
   makeLecteurVideoRequest,
@@ -38,17 +37,8 @@ let deps = {
   cookieJar: null,
   axiosCoflix: null,
   axiosAnimeSama: null,
-  axiosFStream: null,
   COFLIX_BASE_URL: '',
   ANIME_SAMA_URL: '',
-  FSTREAM_BASE_URL: '',
-  ensureFStreamSession: async () => {},
-  fstreamCookies: {},
-  // Groupe stable de proxys FStream (routes/fstream.js) ; sans lui, un proxy au hasard.
-  fstreamProxyPicker: null,
-  fstreamRequestCounter: 0,
-  getFstreamRequestCounter: () => 0,
-  incrementFstreamRequestCounter: () => {}
 };
 
 const WIFLIX_BASE_URL = process.env.WIFLIX_BASE_URL || 'https://flemmix.land';
@@ -580,142 +570,6 @@ async function axiosLecteurVideoRequest(config) {
       responseEncoding: config.responseEncoding
     });
   } catch (error) {
-    throw error;
-  }
-}
-
-// Fonction utilitaire pour requ\u00eates FStream avec proxy (retry sur 429, pool SOCKS5 + Darkino)
-function withOptionalFStreamCookies(headers = {}) {
-  if (headers['Cookie'] || headers['cookie']) {
-    return headers;
-  }
-
-  const cookieHeader = Object.entries(deps.fstreamCookies)
-    .filter(([, v]) => v !== '' && v != null)
-    .map(([k, v]) => `${k}=${v}`)
-    .join('; ');
-
-  if (!cookieHeader) {
-    return headers;
-  }
-
-  return {
-    ...headers,
-    Cookie: cookieHeader
-  };
-}
-
-// Page anti-robot avec une nouvelle valeur de fsschal : la requête repart une
-// fois, et withOptionalFStreamCookies y met le cookie à jour.
-async function sendPastFStreamChallenge(send) {
-  const response = await send();
-  return adoptFStreamChallengeCookie(deps.fstreamCookies, response) ? send() : response;
-}
-
-// Repli sans groupe configuré : un proxy au hasard, sans recopier tout le pool.
-function randomFStreamProxyEntry() {
-  const socks = PROXIES?.length || 0;
-  const http = DARKINO_PROXIES?.length || 0;
-  if (socks + http === 0) return null;
-  const index = Math.floor(Math.random() * (socks + http));
-  return index < socks
-    ? { proxy: PROXIES[index], type: 'socks5' }
-    : { proxy: DARKINO_PROXIES[index - socks], type: 'darkino' };
-}
-
-// Seule la recherche est limitée par IP chez French-Stream (voir fstreamProxyPicker).
-function isFStreamSearchUrl(url) {
-  return /\/engine\/ajax\/search\.php(?:[?#]|$)/.test(String(url || ''));
-}
-
-function pickFStreamProxyEntry(config) {
-  const picker = deps.fstreamProxyPicker;
-  if (!picker) return randomFStreamProxyEntry();
-  return isFStreamSearchUrl(config.url) ? picker.nextSearch() : picker.next();
-}
-
-async function axiosFStreamRequest(config) {
-  // Éviter le 301 qui transforme le POST de recherche en GET sans son formulaire.
-  config = { ...config, url: canonicalFStreamUrl(config.url) };
-  if (config.baseURL) config.baseURL = canonicalFStreamUrl(config.baseURL);
-  if (config.headers) {
-    config.headers = Object.fromEntries(Object.entries(config.headers).map(([name, value]) => {
-      const canonical = /^(origin|referer)$/i.test(name) ? canonicalFStreamUrl(value) : value;
-      // Origin est une origine seule, sans le slash de chemin d'un Referer.
-      return [name, /^origin$/i.test(name) && canonical !== value ? new URL(canonical).origin : canonical];
-    }));
-  }
-  const urlStr = config.url || '';
-  const fstreamBaseUrl = deps.FSTREAM_BASE_URL || '';
-  const isFStream = urlStr.includes(fstreamBaseUrl.replace('https://', '').replace('http://', '')) ||
-    (config.baseURL && config.baseURL.includes(fstreamBaseUrl.replace('https://', '').replace('http://', '')));
-
-  if (!ENABLE_FSTREAM_PROXY || !isFStream) {
-    await deps.ensureFStreamSession();
-    const existingHeaders = config.headers || {};
-    const response = await sendPastFStreamChallenge(() => deps.axiosFStream({
-      ...config,
-      timeout: 8000,
-      headers: withOptionalFStreamCookies(existingHeaders)
-    }));
-    deps.incrementFstreamRequestCounter();
-    return response;
-  }
-
-  // Pool SOCKS5 + Darkino HTTP : un proxy du groupe stable, dont l'agent
-  // keep-alive réutilise ses connexions (voir fstreamProxyPicker).
-  const entry = pickFStreamProxyEntry(config);
-
-  if (!entry) {
-    await deps.ensureFStreamSession();
-    const existingHeaders = config.headers || {};
-    const response = await sendPastFStreamChallenge(() => deps.axiosFStream({
-      ...config,
-      timeout: 8000,
-      headers: withOptionalFStreamCookies(existingHeaders)
-    }));
-    deps.incrementFstreamRequestCounter();
-    return response;
-  }
-
-  const proxyLabel = `${entry.type}:${entry.proxy.host}:${entry.proxy.port}`;
-
-  try {
-    await deps.ensureFStreamSession();
-    const existingHeaders = config.headers || {};
-    const send = () => withFStreamProxy(entry, (agents) => deps.axiosFStream({
-      ...config,
-      timeout: 8000,
-      decompress: true,
-      httpAgent: agents.httpAgent,
-      httpsAgent: agents.httpsAgent,
-      proxy: false,
-      headers: withOptionalFStreamCookies(existingHeaders)
-    }));
-    let response;
-    try {
-      response = await sendPastFStreamChallenge(send);
-    } catch (error) {
-      // Socket keep-alive fermée juste avant d'être reprise : l'agent fautif est
-      // retiré, un seul nouvel essai part sur une connexion neuve.
-      if (!isFStreamSocketReset(error)) throw error;
-      response = await sendPastFStreamChallenge(send);
-    }
-    deps.incrementFstreamRequestCounter();
-    return response;
-  } catch (error) {
-    const status = error.response?.status;
-    const method = (config.method || 'GET').toUpperCase();
-    const rawUrl = config.url || '';
-    const isAbs = /^https?:\/\//i.test(rawUrl);
-    const fullUrl = isAbs
-      ? rawUrl
-      : (config.baseURL ? `${config.baseURL.replace(/\/$/, '')}/${rawUrl.replace(/^\//, '')}` : rawUrl);
-    let qs = '';
-    if (config.params && typeof config.params === 'object') {
-      try { qs = '?' + new URLSearchParams(config.params).toString(); } catch (_) {}
-    }
-    console.error(`[FSTREAM REQUEST] Erreur ${status || error.code || 'unknown'} avec proxy ${proxyLabel}: ${error.message} | ${method} ${fullUrl}${qs}`);
     throw error;
   }
 }
