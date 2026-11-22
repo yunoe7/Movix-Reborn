@@ -2455,35 +2455,64 @@ const TVDetails: React.FC = () => {
         stillBySeasonAndEpisode.set(`${seasonNumber}:${episodeNumber}`, still);
       }
     }
-    if (stillBySeasonAndEpisode.size === 0) return data;
+
+    const normalizeStillKey = (source: string) => source
+      .trim()
+      .split(/[?#]/, 1)[0]
+      .replace(/\/t\/p\/(?:w\d+|original)\//, '/t/p/{size}/');
 
     const seasons = animeSeasons.map((season) => {
       if (!Array.isArray(season.episodes)) return season;
       const seasonNumber = Number(season.number ?? season.season_number ?? season.seasonNumber);
       if (!Number.isInteger(seasonNumber) || seasonNumber <= 0) return season;
+
+      // Anime-Sama may repeat a single still_url for a whole run of episodes.
+      // Keep each genuine unique still, then fill duplicates only with the TMDB
+      // still matched by an explicit season/episode number. Never guess by index.
+      const usedStillKeys = new Set<string>();
       const episodes = season.episodes.map((episode) => {
-        if (firstNonEmptyImage(episode.still_path, episode.still_url)) return episode;
-        // `index` est le rang de lecture Anime-Sama (1, 2, 3…), pas
-        // nécessairement le numéro TMDB : certaines saisons commencent à 62,
-        // comportent des spéciaux ou découpent différemment les épisodes.
-        // On n'utilise donc que des numéros TMDB explicites ou le libellé publié
-        // par Anime-Sama (« Episode 62 »). Sans numéro fiable, pas d'association.
+        const currentStill = firstNonEmptyImage(episode.still_path, episode.still_url);
+        const currentKey = currentStill ? normalizeStillKey(currentStill) : null;
+
         const explicitEpisodeNumber =
           episode.tmdb_episode_number ?? episode.tmdbEpisodeNumber ??
           episode.episode_number ?? episode.episodeNumber;
         const labelEpisodeNumber = /(?:episode|épisode|ep\.?)[\s:#-]*(\d{1,4})\b/i
           .exec(String((episode as { name?: unknown }).name ?? ''))?.[1];
         const animeEpisodeNumber = Number(explicitEpisodeNumber ?? labelEpisodeNumber);
-        if (!Number.isInteger(animeEpisodeNumber) || animeEpisodeNumber <= 0) return episode;
-        const still = stillBySeasonAndEpisode.get(`${seasonNumber}:${animeEpisodeNumber}`);
-        if (!still) return episode;
-        return {
-          ...episode,
-          still_path: still,
-          tmdbSeriesId,
-          tmdbSeasonNumber: seasonNumber,
-          tmdbEpisodeNumber: animeEpisodeNumber,
-        };
+        const hasReliableEpisodeNumber = Number.isInteger(animeEpisodeNumber) && animeEpisodeNumber > 0;
+        const tmdbStill = hasReliableEpisodeNumber
+          ? stillBySeasonAndEpisode.get(`${seasonNumber}:${animeEpisodeNumber}`) ?? null
+          : null;
+        const tmdbStillKey = tmdbStill ? normalizeStillKey(tmdbStill) : null;
+
+        const currentIsUnique = Boolean(currentStill && currentKey && !usedStillKeys.has(currentKey));
+        const tmdbIsUnique = Boolean(tmdbStill && tmdbStillKey && !usedStillKeys.has(tmdbStillKey));
+
+        if (currentIsUnique) {
+          usedStillKeys.add(currentKey!);
+          return { ...episode, duplicate_still: false };
+        }
+
+        if (tmdbIsUnique) {
+          usedStillKeys.add(tmdbStillKey!);
+          return {
+            ...episode,
+            still_path: tmdbStill,
+            still_url: null,
+            duplicate_still: false,
+            tmdbSeriesId,
+            tmdbSeasonNumber: seasonNumber,
+            tmdbEpisodeNumber: animeEpisodeNumber,
+          };
+        }
+
+        // Better a clean episode placeholder than showing the exact same frame
+        // repeatedly when no correctly matched still exists.
+        if (currentStill && currentKey && usedStillKeys.has(currentKey)) {
+          return { ...episode, still_path: null, still_url: null, duplicate_still: true };
+        }
+        return episode;
       });
       return { ...season, episodes };
     });
@@ -2822,8 +2851,8 @@ const TVDetails: React.FC = () => {
   }
 
   // Helper function to determine default dropdown mode based on episode count
-  const getDefaultDropdownMode = (episodeCount: number) => {
-    return episodeCount > 15;
+  const getDefaultDropdownMode = (episodeCount: number, isAnime = false) => {
+    return !isAnime && episodeCount > 15;
   };
   // Function to render episodes (either dropdown or grid)
   const renderEpisodes = (episodes: any[], type: 'anime' | 'standard') => {
@@ -2875,7 +2904,7 @@ const TVDetails: React.FC = () => {
     const episodeFallbackPoster = episodeSeasonPoster || episodeSeriesPoster;
 
     // Déterminer le mode par défaut basé sur le nombre d'épisodes
-    const defaultDropdownMode = nonEmptyEpisodes.length > 15;
+    const defaultDropdownMode = type === 'anime' ? false : nonEmptyEpisodes.length > 15;
 
     const dropdownOptions = nonEmptyEpisodes.map((ep: any) => {
       if (type === 'anime') {
@@ -2997,7 +3026,7 @@ const TVDetails: React.FC = () => {
                     ? ep.streaming_links.map((link: any) => link.language).filter(Boolean)
                     : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
-                  const imageSource = episodeStillSource || episodeFallbackPoster;
+                  const imageSource = episodeStillSource || (ep.duplicate_still ? null : episodeFallbackPoster);
                   const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
                   const sourceKey = episodeStillSource
                     ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
@@ -3053,16 +3082,16 @@ const TVDetails: React.FC = () => {
                   return (
                     <motion.div
                       key={`anime-${selectedSeason}-${ep.index}`}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1, transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 } }}
-                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-all duration-300 hover:border-red-500/70 hover:bg-white/[0.075] md:min-h-[132px] ${isSelected ? 'ring-2 ring-red-500' : ''}`}
-                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: Math.min(index * 0.025, 0.2), duration: 0.22 } }}
+                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-red-500/70 ring-1 ring-red-500/25' : ''}`}
+                      whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
                       <div
                         role="button"
                         tabIndex={0}
-                        className="flex w-full min-w-0 flex-1 flex-row items-center gap-3 p-2 text-left cursor-pointer md:gap-4 md:p-3"
+                        className="flex w-full min-w-0 flex-1 flex-row items-center gap-2.5 p-2 text-left cursor-pointer sm:gap-3 md:p-2.5"
                         onClick={() => handleAnimeGridClick(ep)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -3072,9 +3101,9 @@ const TVDetails: React.FC = () => {
                       >
                         <div className="flex min-w-0 flex-1 flex-row items-center gap-3 md:gap-4">
                           <span className="hidden w-7 shrink-0 text-center text-xl font-semibold text-white/45 sm:inline-flex">{episodeNumber}</span>
-                          <div className="relative aspect-video w-[36%] min-w-[108px] max-w-[220px] shrink-0 overflow-hidden rounded-lg bg-black/30">
+                          <div className="relative aspect-video w-[34%] min-w-[108px] max-w-[192px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:w-[190px] sm:min-w-[150px]">
                             {shouldHide('episodeImages') ? (
-                              <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                              <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
                                 <div className="flex flex-col items-center gap-2 text-gray-400">
                                   <EyeOff className="w-8 h-8" />
                                   <span className="text-sm">{t('details.imageMasked')}</span>
@@ -3095,7 +3124,7 @@ const TVDetails: React.FC = () => {
                                 key={retryUrl}
                               />
                             ) : (
-                              <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                              <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
                               </div>
                             )}
@@ -3135,10 +3164,10 @@ const TVDetails: React.FC = () => {
                             )}
                           </div>
 
-                          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2 md:gap-5 md:p-4">
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 px-2 py-1 md:gap-4 md:px-3">
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
-                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-red-500 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
+                                <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {episodeTitle}
                                 </h4>
                                 <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
@@ -3155,11 +3184,11 @@ const TVDetails: React.FC = () => {
                                     t={t}
                                   />
                                 )}
-                                <div className="flex flex-wrap gap-2 mt-3">
+                                <div className="mt-2 flex flex-wrap gap-1.5">
                                   {availableLanguages.map((language: string, i: number) => (
                                     <span
                                       key={`lang-badge-${language}-${i}`}
-                                      className={`text-white text-xs px-2 py-1 rounded ${language === 'vostfr' ? 'bg-blue-600/70' :
+                                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 ${language === 'vostfr' ? 'bg-blue-600/70' :
                                         language === 'vf' ? 'bg-green-600/70' :
                                           'bg-purple-600/70'
                                         }`}
@@ -3170,7 +3199,7 @@ const TVDetails: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                            <div className="flex gap-2 mt-auto pt-3 justify-end">
+                            <div className="ml-2 flex shrink-0 items-center gap-1 self-center justify-end">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -3178,7 +3207,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatchlist', !watchStatus.episodeWatchlist[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`p-2 rounded ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
                                 title={t('details.addToWatchlistTitle')}
                               >
                                 <List className="w-4 h-4" />
@@ -3190,7 +3219,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatched', !watchStatus.episodeWatched[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`p-2 rounded ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
                                 title={t('details.markAsWatched')}
                               >
                                 <Check className="w-4 h-4" />
@@ -4136,7 +4165,7 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-6 rounded-2xl border bg-slate-950/25 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm seasons-section ${animeMode ? 'anime-seasons-section border-rose-400/35 ring-1 ring-rose-500/20' : 'border-white/[0.08]'}`}
+                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${animeMode ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
@@ -4184,12 +4213,12 @@ const TVDetails: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Grid of seasons with animations */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-8">
+                    {/* Compact season picker for Anime; poster grid stays for standard series. */}
+                    <div className={animeMode ? "mb-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"}>
                       <AnimatePresence>
-                        {animeMode && animeData?.seasons ? (
+                        {animeMode && animeSeasonsWithStills.length > 0 ? (
                           /* Affichage des saisons pour les animes */
-                          animeData.seasons
+                          animeSeasonsWithStills
                             // N'afficher que les saisons réellement disponibles.
                             .filter((season: any) =>
                               season?.available !== false &&
@@ -4201,6 +4230,7 @@ const TVDetails: React.FC = () => {
                             const seasonNumber = Number(
                               season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)
                             );
+                            const seasonTitle = getSeasonDisplayName(seasonNumber, t, season.name);
                             // Les fiches Anime-Sama peuvent réutiliser l'affiche de la série
                             // pour toutes les saisons. Priorité à l'affiche TMDB de la saison
                             // portant exactement le même numéro, puis aux données Anime-Sama.
@@ -4236,15 +4266,24 @@ const TVDetails: React.FC = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 transition={{ duration: 0.3, delay: index * 0.05 }}
-                                className={`anime-season-card group cursor-pointer rounded-lg overflow-hidden border-2 transition-[border-color,transform] duration-200 bg-gray-900 hover:-translate-y-[5px] ${selectedSeason === seasonNumber ? 'border-red-600' : 'border-gray-800 hover:border-red-500'}`}
+                                className={`anime-season-card group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border bg-[#151517] p-2.5 text-left transition-[background,border-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-[#1b1b1e] ${selectedSeason === seasonNumber ? 'border-red-500/70 ring-1 ring-red-500/20' : 'border-white/[0.08] hover:border-white/20'}`}
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={selectedSeason === seasonNumber}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    handleSeasonChange(seasonNumber);
+                                  }
+                                }}
                                 onClick={() => handleSeasonChange(seasonNumber)}
                               >
-                                <div className="relative pb-[150%] bg-gray-900">
+                                <div className="relative h-24 w-[68px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:h-28 sm:w-[76px]">
                                   {!shouldHide('seasonImages') ? (
                                     <img
                                       src={hasFailed ? fallbackSvg : retryUrl}
-                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : (season.name || getSeasonDisplayName(seasonNumber, t))}
-                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : seasonTitle}
+                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                       onError={(e) => {
                                         if (!hasFailed) {
                                           setFailedImages(prev => ({ ...prev, [imageKey]: true }));
@@ -4259,7 +4298,7 @@ const TVDetails: React.FC = () => {
                                       key={retryUrl}
                                     />
                                   ) : (
-                                    <div className="absolute inset-0 w-full h-full bg-gray-800 flex items-center justify-center">
+                                    <div className="flex h-full w-full items-center justify-center bg-gray-800">
                                       <div className="flex flex-col items-center gap-2 text-gray-400">
                                         <EyeOff className="w-12 h-12" />
                                         <span className="text-sm">{t('details.imageMasked')}</span>
@@ -4278,14 +4317,15 @@ const TVDetails: React.FC = () => {
                                   )}
                                 </div>
                                 {/* Nom complet de la saison affiché en dessous pour les animes */}
-                                <div className="p-3 bg-gray-900">
-                                  <h3 className="text-base font-bold text-white">
-                                    {shouldHide('episodeNames') ? getMaskedContent(season.name, 'episodeNames') : season.name}
+                                <div className="min-w-0 flex-1 py-1 pr-1">
+                                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-white transition-colors group-hover:text-rose-200 sm:text-[15px]">
+                                    {shouldHide('episodeNames') ? getMaskedContent(seasonTitle, 'episodeNames') : seasonTitle}
                                   </h3>
-                                  <span className="text-xs mt-1 block text-gray-400">
+                                  <span className="mt-2 block text-xs font-medium text-white/50">
                                     {season.episodes.length} {t('details.episodes')}
                                   </span>
                                 </div>
+                                <ChevronRight className="mr-1 h-4 w-4 shrink-0 text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70" aria-hidden="true" />
                               </motion.div>
                             );
                           })
@@ -4369,7 +4409,7 @@ const TVDetails: React.FC = () => {
                       </AnimatePresence>
                     </div>
 
-                    {/* Episodes grid with animations */}
+                    {/* Compact episode list for Anime and standard series. */}
                     <AnimatePresence mode="wait">
                       {selectedSeason !== null && (
                         <motion.div
@@ -4402,7 +4442,7 @@ const TVDetails: React.FC = () => {
                                         className="px-4 py-2 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 text-white dropdown-toggle-button"
                                         onClick={() => {
                                           const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0);
+                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0, true);
                                           setDropdownMode((prev) => prev !== null ? !prev : !currentDefault);
                                         }}
                                       >
