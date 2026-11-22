@@ -187,7 +187,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
   // Cadrage vertical de chaque image pour l'effet de transition WebGL : celui
   // choisi dans l'admin pour une promo, `center 30%` pour un film ou une série.
   const morphFocus = useMemo(() => slides.map((slide) => (
-    slide.kind === 'promo' ? HERO_PROMO_FOCUS_Y[slide.promo.imagePosition] : 0.42
+    slide.kind === 'promo' ? HERO_PROMO_FOCUS_Y[slide.promo.imagePosition] : 0.3
   )), [slides]);
   const autoSlideInterval = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -521,7 +521,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
           }
           @keyframes hero-image-drift {
             from { transform: scale(1); }
-            to { transform: scale(1.025); }
+            to { transform: scale(1.015); }
           }
           @keyframes hero-border-beam {
             from { transform: translateX(0); }
