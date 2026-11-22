@@ -523,6 +523,22 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
             from { transform: scale(1); }
             to { transform: scale(1.075); }
           }
+          @keyframes hero-border-beam {
+            from { transform: translateX(0); }
+            to { transform: translateX(375%); }
+          }
+          .hero-border-beam {
+            position: absolute;
+            z-index: 16;
+            top: 0;
+            left: -40%;
+            width: 40%;
+            height: 1px;
+            pointer-events: none;
+            opacity: .78;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), rgba(239,68,68,.9), transparent);
+            animation: hero-border-beam 8s ease-in-out infinite;
+          }
           .hero-cinematic-frame {
             isolation: isolate;
             box-shadow: 0 28px 90px -34px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255,255,255,.035);
@@ -556,7 +572,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
             text-shadow: 0 3px 28px rgba(0,0,0,.58);
           }
           @media (prefers-reduced-motion: reduce) {
-            .hero-cinematic-image.is-active { animation: none; }
+            .hero-cinematic-image.is-active, .hero-border-beam { animation: none; }
           }
         `}
       </style>
@@ -577,6 +593,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
         data-hero-frame
         className="hero-cinematic-frame relative isolate w-full h-[64vh] supports-[height:100svh]:h-[64svh] max-h-[790px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[360px] sm:min-h-[440px] md:min-h-[540px]"
       >
+        <div aria-hidden="true" className="hero-border-beam" />
         {isMorph && (
           <div className="pointer-events-none absolute inset-0" aria-hidden="true">
             {(morphStatus !== 'ready' || !effectivePrefs.transitions) && isVisible && documentVisible && slides.map((slide, idx) => {
@@ -669,7 +686,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
 
         {/* Bottom controls: dots + progress bar + pause */}
         <div className="absolute bottom-3 sm:bottom-4 md:bottom-6 left-0 right-0 z-30 flex items-center justify-center gap-4 px-3 sm:px-6 pointer-events-none">
-          <div className="flex items-center gap-2 sm:gap-3 bg-black/55 backdrop-blur-xl border border-white/15 rounded-full px-3.5 sm:px-4.5 py-1.5 sm:py-2 shadow-[0_10px_35px_rgba(0,0,0,.42)] pointer-events-auto">
+          <div className="flex items-center gap-2 sm:gap-3 bg-black/55 backdrop-blur-xl border border-white/15 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 shadow-[0_10px_35px_rgba(0,0,0,.42)] pointer-events-auto">
             {/* Dots — le point ne mesure que 6px : le bouton l'entoure d'une zone
                 tactile de 14x30px via un padding réabsorbé par une marge
                 négative — le rendu visuel de la barre reste identique. */}
