@@ -2824,11 +2824,8 @@ const WatchTv: React.FC = () => {
         setEmbedType(type as string); // type is known to be a string here
         setSelectedSource(type as PlayerSourceType);
         currentSourceRef.current = type as PlayerSourceType; // Or null for embeds if ref not used
-          // Ne pas déclencher le popup ads si on change juste de source FStream
-          // Le popup ne doit se déclencher qu'au chargement initial, pas lors du changement de source
-        }
         // Handle Wiflix source selection
-        else if (type === 'wiflix') {
+        if (type === 'wiflix') {
           const index = sortedWiflix.findIndex(s => s.url === url);
           if (index !== -1) {
             setSelectedWiflixSource(index);
@@ -2880,7 +2877,7 @@ const WatchTv: React.FC = () => {
         }
       }
       // Handle dropdown toggles (no state change needed here)
-      else if (type === 'darkino_main' || type === 'omega_main' || type === 'multi_main' || type === 'vostfr_main' || type === 'fstream_main' || type === 'wiflix_main') {
+      else if (type === 'darkino_main' || type === 'omega_main' || type === 'multi_main' || type === 'vostfr_main' || type === 'wiflix_main') {
         // console.log(`[WatchTv] Dropdown toggle ignored: ${type}`);
       }
       // Handle unknown types
@@ -3398,7 +3395,7 @@ const WatchTv: React.FC = () => {
       return;
     }
     // Quand tous les chargements sont terminés
-    if (!loadingDarkino && !loadingCoflix && !loadingOmega && !loadingCustom && !loadingSibnet && !loadingFrembed && !loadingFstream && !loadingWiflix && !loadingVox) {
+    if (!loadingDarkino && !loadingCoflix && !loadingOmega && !loadingCustom && !loadingSibnet && !loadingFrembed && !loadingWiflix && !loadingVox) {
       console.log('?? Vérification popup pour source:', selectedSource);
 
       // NOUVEAU: Déclencher le popup pour TOUS les lecteurs dès qu'une source est sélectionnée
