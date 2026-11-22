@@ -3746,7 +3746,7 @@ const TVDetails: React.FC = () => {
             aria-label={tvShow.name}
             className="relative isolate -mx-4 -mt-6 mb-0 flex min-h-[76vh] w-[calc(100%+2rem)] items-end overflow-hidden border-0 bg-[#101014] bg-cover bg-center md:-mx-8 md:min-h-[80vh] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[82vh] lg:w-[calc(100%+8rem)]"
             style={{
-              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.93) 0%, rgba(0,0,0,0.75) 42%, rgba(0,0,0,0.12) 100%), linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.14) 72%), url(' + (backdropImage || mainPosterUrl) + ')',
+              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.46) 42%, rgba(0,0,0,0.06) 100%), linear-gradient(0deg, rgba(0,0,0,0.66) 0%, rgba(0,0,0,0.08) 72%), url(' + (backdropImage || mainPosterUrl) + ')',
               backgroundPosition: 'center 38%',
             }}
           >
@@ -3825,7 +3825,7 @@ const TVDetails: React.FC = () => {
                 </p>
               )}
             </div>
-            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/28 to-transparent" />
           </motion.section>
 
           {/* Colonne droite - Informations */}
