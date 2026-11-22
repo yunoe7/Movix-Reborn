@@ -2671,21 +2671,6 @@ const TVDetails: React.FC = () => {
     };
   }, [id, isAnime, loadAnimeData]);
 
-  useEffect(() => {
-    if (animeMode && animeData && Array.isArray(animeData.seasons)) {
-      // Les saisons annoncées sans lecteur restent visibles : on complète leur
-      // statut quand le serveur ne l'a pas encore envoyé.
-      const normalized = animeData.seasons.map((season: any) => (
-        season && (!Array.isArray(season.episodes) || season.episodes.length === 0)
-          ? { ...season, episodes: [], available: false, status: 'unavailable' }
-          : season
-      ));
-      if (normalized.some((season: any, index: number) => season !== animeData.seasons[index])) {
-        setAnimeData({ ...animeData, seasons: normalized });
-      }
-    }
-  }, [animeMode, animeData]);
-
   const _scrollToSeasons = () => {
     const seasonsSection = seasonsSectionRef.current;
     if (seasonsSection) {
@@ -4183,15 +4168,14 @@ const TVDetails: React.FC = () => {
                         {animeMode && animeData?.seasons ? (
                           /* Affichage des saisons pour les animes */
                           animeData.seasons
-                            .map((season: any, index: number) => ({ season, index }))
-                            // Regrouper les saisons sans épisodes à la fin pour que leurs
-                            // cartes compactes ne soient pas étirées par les affiches voisines.
-                            .sort((a, b) => {
-                              const aUnavailable = a.season?.available === false || a.season?.status === 'unavailable';
-                              const bUnavailable = b.season?.available === false || b.season?.status === 'unavailable';
-                              return Number(aUnavailable) - Number(bUnavailable);
-                            })
-                            .map(({ season, index }) => {
+                            // N'afficher que les saisons réellement disponibles.
+                            .filter((season: any) =>
+                              season?.available !== false &&
+                              season?.status !== 'unavailable' &&
+                              Array.isArray(season?.episodes) &&
+                              season.episodes.length > 0
+                            )
+                            .map((season: any, index: number) => {
                             const seasonNumber = Number(
                               season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)
                             );
@@ -4211,10 +4195,7 @@ const TVDetails: React.FC = () => {
                               tvShow?.poster_path,
                             );
                             const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${seasonNumber}`);
-                            const seasonUnavailable = season?.available === false || season?.status === 'unavailable';
-                            // Les saisons sans épisodes restent accessibles, mais ne chargent
-                            // pas une affiche géante inutile : leur carte est volontairement compacte.
-                            const imageUrl = !seasonUnavailable && detailsMediaSlot.width > 0
+                            const imageUrl = detailsMediaSlot.width > 0
                               ? getTmdbImageUrl(seasonImageSource, {
                                 kind: 'poster',
                                 quality: effectiveImageQuality,
@@ -4232,26 +4213,10 @@ const TVDetails: React.FC = () => {
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: seasonUnavailable ? 0 : 0.3, delay: seasonUnavailable ? 0 : index * 0.05 }}
-                                className={`anime-season-card group cursor-pointer rounded-lg overflow-hidden border-2 transition-[border-color,transform] duration-200 bg-gray-900 hover:-translate-y-[5px] ${seasonUnavailable ? 'min-h-[76px] self-start' : ''} ${selectedSeason === seasonNumber ? 'border-red-600' : seasonUnavailable ? 'border-amber-800/70 hover:border-amber-500' : 'border-gray-800 hover:border-red-500'}`}
+                                transition={{ duration: 0.3, delay: index * 0.05 }}
+                                className={`anime-season-card group cursor-pointer rounded-lg overflow-hidden border-2 transition-[border-color,transform] duration-200 bg-gray-900 hover:-translate-y-[5px] ${selectedSeason === seasonNumber ? 'border-red-600' : 'border-gray-800 hover:border-red-500'}`}
                                 onClick={() => handleSeasonChange(seasonNumber)}
                               >
-                                {seasonUnavailable ? (
-                                  <div className="flex min-h-[76px] items-center gap-3 px-3 py-3">
-                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-amber-900/30 text-amber-400">
-                                      <Archive className="h-5 w-5" />
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <h3 className="text-sm font-semibold leading-snug text-white">
-                                        {shouldHide('episodeNames') ? getMaskedContent(season.name, 'episodeNames') : season.name}
-                                      </h3>
-                                      <span className="mt-1 block text-xs text-amber-400">
-                                        {t('details.seasonUnavailableShort')}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ) : (
-                                <>
                                 <div className="relative pb-[150%] bg-gray-900">
                                   {!shouldHide('seasonImages') ? (
                                     <img
@@ -4286,27 +4251,19 @@ const TVDetails: React.FC = () => {
                             <span className="text-xs text-gray-400 ml-auto">{season.episodes.length} épisodes</span>
                           </div>
                         </div> */}
-                                  {selectedSeason === seasonNumber ? (
+                                  {selectedSeason === seasonNumber && (
                                     <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">{t('details.currentSeasonBadge')}</div>
-                                  ) : seasonUnavailable ? (
-                                    <div className="absolute top-2 right-2 bg-amber-700/90 text-white text-xs px-2 py-1 rounded-full">
-                                      {t('details.seasonUnavailableShort')}
-                                    </div>
-                                  ) : null}
+                                  )}
                                 </div>
                                 {/* Nom complet de la saison affiché en dessous pour les animes */}
                                 <div className="p-3 bg-gray-900">
                                   <h3 className="text-base font-bold text-white">
                                     {shouldHide('episodeNames') ? getMaskedContent(season.name, 'episodeNames') : season.name}
                                   </h3>
-                                  <span className={`text-xs mt-1 block ${seasonUnavailable ? 'text-amber-400' : 'text-gray-400'}`}>
-                                    {seasonUnavailable
-                                      ? t('details.seasonUnavailableShort')
-                                      : `${season.episodes.length} ${t('details.episodes')}`}
+                                  <span className="text-xs mt-1 block text-gray-400">
+                                    {season.episodes.length} {t('details.episodes')}
                                   </span>
                                 </div>
-                                </>
-                                )}
                               </motion.div>
                             );
                           })
