@@ -2478,9 +2478,12 @@ const TVDetails: React.FC = () => {
       .split(/[?#]/, 1)[0]
       .replace(/\/t\/p\/(?:w\d+|original)\//, '/t/p/{size}/');
 
-    const seasons = animeSeasons.map((season) => {
+    const seasons = animeSeasons.map((season, seasonIndex) => {
       if (!Array.isArray(season.episodes)) return season;
-      const seasonNumber = Number(season.number ?? season.season_number ?? season.seasonNumber);
+      const seasonNameNumber = /(?:season|saison)\s*(\d+)/i.exec(String((season as { name?: unknown }).name ?? ''))?.[1];
+      const seasonNumber = Number(
+        season.number ?? season.season_number ?? season.seasonNumber ?? seasonNameNumber ?? (seasonIndex + 1)
+      );
       if (!Number.isInteger(seasonNumber) || seasonNumber <= 0) return season;
 
       // Anime-Sama may repeat a single still_url for a whole run of episodes.
