@@ -936,7 +936,7 @@ const Movies: React.FC = () => {
       <style>{heroSliderStyles}</style>
 
       {/* Hero Section */}
-      <div className="relative w-full pt-16 md:pt-20 lg:pt-24">
+      <div className="relative w-full">
         {featuredMovies.length > 0 && (
           <HeroSlider
             items={featuredMovies as any}
