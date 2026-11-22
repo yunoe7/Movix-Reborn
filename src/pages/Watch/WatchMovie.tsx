@@ -176,7 +176,7 @@ interface NightflixSource {
   label?: string;
 }
 
-type PlayerSourceType = 'primary' | 'vostfr' | 'videasy' | 'vidsrccc' | 'vidsrcsu' | 'vidsrcwtf1' | 'vidsrcwtf5' | 'multi' | 'omega' | 'darkino' | 'mp4' | 'coflix' | 'frembed' | 'custom' | 'nexus_hls' | 'nexus_file' | 'wiflix' | 'j1f' | 'swiftflow' | 'swiftflux' | 'viper' | 'vidmoly' | 'dropload' | 'adfree' | 'bravo' | 'kisskh' | number;
+type PlayerSourceType = 'vidy' | 'primary' | 'vostfr' | 'videasy' | 'vidsrccc' | 'vidsrcsu' | 'vidsrcwtf1' | 'vidsrcwtf5' | 'multi' | 'omega' | 'darkino' | 'mp4' | 'coflix' | 'frembed' | 'custom' | 'nexus_hls' | 'nexus_file' | 'wiflix' | 'j1f' | 'swiftflow' | 'swiftflux' | 'viper' | 'vidmoly' | 'dropload' | 'adfree' | 'bravo' | 'kisskh' | number;
 
 function formatPremidSourceDetail(...parts: Array<string | null | undefined>) {
   const normalizedParts = parts
@@ -860,6 +860,15 @@ const WatchMovie: React.FC = () => {
       }
 
       // Vidy est le lecteur unique des Films : aucun ancien fournisseur n'est interrogé.
+      // Libérer les états des anciens fournisseurs pour ne pas laisser l'UI en chargement.
+      setLoadingDarkino(false);
+      setLoadingCoflix(false);
+      setLoadingOmega(false);
+      setLoadingFrembed(false);
+      setLoadingWiflix(false);
+      setLoadingViper(false);
+      setLoadingExtractions(false);
+      setSelectedSource('vidy');
       setIsLoading(false);
       return;
 
@@ -2340,6 +2349,10 @@ const WatchMovie: React.FC = () => {
 
         // Mapper les types de sources aux types de lecteurs pour le popup
         switch (selectedSource) {
+          case 'vidy':
+            // Vidy n'a pas de lecteur publicitaire dédié : réutiliser le flux générique.
+            playerType = 'adfree';
+            break;
           case 'nexus_hls':
           case 'nexus_file':
             playerType = 'nexus_' + selectedSource.split('_')[1];
