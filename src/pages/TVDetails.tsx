@@ -3082,10 +3082,10 @@ const TVDetails: React.FC = () => {
                   return (
                     <motion.div
                       key={`anime-${selectedSeason}-${ep.index}`}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1, transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 } }}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0, transition: { delay: Math.min(index * 0.025, 0.2), duration: 0.22 } }}
                       className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-red-500/70 ring-1 ring-red-500/25' : ''}`}
-                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                      whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
                       <div
@@ -3124,7 +3124,7 @@ const TVDetails: React.FC = () => {
                                 key={retryUrl}
                               />
                             ) : (
-                              <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                              <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
                               </div>
                             )}
@@ -3164,7 +3164,7 @@ const TVDetails: React.FC = () => {
                             )}
                           </div>
 
-                          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2 md:gap-5 md:p-4">
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-2 px-2 py-1 md:gap-4 md:px-3">
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
@@ -3188,7 +3188,7 @@ const TVDetails: React.FC = () => {
                                   {availableLanguages.map((language: string, i: number) => (
                                     <span
                                       key={`lang-badge-${language}-${i}`}
-                                      className={`text-white text-xs px-2 py-1 rounded ${language === 'vostfr' ? 'bg-blue-600/70' :
+                                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 ${language === 'vostfr' ? 'bg-blue-600/70' :
                                         language === 'vf' ? 'bg-green-600/70' :
                                           'bg-purple-600/70'
                                         }`}
@@ -3207,7 +3207,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatchlist', !watchStatus.episodeWatchlist[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`p-2 rounded ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
                                 title={t('details.addToWatchlistTitle')}
                               >
                                 <List className="w-4 h-4" />
@@ -3219,7 +3219,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatched', !watchStatus.episodeWatched[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`p-2 rounded ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
                                 title={t('details.markAsWatched')}
                               >
                                 <Check className="w-4 h-4" />
