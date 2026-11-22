@@ -3011,16 +3011,18 @@ const TVDetails: React.FC = () => {
         if (episode) {
           setSelectedEpisode(episode.index);
           setSelectedAnimeEpisode(episode);
-
-          const hasVf = episode.streaming_links.some((link: any) => link.language === 'vf');
-          const hasVostfr = episode.streaming_links.some((link: any) => link.language === 'vostfr');
+          const episodeLinks = Array.isArray(episode.streaming_links) ? episode.streaming_links : [];
+          const hasVf = episodeLinks.some((link: any) => link.language === 'vf');
+          const hasVostfr = episodeLinks.some((link: any) => link.language === 'vostfr');
 
           if (hasVf) {
             setSelectedLanguage('vf');
           } else if (hasVostfr) {
             setSelectedLanguage('vostfr');
+          } else {
+            setSelectedLanguage(episodeLinks[0]?.language || null);
           }
-          setSelectedPlayer('0');
+          setSelectedPlayer(episodeLinks.length > 0 ? '0' : null);
 
           if (cinemaMode && id && selectedSeason) {
             navigate(`/watch/anime/${encodeId(id)}/season/${selectedSeason}/episode/${episode.index}`);
@@ -3179,7 +3181,9 @@ const TVDetails: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
           >
-            <div className="grid grid-cols-1 gap-3 mb-6">
+            <div className={isAnime && animeEpisodeView === 'grid'
+              ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
+              : "mb-6 grid grid-cols-1 gap-3"}>
               {visibleEpisodes.map((ep: any, index: number) => {
                 // ... grid item rendering ...
                 if (isAnime) {
@@ -3334,20 +3338,9 @@ const TVDetails: React.FC = () => {
                                 <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {episodeTitle}
                                 </h4>
-                                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
-                                  <div className="flex items-center gap-1.5">
-                                    <Tv className="h-3.5 w-3.5 text-red-400 opacity-70" />
-                                    <span>{t('details.episode')} {episodeNumber}</span>
-                                  </div>
+                                <div className="mt-1 text-sm text-white/55">
+                                  {tvShow?.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} min` : ''}
                                 </div>
-                                {ep.overview && (
-                                  <EpisodeOverview
-                                    text={shouldHide('episodeOverviews') ? getMaskedContent(ep.overview, 'episodeOverviews') : ep.overview}
-                                    expanded={!!expandedCards[episodeKey]}
-                                    onToggle={toggleCardExpansion(episodeKey)}
-                                    t={t}
-                                  />
-                                )}
 
                               </div>
                             </div>
@@ -3359,7 +3352,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatchlist', !watchStatus.episodeWatchlist[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-400' : 'text-white/45'}`}
                                 title={t('details.addToWatchlistTitle')}
                               >
                                 <List className="w-4 h-4" />
@@ -3371,7 +3364,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatched', !watchStatus.episodeWatched[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${isEpisodeWatched ? 'text-red-400' : 'text-white/45'}`}
                                 title={t('details.markAsWatched')}
                               >
                                 <Check className="w-4 h-4" />
@@ -3387,17 +3380,7 @@ const TVDetails: React.FC = () => {
                                   {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
                                 </span>
                               )}
-                              {seenOnServer && (
-                                <span
-                                  role="img"
-                                  aria-label={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
-                                  title={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
-                                  className="inline-flex h-8 items-center gap-1 self-center rounded border border-dashed border-white/25 px-1.5 text-[11px] text-white/60"
-                                >
-                                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                                  {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
-                                </span>
-                              )}
+
                             </div>
                             <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
                               {availableLanguages.map((language: string, languageIndex: number) => (
