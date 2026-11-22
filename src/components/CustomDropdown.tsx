@@ -44,6 +44,10 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Les listes d'épisodes peuvent contenir plusieurs centaines d'entrées :
   // ne monter que les lignes visibles dans le menu.
   const optionVirtualizer = useVirtualizer({
@@ -57,10 +61,6 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
 
   const selectedOption = options.find(option => option.value === value);
-
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   // Calculate fixed position for the portal menu
   const updatePosition = useCallback(() => {
