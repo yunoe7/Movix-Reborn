@@ -6,6 +6,7 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios';
 import HLSPlayer from '../../components/HLSPlayer';
+import VidyPlayer from '../../components/VidyPlayer';
 import PlayerOverlayPortal from '../../components/PlayerOverlayPortal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
@@ -851,6 +852,10 @@ const WatchMovie: React.FC = () => {
       } catch {
         // Un historique invalide ou indisponible ne doit pas bloquer la lecture.
       }
+
+      // Vidy est le lecteur unique des Films : aucun ancien fournisseur n'est interrogé.
+      setIsLoading(false);
+      return;
 
       // Initialize loading states for individual sources
       setLoadingDarkino(true);
@@ -2516,6 +2521,10 @@ const WatchMovie: React.FC = () => {
         return undefined;
     }
   })();
+
+  if (!isLoading && id) {
+    return <VidyPlayer kind="movie" tmdbId={id} title={movieTitle} posterPath={playerPoster} />;
+  }
 
   return (
     <div style={{ minHeight: 'calc(var(--vh, 1vh) * 100)', overflow: 'hidden' }} className="w-full bg-black overflow-hidden fixed inset-0">
