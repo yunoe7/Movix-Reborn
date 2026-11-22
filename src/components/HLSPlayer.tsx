@@ -3324,7 +3324,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       url: '#',
     });
 
-    // NOTE: FStream submenu is handled directly in the UI section, not here to avoid duplication
 
     // Définir les lecteurs VO/VOSTFR à conserver (enlever 6, 4 et 2)
     if (showVostfrMenu) {
