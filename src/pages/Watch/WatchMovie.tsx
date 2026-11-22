@@ -717,7 +717,7 @@ const WatchMovie: React.FC = () => {
               if (found?.certification) cert = found.certification;
             }
           }
-          if (cert && !isContentAllowed(cert, profileAge)) {
+          if (!isContentAllowed(cert, profileAge)) {
             setContentCert(cert);
             setIsBlocked(true);
             setIsLoading(false);
