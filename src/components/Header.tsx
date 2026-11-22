@@ -1,3 +1,4 @@
+import { MovixMark } from './brand/MovixMark';
 import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { useLightMode } from '@/context/LightModeContext';
@@ -485,7 +486,7 @@ const Header: React.FC = () => {
               >
                 {/* Logo long [Movix] : rouge fixe hors palette, lettres claires. Le thème
                     Halloween lui ajoute une lueur et une chauve-souris. */}
-                <span data-movix-logo aria-label="Movix" className="inline-flex items-center justify-center select-none text-[42px] font-black leading-none tracking-[-0.09em] text-[#e50914] drop-shadow-[0_2px_14px_rgba(229,9,20,0.28)]">M</span>
+                <span data-movix-logo className="inline-flex h-10 w-[58px] items-center justify-center drop-shadow-[0_2px_14px_rgba(229,9,20,0.24)] sm:h-11 sm:w-[64px]"><MovixMark className="h-full w-full" /></span>
               </Link>
 
               {/* Canaux officiels : un petit menu Matrix. */}
