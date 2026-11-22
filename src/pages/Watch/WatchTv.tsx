@@ -2292,7 +2292,20 @@ const WatchTv: React.FC = () => {
   }
 
   if (!isLoading && id) {
-    return <VidyPlayer kind="tv" tmdbId={id} season={seasonNumber} episode={episodeNumber} title={showTitle} posterPath={playerPoster} />;
+    return (
+      <div className="fixed inset-0 bg-black">
+        <VidyPlayer kind="tv" tmdbId={id} season={seasonNumber} episode={episodeNumber} title={showTitle} posterPath={playerPoster} />
+        {/* click-anywhere mode preloads Vidy behind the ad click-catcher */}
+        {showAdFreePopup && adPopupTriggered && !adPopupBypass && (
+          <AdFreePlayerAds
+            onClose={handlePopupClose}
+            onAccept={handlePopupAccept}
+            adType={adType}
+            onAdClick={() => setHasClickedAd(true)}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
