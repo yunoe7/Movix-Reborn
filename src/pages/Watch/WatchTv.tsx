@@ -780,6 +780,31 @@ const WatchTv: React.FC = () => {
   // Ajout de l'état pour savoir si l'utilisateur a cliqué sur la pub
   const [hasClickedAd, setHasClickedAd] = useState(false);
 
+  // React Router can reuse this page when changing shows or episodes. Reset
+  // the page-level ad gate and source selection before the new metadata fetch.
+  useEffect(() => {
+    setAdPopupTriggered(false);
+    setAdPopupBypass(false);
+    setHasClickedAd(false);
+    setSelectedSource(null);
+    setIsLoading(true);
+    setLoadingError(false);
+    setIsBlocked(false);
+    setContentCert('');
+    setDarkinoSources([]);
+    setMp4Sources([]);
+    setWiflixSources([]);
+    setJ1fSources([]);
+    setSwiftflowSources([]);
+    setViperSources([]);
+    setVoxSources([]);
+    setCoflixData(null);
+    setOmegaData(null);
+    setSibnetUrl(null);
+    setAdFreeM3u8Url(null);
+    setEmbedUrl(null);
+  }, [id, seasonNumber, episodeNumber]);
+
   // Movix Wrapped 2026 - Track TV viewing time
   useWrappedTracker({
     mode: 'viewing',
