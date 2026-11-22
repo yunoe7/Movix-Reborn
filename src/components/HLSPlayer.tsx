@@ -266,7 +266,6 @@ function getPauseGrayscaleEnabled(): boolean {
 // Doit rester en phase avec `SOURCE_MAIN_TO_TOP_LEVEL` dans HLSPlayerSettingsPanel.tsx.
 const SOURCE_MAIN_TO_TOP_LEVEL: Record<string, TopLevelSourceId> = {
   darkino_main: 'darkino',
-  fstream_main: 'fstream',
   wiflix_main: 'wiflix',
   j1f_main: 'j1f',
   swiftflow_main: 'swiftflow',
@@ -1011,7 +1010,6 @@ interface HLSPlayerProps {
   customSources?: string[];
   omegaSources?: any[];
   coflixSources?: any[];
-  fstreamSources?: { url: string; label: string; category: string }[];
   wiflixSources?: { url: string; label: string; category: string }[];
   j1fSources?: { url: string; label: string; category: string }[];
   swiftflowSources?: { url: string; label: string; category: string }[];
@@ -1272,7 +1270,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   customSources = [],
   omegaSources = [],
   coflixSources = [],
-  fstreamSources = [],
   wiflixSources = [],
   j1fSources = [],
   swiftflowSources = [],
@@ -2101,7 +2098,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   const [showOmegaMenu, setShowOmegaMenu] = useState(false);
   const [showCoflixMenu, setShowCoflixMenu] = useState(false);
   const [showNexusMenu, setShowNexusMenu] = useState(false);
-  const [showFstreamMenu, setShowFstreamMenu] = useState(false);
   const [showWiflixMenu, setShowWiflixMenu] = useState(false);
   const [showJ1fMenu, setShowJ1fMenu] = useState(false);
   const [showSwiftflowMenu, setShowSwiftflowMenu] = useState(false);
@@ -3068,7 +3064,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       customSources: customSources?.length || 0,
       omegaSources: omegaSources?.length || 0,
       coflixSources: coflixSources?.length || 0,
-      fstreamSources: fstreamSources?.length || 0,
       kisskhSources: kisskhSources?.length || 0,
       loadingKisskh,
       onlyQualityMenu
@@ -3247,19 +3242,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       });
     }
 
-    // Add FStream sources
-    if (fstreamSources && fstreamSources.length > 0) {
-      console.log('✅ [HLSPlayer] Adding FStream sources to embedSources:', fstreamSources.length);
-      embedSources.push({
-        type: 'fstream_main',
-        id: 'fstream_main',
-        label: t('watch.fstreamPlayers', { count: fstreamSources.length }),
-        url: '#',
-      });
-    } else {
-      console.log('❌ [HLSPlayer] No FStream sources available:', fstreamSources);
-    }
-
     // Add Wiflix sources
     if (wiflixSources && wiflixSources.length > 0) {
       console.log('✅ [HLSPlayer] Adding Wiflix/Lynx sources to embedSources:', wiflixSources.length);
@@ -3342,7 +3324,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       url: '#',
     });
 
-    // NOTE: FStream submenu is handled directly in the UI section, not here to avoid duplication
 
     // Définir les lecteurs VO/VOSTFR à conserver (enlever 6, 4 et 2)
     if (showVostfrMenu) {
@@ -3424,7 +3405,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     customSources?.length,
     omegaSources?.length,
     coflixSources?.length,
-    fstreamSources?.length,
     wiflixSources?.length,
     j1fSources?.length,
     swiftflowSources?.length,
@@ -3435,7 +3415,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     showOmegaMenu,
     showCoflixMenu,
     showNexusMenu,
-    showFstreamMenu,
     showWiflixMenu,
     showJ1fMenu,
     showSwiftflowMenu,
@@ -3479,13 +3458,12 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   // Fonction pour gérer le changement de source
   const handleSourceChange = (sourceType: string, sourceId: string, sourceUrl: string) => {
     // --- Dropdown Toggle Handling (Doesn't close settings) ---
-    if (sourceType === 'darkino_main' || sourceType === 'omega_main' || sourceType === 'multi_main' || sourceType === 'vostfr_main' || sourceType === 'nexus_main' || sourceType === 'fstream_main' || sourceType === 'wiflix_main' || sourceType === 'j1f_main' || sourceType === 'swiftflow_main' || sourceType === 'viper_main' || sourceType === 'vox_main' || sourceType === 'bravo_main') {
+    if (sourceType === 'darkino_main' || sourceType === 'omega_main' || sourceType === 'multi_main' || sourceType === 'vostfr_main' || sourceType === 'nexus_main' || sourceType === 'wiflix_main' || sourceType === 'j1f_main' || sourceType === 'swiftflow_main' || sourceType === 'viper_main' || sourceType === 'vox_main' || sourceType === 'bravo_main') {
       setShowDarkinoMenu(sourceType === 'darkino_main' ? !showDarkinoMenu : false);
       setShowOmegaMenu(sourceType === 'omega_main' ? !showOmegaMenu : false);
       setShowCoflixMenu(sourceType === 'multi_main' ? !showCoflixMenu : false);
       setShowVostfrMenu(sourceType === 'vostfr_main' ? !showVostfrMenu : false);
       setShowNexusMenu(sourceType === 'nexus_main' ? !showNexusMenu : false);
-      setShowFstreamMenu(sourceType === 'fstream_main' ? !showFstreamMenu : false);
       setShowWiflixMenu(sourceType === 'wiflix_main' ? !showWiflixMenu : false);
       setShowJ1fMenu(sourceType === 'j1f_main' ? !showJ1fMenu : false);
       setShowSwiftflowMenu(sourceType === 'swiftflow_main' ? !showSwiftflowMenu : false);
@@ -3524,11 +3502,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     } else if (sourceType === 'coflix') {
       const index = parseInt(sourceId.split('_')[1], 10);
       if (coflixSources && coflixSources[index]) targetUrl = getCoflixPreferredUrl(coflixSources[index]);
-    } else if (sourceType === 'fstream') {
-      const index = parseInt(sourceId.split('_')[1], 10);
-      if (fstreamSources && fstreamSources[index]) {
-        targetUrl = fstreamSources[index].url || '';
-      }
     } else if (sourceType === 'wiflix') {
       const index = parseInt(sourceId.split('_')[1], 10);
       if (wiflixSources && wiflixSources[index]) {
@@ -3593,7 +3566,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     }, 500);
 
     // Close settings panel for embed sources (keep open for HLS sources to allow quality selection)
-    const embedTypes = ['frembed', 'custom', 'omega', 'coflix', 'vostfr', 'adfree', 'fstream', 'wiflix', 'j1f', 'swiftflow', 'viper', 'vox'];
+    const embedTypes = ['frembed', 'custom', 'omega', 'coflix', 'vostfr', 'adfree', 'wiflix', 'j1f', 'swiftflow', 'viper', 'vox'];
     if (embedTypes.includes(sourceType)) {
       // For embed sources, always close settings
       setShowSettings(false);
@@ -10206,11 +10179,10 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
                                 {group.type === 'hls' && (source.mediaType === 'mp4' || source.type === 'mp4' || source.type === 'm3u8') && renderSourceQualityMeta(source.url, isActive, source.quality, source.label)}
                               </div>
                               <div className="ml-3 flex items-center gap-2">
-                                {(source.type === 'darkino_main' || source.type === 'omega_main' || source.type === 'multi_main' || source.type === 'fstream_main' || source.type === 'wiflix_main' || source.type === 'j1f_main' || source.type === 'swiftflow_main' || source.type === 'nexus_main' || source.type === 'bravo_main' || source.type === 'viper_main' || source.type === 'vox_main') && (
+                                {(source.type === 'darkino_main' || source.type === 'omega_main' || source.type === 'multi_main' || source.type === 'wiflix_main' || source.type === 'j1f_main' || source.type === 'swiftflow_main' || source.type === 'nexus_main' || source.type === 'bravo_main' || source.type === 'viper_main' || source.type === 'vox_main') && (
                                   <ChevronRight className={`w-4 h-4 transition-transform ${(source.type === 'darkino_main' && showDarkinoMenu) ||
                                     (source.type === 'omega_main' && showOmegaMenu) ||
                                     (source.type === 'multi_main' && showCoflixMenu) ||
-                                    (source.type === 'fstream_main' && showFstreamMenu) ||
                                     (source.type === 'wiflix_main' && showWiflixMenu) ||
                                     (source.type === 'j1f_main' && showJ1fMenu) ||
                                     (source.type === 'swiftflow_main' && showSwiftflowMenu) ||
@@ -10557,86 +10529,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
                                       </motion.button>
                                     );
                                   })}
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          )}
-                          {/* Ajout du menu déroulant FStream avec sous-catégories par langue */}
-                          {source.type === 'fstream_main' && (
-                            console.log('🔍 [HLSPlayer] Rendering FStream menu, showFstreamMenu:', showFstreamMenu, 'fstreamSources:', fstreamSources?.length),
-                            <AnimatePresence>
-                              {showFstreamMenu && (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.95, transformOrigin: "top" }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0.95 }}
-                                  transition={{ duration: 0.2, ease: "easeOut" }}
-                                  className="ml-4 pl-2 border-l-2 border-gray-700 mb-2"
-                                >
-                                  {fstreamSources && fstreamSources.length > 0 && (() => {
-                                    // Organiser les sources par catégorie
-                                    const sourcesByCategory = fstreamSources.reduce((acc, source) => {
-                                      const category = source.category || 'Default';
-                                      if (!acc[category]) acc[category] = [];
-                                      acc[category].push(source);
-                                      return acc;
-                                    }, {} as Record<string, typeof fstreamSources>);
-
-                                    // Définir l'ordre et les emojis des catégories
-                                    const categoryOrder = [
-                                      { key: 'VFQ', label: t('watch.frenchQuality'), flagCode: 'FR' },
-                                      { key: 'VFF', label: t('watch.frenchFilm'), flagCode: 'FR' },
-                                      { key: 'VF', label: t('watch.french'), flagCode: 'FR' },
-                                      { key: 'VOSTFR', label: t('watch.voSubtitledFr'), flagCode: 'GB' },
-                                      { key: 'Default', label: t('watch.unknownLang'), emoji: '🌍' }
-                                    ];
-
-                                    return categoryOrder.map((cat) => {
-                                      const categorySources = sourcesByCategory[cat.key];
-                                      if (!categorySources || categorySources.length === 0) return null;
-
-                                      return (
-                                        <div key={`fstream_category_${cat.key}`} className="mb-3">
-                                          {/* En-tête de catégorie */}
-                                          <div className="mb-2 flex items-center gap-2 px-1">
-                                            <span className="text-lg">{'flagCode' in cat && cat.flagCode ? <ReactCountryFlag countryCode={cat.flagCode as string} svg style={{ width: '1.2em', height: '1.2em', borderRadius: '2px' }} /> : cat.emoji}</span>
-                                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                                              {cat.label} ({categorySources.length})
-                                            </span>
-                                          </div>
-                                          {/* Sources de la catégorie */}
-                                          {categorySources.map((fstreamSource, index) => {
-                                            const globalIndex = fstreamSources.findIndex(s => s.url === fstreamSource.url);
-                                            const isFstreamActive = onlyQualityMenu && embedType === 'fstream' && (embedUrl || '') === fstreamSource.url;
-                                            const fstreamHosterId = __detectHosterFromUrl(fstreamSource.url, fstreamSource.label);
-                                            return (
-                                              <div key={`fstream_${cat.key}_${index}`} className="mb-2 mr-2 inline-flex max-w-full items-center gap-2">
-                                                <motion.button
-                                                  initial={{ opacity: 0, x: -20 }}
-                                                  animate={{ opacity: 1, x: 0 }}
-                                                  transition={{ duration: 0.2, delay: index * 0.03 }}
-                                                  onClick={() => handleSourceChange('fstream', `fstream_${globalIndex}`, fstreamSource.url)}
-                                                  className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isFstreamActive ? 'border-emerald-400/70 bg-emerald-400/10 text-white shadow-[0_0_18px_rgba(52,211,153,0.10)]' : ''}`}
-                                                >
-                                                  <span>
-                                                    {fstreamSource.label}
-                                                    {fstreamHosterId && fstreamHosterId !== 'unknown' && __pinnedHosterId === fstreamHosterId && (
-                                                      <span className="ml-2 text-xs text-amber-400 font-semibold">#1</span>
-                                                    )}
-                                                  </span>
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="text-xs text-gray-500">{fstreamSource.category}</span>
-                                                    {isFstreamActive && <span className="text-xs px-2 py-1 bg-red-600 text-white rounded-full">{t('watch.inProgress')}</span>}
-                                                  </div>
-                                                </motion.button>
-                                                {__renderHosterPin(fstreamHosterId)}
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      );
-                                    }).filter(Boolean);
-                                  })()}
                                 </motion.div>
                               )}
                             </AnimatePresence>
@@ -13182,7 +13074,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
             showDarkinoMenu,
             showOmegaMenu,
             showCoflixMenu,
-            showFstreamMenu,
             showWiflixMenu,
             showJ1fMenu,
             showSwiftflowMenu,
@@ -13193,7 +13084,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
             showVostfrMenu,
             omegaSources,
             coflixSources,
-            fstreamSources,
             wiflixSources,
             j1fSources,
             swiftflowSources,

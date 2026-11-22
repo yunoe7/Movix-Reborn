@@ -91,29 +91,6 @@ const darkinoProxyAgentCache = new LruMap({
   onEvict: destroyHttpAgentLike,
 });
 const proxyRotationState = new Map();
-const fstreamAgentPool = createProxyAgentPool({
-  maxEntries: 64,
-  createAgent(proxyUrl, keepAlive) {
-    // Groupe stable (fstreamProxyPicker) : ~3 req/s par proxy et par worker,
-    // 4 sockets libres absorbent les rafales sans fermer de connexion.
-    const options = { keepAlive, maxSockets: 16, maxTotalSockets: 16, maxFreeSockets: 4, timeout: 15000 };
-    const socks = proxyUrl.startsWith('socks');
-    const httpAgent = socks ? new SocksProxyAgent(proxyUrl, options) : new HttpProxyAgent(proxyUrl, options);
-    const httpsAgent = socks ? httpAgent : new HttpsProxyAgent(proxyUrl, options);
-    // https-proxy-agent remplace this.options : sans ce rappel, une socket libre
-    // vers French-Stream (HTTPS) ne serait jamais fermée pour inactivité.
-    if (httpsAgent.options && httpsAgent.options.timeout === undefined) httpsAgent.options.timeout = options.timeout;
-    return {
-      httpAgent, httpsAgent,
-      destroy() { httpAgent.destroy(); if (httpsAgent !== httpAgent) httpsAgent.destroy(); },
-    };
-  },
-});
-const fstreamAgentSweep = setInterval(() => {
-  fstreamAgentPool.sweep();
-}, 15000);
-fstreamAgentSweep.unref();
-
 // Initialize global agent keep-alive with socket limits
 http.globalAgent.keepAlive = true;
 http.globalAgent.maxSockets = 128;
@@ -139,7 +116,6 @@ const COFLIX_ORIGIN = (
 ).replace(/\/$/, "");
 const ENABLE_FRENCH_STREAM_PROXY = true; // Active/d\u00e9sactive le proxy pour French-Stream
 const ENABLE_LECTEURVIDEO_PROXY = true; // Active/d\u00e9sactive le proxy pour LecteurVideo
-const ENABLE_FSTREAM_PROXY = true; // Active/d\u00e9sactive le proxy pour FStream
 const ENABLE_ANIME_PROXY = true; // Active/d\u00e9sactive le proxy pour AnimeSama (CycleTLS + SOCKS5)
 const ENABLE_WIFLIX_PROXY = true; // Active/d\u00e9sactive le proxy pour Wiflix
 const WIFLIX_PROXY_BLOCK_WEBHOOK_ENABLED = !['0', 'false', 'no', 'off'].includes(
@@ -633,8 +609,6 @@ async function getCycleTLS() {
 
 // Graceful shutdown: kill CycleTLS Go subprocess
 async function shutdownCycleTLS() {
-  clearInterval(fstreamAgentSweep);
-  fstreamAgentPool.clear();
   if (cycleTLSInstance) {
     try {
       await cycleTLSInstance.exit();
@@ -2800,32 +2774,6 @@ function pickRandomProxy() {
   return PROXIES[idx];
 }
 
-// Bail FStream : l'éviction attend la fin des appels utilisant encore cet agent.
-function acquireFStreamProxy(entry) {
-  const proxy = entry.proxy;
-  const type = normalizeProxyType(proxy.type, entry.type === 'socks5' ? 'socks5' : 'http');
-  const protocol = type === 'socks5' && entry.type === 'socks5' ? 'socks5h' : type;
-  const auth = proxy.auth ? `${proxy.auth}@` : '';
-  const lease = fstreamAgentPool.acquire(`${protocol}://${auth}${proxy.host}:${proxy.port}`);
-  return { ...lease.agent, release: lease.release };
-}
-
-async function withFStreamProxy(entry, request) {
-  const lease = acquireFStreamProxy(entry);
-  let failed = false;
-  try { return await request(lease); }
-  catch (error) {
-    // Une réponse HTTP (404, 429…) laisse la connexion saine : l'agent garde ses
-    // sockets keep-alive. Seul un échec de transport le retire.
-    failed = !error?.response;
-    // Groupe stable de fstreamProxyPicker : un proxy fautif en sort.
-    try { entry.onFailure?.(error); } catch (_) { /* le suivi ne masque jamais l'erreur */ }
-    throw error;
-  }
-  finally { lease.release(failed); }
-}
-
-// Fonction utilitaire pour cr\u00e9er un agent proxy SOCKS5 (avec cache)
 function getProxyAgent(proxy) {
   if (!proxy) return null;
   const auth = proxy.auth ? `${proxy.auth}@` : "";
@@ -2889,7 +2837,6 @@ module.exports = {
   ENABLE_COFLIX_PROXY,
   ENABLE_FRENCH_STREAM_PROXY,
   ENABLE_LECTEURVIDEO_PROXY,
-  ENABLE_FSTREAM_PROXY,
   ENABLE_ANIME_PROXY,
   ENABLE_WIFLIX_PROXY,
   darkiworld_premium,
@@ -2918,8 +2865,6 @@ module.exports = {
   makeLecteurVideoRequest,
   makeAnimeSamaRequest,
   makeCinestreamRequest,
-  acquireFStreamProxy,
-  withFStreamProxy,
   make1j1fRequest,
   makeCpasmalRequest,
 

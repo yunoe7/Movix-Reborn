@@ -3,7 +3,7 @@
  * Extracted from server.js — wraps proxy logic with site-specific headers and cookies.
  *
  * Some helpers depend on axios instances / session state that live in route modules
- * (e.g. axiosFStream, axiosAnimeSama, axiosCoflix, cookieJar).
+ * (e.g. axiosAnimeSama, axiosCoflix, cookieJar).
  * Call `configure(deps)` once at startup to inject those dependencies.
  */
 
@@ -12,22 +12,14 @@ const fsp = require('fs').promises;
 const path = require('path');
 const writeFileAtomic = require('write-file-atomic');
 const { isHydrackerBlackout, buildBlackoutError } = require('./hydrackerBlackout');
-const { canonicalFStreamUrl } = require('../config/fstream');
-const { isFStreamSocketReset } = require('./fstreamProxyPicker');
-const { adoptFStreamChallengeCookie } = require('./fstreamChallenge');
 
 const {
   ENABLE_DARKINO_PROXY,
   ENABLE_COFLIX_PROXY,
   ENABLE_FRENCH_STREAM_PROXY,
   ENABLE_LECTEURVIDEO_PROXY,
-  ENABLE_FSTREAM_PROXY,
   ENABLE_ANIME_PROXY,
-  ENABLE_WIFLIX_PROXY,
   DARKINO_PROXIES,
-  PROXIES,
-  HTTP_PROXIES,
-  withFStreamProxy,
   getDarkinoHttpProxyAgent,
   makeCoflixRequest,
   makeLecteurVideoRequest,
@@ -42,17 +34,8 @@ let deps = {
   cookieJar: null,
   axiosCoflix: null,
   axiosAnimeSama: null,
-  axiosFStream: null,
   COFLIX_BASE_URL: '',
   ANIME_SAMA_URL: '',
-  FSTREAM_BASE_URL: '',
-  ensureFStreamSession: async () => {},
-  fstreamCookies: {},
-  // Groupe stable de proxys FStream (routes/fstream.js) ; sans lui, un proxy au hasard.
-  fstreamProxyPicker: null,
-  fstreamRequestCounter: 0,
-  getFstreamRequestCounter: () => 0,
-  incrementFstreamRequestCounter: () => {}
 };
 
 const WIFLIX_BASE_URL = process.env.WIFLIX_BASE_URL || 'https://flemmix.land';
@@ -588,142 +571,6 @@ async function axiosLecteurVideoRequest(config) {
   }
 }
 
-// Fonction utilitaire pour requ\u00eates FStream avec proxy (retry sur 429, pool SOCKS5 + Darkino)
-function withOptionalFStreamCookies(headers = {}) {
-  if (headers['Cookie'] || headers['cookie']) {
-    return headers;
-  }
-
-  const cookieHeader = Object.entries(deps.fstreamCookies)
-    .filter(([, v]) => v !== '' && v != null)
-    .map(([k, v]) => `${k}=${v}`)
-    .join('; ');
-
-  if (!cookieHeader) {
-    return headers;
-  }
-
-  return {
-    ...headers,
-    Cookie: cookieHeader
-  };
-}
-
-// Page anti-robot avec une nouvelle valeur de fsschal : la requête repart une
-// fois, et withOptionalFStreamCookies y met le cookie à jour.
-async function sendPastFStreamChallenge(send) {
-  const response = await send();
-  return adoptFStreamChallengeCookie(deps.fstreamCookies, response) ? send() : response;
-}
-
-// Repli sans groupe configuré : un proxy au hasard, sans recopier tout le pool.
-function randomFStreamProxyEntry() {
-  const socks = PROXIES?.length || 0;
-  const http = DARKINO_PROXIES?.length || 0;
-  if (socks + http === 0) return null;
-  const index = Math.floor(Math.random() * (socks + http));
-  return index < socks
-    ? { proxy: PROXIES[index], type: 'socks5' }
-    : { proxy: DARKINO_PROXIES[index - socks], type: 'darkino' };
-}
-
-// Seule la recherche est limitée par IP chez French-Stream (voir fstreamProxyPicker).
-function isFStreamSearchUrl(url) {
-  return /\/engine\/ajax\/search\.php(?:[?#]|$)/.test(String(url || ''));
-}
-
-function pickFStreamProxyEntry(config) {
-  const picker = deps.fstreamProxyPicker;
-  if (!picker) return randomFStreamProxyEntry();
-  return isFStreamSearchUrl(config.url) ? picker.nextSearch() : picker.next();
-}
-
-async function axiosFStreamRequest(config) {
-  // Éviter le 301 qui transforme le POST de recherche en GET sans son formulaire.
-  config = { ...config, url: canonicalFStreamUrl(config.url) };
-  if (config.baseURL) config.baseURL = canonicalFStreamUrl(config.baseURL);
-  if (config.headers) {
-    config.headers = Object.fromEntries(Object.entries(config.headers).map(([name, value]) => {
-      const canonical = /^(origin|referer)$/i.test(name) ? canonicalFStreamUrl(value) : value;
-      // Origin est une origine seule, sans le slash de chemin d'un Referer.
-      return [name, /^origin$/i.test(name) && canonical !== value ? new URL(canonical).origin : canonical];
-    }));
-  }
-  const urlStr = config.url || '';
-  const fstreamBaseUrl = deps.FSTREAM_BASE_URL || '';
-  const isFStream = urlStr.includes(fstreamBaseUrl.replace('https://', '').replace('http://', '')) ||
-    (config.baseURL && config.baseURL.includes(fstreamBaseUrl.replace('https://', '').replace('http://', '')));
-
-  if (!ENABLE_FSTREAM_PROXY || !isFStream) {
-    await deps.ensureFStreamSession();
-    const existingHeaders = config.headers || {};
-    const response = await sendPastFStreamChallenge(() => deps.axiosFStream({
-      ...config,
-      timeout: 8000,
-      headers: withOptionalFStreamCookies(existingHeaders)
-    }));
-    deps.incrementFstreamRequestCounter();
-    return response;
-  }
-
-  // Pool SOCKS5 + Darkino HTTP : un proxy du groupe stable, dont l'agent
-  // keep-alive réutilise ses connexions (voir fstreamProxyPicker).
-  const entry = pickFStreamProxyEntry(config);
-
-  if (!entry) {
-    await deps.ensureFStreamSession();
-    const existingHeaders = config.headers || {};
-    const response = await sendPastFStreamChallenge(() => deps.axiosFStream({
-      ...config,
-      timeout: 8000,
-      headers: withOptionalFStreamCookies(existingHeaders)
-    }));
-    deps.incrementFstreamRequestCounter();
-    return response;
-  }
-
-  const proxyLabel = `${entry.type}:${entry.proxy.host}:${entry.proxy.port}`;
-
-  try {
-    await deps.ensureFStreamSession();
-    const existingHeaders = config.headers || {};
-    const send = () => withFStreamProxy(entry, (agents) => deps.axiosFStream({
-      ...config,
-      timeout: 8000,
-      decompress: true,
-      httpAgent: agents.httpAgent,
-      httpsAgent: agents.httpsAgent,
-      proxy: false,
-      headers: withOptionalFStreamCookies(existingHeaders)
-    }));
-    let response;
-    try {
-      response = await sendPastFStreamChallenge(send);
-    } catch (error) {
-      // Socket keep-alive fermée juste avant d'être reprise : l'agent fautif est
-      // retiré, un seul nouvel essai part sur une connexion neuve.
-      if (!isFStreamSocketReset(error)) throw error;
-      response = await sendPastFStreamChallenge(send);
-    }
-    deps.incrementFstreamRequestCounter();
-    return response;
-  } catch (error) {
-    const status = error.response?.status;
-    const method = (config.method || 'GET').toUpperCase();
-    const rawUrl = config.url || '';
-    const isAbs = /^https?:\/\//i.test(rawUrl);
-    const fullUrl = isAbs
-      ? rawUrl
-      : (config.baseURL ? `${config.baseURL.replace(/\/$/, '')}/${rawUrl.replace(/^\//, '')}` : rawUrl);
-    let qs = '';
-    if (config.params && typeof config.params === 'object') {
-      try { qs = '?' + new URLSearchParams(config.params).toString(); } catch (_) {}
-    }
-    console.error(`[FSTREAM REQUEST] Erreur ${status || error.code || 'unknown'} avec proxy ${proxyLabel}: ${error.message} | ${method} ${fullUrl}${qs}`);
-    throw error;
-  }
-}
-
 function isAnimeSamaRetriableError(error) {
   const statusCode = error?.response?.status;
   const errorCode = error?.code;
@@ -942,151 +789,6 @@ async function cleanupOldCacheFiles(safeAnimeName, animeCacheDir) {
   }
 }
 
-// Fonction pour supprimer les lecteurs fsvid des r\u00e9ponses FStream
-function removeFsvidPlayers(data, isVip = false) {
-  // Si pas de donn\u00e9es, retourner tel quel
-  if (!data) {
-    return data;
-  }
-
-  // Si l'utilisateur est VIP, ne pas filtrer les lecteurs fsvid
-  if (isVip) {
-    return data;
-  }
-
-  // Par d\u00e9faut, toujours filtrer les lecteurs fsvid (m\u00eame si remove_fsvid est false)
-
-  // Pour les films : filtrer players.organized
-  if (data.players && typeof data.players === 'object') {
-    const filteredPlayers = {};
-    let totalPlayers = 0;
-
-    Object.keys(data.players).forEach(playerType => {
-      if (Array.isArray(data.players[playerType])) {
-        // Filtrer les lecteurs dont l'URL contient "fsvid"
-        const filteredPlayerList = data.players[playerType].filter(player => {
-          return !player.url || !player.url.includes('fsvid');
-        });
-
-        if (filteredPlayerList.length > 0) {
-          filteredPlayers[playerType] = filteredPlayerList;
-          totalPlayers += filteredPlayerList.length;
-        }
-      } else {
-        // Si ce n'est pas un array, garder tel quel
-        filteredPlayers[playerType] = data.players[playerType];
-      }
-    });
-
-    return {
-      ...data,
-      players: filteredPlayers,
-      total: totalPlayers,
-      metadata: {
-        ...data.metadata,
-        fsvidFiltered: true
-      }
-    };
-  }
-
-  // Pour les s\u00e9ries : filtrer episodes
-  if (data.episodes && typeof data.episodes === 'object') {
-    const filteredEpisodes = {};
-    let totalPlayers = 0;
-
-    Object.keys(data.episodes).forEach(episodeKey => {
-      const episode = data.episodes[episodeKey];
-      if (episode && typeof episode === 'object') {
-        const filteredEpisode = { ...episode };
-
-        // V\u00e9rifier si l'\u00e9pisode a une structure "languages"
-        if (episode.languages && typeof episode.languages === 'object') {
-          const filteredLanguages = {};
-
-          Object.keys(episode.languages).forEach(languageKey => {
-            const languagePlayers = episode.languages[languageKey];
-
-            if (Array.isArray(languagePlayers)) {
-              // Filtrer les lecteurs dont l'URL contient "fsvid"
-              const filteredPlayerList = languagePlayers.filter(player => {
-                return !player.url || !player.url.includes('fsvid');
-              });
-
-              if (filteredPlayerList.length > 0) {
-                filteredLanguages[languageKey] = filteredPlayerList;
-                totalPlayers += filteredPlayerList.length;
-              }
-            } else {
-              // Si ce n'est pas un array, garder tel quel
-              filteredLanguages[languageKey] = languagePlayers;
-            }
-          });
-
-          filteredEpisode.languages = filteredLanguages;
-        } else {
-          // Structure ancienne sans "languages" - filtrer directement
-          Object.keys(episode).forEach(playerType => {
-            if (Array.isArray(episode[playerType])) {
-              // Filtrer les lecteurs dont l'URL contient "fsvid"
-              const filteredPlayerList = episode[playerType].filter(player => {
-                return !player.url || !player.url.includes('fsvid');
-              });
-
-              if (filteredPlayerList.length > 0) {
-                filteredEpisode[playerType] = filteredPlayerList;
-                totalPlayers += filteredPlayerList.length;
-              }
-            }
-          });
-        }
-
-        // Garder l'\u00e9pisode seulement s'il a encore des lecteurs
-        if (episode.languages ? Object.keys(filteredEpisode.languages).length > 0 : Object.keys(filteredEpisode).some(key => Array.isArray(filteredEpisode[key]) && filteredEpisode[key].length > 0)) {
-          filteredEpisodes[episodeKey] = filteredEpisode;
-        }
-      }
-    });
-
-    return {
-      ...data,
-      episodes: filteredEpisodes,
-      total: totalPlayers,
-      metadata: {
-        ...data.metadata,
-        fsvidFiltered: true
-      }
-    };
-  }
-
-  return data;
-}
-
-// Fonction pour formater les erreurs Coflix
-function formatCoflixError(error, context = '') {
-  if (error && error.isAxiosError) {
-    const url = error.config && error.config.url ? error.config.url : '';
-    const statusCode = error.response ? error.response.status : '';
-    const statusText = error.response ? error.response.statusText : '';
-
-    // Ne pas logger les erreurs 400
-    if (statusCode === 400) {
-      return '';
-    }
-
-    return `[AxiosError] ${error.code || ''} ${error.message} ${statusCode ? `(${statusCode} ${statusText})` : ''} ${url}`;
-  } else {
-    const msg = error && error.message
-      ? error.message
-      : (typeof error === 'string' ? error : JSON.stringify(error));
-    // Payloads HTML entiers (ex: le domaine Coflix redirige vers une page Telegram) :
-    // ne jamais dumper des pages completes dans les logs.
-    if (typeof msg === 'string' && msg.length > 300) {
-      return `${msg.slice(0, 300).replace(/\s+/g, ' ')}… [tronqué, ${msg.length} chars]`;
-    }
-    return msg;
-  }
-}
-
 module.exports = {
   configure,
 
@@ -1104,9 +806,6 @@ module.exports = {
   // LecteurVideo
   axiosLecteurVideoRequest,
 
-  // FStream
-  axiosFStreamRequest,
-
   // AnimeSama
   axiosAnimeSamaRequest,
 
@@ -1116,8 +815,5 @@ module.exports = {
   // Streaming link utilities
   mergeStreamingLinks,
   migrateOldCacheFiles,
-  cleanupOldCacheFiles,
-
-  // FStream player filter
-  removeFsvidPlayers
+  cleanupOldCacheFiles
 };

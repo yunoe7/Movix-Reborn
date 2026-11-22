@@ -16,7 +16,6 @@ const ANIME_SAMA_CACHE_DIR = path.join(__dirname, '..', 'cache', 'anime-sama');
 const CACHE_DIR = {
   ANIME_SAMA: ANIME_SAMA_CACHE_DIR,
   COFLIX: path.join(__dirname, '..', 'cache', 'coflix'),
-  FSTREAM: path.join(__dirname, '..', 'cache', 'fstream'),
   CPASMAL: path.join(__dirname, '..', 'cache', 'cpasmal'),
   TVDIRECT: path.join(__dirname, '..', 'cache', 'tvdirect'),
   PURSTREAM: path.join(__dirname, '..', 'cache', 'purstream'),
@@ -107,75 +106,6 @@ const saveToCache = async (cacheDir, key, data) => {
     return false;
   }
 };
-
-// === CACHE EN MÉMOIRE POUR ÉVITER LES REQUÊTES DUPLIQUÉES ===
-// Map pour stocker les promesses en cours d'exécution
-const ongoingFStreamRequests = new Map();
-const FSTREAM_REQUEST_TIMEOUT = 8000;
-
-// Fonction pour obtenir ou créer une requête FStream partagée
-const getOrCreateFStreamRequest = async (cacheKey, requestFunction) => {
-  let entry = ongoingFStreamRequests.get(cacheKey);
-  if (!entry) {
-    const promise = Promise.resolve().then(requestFunction).finally(() => {
-      if (ongoingFStreamRequests.get(cacheKey)?.promise === promise) ongoingFStreamRequests.delete(cacheKey);
-    });
-    entry = { promise };
-    ongoingFStreamRequests.set(cacheKey, entry);
-  }
-
-  let timer;
-  try {
-    return await Promise.race([
-      entry.promise,
-      new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`timeout of ${FSTREAM_REQUEST_TIMEOUT}ms exceeded`)), FSTREAM_REQUEST_TIMEOUT);
-      }),
-    ]);
-  } finally { clearTimeout(timer); }
-};
-
-// Le délai borne l'attente HTTP ; la promesse reste partagée jusqu'à la fin du
-// scrape pour qu'une nouvelle requête ne déclenche pas un travail en doublon.
-
-// Fonction pour g\u00e9n\u00e9rer une cl\u00e9 de cache FStream
-const generateFStreamCacheKey = (type, id, season = null, episode = null) => {
-  const params = { type, id, season, episode };
-  return crypto.createHash('md5').update(JSON.stringify(params)).digest('hex');
-};
-
-// Fonction pour nettoyer le cache FStream
-const clearFStreamCache = async () => {
-  try {
-    const cacheDir = CACHE_DIR.FSTREAM;
-    const files = await fsp.readdir(cacheDir, { withFileTypes: true }).catch((error) => error.code === 'ENOENT' ? [] : Promise.reject(error));
-    let deletedFiles = 0;
-
-    for (const file of files) {
-      if (file.isFile() && file.name.endsWith('.json')) {
-        await invalidateFStreamCache(path.basename(file.name, '.json'));
-        deletedFiles++;
-      }
-    }
-
-    return { success: true, deletedFiles };
-  } catch (error) {
-    console.error(`[FSTREAM CACHE] Erreur lors du nettoyage: ${error.message}`);
-    return { success: false, error: error.message };
-  }
-};
-
-const { createFStreamCacheStore: createStore } = require('./fstreamCache');
-const createFStreamCacheStore = (options = {}) => createStore({ cacheDir: CACHE_DIR.FSTREAM, redis, ...options });
-const fstreamCacheStore = createFStreamCacheStore();
-const saveFStreamToCache = (cacheKey, data) => fstreamCacheStore.save(cacheKey, data);
-const getFStreamFromCache = async (cacheKey) => (await fstreamCacheStore.get(cacheKey))?.data || null;
-const invalidateFStreamCache = (cacheKey) => fstreamCacheStore.invalidate(cacheKey);
-const getFStreamRefreshInfo = async (cacheKey) => {
-  const entry = await fstreamCacheStore.get(cacheKey);
-  return { entry, isFresh: fstreamCacheStore.isFresh(entry) };
-};
-const refreshFStreamCache = (cacheKey, scrape, validate) => fstreamCacheStore.getOrRefresh(cacheKey, scrape, validate);
 
 // Fonction pour vérifier si une donnée est en cache sans vérifier la date d'expiration
 const getFromCacheNoExpiration = async (cacheDir, key) => {
@@ -366,14 +296,4 @@ module.exports = {
   shouldUpdateCacheLecteurVideo,
   shouldUpdateCache24h,
   shouldUpdateCache48h,
-  ongoingFStreamRequests,
-  getOrCreateFStreamRequest,
-  saveFStreamToCache,
-  generateFStreamCacheKey,
-  clearFStreamCache,
-  getFStreamFromCache,
-  invalidateFStreamCache,
-  getFStreamRefreshInfo,
-  refreshFStreamCache,
-  createFStreamCacheStore
 };

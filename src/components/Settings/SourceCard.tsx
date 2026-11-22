@@ -24,7 +24,6 @@ export const SOURCE_LABELS: Record<TopLevelSourceId, string> = {
   mp4: 'MP4 direct',
   nexus_hls: 'Nexus HLS',
   bravo: 'Bravo/PurStream',
-  fstream: 'FStream',
   wiflix: 'Lynx',
   j1f: '1jour1film',
   swiftflow: 'SwiftFlow',

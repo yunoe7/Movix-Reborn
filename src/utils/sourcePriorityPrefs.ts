@@ -21,14 +21,13 @@ const CHANGE_EVENT = 'movix-source-priority-changed';
  * le comportement effectif des users qui avaient des patterns perso.
  *
  * **v2 → v3** (2026-05-25) : ordre par défaut des hosters Films/Séries
- * passe `vidzy` avant `uqload` (fstream auto-sélection prio vidzy/VF
- * au lieu de uqload/VOSTFR). Migration n'écrase l'ordre stocké QUE si
+ * passe `vidzy` avant `uqload`. Migration n'écrase l'ordre stocké QUE si
  * l'ordre des built-ins matche l'ancien default (= user n'a pas reordré).
  * Les `custom_*` sont préservés à leur position relative.
  *
  * **v3 → v4** (2026-08-31) : `swiftflux` (lecture directe HLS/MP4) remonte
  * juste après `nexus_hls` dans l'ordre par défaut, au lieu de passer après
- * les sources embed (fstream/omega/wiflix/j1f/swiftflow). Migration :
+ * les sources embed (omega/wiflix/j1f/swiftflow). Migration :
  * repositionnement inconditionnel (source trop récente pour qu'un ordre
  * volontaire existe) — voir migrateV3toV4.
  */
@@ -55,13 +54,12 @@ const V2_DEFAULT_BUILTIN_HOSTER_ORDER: readonly string[] = [
  * n'impose pas d'ordre sémantique — c'est ici (dans le builder des défauts) que
  * l'ordre fonctionnel est défini.
  *
- * Ordre legacy : nexus_hls > nexus_file > bravo > mp4 > darkino > fstream > omega >
+ * Ordre legacy : nexus_hls > nexus_file > bravo > mp4 > darkino > omega >
  * wiflix > viper > coflix > custom > frembed > vox > vostfr.
  *
  * Note design : la spec §3 fusionne Films et Séries en une seule catégorie
  * `moviesTv` alors que les 2 Watch pages avaient historiquement des ordres
- * hardcodés légèrement différents (en TV : omega > wiflix > viper > fstream ;
- * en Movies : fstream > omega > wiflix). Ce default reproduit l'ordre Movies.
+ * hardcodés légèrement différents. Ce default conserve l'ordre fonctionnel des sources restantes.
  * Les utilisateurs qui préfèrent l'ancien ordre TV peuvent le recomposer
  * manuellement via Settings → Priorité des sources.
  *
@@ -72,7 +70,7 @@ const V2_DEFAULT_BUILTIN_HOSTER_ORDER: readonly string[] = [
  */
 const DEFAULT_MOVIES_TV_ORDER: readonly TopLevelSourceId[] = [
   'nexus_hls', 'swiftflux', 'bravo', 'mp4', 'darkino',
-  'fstream', 'omega', 'wiflix', 'j1f', 'swiftflow', 'viper', 'coflix',
+  'omega', 'wiflix', 'j1f', 'swiftflow', 'viper', 'coflix',
   'custom', 'frembed', 'vox', 'kisskh', 'vostfr',
 ];
 
@@ -96,7 +94,7 @@ export function buildDefaults(): SourcePriorityPrefs {
     sourceOrder: sourceOrderIds.map((id) => ({ id, enabled: true })),
     hosterOrder: [...BUILTIN_HOSTER_IDS],
     // Même liste que Anime mais appliquée aux sources films/séries qui ont
-    // plusieurs versions (fstream/wiflix/viper). VF + VOSTFR activés par
+    // plusieurs versions (wiflix/viper). VF + VOSTFR activés par
     // défaut (les autres restent dispo si le backend les renvoie, mais
     // désactivés pour éviter une auto-sélection d'une langue rare).
     languageOrder: LANGUAGE_IDS.map((id) => ({
@@ -213,7 +211,7 @@ function migrateV2toV3(
 
 /**
  * Migration v3 → v4 : swiftflux (lecture directe) remonte juste après nexus_hls
- * au lieu de passer derrière les sources embed (fstream/omega/wiflix/j1f/
+ * au lieu de passer derrière les sources embed (omega/wiflix/j1f/
  * swiftflow). Repositionnement inconditionnel : swiftflux venait d'être ajouté
  * au moment de cette migration, donc aucun utilisateur ne l'avait classé
  * volontairement — soit il était à sa position par défaut, soit absent des
@@ -299,7 +297,13 @@ function mergeWithDefaults(parsed: PersistedSourcePriorityPrefs): SourcePriority
   // Purge pinned pointing at a deprecated id (pin orphelin → null).
   const purgePinSource = <T extends string>(
     pin: { id: T; snapshot: Array<{ id: T; enabled: boolean }> } | null,
-  ) => (pin && deprecatedSources.has(pin.id) ? null : pin);
+  ) => {
+    if (!pin || deprecatedSources.has(pin.id)) return null;
+    return {
+      ...pin,
+      snapshot: pin.snapshot.filter((entry) => !deprecatedSources.has(entry.id)),
+    };
+  };
   const purgePinHoster = <T extends string>(
     pin: { id: T; snapshot: Array<{ id: T; enabled: boolean }> } | null,
   ) => (pin && deprecatedHosters.has(pin.id) ? null : pin);

@@ -372,7 +372,7 @@ export const SourcePriorityPanel: React.FC = () => {
 
           {/* ─── Langue préférée (Films/Séries) ────────────────────────────
               S'applique aux sources qui proposent plusieurs versions :
-              FStream, Lynx (wiflix), Viper. sortHostersByPriority lit
+              Lynx (wiflix), Viper. sortHostersByPriority lit
               `languageOrder` pour trier les items `.category`/`.language`
               avant l'ordre des hosters. Les sources sans langue explicite
               sont classées après celles avec une langue activée. */}
