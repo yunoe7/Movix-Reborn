@@ -132,50 +132,6 @@ const axiosAnimeSama = axios.create({
   decompress: true,
 });
 
-const { FSTREAM_BASE_URL } = require('./config/fstream');
-const FSTREAM_BASE_URL_VAL = `${FSTREAM_BASE_URL}/`;
-// Accès direct (sans proxy) : agents keep-alive propres à French-Stream, une
-// poignée de main TLS par connexion et non par appel. LIFO garde chaudes les
-// connexions les plus récentes ; une socket libre se ferme après 15 s.
-// Les appels par proxy remplacent ces agents par ceux de fstreamAgentPool.
-const fstreamAgentOptions = {
-  keepAlive: true,
-  keepAliveMsecs: 1000,
-  maxSockets: 32,
-  maxFreeSockets: 8,
-  timeout: 15000,
-  scheduling: "lifo",
-};
-const axiosFStream = axios.create({
-  baseURL: FSTREAM_BASE_URL_VAL,
-  httpAgent: new http.Agent(fstreamAgentOptions),
-  httpsAgent: new https.Agent(fstreamAgentOptions),
-  timeout: 6000,
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
-    Accept:
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-    "Accept-Encoding": "gzip, deflate, br",
-    DNT: "1",
-    Connection: "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "same-origin",
-    "Sec-Fetch-User": "?1",
-    "Sec-GPC": "1",
-    Pragma: "no-cache",
-    "Cache-Control": "no-cache",
-    "sec-ch-ua": '"Not(A:Brand";v="8", "Chromium";v="144", "Brave";v="144"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
-    Referer: FSTREAM_BASE_URL_VAL,
-  },
-  decompress: true,
-});
-
 // Darkino session refresh — coordonné via Redis pour qu'un SEUL worker du
 // cluster pinge l'upstream toutes les 10 minutes (et pas N workers en parallèle,
 // ce qui ferait exploser la limite de session côté darkiworld).
@@ -230,9 +186,7 @@ axiosHelpers.configure({
   COFLIX_BASE_URL,
   axiosCoflix,
   axiosAnimeSama,
-  axiosFStream,
   ANIME_SAMA_URL: "https://anime-sama.to/",
-  FSTREAM_BASE_URL: FSTREAM_BASE_URL_VAL,
 });
 
 // Les agents HTTP globaux sont configurés dans proxyManager, chargé ci-dessus.
@@ -513,7 +467,6 @@ app.use('/anime', animeSamaRouter);
 app.use('/api', tmdbRouter);
 app.use('/', searchRouter);
 app.use('/api', downloadRouter);
-app.use('/api/fstream', require('./routes/fstream'));
 app.use('/api/wiflix', require('./routes/wiflix'));
 app.use('/api/j1f', require('./routes/j1f'));
 app.use('/api/swiftflow', require('./routes/swiftflow'));
