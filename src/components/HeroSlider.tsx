@@ -412,7 +412,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
       >
         {(logoUrl) => (
           <div className="absolute inset-0 flex items-end md:items-center z-20">
-            <div className="w-full md:max-w-2xl px-4 sm:px-6 md:px-12 pb-20 md:pb-16">
+            <div className="w-full md:max-w-3xl px-5 sm:px-8 md:px-16 lg:px-24 pb-20 md:pb-16">
               <AnimatePresence mode="wait">
                 {(isMorph || isActive) && (
                   <motion.div
@@ -499,10 +499,10 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
-      className="embla relative w-full select-none px-3 sm:px-6 md:px-12 lg:px-20 mx-auto max-w-[1920px]"
+      className="embla relative z-0 w-full max-w-none select-none overflow-hidden"
       data-hero-slider-style={sliderStyle}
       style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
     >
@@ -519,29 +519,9 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
           .hero-progress-fill.is-paused {
             animation-play-state: paused;
           }
-          @keyframes hero-image-drift {
-            from { transform: scale(1); }
-            to { transform: scale(1.015); }
-          }
-          @keyframes hero-border-beam {
-            from { transform: translateX(0); }
-            to { transform: translateX(375%); }
-          }
-          .hero-border-beam {
-            position: absolute;
-            z-index: 16;
-            top: 0;
-            left: -40%;
-            width: 40%;
-            height: 1px;
-            pointer-events: none;
-            opacity: .78;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), rgba(239,68,68,.9), transparent);
-            animation: hero-border-beam 8s ease-in-out infinite;
-          }
           .hero-cinematic-frame {
             isolation: isolate;
-            box-shadow: 0 28px 90px -34px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255,255,255,.035);
+            box-shadow: none;
           }
           .hero-cinematic-frame::before {
             content: "";
@@ -550,50 +530,24 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
             z-index: 11;
             pointer-events: none;
             background:
-              linear-gradient(90deg, rgba(5,5,8,.82) 0%, rgba(5,5,8,.58) 30%, rgba(5,5,8,.16) 66%, transparent 100%),
-              linear-gradient(0deg, rgba(5,5,8,.56) 0%, transparent 38%, rgba(5,5,8,.10) 100%);
+              linear-gradient(90deg, rgba(5,5,8,.68) 0%, rgba(5,5,8,.46) 32%, rgba(5,5,8,.12) 68%, transparent 100%),
+              linear-gradient(0deg, rgba(5,5,8,.52) 0%, transparent 40%, rgba(5,5,8,.06) 100%);
           }
-          .hero-cinematic-frame::after {
-            content: "";
-            position: absolute;
-            left: -12%;
-            bottom: -42%;
-            width: 54%;
-            height: 76%;
-            z-index: 13;
-            pointer-events: none;
-            background: radial-gradient(ellipse, rgba(220,38,38,.15), transparent 68%);
-            filter: blur(24px);
-          }
-          .hero-cinematic-image.is-active {
-            animation: hero-image-drift 8s cubic-bezier(.2,.65,.3,1) both;
-          }
+
           .hero-cinematic-title {
             text-shadow: 0 3px 28px rgba(0,0,0,.58);
           }
-          @media (prefers-reduced-motion: reduce) {
-            .hero-cinematic-image.is-active, .hero-border-beam { animation: none; }
-          }
+
         `}
       </style>
-      {/* Garder une hauteur explicite en vh pour les WebView sans svh :
-          min-height seul ne dimensionne pas les slides internes à h-full.
-          Le clip-path arrondi et `isolate` coupent aussi les slides pendant
-          le glissement : Embla les déplace par transform sur un calque GPU
-          que overflow-hidden + border-radius seuls ne coupent pas (coins
-          carrés visibles pendant le slide, surtout sur WebKit). */}
-      {/* Lueur orange du thème Halloween, derrière le cadre (le clip-path du
-          cadre couperait une ombre posée dessus). Masquée hors thème. */}
-      <div
-        aria-hidden="true"
-        className="halloween-hero-glow pointer-events-none absolute inset-y-0 left-3 right-3 sm:left-6 sm:right-6 md:left-12 md:right-12 lg:left-20 lg:right-20 rounded-2xl sm:rounded-3xl"
-      />
+      {/* Plein écran sans cadre : le slider passe bord à bord sous la navigation. */}
+
       <div
         ref={imageContainerRef}
         data-hero-frame
-        className="hero-cinematic-frame relative isolate w-full h-[68vh] supports-[height:100svh]:h-[68svh] md:h-[74vh] md:supports-[height:100svh]:h-[74svh] max-h-[840px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[400px] sm:min-h-[480px] md:min-h-[600px]"
+        className="hero-cinematic-frame relative isolate w-full h-[78vh] supports-[height:100svh]:h-[78svh] md:h-[80vh] md:supports-[height:100svh]:h-[80svh] max-h-[920px] min-h-[580px] md:min-h-[680px] overflow-hidden bg-black"
       >
-        <div aria-hidden="true" className="hero-border-beam" />
+         
         {isMorph && (
           <div className="pointer-events-none absolute inset-0" aria-hidden="true">
             {(morphStatus !== 'ready' || !effectivePrefs.transitions) && isVisible && documentVisible && slides.map((slide, idx) => {
@@ -631,7 +585,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
             )}
           </div>
         )}
-        <div className="embla__viewport relative h-full w-full overflow-hidden rounded-[inherit] touch-pan-y touch-pinch-zoom" ref={emblaRef}>
+        <div className="embla__viewport relative h-full w-full overflow-hidden touch-pan-y touch-pinch-zoom" ref={emblaRef}>
           <div className="embla__container flex h-full w-full touch-pan-y touch-pinch-zoom">
             {slides.map((slide, idx) => {
               const isActive = idx === selectedIndex;
