@@ -42,7 +42,7 @@ import {
 
 /**
  * Milestone 4 — mapping des `source_main` types (labels internes du panneau
- * serveurs, ex. "fstream_main") vers leur `TopLevelSourceId` côté prefs.
+ * serveurs) vers leur `TopLevelSourceId` côté prefs.
  *
  * Les ids absents (`nexus_main`, `vostfr_main`, `frembed_main`, `adfree_main`)
  * ne sont pas épinglables depuis ce panneau : `nexus_main` est un agrégat de
@@ -356,7 +356,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
    * la priorité utilisateur pour `category` + `topLevel` optionnel.
    *
    * `topLevel` permet d'utiliser un override d'ordre spécifique à une source
-   * top-level (ex: ordre hoster custom pour fstream) si défini.
+   * top-level (ex: ordre hoster custom) si défini.
    */
   const enrichAndSort = useCallback(<T extends Record<string, unknown>>(
     list: T[],
@@ -383,7 +383,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
 
   /**
    * Milestone 4 — détection rapide du hoster depuis une URL (pour les menus
-   * qui n'utilisent pas `enrichAndSort`, ex. omega, coflix, fstream,
+   * qui n'utilisent pas `enrichAndSort`, ex. omega, coflix,
    * wiflix). Retourne null si pas un hoster connu → PinButton non affiché.
    * Le param `label` permet de retomber sur le nom du lecteur quand l'URL
    * finale est un CDN nu (cas darkino / nexus_hls extrait).
