@@ -11,11 +11,12 @@
  *
  * ## La réponse : stale-while-revalidate
  *
- * Une réponse déjà vue est resservie **immédiatement**, sans réseau. Si elle a
- * dépassé sa durée de fraîcheur, elle est quand même resservie tout de suite,
- * et une requête part en arrière-plan pour rafraîchir le cache — la prochaine
- * visite aura la version à jour. L'utilisateur ne voit jamais de spinner pour
- * du contenu qu'il a déjà chargé.
+ * Une réponse déjà vue et encore fraîche est resservie **immédiatement**, sans
+ * réseau. Si elle a dépassé sa durée de fraîcheur, la revalidation est attendue
+ * : c'est la réponse à jour qui est rendue à la page en cours, avec l'ancienne
+ * comme repli si le réseau échoue. Un rafraîchissement en tâche de fond dont on
+ * jette le résultat laissait l'ancienne liste affichée jusqu'à un refresh
+ * manuel — exactement le symptôme que ce cache devait éviter.
  *
  * S'y ajoute la **déduplication des requêtes en vol** : deux composants qui
  * demandent la même URL au même instant partagent une seule requête réseau au
@@ -354,14 +355,10 @@ export const installHttpCache = (instance: AxiosInstance): void => {
     }
 
     if (entry) {
-      // Périmé mais exploitable : on répond tout de suite avec ce qu'on a et on
-      // rafraîchit en arrière-plan pour la prochaine fois.
-      config.adapter = () => {
-        void fetchAndStore().catch(() => {
-          /* échec de revalidation : l'entrée en cache reste valable */
-        });
-        return Promise.resolve(toResponse(entry, config));
-      };
+      // Périmé mais exploitable : attendre la revalidation pour que la vue en
+      // cours reçoive la nouvelle réponse. En cas d'échec réseau, l'ancienne
+      // entrée reste servie : la navigation n'est jamais bloquée par le cache.
+      config.adapter = () => fetchAndStore().catch(() => toResponse(entry, config));
       return config;
     }
 

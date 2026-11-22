@@ -308,6 +308,9 @@ const TVShows: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isTop10CardHovered, setIsTop10CardHovered] = useState(false);
   const top10RowRef = useRef<HTMLDivElement>(null);
+  // Une requête lente terminée après un changement de section ne doit pas
+  // écraser la page courante ni resservir son ancien cache.
+  const fetchGeneration = useRef(0);
   const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const [genreItems, setGenreItems] = useState<{ id: number; name: string; route: string; imageUrl?: string }[]>([
     { id: 10759, name: 'Action & Aventure', route: '/genre/tv/10759' },
@@ -404,6 +407,8 @@ const TVShows: React.FC = () => {
   };
 
   const fetchTVShows = async () => {
+    const generation = ++fetchGeneration.current;
+    const isCurrent = () => fetchGeneration.current === generation;
     try {
       setLoading(true);
 
@@ -451,6 +456,7 @@ const TVShows: React.FC = () => {
           include_adult: false
         }
       });
+      if (!isCurrent()) return;
 
       // Obtenir plus de variété pour les genres
       const genreRequests = [
@@ -535,6 +541,7 @@ const TVShows: React.FC = () => {
       ];
 
       const genreResponses = await Promise.all(genreRequests);
+      if (!isCurrent()) return;
 
       // Filter out shows without poster_path or overview
       const validShows = tmdbResponse.data.results.filter((show: TVShow) =>
@@ -577,6 +584,7 @@ const TVShows: React.FC = () => {
               language: getTmdbLanguage()
             }
           });
+          if (!isCurrent()) return;
 
           // Filtrer les séries pour exclure celles qui ne sont pas encore sorties et les séries chinoises
           const today = new Date();
@@ -656,15 +664,17 @@ const TVShows: React.FC = () => {
         writeSessionStorage('movix_tvshows_data_timestamp', Date.now().toString());
       }
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('Error fetching TV shows:', error);
       setError(t('home.errorLoadingData'));
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchTVShows();
+    return () => { fetchGeneration.current += 1; };
   }, []);
 
   // Fetch representative TMDB images for each TV genre and cache for 24h
