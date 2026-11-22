@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles, Tv } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
@@ -1138,6 +1138,11 @@ const TVDetails: React.FC = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [recommendationsLoaded, setRecommendationsLoaded] = useState<boolean>(false);
   const [animeMode, setAnimeMode] = useState<boolean>(false);
+  // Anime presentation controls are separate from the optional Anime-Sama playback mode.
+  const [animeEpisodeSearchOpen, setAnimeEpisodeSearchOpen] = useState(false);
+  const [animeEpisodeSearch, setAnimeEpisodeSearch] = useState('');
+  const [animeEpisodeSortDescending, setAnimeEpisodeSortDescending] = useState(false);
+  const [animeEpisodeView, setAnimeEpisodeView] = useState<'list' | 'grid'>('list');
   const [animeData, setAnimeData] = useState<any>(null);
   const [loadingAnimeData, setLoadingAnimeData] = useState<boolean>(false);
   const [tmdbKeywords, setTmdbKeywords] = useState<TmdbKeywordsResponse | null>(null);
@@ -1575,6 +1580,10 @@ const TVDetails: React.FC = () => {
       setEpisodeWarningOpen(false);
       setPendingEpisode(null);
       setAnimeMode(false);
+      setAnimeEpisodeSearchOpen(false);
+      setAnimeEpisodeSearch('');
+      setAnimeEpisodeSortDescending(false);
+      setAnimeEpisodeView('list');
       setAnimeData(null);
       setSelectedAnimeEpisode(null);
       setSelectedLanguage(null);
