@@ -530,8 +530,8 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
             z-index: 11;
             pointer-events: none;
             background:
-              linear-gradient(90deg, rgba(5,5,8,.68) 0%, rgba(5,5,8,.46) 32%, rgba(5,5,8,.12) 68%, transparent 100%),
-              linear-gradient(0deg, rgba(5,5,8,.52) 0%, transparent 40%, rgba(5,5,8,.06) 100%);
+              linear-gradient(90deg, rgba(5,5,8,.42) 0%, rgba(5,5,8,.26) 32%, rgba(5,5,8,.06) 68%, transparent 100%),
+              linear-gradient(0deg, rgba(5,5,8,.28) 0%, transparent 42%, rgba(5,5,8,.025) 100%);
           }
 
           .hero-cinematic-title {
@@ -633,7 +633,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
         </div>
 
         {/* Fondu inférieur : prolonge visuellement l’image sans masquer le sujet. */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[12] h-[18%] bg-gradient-to-b from-transparent via-black/10 to-black/45" />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[12] h-[14%] bg-gradient-to-b from-transparent via-black/5 to-black/25" />
 
         {/* Lueur intérieure du thème Halloween, sous le texte. Masquée hors thème. */}
         <div aria-hidden="true" className="halloween-hero-inner pointer-events-none absolute inset-0 z-[15]" />
