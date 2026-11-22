@@ -431,7 +431,7 @@ const WatchTv: React.FC = () => {
   const episodeValue = episodeParam || '1';
   const seasonNumber = Number.parseInt(seasonValue, 10);
   const episodeNumber = Number.parseInt(episodeValue, 10);
-  const isValidEpisodeRoute = Boolean(id)
+  const isValidEpisodeRoute = typeof id === 'string'
     && /^\d+$/.test(id)
     && /^\d+$/.test(seasonValue)
     && /^\d+$/.test(episodeValue)
