@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Check, ChevronDown, Crown, KeyRound, List, LogOut, Settings, Shield, Star, User } from 'lucide-react';
+import { ArrowLeftRight, Check, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -335,10 +335,11 @@ const ProfileMenu: React.FC = () => {
   );
 
   const navLinks = [
-    { to: '/profile', label: t('profile.title'), Icon: User },
-    { to: '/profile?tab=watchlist', label: t('profile.watchlist'), Icon: List },
+    { to: '/profile?tab=watched', label: t('profile.watched', 'Historique'), Icon: History },
+    { to: '/profile?tab=watchlist', label: t('profile.watchlist', 'Ma liste'), Icon: List },
+    { to: '/watchparty/list', label: t('nav.watchParty', 'Watch Party'), Icon: Users },
     { to: '/profile?tab=favorites', label: t('common.favorites'), Icon: Star },
-    { to: '/profile?tab=watched', label: t('profile.watched'), Icon: Check },
+    { to: '/profile', label: t('profile.title'), Icon: User },
   ];
 
   const renderConnected = (variant: MenuVariant) => (
