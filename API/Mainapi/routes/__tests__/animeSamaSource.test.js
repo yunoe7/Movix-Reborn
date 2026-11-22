@@ -194,7 +194,7 @@ const relative = file => String(file).replace(/\\/g, '/').replace(`${CACHE_DIR}/
 const TITLE_DIR = 'oeuvres';
 const LINKS_DIR = 'liens';
 
-function loadAnimeSama({ site = createSite(), animes = ['Example'], files = {}, deadPlayers = false, lock = null, index = null, firstScanWaitMs } = {}) {
+function loadAnimeSama({ site = createSite(), animes = ['Example'], files = {}, deadPlayers = false, lock = null, index = null, firstScanWaitMs, m3u8 = async () => ({}) } = {}) {
   const routes = new Map();
   const router = {};
   for (const method of ['get', 'post', 'use']) router[method] = (url, ...handlers) => routes.set(`${method} ${url}`, handlers.at(-1));
@@ -229,7 +229,8 @@ function loadAnimeSama({ site = createSite(), animes = ['Example'], files = {}, 
     '../utils/cacheManager': { ANIME_SAMA_CACHE_DIR: CACHE_DIR, generateCacheKey: () => 'fixture-key' },
     '../config/redis': { memoryCache: { get: async () => undefined, set: async () => {} } },
     '../utils/animeSamaFallback': require('../../utils/animeSamaFallback'),
-    '../utils/embedExtraction': { buildM3u8Map: async () => ({}) },
+    '../utils/embedExtraction': { buildM3u8Map: m3u8 },
+    '../checkVip': { verifyAccessKey: async () => ({ vip: true }) },
     '../utils/animeSamaDeadPlayers': require('../../utils/animeSamaDeadPlayers'),
     '../utils/animeSamaPages': require('../../utils/animeSamaPages'),
     '../utils/animeSamaCache': require('../../utils/animeSamaCache'),
@@ -274,10 +275,14 @@ function loadAnimeSama({ site = createSite(), animes = ['Example'], files = {}, 
   const isFiche = url => /\/catalogue\/[^/]+\/$/.test(url);
   return {
     site, audit: module.exports.audit, calls, configs, logs, writes, touches, unlinks, store,
-    search: () => call('get /search/:query', { params: { query: 'example' } }),
+    search: (query = {}) => call('get /search/:query', { params: { query: 'example' }, query, headers: { 'x-access-key': 'test' } }),
     byTmdb: (type, id, query = {}) => call('get /tmdb/:type/:id', { params: { type, id: String(id) }, query }),
     // Adresses d'un épisode, comme le site les demande au moment de la lecture.
-    episode: (season, index, slug = 'example') => call('get /episode/:slug', { params: { slug }, query: { season, episode: String(index) } }),
+    episode: (season, index, slug = 'example', extraQuery = {}) => call('get /episode/:slug', {
+      params: { slug },
+      query: { season, episode: String(index), ...extraQuery },
+      headers: { 'x-access-key': 'test' },
+    }),
     // Une actualisation complète : recherche, puis travail de fond terminé.
     async refresh() { const res = await this.search(); await settle(); return res; },
     linkCalls: () => calls.filter(isLink).map(url => new URL(url).searchParams.get('l')),
@@ -1221,6 +1226,34 @@ test('une saison indisponible n’empêche pas la lecture différée d’un épi
   assert.deepEqual(h.site.pageReads, pagesBeforeEpisode, 'aucune page de saison relue à l’ouverture');
   assert.equal(h.pageCalls().length, beforeEpisode + 1);
   await settle();
+});
+
+test('une panne d’extraction HLS (503 hébergeur) ne rend pas la saison indisponible', async () => {
+  const site = createSite();
+  simpleSeason(site, 'saison1', ['vostfr'], 1, { firstId: 1 });
+  const extractionError = Object.assign(new Error('hébergeur temporairement indisponible (503)'), { response: { status: 503 } });
+  const h = loadAnimeSama({
+    site,
+    m3u8: async () => { throw extractionError; },
+  });
+
+  await h.refresh();
+  const res = await h.search({ resolve: '1' });
+
+  assert.deepEqual(seasonSummary(res.body[0].seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
+  ], 'l’extraction est un bonus : le statut de la saison vient de la page source');
+  assert.deepEqual(linksView(res.body[0].seasons[0].episodes[0].streaming_links), [
+    ['vostfr', 1],
+  ], 'une saison disponible peut n’avoir que des repères lien: en attente');
+  assert.equal(res.body[0].seasons[0].episodes[0].m3u8ByPlayer, undefined);
+
+  const episodeRes = await h.episode('saison1', 1, 'example', { resolve: '1' });
+  assert.deepEqual(linksView(episodeRes.body.streaming_links), [
+    ['vostfr', 0, 'https://a.invalid/saison1/vostfr/1'],
+  ], 'l’adresse du lecteur est servie même sans flux HLS');
+  assert.equal(episodeRes.body.m3u8ByPlayer, undefined);
+  assert.ok(h.failures().length > 0, 'la panne est journalisée comme bonus et ne remonte pas au client');
 });
 
 test('ancien cache sans chemin ni statut : la fiche lui donne son chemin et garde la saison masquée', async () => {

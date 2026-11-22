@@ -12,7 +12,7 @@ import AdWaitingScreen from '@/components/AdWaitingScreen';
 import { getAdPopupMode } from '../../utils/adPopupMode';
 import { openInNewTab } from '../../utils/openInNewTab';
 import { safeEmbedUrl } from '../../utils/safeEmbedUrl';
-import { extractM3u8FromEmbed, extractUqloadFile, extractVidzyM3u8, extractFsvidM3u8, registerServerResolvedSources, type M3u8Result } from '../../utils/extractM3u8';
+import { extractM3u8FromEmbed, extractedStreamUrl, extractUqloadFile, extractVidzyM3u8, extractFsvidM3u8, registerServerResolvedSources, type M3u8Result } from '../../utils/extractM3u8';
 import type { SeekStreamingHlsSource } from '../../utils/seekStreamingCandidates';
 import { runExtractionPass, type ExtractionPassResult } from '../../utils/runExtractionPass';
 import { pickAutoSelectedSource, sortHostersByPriority, hosterKeyOf, type SourceAvailability } from '../../utils/sourceAutoSelect';
@@ -1726,12 +1726,10 @@ const WatchTv: React.FC = () => {
           if (omegaExtractionPromises.length > 0) {
             const omegaResults = await Promise.all(omegaExtractionPromises);
             omegaResults.forEach(({ type, result, label }) => {
-              if (type === 'supervideo' && result?.success && result.hlsUrl) {
-                finalHlsSources = [...finalHlsSources, { url: result.hlsUrl, label }];
-                console.log(`? Added ${label} source:`, result.hlsUrl);
-              } else if (type === 'dropload' && result?.success && result.m3u8Url) {
-                finalHlsSources = [...finalHlsSources, { url: result.m3u8Url, label }];
-                console.log(`? Added ${label} source:`, result.m3u8Url);
+              const streamUrl = extractedStreamUrl(result);
+              if (streamUrl && (type === 'supervideo' || type === 'dropload')) {
+                finalHlsSources = [...finalHlsSources, { url: streamUrl, label }];
+                console.log(`? Added ${label} source:`, streamUrl);
               }
             });
           }
@@ -1752,8 +1750,9 @@ const WatchTv: React.FC = () => {
                   link: droploadUrl
                 }, MAIN_API);
                 console.log('?? Firebase Dropload extraction result:', droploadResult);
-                if (droploadResult?.success && droploadResult.m3u8Url) {
-                  return { url: droploadResult.m3u8Url, label: 'Dropload HLS 720p' };
+                const streamUrl = extractedStreamUrl(droploadResult);
+                if (streamUrl) {
+                  return { url: streamUrl, label: 'Dropload HLS 720p' };
                 }
               } catch (error) {
                 console.error('? Error extracting m3u8 from Firebase dropload link:', error);
