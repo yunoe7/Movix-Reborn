@@ -51,7 +51,6 @@ import {
  */
 const SOURCE_MAIN_TO_TOP_LEVEL: Record<string, TopLevelSourceId> = {
   darkino_main: 'darkino',
-  fstream_main: 'fstream',
   wiflix_main: 'wiflix',
   j1f_main: 'j1f',
   swiftflow_main: 'swiftflow',
@@ -161,7 +160,6 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
     showDarkinoMenu,
     showOmegaMenu,
     showCoflixMenu,
-    showFstreamMenu,
     showWiflixMenu,
     showJ1fMenu,
     showSwiftflowMenu,
@@ -172,7 +170,6 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
     showVostfrMenu,
     omegaSources,
     coflixSources,
-    fstreamSources,
     wiflixSources,
     j1fSources,
     swiftflowSources,
@@ -762,11 +759,10 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                     {group.type === 'hls' && (source.mediaType === 'mp4' || source.type === 'mp4' || source.type === 'm3u8') && renderSourceQualityMeta(source.url, isActive, source.quality, source.label)}
                                   </div>
                                   <div className="ml-3 flex items-center gap-2">
-                                    {(source.type === 'darkino_main' || source.type === 'omega_main' || source.type === 'multi_main' || source.type === 'fstream_main' || source.type === 'wiflix_main' || source.type === 'j1f_main' || source.type === 'swiftflow_main' || source.type === 'nexus_main' || source.type === 'bravo_main' || source.type === 'viper_main' || source.type === 'vox_main') && (
+                                    {(source.type === 'darkino_main' || source.type === 'omega_main' || source.type === 'multi_main' || source.type === 'wiflix_main' || source.type === 'j1f_main' || source.type === 'swiftflow_main' || source.type === 'nexus_main' || source.type === 'bravo_main' || source.type === 'viper_main' || source.type === 'vox_main') && (
                                       <ChevronRight className={`w-4 h-4 transition-transform ${(source.type === 'darkino_main' && showDarkinoMenu) ||
                                         (source.type === 'omega_main' && showOmegaMenu) ||
                                         (source.type === 'multi_main' && showCoflixMenu) ||
-                                        (source.type === 'fstream_main' && showFstreamMenu) ||
                                         (source.type === 'wiflix_main' && showWiflixMenu) ||
                                         (source.type === 'j1f_main' && showJ1fMenu) ||
                                         (source.type === 'swiftflow_main' && showSwiftflowMenu) ||
@@ -1042,75 +1038,6 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                                           </div>
                                         );
                                       })}
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              )}
-                              {source.type === 'fstream_main' && (
-                                <AnimatePresence>
-                                  {showFstreamMenu && (
-                                    <motion.div
-                                      initial={{ opacity: 0, y: -5 }}
-                                      animate={{ opacity: 1, y: 0 }}
-                                      exit={{ opacity: 0 }}
-                                      transition={getTransition({ duration: 0.15 })}
-                                      className="ml-4 pl-2 border-l-2 border-gray-700 mb-2"
-                                    >
-                                      {fstreamSources && fstreamSources.length > 0 && (() => {
-                                        const sourcesByCategory = fstreamSources.reduce((acc: Record<string, any[]>, s: any) => {
-                                          const category = s.category || 'Default';
-                                          if (!acc[category]) acc[category] = [];
-                                          acc[category].push(s);
-                                          return acc;
-                                        }, {} as Record<string, any[]>);
-                                        const categoryOrder = [
-                                          { key: 'VFQ', label: t('watch.frenchQuality'), flagCode: 'FR' },
-                                          { key: 'VFF', label: t('watch.frenchFilm'), flagCode: 'FR' },
-                                          { key: 'VF', label: t('watch.french'), flagCode: 'FR' },
-                                          { key: 'VOSTFR', label: t('watch.voSubtitledFr'), flagCode: 'GB' },
-                                          { key: 'Default', label: t('watch.unknownLang'), emoji: '🌍' },
-                                        ];
-                                        return categoryOrder.map((cat) => {
-                                          const categorySources = sourcesByCategory[cat.key];
-                                          if (!categorySources || categorySources.length === 0) return null;
-                                          return (
-                                            <div key={`fstream_category_${cat.key}`} className="mb-3">
-                                              <div className="mb-2 flex items-center gap-2 px-1">
-                                                <span className="text-lg">{'flagCode' in cat && cat.flagCode ? <ReactCountryFlag countryCode={cat.flagCode as string} svg style={{ width: '1.2em', height: '1.2em', borderRadius: '2px' }} /> : cat.emoji}</span>
-                                                <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">{cat.label} ({categorySources.length})</span>
-                                              </div>
-                                              {categorySources.map((fstreamSource: any) => {
-                                                const index = fstreamSources.findIndex((s: any) => s === fstreamSource);
-                                                const isFstreamActive = embedType === 'fstream' && (embedUrl || '') === fstreamSource.decoded_url;
-                                                const hosterId = detectHosterFromUrl(fstreamSource.decoded_url, fstreamSource.label);
-                                                return (
-                                                  <div key={`fstream_${index}`} className="mb-2 ml-4 flex items-stretch gap-2">
-                                                    <motion.button
-                                                      initial={{ opacity: 0 }}
-                                                      animate={{ opacity: 1 }}
-                                                      transition={getTransition({ duration: 0.1, delay: index * 0.02 })}
-                                                      onClick={() => handleSourceChange('fstream', `fstream_${index}`, fstreamSource.decoded_url || '')}
-                                                      className={`min-h-10 max-w-full rounded-xl border border-white/10 bg-white/[0.035] px-3.5 py-2 text-left text-sm text-slate-200 transition-all duration-200 flex items-center justify-between gap-3 hover:border-white/20 hover:bg-white/[0.07] ${isFstreamActive ? 'ring-1 ring-emerald-400/50' : ''}`}
-                                                    >
-                                                      <span>
-                                                        {fstreamSource.label}
-                                                        {hosterId && pinnedHosterId === hosterId && (
-                                                          <span className="ml-2 text-xs text-amber-400 font-semibold">#1</span>
-                                                        )}
-                                                      </span>
-                                                      <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-gray-500">{fstreamSource.category}</span>
-                                                        {isFstreamActive && <span className="text-xs px-2 py-1 bg-red-600 text-white rounded-full">{t('watch.inProgress')}</span>}
-                                                      </div>
-                                                    </motion.button>
-                                                    {renderHosterPin(hosterId)}
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          );
-                                        }).filter(Boolean);
-                                      })()}
                                     </motion.div>
                                   )}
                                 </AnimatePresence>
