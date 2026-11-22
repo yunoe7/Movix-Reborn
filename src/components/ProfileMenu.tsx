@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Check, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
