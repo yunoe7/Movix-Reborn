@@ -1694,10 +1694,10 @@ const TVDetails: React.FC = () => {
 
   const handleSeasonChange = (season: number) => {
     setSelectedSeason(season);
-    // Ne plus sélectionner automatiquement d'épisode en mode anime
     setSelectedEpisode(null);
-    // Réinitialiser le mode dropdown pour utiliser le mode par défaut basé sur le nombre d'épisodes
     setDropdownMode(null);
+    setAnimeEpisodeSearch('');
+    setAnimeEpisodeSearchOpen(false);
 
     // Scroll vers le bouton de menu déroulant pour qu'il soit au centre de l'écran
     setTimeout(() => {
@@ -2600,6 +2600,17 @@ const TVDetails: React.FC = () => {
   // The Anime catalog is a presentation choice. The Anime playback toggle only
   // controls the source/player; it must not decide which season/episode UI is shown.
   const useAnimeSeasonLayout = animeSeasonCards.length > 0;
+
+  useEffect(() => {
+    if (!useAnimeSeasonLayout || animeSeasonCards.length === 0) return;
+    const validSeasonNumbers = animeSeasonCards.map((card) => card.seasonNumber);
+    if (selectedSeason === null || !validSeasonNumbers.includes(Number(selectedSeason))) {
+      setSelectedSeason(validSeasonNumbers[0]);
+      setSelectedEpisode(null);
+      setAnimeEpisodeSearch('');
+      setAnimeEpisodeSearchOpen(false);
+    }
+  }, [useAnimeSeasonLayout, animeSeasonCards, selectedSeason]);
 
   const loadAnimeData = useCallback(async () => {
     if (!tvShow?.name) return;
@@ -4556,9 +4567,7 @@ const TVDetails: React.FC = () => {
                                 transition={{ duration: 0.3 }}
                               >
                                 {renderEpisodes(
-                                  animeSeasonsWithStills.find((season) =>
-                                    Number(season.number ?? season.season_number ?? season.seasonNumber ?? (animeSeasonsWithStills.indexOf(season) + 1)) === Number(selectedSeason)
-                                  )?.episodes || [],
+                                  animeSeasonCards.find((seasonCard) => seasonCard.seasonNumber === Number(selectedSeason))?.season.episodes || [],
                                   'anime'
                                 )}
                               </motion.div>
