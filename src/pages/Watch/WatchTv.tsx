@@ -1214,8 +1214,12 @@ const WatchTv: React.FC = () => {
               return;
             }
           } catch {
-            // Keep the same fail-open behavior as movie playback if TMDB ratings are unavailable.
-            console.warn('Could not fetch TV certifications for age check');
+            if (!isCurrentRoute) return;
+            console.warn('Could not verify TV certification; blocking restricted profile');
+            setContentCert('Non classé');
+            setIsBlocked(true);
+            setIsLoading(false);
+            return;
           }
         }
 
@@ -2350,31 +2354,6 @@ const WatchTv: React.FC = () => {
     );
   }
 
-  // Now, after all hooks, you can do conditional returns:
-  // Normal/auto replace the whole view with the popup (dialog/auto over the gated
-  // black screen). Click-anywhere falls through so the player loads behind the
-  // transparent catcher, which is rendered as an overlay in the main return.
-  if (showAdFreePopup && adPopupTriggered && !adPopupBypass && getAdPopupMode() !== 'click-anywhere') {
-    return (
-      <div className="fixed inset-0 bg-black">
-        {!shouldLoadIframe && !hasClickedAd && <AdWaitingScreen />}
-        <AdFreePlayerAds onClose={handlePopupClose} onAccept={handlePopupAccept} adType={adType} onAdClick={() => setHasClickedAd(true)} />
-      </div>
-    );
-  }
-  if (adPopupBypass) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full bg-black">
-        <div className="text-white text-2xl font-bold mb-4">{t('watch.mustWatchAd')}</div>
-        <div className="text-gray-400 text-lg">{t('watch.reloadToRetry')}</div>
-      </div>
-    );
-  }
-  // Si la popup doit être affichée mais n'est pas encore montrée, attendre
-  if (adPopupTriggered && !shouldLoadIframe && !hasClickedAd) {
-    return <AdWaitingScreen />;
-  }
-
   // Age restriction blocking screen
   if (isBlocked) {
     return (
@@ -2398,6 +2377,32 @@ const WatchTv: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+
+  // Now, after all hooks, you can do conditional returns:
+  // Normal/auto replace the whole view with the popup (dialog/auto over the gated
+  // black screen). Click-anywhere falls through so the player loads behind the
+  // transparent catcher, which is rendered as an overlay in the main return.
+  if (showAdFreePopup && adPopupTriggered && !adPopupBypass && getAdPopupMode() !== 'click-anywhere') {
+    return (
+      <div className="fixed inset-0 bg-black">
+        {!shouldLoadIframe && !hasClickedAd && <AdWaitingScreen />}
+        <AdFreePlayerAds onClose={handlePopupClose} onAccept={handlePopupAccept} adType={adType} onAdClick={() => setHasClickedAd(true)} />
+      </div>
+    );
+  }
+  if (adPopupBypass) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-black">
+        <div className="text-white text-2xl font-bold mb-4">{t('watch.mustWatchAd')}</div>
+        <div className="text-gray-400 text-lg">{t('watch.reloadToRetry')}</div>
+      </div>
+    );
+  }
+  // Si la popup doit être affichée mais n'est pas encore montrée, attendre
+  if (adPopupTriggered && !shouldLoadIframe && !hasClickedAd) {
+    return <AdWaitingScreen />;
   }
 
   if (!isLoading && id) {
