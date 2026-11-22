@@ -2159,14 +2159,14 @@ const MovieDetails = (): JSX.Element => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55 }}
             aria-label={movie.title}
-            className="relative isolate -mx-4 -mt-6 mb-2 flex min-h-[560px] w-[calc(100%+2rem)] items-end overflow-hidden border-0 border-b border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:-mx-8 md:min-h-[620px] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[690px] lg:w-[calc(100%+8rem)]"
+            className="relative isolate -mx-4 -mt-6 mb-2 flex min-h-[520px] w-[calc(100%+2rem)] items-end overflow-hidden border-0 border-b border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:-mx-8 md:min-h-[580px] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[630px] lg:w-[calc(100%+8rem)]"
             style={{
               backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 42%, rgba(0,0,0,0.12) 100%), linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.16) 72%), url(' + (backdropImage || playerBackdropImage || mainPosterUrl) + ')',
               backgroundPosition: 'center 38%',
             }}
           >
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(255,255,255,0.10),transparent_34%)]" />
-            <div className="relative z-10 w-full max-w-3xl px-6 pb-9 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
+            <div className="relative z-10 w-full max-w-2xl px-6 pb-8 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
               <div className="mb-4 flex flex-wrap items-center gap-2">
                 {!movieReleaseWarningsEnabled && (
                   <span className={movieIsReleased ? "rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white" : "rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-black"}>
@@ -2190,7 +2190,7 @@ const MovieDetails = (): JSX.Element => {
                   </>
                 )}
               </div>
-              <h1 className="mb-4 text-3xl font-black leading-[1.04] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-5xl lg:text-6xl">
+              <h1 className="mb-4 text-3xl font-black leading-[1.06] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-[2.75rem] lg:text-5xl">
                 {movie.title} {movieYear && <span className="text-white/75">({movieYear})</span>}
               </h1>
               <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-white/85">
@@ -2206,7 +2206,7 @@ const MovieDetails = (): JSX.Element => {
                 ))}
               </div>
               {movie.overview && (
-                <p className="mb-6 max-w-2xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-4">{movie.overview}</p>
+                <p className="mb-6 max-w-xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-3">{movie.overview}</p>
               )}
               {movieReleaseWarningsEnabled && (
                 <p className="mb-4 text-xs text-white/65">{t('details.movieRelease.availabilityNote')}</p>
