@@ -4,51 +4,40 @@ import { openInNewTab } from '../../utils/openInNewTab';
 import { safeEmbedUrl } from '../../utils/safeEmbedUrl';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import axios, { type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import axios from 'axios';
 import VidyPlayer from '../../components/VidyPlayer';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
-import { extractM3u8FromEmbed, extractedStreamUrl, extractDoodStreamFile, isDoodStreamExtractionEnabled, registerServerResolvedSources } from '../../utils/extractM3u8';
+import { registerServerResolvedSources } from '../../utils/extractM3u8';
 import type { SeekStreamingHlsSource } from '../../utils/seekStreamingCandidates';
-import { runExtractionPass, type ExtractionPassResult } from '../../utils/runExtractionPass';
-import { pickAutoSelectedSource, sortHostersByPriority, hosterKeyOf, type SourceAvailability } from '../../utils/sourceAutoSelect';
-import {
-  isEmbedOriginUrl, EMBED_SOURCE_IDS, isRememberedPick, hasRememberedPlayer, pickCustomLink,
-} from '../../utils/embedOrigin';
-import type { TopLevelSourceId } from '../../types/sourcePriority';
-import { getSourcePriorityPrefs, buildDefaults, subscribeToPriorityChanges } from '../../utils/sourcePriorityPrefs';
+import { runExtractionPass } from '../../utils/runExtractionPass';
+import { sortHostersByPriority, hosterKeyOf } from '../../utils/sourceAutoSelect';
+
+
+import { getSourcePriorityPrefs, subscribeToPriorityChanges } from '../../utils/sourcePriorityPrefs';
 import { detectHoster } from '../../utils/hosterRegistry';
 import { setLastPlayer } from '../../utils/lastPlayerPref';
 import { encodeId, getTmdbId } from '../../utils/idEncoder';
 import { buildWatchMoviePath, getMovieVersion, getVersionForRetiredId } from '../../config/movieVersions';
 import { useWrappedTracker } from '../../hooks/useWrappedTracker';
 import { useTmdbImages, withTmdbImageSize } from '../../hooks/useTmdbImages';
-import { isUserVip, getVipHeaders } from '../../utils/authUtils';
+import { isUserVip } from '../../utils/authUtils';
 import { serverResolveRequest } from '../../utils/serverResolveRequest';
 import { isExtensionAvailable } from '../../utils/extensionProxy';
 import { getTmdbLanguage } from '../../i18n';
 import { useProfile } from '../../context/ProfileContext';
 import { isContentAllowed, getClassificationLabel } from '../../utils/certificationUtils';
 import { getCoflixPreferredUrl } from '../../utils/coflix';
-import { KisskhServiceError, resolveKisskhMovie } from '../../services/kisskhService';
-import {
-  readSwiftflux,
-  type SwiftfluxEntry,
-  type SwiftfluxPlayback,
-} from '../../services/swiftfluxService';
-import { isHevcPlayable } from '../../utils/videoCodecSupport';
+
+import { type SwiftfluxEntry, type SwiftfluxPlayback } from '../../services/swiftfluxService';
+
 import type { KisskhSource, KisskhSubtitleTrack } from '../../types/kisskh';
-import {
-  createHlsAutoFallbackGuard,
-  resolveAcceptedWatchSource,
-  resolveRenderedWatchSource,
-  syncHlsActiveSource,
-} from '../../utils/hlsAutoFallbackGuard';
+import { createHlsAutoFallbackGuard, resolveAcceptedWatchSource, resolveRenderedWatchSource, syncHlsActiveSource } from '../../utils/hlsAutoFallbackGuard';
 import { readLocalStorage, writeLocalStorage } from '../../utils/browserStorage';
-import { classifyPurstreamError } from '../../utils/purstreamError';
-import { classifyCpasmalError } from '../../utils/cpasmalError';
-import { getSourceCapabilities, isSourceEnabled } from '../../services/sourceCapabilities';
+
+
+
 const MAIN_API = import.meta.env.VITE_MAIN_API;
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
