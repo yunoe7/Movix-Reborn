@@ -663,7 +663,7 @@ const Anime: React.FC = () => {
     <div className="min-h-screen bg-black text-white">
       <style>{pageStyles}</style>
 
-      <div className="relative w-full pt-16 md:pt-20 lg:pt-24">
+      <div className="relative w-full">
         {featuredShows.length > 0 && (
           <HeroSlider
             items={featuredShows.map((show) => ({ ...show, media_type: 'tv' }))}
