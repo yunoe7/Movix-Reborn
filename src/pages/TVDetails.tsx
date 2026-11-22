@@ -194,6 +194,8 @@ const getAnimeLanguageLabel = (language: string, t: TFunction): string =>
   t(`details.languages.${language.toLowerCase()}`, { defaultValue: language.toUpperCase() });
 
 interface AnimeEpisodeImageData {
+  name?: string | null;
+  streaming_links?: Array<{ language?: string | null }> | null;
   still_path?: string | null;
   still_url?: string | null;
   tmdb_episode_number?: number | string | null;
@@ -204,6 +206,12 @@ interface AnimeEpisodeImageData {
 }
 
 interface AnimeSeasonImageData {
+  name?: string | null;
+  poster_path?: string | null;
+  posterPath?: string | null;
+  image?: string | null;
+  available?: boolean;
+  status?: string;
   number?: number | string | null;
   season_number?: number | string | null;
   seasonNumber?: number | string | null;
@@ -2536,6 +2544,59 @@ const TVDetails: React.FC = () => {
     const enriched = attachTmdbStillsToAnime(animeData);
     return Array.isArray(enriched?.seasons) ? enriched.seasons as AnimeSeasonImageData[] : [];
   }, [animeData, attachTmdbStillsToAnime]);
+
+  const availableAnimeSeasons = useMemo(
+    () => animeSeasonsWithStills.filter((season) =>
+      season?.available !== false &&
+      season?.status !== 'unavailable' &&
+      Array.isArray(season?.episodes) &&
+      season.episodes.length > 0
+    ),
+    [animeSeasonsWithStills],
+  );
+
+  // Anime season posters must be season-specific. Reusing the series poster for
+  // every missing season image was making entire grids look like duplicates.
+  const animeSeasonCards = useMemo(() => {
+    const usedArtwork = new Set<string>();
+    const seriesArtwork = [
+      animeData?.poster_path,
+      animeData?.posterPath,
+      animeData?.image,
+      tvShow?.poster_path,
+    ]
+      .filter((source): source is string => typeof source === 'string' && source.trim().length > 0)
+      .map((source) => source.trim().split(/[?#]/, 1)[0]);
+
+    return availableAnimeSeasons.map((season, index) => {
+      const seasonNumber = Number(season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1));
+      const matchingTmdbSeason = tvShow?.seasons?.find(
+        (tmdbSeason) => Number(tmdbSeason.season_number) === seasonNumber
+      );
+      const candidate = firstNonEmptyImage(
+        matchingTmdbSeason?.poster_path,
+        season.poster_path,
+        season.posterPath,
+        season.image,
+      );
+      const imageKey = candidate?.trim().split(/[?#]/, 1)[0] ?? null;
+      const isSeriesPoster = Boolean(imageKey && seriesArtwork.includes(imageKey));
+      const isRepeatedPoster = Boolean(imageKey && usedArtwork.has(imageKey));
+      const posterPath = imageKey && !isSeriesPoster && !isRepeatedPoster ? candidate : null;
+      if (posterPath && imageKey) usedArtwork.add(imageKey);
+
+      return {
+        season,
+        seasonNumber,
+        seasonTitle: getSeasonDisplayName(seasonNumber, t, season.name),
+        posterPath,
+      };
+    });
+  }, [availableAnimeSeasons, animeData?.poster_path, animeData?.posterPath, animeData?.image, tvShow?.poster_path, tvShow?.seasons, t]);
+
+  // The Anime catalog is a presentation choice. The Anime playback toggle only
+  // controls the source/player; it must not decide which season/episode UI is shown.
+  const useAnimeSeasonLayout = animeSeasonCards.length > 0;
 
   const loadAnimeData = useCallback(async () => {
     if (!tvShow?.name) return;
