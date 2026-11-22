@@ -3205,7 +3205,7 @@ const TVDetails: React.FC = () => {
                   const episodeKey = `s${selectedSeason}e${ep.index}`;
                   const episodeNumber = Number(ep.index);
                   const availableLanguages = Array.isArray(ep.streaming_links)
-                    ? ep.streaming_links.map((link: any) => link.language).filter(Boolean)
+                    ? [...new Set(ep.streaming_links.map((link: any) => link?.language).filter(Boolean))]
                     : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
                   const imageSource = isAnime ? episodeStillSource : (episodeStillSource || episodeFallbackPoster);
