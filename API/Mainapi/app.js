@@ -45,8 +45,6 @@ const {
 } = require("./utils/proxyManager");
 
 const axios = require("axios");
-const http = require("http");
-const https = require("https");
 const { wrapper } = require("axios-cookiejar-support");
 const tough = require("tough-cookie");
 const axiosHelpers = require("./utils/axiosHelpers");
