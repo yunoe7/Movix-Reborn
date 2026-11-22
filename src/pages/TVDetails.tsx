@@ -2455,35 +2455,64 @@ const TVDetails: React.FC = () => {
         stillBySeasonAndEpisode.set(`${seasonNumber}:${episodeNumber}`, still);
       }
     }
-    if (stillBySeasonAndEpisode.size === 0) return data;
+
+    const normalizeStillKey = (source: string) => source
+      .trim()
+      .split(/[?#]/, 1)[0]
+      .replace(/\/t\/p\/(?:w\\d+|original)\//, '/t/p/{size}/');
 
     const seasons = animeSeasons.map((season) => {
       if (!Array.isArray(season.episodes)) return season;
       const seasonNumber = Number(season.number ?? season.season_number ?? season.seasonNumber);
       if (!Number.isInteger(seasonNumber) || seasonNumber <= 0) return season;
+
+      // Anime-Sama may repeat a single still_url for a whole run of episodes.
+      // Keep each genuine unique still, then fill duplicates only with the TMDB
+      // still matched by an explicit season/episode number. Never guess by index.
+      const usedStillKeys = new Set<string>();
       const episodes = season.episodes.map((episode) => {
-        if (firstNonEmptyImage(episode.still_path, episode.still_url)) return episode;
-        // `index` est le rang de lecture Anime-Sama (1, 2, 3…), pas
-        // nécessairement le numéro TMDB : certaines saisons commencent à 62,
-        // comportent des spéciaux ou découpent différemment les épisodes.
-        // On n'utilise donc que des numéros TMDB explicites ou le libellé publié
-        // par Anime-Sama (« Episode 62 »). Sans numéro fiable, pas d'association.
+        const currentStill = firstNonEmptyImage(episode.still_path, episode.still_url);
+        const currentKey = currentStill ? normalizeStillKey(currentStill) : null;
+
         const explicitEpisodeNumber =
           episode.tmdb_episode_number ?? episode.tmdbEpisodeNumber ??
           episode.episode_number ?? episode.episodeNumber;
         const labelEpisodeNumber = /(?:episode|épisode|ep\.?)[\s:#-]*(\d{1,4})\b/i
           .exec(String((episode as { name?: unknown }).name ?? ''))?.[1];
         const animeEpisodeNumber = Number(explicitEpisodeNumber ?? labelEpisodeNumber);
-        if (!Number.isInteger(animeEpisodeNumber) || animeEpisodeNumber <= 0) return episode;
-        const still = stillBySeasonAndEpisode.get(`${seasonNumber}:${animeEpisodeNumber}`);
-        if (!still) return episode;
-        return {
-          ...episode,
-          still_path: still,
-          tmdbSeriesId,
-          tmdbSeasonNumber: seasonNumber,
-          tmdbEpisodeNumber: animeEpisodeNumber,
-        };
+        const hasReliableEpisodeNumber = Number.isInteger(animeEpisodeNumber) && animeEpisodeNumber > 0;
+        const tmdbStill = hasReliableEpisodeNumber
+          ? stillBySeasonAndEpisode.get(`${seasonNumber}:${animeEpisodeNumber}`) ?? null
+          : null;
+        const tmdbStillKey = tmdbStill ? normalizeStillKey(tmdbStill) : null;
+
+        const currentIsUnique = Boolean(currentStill && currentKey && !usedStillKeys.has(currentKey));
+        const tmdbIsUnique = Boolean(tmdbStill && tmdbStillKey && !usedStillKeys.has(tmdbStillKey));
+
+        if (currentIsUnique) {
+          usedStillKeys.add(currentKey!);
+          return { ...episode, duplicate_still: false };
+        }
+
+        if (tmdbIsUnique) {
+          usedStillKeys.add(tmdbStillKey!);
+          return {
+            ...episode,
+            still_path: tmdbStill,
+            still_url: null,
+            duplicate_still: false,
+            tmdbSeriesId,
+            tmdbSeasonNumber: seasonNumber,
+            tmdbEpisodeNumber: animeEpisodeNumber,
+          };
+        }
+
+        // Better a clean episode placeholder than showing the exact same frame
+        // repeatedly when no correctly matched still exists.
+        if (currentStill && currentKey && usedStillKeys.has(currentKey)) {
+          return { ...episode, still_path: null, still_url: null, duplicate_still: true };
+        }
+        return episode;
       });
       return { ...season, episodes };
     });
