@@ -4326,7 +4326,7 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${animeMode ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
+                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${useAnimeSeasonLayout ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]'} : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
@@ -4353,7 +4353,7 @@ const TVDetails: React.FC = () => {
                             <span className="truncate">{t('details.backToStandardMode')}</span>
                           </button>
                         )}
-                        {hasNetflixLayout && !animeMode && id && (
+                        {hasNetflixLayout && !useAnimeSeasonLayout && id && (
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm text-gray-400">{t('details.seasonLayout')}</span>
                             <div className="flex rounded-xl border border-white/[0.08] bg-black/25 p-1" role="group">
@@ -4375,41 +4375,14 @@ const TVDetails: React.FC = () => {
                     </div>
 
                     {/* Compact season picker for Anime; poster grid stays for standard series. */}
-                    <div className={animeMode ? "mb-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"}>
+                    <div className={useAnimeSeasonLayout ? "mb-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"}>
                       <AnimatePresence>
-                        {animeMode && animeSeasonsWithStills.length > 0 ? (
+                        {useAnimeSeasonLayout ? (
                           /* Affichage des saisons pour les animes */
-                          animeSeasonsWithStills
-                            // N'afficher que les saisons réellement disponibles.
-                            .filter((season: any) =>
-                              season?.available !== false &&
-                              season?.status !== 'unavailable' &&
-                              Array.isArray(season?.episodes) &&
-                              season.episodes.length > 0
-                            )
-                            .map((season: any, index: number) => {
-                            const seasonNumber = Number(
-                              season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)
-                            );
-                            const seasonTitle = getSeasonDisplayName(seasonNumber, t, season.name);
-                            // Les fiches Anime-Sama peuvent réutiliser l'affiche de la série
-                            // pour toutes les saisons. Priorité à l'affiche TMDB de la saison
-                            // portant exactement le même numéro, puis aux données Anime-Sama.
-                            const matchingTmdbSeason = tvShow?.seasons?.find(
-                              (tmdbSeason) => Number(tmdbSeason.season_number) === seasonNumber
-                            );
-                            const seasonImageSource = firstNonEmptyImage(
-                              matchingTmdbSeason?.poster_path,
-                              season?.poster_path,
-                              season?.posterPath,
-                              animeData?.poster_path,
-                              animeData?.posterPath,
-                              animeData?.image,
-                              tvShow?.poster_path,
-                            );
+                          animeSeasonCards.map(({ season, seasonNumber, seasonTitle, posterPath }, index) => {
                             const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${seasonNumber}`);
-                            const imageUrl = detailsMediaSlot.width > 0
-                              ? getTmdbImageUrl(seasonImageSource, {
+                            const imageUrl = posterPath && detailsMediaSlot.width > 0
+                              ? getTmdbImageUrl(posterPath, {
                                 kind: 'poster',
                                 quality: effectiveImageQuality,
                                 width: Math.ceil(seasonCardCssWidth * imageDpr),
@@ -4423,10 +4396,10 @@ const TVDetails: React.FC = () => {
                             return (
                               <motion.div
                                 key={`anime-season-${seasonNumber}`}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 0.3, delay: index * 0.05 }}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 8 }}
+                                transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.18) }}
                                 className={`anime-season-card group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border bg-[#151517] p-2.5 text-left transition-[background,border-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-[#1b1b1e] ${selectedSeason === seasonNumber ? 'border-red-500/70 ring-1 ring-red-500/20' : 'border-white/[0.08] hover:border-white/20'}`}
                                 role="button"
                                 tabIndex={0}
@@ -4440,16 +4413,16 @@ const TVDetails: React.FC = () => {
                                 onClick={() => handleSeasonChange(seasonNumber)}
                               >
                                 <div className="relative h-24 w-[68px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:h-28 sm:w-[76px]">
-                                  {!shouldHide('seasonImages') ? (
+                                  {!shouldHide('seasonImages') && posterPath ? (
                                     <img
                                       src={hasFailed ? fallbackSvg : retryUrl}
                                       alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : seasonTitle}
                                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                      onError={(e) => {
+                                      onError={(event) => {
                                         if (!hasFailed) {
-                                          setFailedImages(prev => ({ ...prev, [imageKey]: true }));
+                                          setFailedImages((previous) => ({ ...previous, [imageKey]: true }));
                                         } else {
-                                          e.currentTarget.src = fallbackSvg;
+                                          event.currentTarget.src = fallbackSvg;
                                         }
                                       }}
                                       loading="lazy"
@@ -4459,31 +4432,23 @@ const TVDetails: React.FC = () => {
                                       key={retryUrl}
                                     />
                                   ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-gray-800">
-                                      <div className="flex flex-col items-center gap-2 text-gray-400">
-                                        <EyeOff className="w-12 h-12" />
-                                        <span className="text-sm">{t('details.imageMasked')}</span>
-                                      </div>
+                                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#242429] to-[#111114] text-white/35">
+                                      {shouldHide('seasonImages') ? <EyeOff className="h-6 w-6" /> : <Tv className="h-6 w-6" />}
+                                      <span className="text-[10px] font-semibold uppercase tracking-wider">{t('details.season')} {seasonNumber}</span>
                                     </div>
                                   )}
-                                  {/* Gradient retiré si nécessaire ou laissé pour l'esthétique */}
-                                  {/* <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3">
-                          <h3 className="text-base font-bold text-white line-clamp-2">{season.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-400 ml-auto">{season.episodes.length} épisodes</span>
-                          </div>
-                        </div> */}
                                   {selectedSeason === seasonNumber && (
-                                    <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">{t('details.currentSeasonBadge')}</div>
+                                    <div className="absolute right-1.5 top-1.5 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                                      {t('details.currentSeasonBadge')}
+                                    </div>
                                   )}
                                 </div>
-                                {/* Nom complet de la saison affiché en dessous pour les animes */}
                                 <div className="min-w-0 flex-1 py-1 pr-1">
                                   <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-white transition-colors group-hover:text-rose-200 sm:text-[15px]">
                                     {shouldHide('episodeNames') ? getMaskedContent(seasonTitle, 'episodeNames') : seasonTitle}
                                   </h3>
                                   <span className="mt-2 block text-xs font-medium text-white/50">
-                                    {season.episodes.length} {t('details.episodes')}
+                                    {season.episodes?.length ?? 0} {t('details.episodes')}
                                   </span>
                                 </div>
                                 <ChevronRight className="mr-1 h-4 w-4 shrink-0 text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70" aria-hidden="true" />
