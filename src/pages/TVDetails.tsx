@@ -3983,7 +3983,7 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-6 rounded-2xl border bg-slate-950/25 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm seasons-section ${animeMode ? 'border-rose-400/35 ring-1 ring-rose-500/20' : 'border-white/[0.08]'}`}
+                    className={`mb-6 rounded-2xl border bg-slate-950/25 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm seasons-section ${animeMode ? 'anime-seasons-section border-rose-400/35 ring-1 ring-rose-500/20' : 'border-white/[0.08]'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
@@ -4076,9 +4076,8 @@ const TVDetails: React.FC = () => {
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
                                 transition={{ duration: 0.3, delay: index * 0.05 }}
-                                className={`group cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 bg-gray-900 ${selectedSeason === seasonNumber ? 'border-red-600' : seasonUnavailable ? 'border-amber-800/70 hover:border-amber-500' : 'border-gray-800 hover:border-red-500'}`}
+                                className={`anime-season-card group cursor-pointer rounded-lg overflow-hidden border-2 transition-[border-color,transform] duration-200 bg-gray-900 hover:-translate-y-[5px] ${selectedSeason === seasonNumber ? 'border-red-600' : seasonUnavailable ? 'border-amber-800/70 hover:border-amber-500' : 'border-gray-800 hover:border-red-500'}`}
                                 onClick={() => handleSeasonChange(seasonNumber)}
-                                whileHover={{ y: -5 }}
                               >
                                 <div className="relative pb-[150%] bg-gray-900">
                                   {!shouldHide('seasonImages') ? (
@@ -4093,6 +4092,10 @@ const TVDetails: React.FC = () => {
                                           e.currentTarget.src = fallbackSvg;
                                         }
                                       }}
+                                      loading="lazy"
+                                      decoding="async"
+                                      width={2}
+                                      height={3}
                                       key={retryUrl}
                                     />
                                   ) : (
