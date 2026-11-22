@@ -2159,7 +2159,7 @@ const MovieDetails = (): JSX.Element => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55 }}
             aria-label={movie.title}
-            className="relative isolate mb-2 flex min-h-[560px] w-full items-end overflow-hidden rounded-[26px] border border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:min-h-[620px] lg:min-h-[690px]"
+            className="relative isolate -mx-4 -mt-6 mb-2 flex min-h-[560px] w-[calc(100%+2rem)] items-end overflow-hidden border-0 border-b border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:-mx-8 md:min-h-[620px] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[690px] lg:w-[calc(100%+8rem)]"
             style={{
               backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 42%, rgba(0,0,0,0.12) 100%), linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.16) 72%), url(' + (backdropImage || playerBackdropImage || mainPosterUrl) + ')',
               backgroundPosition: 'center 38%',
