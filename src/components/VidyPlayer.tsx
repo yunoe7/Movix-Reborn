@@ -168,7 +168,7 @@ const VidyPlayer: React.FC<VidyPlayerProps> = ({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [kind, tmdbId, season, episode]);
+  }, [kind, tmdbId]);
 
   return (
     <main className="fixed inset-0 z-50 flex h-[100dvh] w-full flex-col bg-black text-white">
