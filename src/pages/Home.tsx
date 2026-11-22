@@ -1195,15 +1195,15 @@ const Home: React.FC = () => {
   );
 
   const platformsItems = useMemo(() => [
-    { id: 8, src: "https://u.cubeupload.com/mystic/8df6ce62504c1ab31aab.png", video: "https://media.tenor.com/hd7jyV_dMS8AAAPo/netflix-media-services-provider.mp4", alt: "Netflix", route: "/provider/8", label: t('home.filmsAndSeries', { count: 2817 }) },
-    { id: 119, src: "https://u.cubeupload.com/mystic/b222691607d658c2fa52.png", video: "https://media.tenor.com/T7L_NCdPIvAAAAPo/prime-video.mp4", alt: "Prime Video", route: "/provider/119", label: t('home.filmsAndSeries', { count: 2799 }) },
-    { id: 531, src: "https://u.cubeupload.com/mystic/35734306149c1a6eb0a9.png", video: "https://media4.giphy.com/media/qCEXQzkScYOBIRusVA/giphy.mp4", alt: "Paramount+", route: "/provider/531", label: t('home.filmsAndSeries', { count: 502 }) },
-    { id: 337, src: "https://u.cubeupload.com/mystic/c40fe782c450e170eea6.png", video: "https://media.tenor.com/h6-0yzk8pbAAAAPo/disney-disney-plus.mp4", alt: "Disney+", route: "/provider/337", label: t('home.filmsAndSeries', { count: 1152 }) },
-    { id: 1899, src: "/platforms/hbo-max.svg", video: "/platforms/hbo-max-anim.svg", alt: "HBO Max", route: "/provider/1899", label: t('home.filmsAndSeries', { count: 2047 }) },
-    { id: 338, src: "https://u.cubeupload.com/mystic/hUzeosd33nzE5MCNsZxC.png", video: "https://i.giphy.com/media/vBjLa5DQwwxbi/giphy.mp4", alt: "Marvel Studios", route: "/provider/338", label: t('home.filmsAndSeries', { count: 65 }) },
-    { id: 350, src: "https://u.cubeupload.com/mystic/b2fb6956993e2ee5b4e3.png", video: "https://media.tenor.com/Oxl9xEn7kTEAAAPo/applo-tv.mp4", alt: "Apple TV+", route: "/provider/350", label: t('home.filmsAndSeries', { count: 138 }) },
-    { id: 355, src: "https://u.cubeupload.com/mystic/ky0xOc5OrhzkZ1N6KyUx.png", video: "https://i.giphy.com/media/3o7TKt3pMpzozdUsus/giphy.mp4", alt: "Warner Bros", route: "/provider/355", label: t('home.filmsAndSeries', { count: 645 }) },
-    { id: 356, src: "https://u.cubeupload.com/mystic/2Tc1P3Ac8M479naPp1kY.png", video: "https://media.tenor.com/ag74wyAzYkMAAAPo/dc-comics-dceu.mp4", alt: "DC Comics", route: "/provider/356", label: t('home.filmsAndSeries', { count: 98 }) },
+    { id: 8, spriteIndex: 0, alt: "Netflix", route: "/provider/8", label: t('home.filmsAndSeries', { count: 2817 }) },
+    { id: 119, spriteIndex: 1, alt: "Prime Video", route: "/provider/119", label: t('home.filmsAndSeries', { count: 2799 }) },
+    { id: 531, spriteIndex: 2, alt: "Paramount+", route: "/provider/531", label: t('home.filmsAndSeries', { count: 502 }) },
+    { id: 337, spriteIndex: 3, alt: "Disney+", route: "/provider/337", label: t('home.filmsAndSeries', { count: 1152 }) },
+    { id: 1899, spriteIndex: 4, alt: "HBO Max", route: "/provider/1899", label: t('home.filmsAndSeries', { count: 2047 }) },
+    { id: 338, spriteIndex: 5, alt: "Marvel Studios", route: "/provider/338", label: t('home.filmsAndSeries', { count: 65 }) },
+    { id: 350, spriteIndex: 6, alt: "Apple TV+", route: "/provider/350", label: t('home.filmsAndSeries', { count: 138 }) },
+    { id: 355, spriteIndex: 7, alt: "Warner Bros", route: "/provider/355", label: t('home.filmsAndSeries', { count: 645 }) },
+    { id: 356, spriteIndex: 8, alt: "DC Comics", route: "/provider/356", label: t('home.filmsAndSeries', { count: 98 }) },
   ], [t]);
 
   if (loading) {
@@ -1260,12 +1260,22 @@ const Home: React.FC = () => {
                         onClick={() => setSelectedStreamingProvider(platform.id)}
                         aria-label={`Afficher les contenus ${platform.alt}`}
                         aria-pressed={selectedStreamingProvider === platform.id}
-                        className={`group flex-none w-11 h-11 sm:w-12 sm:h-12 rounded-xl border transition-all duration-200 flex items-center justify-center p-1.5
+                        title={platform.alt}
+                        className={`group flex-none w-12 h-12 sm:w-[52px] sm:h-[52px] rounded-2xl border transition-all duration-200 flex items-center justify-center p-1.5
                           ${selectedStreamingProvider === platform.id
-                            ? 'border-white bg-white/10 ring-2 ring-white/80 scale-105 shadow-lg shadow-white/10'
-                            : 'border-white/10 bg-white/[0.04] opacity-60 hover:opacity-100 hover:border-white/40 hover:bg-white/10'}`}
+                            ? 'border-white/70 bg-white/[0.09] ring-1 ring-white/40 scale-[1.04] shadow-[0_8px_24px_rgba(0,0,0,.35)]'
+                            : 'border-white/[0.12] bg-white/[0.035] hover:border-white/30 hover:bg-white/[0.07] hover:-translate-y-0.5'}`}
                       >
-                        <img src={platform.src} alt={platform.alt} className="w-full h-full object-contain" loading="lazy" />
+                        <span
+                          role="img"
+                          aria-label={platform.alt}
+                          className="block w-full h-full rounded-xl bg-no-repeat"
+                          style={{
+                            backgroundImage: "url('/platforms/platform-logos-sprite.webp')",
+                            backgroundSize: '300% 300%',
+                            backgroundPosition: `${(platform.spriteIndex % 3) * 50}% ${Math.floor(platform.spriteIndex / 3) * 50}%`,
+                          }}
+                        />
                       </button>
                     ))}
                   </div>

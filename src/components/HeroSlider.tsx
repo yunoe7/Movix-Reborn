@@ -187,7 +187,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
   // Cadrage vertical de chaque image pour l'effet de transition WebGL : celui
   // choisi dans l'admin pour une promo, `center 30%` pour un film ou une série.
   const morphFocus = useMemo(() => slides.map((slide) => (
-    slide.kind === 'promo' ? HERO_PROMO_FOCUS_Y[slide.promo.imagePosition] : 0.3
+    slide.kind === 'promo' ? HERO_PROMO_FOCUS_Y[slide.promo.imagePosition] : 0.42
   )), [slides]);
   const autoSlideInterval = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -521,7 +521,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
           }
           @keyframes hero-image-drift {
             from { transform: scale(1); }
-            to { transform: scale(1.075); }
+            to { transform: scale(1.025); }
           }
           @keyframes hero-border-beam {
             from { transform: translateX(0); }
@@ -591,7 +591,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
       <div
         ref={imageContainerRef}
         data-hero-frame
-        className="hero-cinematic-frame relative isolate w-full h-[64vh] supports-[height:100svh]:h-[64svh] max-h-[790px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[360px] sm:min-h-[440px] md:min-h-[540px]"
+        className="hero-cinematic-frame relative isolate w-full h-[68vh] supports-[height:100svh]:h-[68svh] md:h-[74vh] md:supports-[height:100svh]:h-[74svh] max-h-[840px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[400px] sm:min-h-[480px] md:min-h-[600px]"
       >
         <div aria-hidden="true" className="hero-border-beam" />
         {isMorph && (

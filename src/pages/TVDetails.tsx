@@ -3744,20 +3744,20 @@ const TVDetails: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55 }}
             aria-label={tvShow.name}
-            className="relative isolate -mx-4 -mt-6 mb-2 flex min-h-[560px] w-[calc(100%+2rem)] items-end overflow-hidden border-0 border-b border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:-mx-8 md:min-h-[620px] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[690px] lg:w-[calc(100%+8rem)]"
+            className="relative isolate -mx-4 -mt-6 mb-2 flex min-h-[520px] w-[calc(100%+2rem)] items-end overflow-hidden border-0 border-b border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:-mx-8 md:min-h-[580px] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[630px] lg:w-[calc(100%+8rem)]"
             style={{
               backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.93) 0%, rgba(0,0,0,0.75) 42%, rgba(0,0,0,0.12) 100%), linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.14) 72%), url(' + (backdropImage || mainPosterUrl) + ')',
               backgroundPosition: 'center 38%',
             }}
           >
             <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(255,255,255,0.10),transparent_34%)]" />
-            <div className="relative z-10 w-full max-w-3xl px-6 pb-9 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
+            <div className="relative z-10 w-full max-w-2xl px-6 pb-8 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
               {animeMode && (
                 <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-300/40 bg-rose-600/25 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-rose-100 backdrop-blur-sm">
                   <Sparkles className="h-3.5 w-3.5" />{t('details.animeModeActiveBadge')}
                 </span>
               )}
-              <h1 className="mb-4 text-3xl font-black leading-[1.04] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-5xl lg:text-6xl">
+              <h1 className="mb-4 text-3xl font-black leading-[1.06] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-[2.75rem] lg:text-5xl">
                 {tvShow.name} {tvYear && <span className="text-white/75">({tvYear})</span>}
               </h1>
               <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-white/85">
@@ -3784,7 +3784,7 @@ const TVDetails: React.FC = () => {
                 </div>
               )}
               {tvShow.overview && (
-                <p className="mb-6 max-w-2xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-4">
+                <p className="mb-6 max-w-xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-3">
                   {shouldHide('episodeOverviews') ? getMaskedContent(tvShow.overview, 'episodeOverviews') : tvShow.overview}
                 </p>
               )}

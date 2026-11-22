@@ -402,11 +402,15 @@ const Header: React.FC = () => {
   // including it churns listener registration on every keystroke
   }, [showAutocomplete, isMobileSearchOpen]);
 
-  // Focus mobile search input when opened
+  // Focus immédiat et fermeture clavier : la page reste visible derrière le champ.
   useEffect(() => {
-    if (isMobileSearchOpen && mobileSearchInputRef.current) {
-      mobileSearchInputRef.current.focus();
-    }
+    if (!isMobileSearchOpen) return;
+    mobileSearchInputRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setIsMobileSearchOpen(false); setShowAutocomplete(false); mobileSearchInputRef.current?.blur(); }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isMobileSearchOpen]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -567,32 +571,6 @@ const Header: React.FC = () => {
 
 
 
-              {/* Desktop Search. min-w-0 : c'est lui qui rétrécit quand la ligne
-                  manque de place (marges du HeroSlider, 1024-1280 px) ; sans
-                  lui, la largeur minimale du champ écrasait le profil. */}
-              <div className="hidden md:block relative min-w-0 w-0">
-                <form onSubmit={handleSearchSubmit} className="relative" data-header-search>
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={headerQuery}
-                    onChange={handleQueryChange}
-                    placeholder={t('header.searchPlaceholder')}
-                    className="w-full py-2 pl-9 pr-3 bg-white/5 text-white rounded-xl border border-white/10 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:bg-white/10 placeholder-gray-500 text-sm transition-all"
-                  />
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                  {headerQuery && (
-                    <button
-                      type="button"
-                      onClick={() => { setHeaderQuery(''); clearAutocompleteSuggestions(); setShowAutocomplete(false); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </form>
-              </div>
-
               {/* Right section */}
               <div className="flex shrink-0 items-center gap-1 rounded-[17px] border border-white/[0.12] bg-[#111]/85 p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-2xl sm:gap-1.5">
                 {isAprilFoolsAdminVisible && (
@@ -610,14 +588,29 @@ const Header: React.FC = () => {
                   </Link>
                 )}
 
-                {/* Mobile search icon */}
-                <motion.button
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsMobileSearchOpen(true)}
-                >
-                  <Search size={20} />
-                </motion.button>
+                {/* Recherche qui se déploie depuis l'icône, sans quitter le hero. */}
+                <AnimatePresence initial={false} mode="wait">
+                  {isMobileSearchOpen ? (
+                    <motion.form key="header-search-expanded" onSubmit={handleSearchSubmit}
+                      initial={{ width: 36, opacity: 0.8 }}
+                      animate={{ width: 'clamp(210px, 28vw, 360px)', opacity: 1 }}
+                      exit={{ width: 36, opacity: 0 }}
+                      transition={{ type: 'spring', stiffness: 360, damping: 34, mass: 0.75 }}
+                      className="relative flex h-9 min-w-0 items-center overflow-hidden rounded-xl border border-white/10 bg-[#171717]/95 shadow-[0_12px_36px_rgba(0,0,0,0.38)]" data-header-search>
+                      <Search size={17} className="ml-3 shrink-0 text-white/45" />
+                      <input ref={mobileSearchInputRef} type="text" value={headerQuery} onChange={handleQueryChange}
+                        placeholder={t('header.searchPlaceholder')} autoComplete="off"
+                        className="h-full min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/40" />
+                      <button type="button" aria-label={t('common.close', 'Fermer')}
+                        onClick={() => { setIsMobileSearchOpen(false); setHeaderQuery(''); clearAutocompleteSuggestions(); setShowAutocomplete(false); }}
+                        className="mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white"><X size={16} /></button>
+                    </motion.form>
+                  ) : (
+                    <motion.button key="header-search-trigger" type="button" aria-label={t('header.searchPlaceholder')}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
+                      whileTap={{ scale: 0.9 }} onClick={() => setIsMobileSearchOpen(true)}><Search size={20} /></motion.button>
+                  )}
+                </AnimatePresence>
 
                 {/* Thème Halloween : la citrouille l'allume ou l'éteint. Sous
                     346 px, la ligne ne tient plus : le réglage reste. */}
@@ -788,40 +781,6 @@ const Header: React.FC = () => {
         </AnimatePresence>,
         getOverlayPortalRoot(),
       )}
-
-      {/* Mobile Search Overlay */}
-      <AnimatePresence>
-        {isMobileSearchOpen && (
-          <motion.div
-            className="fixed inset-x-0 top-0 z-[11002] bg-black/95 p-4 backdrop-blur-xl"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <form onSubmit={handleSearchSubmit} className="flex items-center gap-3">
-              <div className="flex-1 relative">
-                <input
-                  ref={mobileSearchInputRef}
-                  type="text"
-                  value={headerQuery}
-                  onChange={handleQueryChange}
-                  placeholder={t('header.searchPlaceholder')}
-                  className="w-full py-3 pl-10 pr-4 bg-white/10 text-white rounded-xl border border-white/15 focus:outline-none focus:border-red-500/50 placeholder-gray-500 text-sm"
-                />
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              </div>
-              <button
-                type="button"
-                onClick={() => { setIsMobileSearchOpen(false); setHeaderQuery(''); clearAutocompleteSuggestions(); setShowAutocomplete(false); }}
-                className="p-2 text-gray-400 hover:text-white"
-              >
-                <X size={22} />
-              </button>
-            </form>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Autocomplete dropdown (shared between desktop & mobile search) */}
       <AnimatePresence>
