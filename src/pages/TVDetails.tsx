@@ -4564,7 +4564,6 @@ const TVDetails: React.FC = () => {
                                   'anime'
                                 )}
                               </motion.div>
-                            ) : (                              </motion.div>
                             ) : (
                               <motion.div
                                 key="standard-view"
