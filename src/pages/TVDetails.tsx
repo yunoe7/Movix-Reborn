@@ -2534,7 +2534,7 @@ const TVDetails: React.FC = () => {
         }
         return episode;
       });
-      return { ...season, episodes };
+      return { ...season, number: seasonNumber, episodes };
     });
 
     return { ...data, seasons };
