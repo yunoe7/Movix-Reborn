@@ -1125,6 +1125,8 @@ const WatchTv: React.FC = () => {
     const initialFetch = async () => {
       setIsLoading(true);
       setLoadingError(false); // Reset error on new fetch
+      setIsBlocked(false);
+      setContentCert('');
 
       try {
         // Fetch show information and episode details
