@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { useLightMode } from '../context/LightModeContext';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
+import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface DropdownOption {
   value: string;
@@ -43,6 +44,15 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // Les listes d'épisodes peuvent contenir plusieurs centaines d'entrées :
+  // ne monter que les lignes visibles dans le menu.
+  const optionVirtualizer = useVirtualizer({
+    count: filteredOptions.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 40,
+    overscan: 6,
+  });
+  const virtualOptions = optionVirtualizer.getVirtualItems();
   const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
   const [placement, setPlacement] = useState<'top' | 'bottom'>('bottom');
 
@@ -208,27 +218,31 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
       <div
         ref={listRef}
-        className={`max-h-48 overflow-y-auto overscroll-contain ${searchable ? 'rounded-b-lg' : 'rounded-lg'}`}
+        className={`h-48 overflow-y-auto overscroll-contain ${searchable ? 'rounded-b-lg' : 'rounded-lg'}`}
         data-lenis-prevent
         onWheel={handleContentWheel}
       >
         {filteredOptions.length > 0 ? (
-          filteredOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => handleSelect(option.value)}
-              className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-700 transition-colors ${value === option.value ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}
-            >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                {option.icon}
-                <span className="truncate">{option.label}</span>
-              </div>
-              {value === option.value && (
-                <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
-              )}
-            </button>
-          ))
+          <div style={{ height: optionVirtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
+            {virtualOptions.map((virtualRow) => {
+              const option = filteredOptions[virtualRow.index];
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => handleSelect(option.value)}
+                  className={`absolute left-0 top-0 flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-700 transition-colors ${value === option.value ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}
+                  style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {option.icon}
+                    <span className="truncate">{option.label}</span>
+                  </div>
+                  {value === option.value && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
         ) : (
           <div className="px-3 py-2 text-gray-400 text-sm text-center">
             {t('common.noResults')}
@@ -270,28 +284,32 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
           <div
             ref={listRef}
-            className={`max-h-48 overflow-y-auto overscroll-contain ${searchable ? 'rounded-b-lg' : 'rounded-lg'}`}
+            className={`h-48 overflow-y-auto overscroll-contain ${searchable ? 'rounded-b-lg' : 'rounded-lg'}`}
             data-lenis-prevent
             onWheel={handleContentWheel}
           >
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
+          <div style={{ height: optionVirtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
+            {virtualOptions.map((virtualRow) => {
+              const option = filteredOptions[virtualRow.index];
+              return (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => handleSelect(option.value)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-700 transition-colors ${value === option.value ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}
+                  className={`absolute left-0 top-0 flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-700 transition-colors ${value === option.value ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}
+                  style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {option.icon}
                     <span className="truncate">{option.label}</span>
                   </div>
-                  {value === option.value && (
-                    <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                  )}
+                  {value === option.value && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
                 </button>
-              ))
-            ) : (
+              );
+            })}
+          </div>
+        ) : (
               <div className="px-3 py-2 text-gray-400 text-sm text-center">
                 {t('common.noResults')}
               </div>
