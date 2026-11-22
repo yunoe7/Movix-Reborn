@@ -499,7 +499,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: 'easeOut' }}
       className="embla relative z-0 w-full max-w-none select-none overflow-hidden"
@@ -519,29 +519,9 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
           .hero-progress-fill.is-paused {
             animation-play-state: paused;
           }
-          @keyframes hero-image-drift {
-            from { transform: scale(1); }
-            to { transform: scale(1.008); }
-          }
-          @keyframes hero-border-beam {
-            from { transform: translateX(0); }
-            to { transform: translateX(375%); }
-          }
-          .hero-border-beam {
-            position: absolute;
-            z-index: 16;
-            top: 0;
-            left: -40%;
-            width: 40%;
-            height: 1px;
-            pointer-events: none;
-            opacity: .78;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), rgba(239,68,68,.9), transparent);
-            animation: hero-border-beam 8s ease-in-out infinite;
-          }
           .hero-cinematic-frame {
             isolation: isolate;
-            box-shadow: 0 28px 90px -34px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255,255,255,.035);
+            box-shadow: none;
           }
           .hero-cinematic-frame::before {
             content: "";
@@ -553,37 +533,14 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
               linear-gradient(90deg, rgba(5,5,8,.68) 0%, rgba(5,5,8,.46) 32%, rgba(5,5,8,.12) 68%, transparent 100%),
               linear-gradient(0deg, rgba(5,5,8,.52) 0%, transparent 40%, rgba(5,5,8,.06) 100%);
           }
-          .hero-cinematic-frame::after {
-            content: "";
-            position: absolute;
-            left: -12%;
-            bottom: -42%;
-            width: 54%;
-            height: 76%;
-            z-index: 13;
-            pointer-events: none;
-            background: radial-gradient(ellipse, rgba(220,38,38,.15), transparent 68%);
-            filter: blur(24px);
-          }
-          .hero-cinematic-image.is-active {
-            animation: hero-image-drift 8s cubic-bezier(.2,.65,.3,1) both;
-          }
+
           .hero-cinematic-title {
             text-shadow: 0 3px 28px rgba(0,0,0,.58);
           }
-          @media (prefers-reduced-motion: reduce) {
-            .hero-cinematic-image.is-active, .hero-border-beam { animation: none; }
-          }
+
         `}
       </style>
-      {/* Garder une hauteur explicite en vh pour les WebView sans svh :
-          min-height seul ne dimensionne pas les slides internes à h-full.
-          Le clip-path arrondi et `isolate` coupent aussi les slides pendant
-          le glissement : Embla les déplace par transform sur un calque GPU
-          que overflow-hidden + border-radius seuls ne coupent pas (coins
-          carrés visibles pendant le slide, surtout sur WebKit). */}
-      {/* Lueur orange du thème Halloween, derrière le cadre (le clip-path du
-          cadre couperait une ombre posée dessus). Masquée hors thème. */}
+      {/* Plein écran sans cadre : le slider passe bord à bord sous la navigation. */}
 
       <div
         ref={imageContainerRef}
