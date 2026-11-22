@@ -1521,7 +1521,6 @@ const WatchMovie: React.FC = () => {
       console.log('Final File sources details:', finalFileSources);
       console.log('Darkino available:', darkinoResult && typeof darkinoResult === 'object' ? darkinoResult.available : false);
       console.log('Darkino sources count:', darkinoResult && typeof darkinoResult === 'object' ? darkinoResult.sources?.length : 0);
-      console.log('      console.log('FStream HLS sources extracted:', fstreamHlsSources.length);
       console.log('Wiflix/Lynx sources available:', wiflixProcessedSources.length);
       console.log('Viper sources available:', viperProcessedSources.length);
 
