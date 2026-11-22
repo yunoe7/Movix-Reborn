@@ -379,10 +379,6 @@ const WatchMovie: React.FC = () => {
   const [selectedNexusHlsSource, setSelectedNexusHlsSource] = useState<number>(0);
   const [selectedNexusFileSource, setSelectedNexusFileSource] = useState<number>(0);
 
-  // FStream source states
-  const [, setFstreamData] = useState<FStreamResponse | null>(null);
-  const [fstreamSources, setFstreamSources] = useState<{ url: string; label: string; category: string }[]>([]);
-  const [selectedFstreamSource, setSelectedFstreamSource] = useState<number>(0);
 
   // Wiflix source states
   const [, setWiflixData] = useState<WiflixMovieResponse | null>(null);
@@ -411,7 +407,6 @@ const WatchMovie: React.FC = () => {
   const [loadingOmega, setLoadingOmega] = useState(true);
   const [loadingFrembed, setLoadingFrembed] = useState(true);
 
-  const [loadingFstream, setLoadingFstream] = useState(true);
   const [loadingWiflix, setLoadingWiflix] = useState(true);
   const [loadingJ1f, setLoadingJ1f] = useState(true);
   const [loadingSwiftflow, setLoadingSwiftflow] = useState(true);
@@ -441,21 +436,6 @@ const WatchMovie: React.FC = () => {
   // Listes triées par priorité hoster utilisateur (avec override par top-level).
   // On annote chaque source avec son `type` détecté via `detectHoster` puis on
   // trie avec `sortHostersByPriority`. Les listes d'origine restent inchangées.
-  const sortedFstream = useMemo(() => {
-    const prefs = getSourcePriorityPrefs();
-    const annotated = fstreamSources.map((s) => ({
-      ...s,
-      type: detectHoster(s.url, {
-        patternOverrides: prefs.patternOverrides,
-        customHosters: prefs.customHosters,
-      }) ?? 'unknown',
-    }));
-    return sortHostersByPriority(annotated, { category: 'moviesTv', topLevel: 'fstream' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    // Stabilité UX (M4) : pas de prefsVersion en deps — pin update les prefs +
-    // l'indicateur #1, mais l'ordre affiché reste stable jusqu'au prochain refresh.
-  }, [fstreamSources]);
-
   const sortedWiflix = useMemo(() => {
     const prefs = getSourcePriorityPrefs();
     const annotated = wiflixSources.map((s) => ({
@@ -877,7 +857,6 @@ const WatchMovie: React.FC = () => {
       setLoadingCoflix(true);
       setLoadingOmega(true);
       setLoadingFrembed(true);
-      setLoadingFstream(true);
       setLoadingWiflix(true);
       setLoadingViper(true);
       setLoadingExtractions(true);
@@ -1542,8 +1521,7 @@ const WatchMovie: React.FC = () => {
       console.log('Final File sources details:', finalFileSources);
       console.log('Darkino available:', darkinoResult && typeof darkinoResult === 'object' ? darkinoResult.available : false);
       console.log('Darkino sources count:', darkinoResult && typeof darkinoResult === 'object' ? darkinoResult.sources?.length : 0);
-      console.log('FStream sources available:', fstreamProcessedSources.length);
-      console.log('FStream HLS sources extracted:', fstreamHlsSources.length);
+      console.log('      console.log('FStream HLS sources extracted:', fstreamHlsSources.length);
       console.log('Wiflix/Lynx sources available:', wiflixProcessedSources.length);
       console.log('Viper sources available:', viperProcessedSources.length);
 
@@ -1572,11 +1550,7 @@ const WatchMovie: React.FC = () => {
               { category: 'moviesTv', topLevel: 'nexus_hls' },
             );
             const firstSource = sortedHls[0];
-            if (firstSource.label && (firstSource.label.includes('Vidzy HLS') || firstSource.label.includes('Fsvid HLS'))) {
-              console.log('✅ Selecting FSTREAM HLS as primary source');
-            } else {
-              console.log('✅ Selecting NEXUS HLS as primary source');
-            }
+            console.log('✅ Selecting NEXUS HLS as primary source');
             console.log('🎯 Selected HLS URL:', firstSource.url);
             console.log('🏷️ Selected HLS Label:', firstSource.label);
             const idxNh = finalHlsSources.findIndex((s: any) => s.url === firstSource.url);
@@ -1934,7 +1908,6 @@ const WatchMovie: React.FC = () => {
       setLoadingDarkino(false);
       setLoadingFrembed(false);
 
-      setLoadingFstream(false);
       setLoadingExtractions(false);
       setIsLoading(false);
     }
@@ -2219,7 +2192,7 @@ const WatchMovie: React.FC = () => {
         }
       }
       // Handle Embed source selections
-      else if (['frembed', 'custom', 'vostfr', 'omega', 'coflix', 'fstream', 'wiflix', 'j1f', 'swiftflow', 'viper'].includes(type)) {
+      else if (['frembed', 'custom', 'vostfr', 'omega', 'coflix', 'wiflix', 'j1f', 'swiftflow', 'viper'].includes(type)) {
         const finalEmbedUrl = acceptedPlaybackUrl!;
         setEmbedUrl(finalEmbedUrl);
         setEmbedType(type);
@@ -2285,7 +2258,7 @@ const WatchMovie: React.FC = () => {
     };
   }, [
     // State values used in logic
-    darkinoSources, mp4Sources, darkinoAvailable, nexusHlsSources, nexusFileSources, fstreamSources, wiflixSources, j1fSources, swiftflowSources, sortedFstream, sortedWiflix, sortedJ1f, sortedSwiftflow, viperSources, purstreamSources, kisskhSources, canUseBravo, swiftfluxPlayback,
+    darkinoSources, mp4Sources, darkinoAvailable, nexusHlsSources, nexusFileSources, wiflixSources, j1fSources, swiftflowSources, sortedWiflix, sortedJ1f, sortedSwiftflow, viperSources, purstreamSources, kisskhSources, canUseBravo, swiftfluxPlayback,
     // State setters
     setOnlyVostfrAvailable, setShowEmbedQuality, setEmbedUrl, setEmbedType, setSwiftfluxGateOpen,
     setSelectedSource, setSelectedDarkinoSource, setSelectedMp4Source, setSelectedNexusHlsSource,  setSelectedWiflixSource, setSelectedViperSource, setVideoSource,
@@ -2314,7 +2287,7 @@ const WatchMovie: React.FC = () => {
     });
 
     // Quand tous les chargements sont terminés (y compris les extractions)
-    if (!loadingDarkino && !loadingCoflix && !loadingOmega && !loadingFrembed && !loadingFstream && !loadingExtractions) {
+    if (!loadingDarkino && !loadingCoflix && !loadingOmega && !loadingFrembed && !loadingExtractions) {
       console.log('✅ Tous les chargements terminés - vérification des sources pour popup ads');
       console.log('📊 Sources disponibles:', {
         selectedSource,
@@ -2417,7 +2390,7 @@ const WatchMovie: React.FC = () => {
     } else {
       console.log('⏳ Chargements en cours - popup ads en attente');
     }
-  }, [loadingDarkino, loadingCoflix, loadingOmega, loadingFrembed, loadingFstream, loadingWiflix, loadingExtractions, selectedSource, darkinoSources, mp4Sources, omegaData, coflixData, wiflixSources, j1fSources, swiftflowSources, embedUrl, adPopupTriggered, adPopupBypass, showPopupForPlayer]);
+  }, [loadingDarkino, loadingCoflix, loadingOmega, loadingFrembed, loadingWiflix, loadingExtractions, selectedSource, darkinoSources, mp4Sources, omegaData, coflixData, wiflixSources, j1fSources, swiftflowSources, embedUrl, adPopupTriggered, adPopupBypass, showPopupForPlayer]);
 
   // Si on ferme le popup (croix) ET qu'on n'a PAS cliqué sur la pub, on bloque l'accès au lecteur
   useEffect(() => {
@@ -2847,8 +2820,7 @@ const WatchMovie: React.FC = () => {
             customSources={customSources}
             omegaSources={sortedOmega}
             coflixSources={sortedCoflix}
-            fstreamSources={sortedFstream}
-            wiflixSources={sortedWiflix}
+                wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
             viperSources={sortedViper}
@@ -2906,8 +2878,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
@@ -2978,8 +2949,7 @@ const WatchMovie: React.FC = () => {
             customSources={customSources}
             omegaSources={sortedOmega}
             coflixSources={sortedCoflix}
-            fstreamSources={sortedFstream}
-            wiflixSources={sortedWiflix}
+                wiflixSources={sortedWiflix}
             j1fSources={sortedJ1f}
             swiftflowSources={sortedSwiftflow}
             viperSources={sortedViper}
@@ -3033,8 +3003,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
@@ -3096,8 +3065,7 @@ const WatchMovie: React.FC = () => {
             customSources={customSources}
             omegaSources={sortedOmega}
             coflixSources={sortedCoflix}
-            fstreamSources={sortedFstream}
-            wiflixSources={sortedWiflix}
+                wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
             viperSources={sortedViper}
@@ -3152,8 +3120,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
@@ -3216,8 +3183,7 @@ const WatchMovie: React.FC = () => {
             customSources={customSources}
             omegaSources={sortedOmega}
             coflixSources={sortedCoflix}
-            fstreamSources={sortedFstream}
-            wiflixSources={sortedWiflix}
+                wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
             viperSources={sortedViper}
@@ -3275,8 +3241,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
@@ -3339,8 +3304,7 @@ const WatchMovie: React.FC = () => {
             customSources={customSources}
             omegaSources={sortedOmega}
             coflixSources={sortedCoflix}
-            fstreamSources={sortedFstream}
-            wiflixSources={sortedWiflix}
+                wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
             viperSources={sortedViper}
@@ -3398,8 +3362,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
@@ -3466,8 +3429,7 @@ const WatchMovie: React.FC = () => {
             customSources={customSources}
             omegaSources={sortedOmega}
             coflixSources={sortedCoflix}
-            fstreamSources={sortedFstream}
-            wiflixSources={sortedWiflix}
+                wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
             viperSources={sortedViper}
@@ -3522,8 +3484,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
@@ -3657,8 +3618,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
@@ -3771,8 +3731,7 @@ const WatchMovie: React.FC = () => {
                       customSources={customSources}
                       omegaSources={sortedOmega}
                       coflixSources={sortedCoflix}
-                      fstreamSources={sortedFstream}
-                      wiflixSources={sortedWiflix}
+                                    wiflixSources={sortedWiflix}
                       j1fSources={sortedJ1f}
                       swiftflowSources={sortedSwiftflow}
                       viperSources={sortedViper}
