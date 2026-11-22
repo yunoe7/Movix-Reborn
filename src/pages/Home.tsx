@@ -1235,7 +1235,7 @@ const Home: React.FC = () => {
         ) : (
           <>
             {heroItems.length > 0 && (
-              <div className="relative w-full pt-16 md:pt-20 lg:pt-24">
+              <div className="relative w-full">
                 <HeroSlider items={heroItems} promoPage="home" />
               </div>
             )}
