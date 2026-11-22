@@ -791,6 +791,16 @@ const WatchTv: React.FC = () => {
     setLoadingError(false);
     setIsBlocked(false);
     setContentCert('');
+    setSelectedSeasonNumber(seasonNumber);
+    setShowTitle('');
+    setEpisodeTitle('');
+    setShowPosterPath(null);
+    setBackdropPath(null);
+    setCurrentEpisodeInfo(null);
+    setNextEpisodeData(null);
+    setLoadingNextEpisode(false);
+    setEpisodes([]);
+    setSeasons([]);
     setDarkinoSources([]);
     setMp4Sources([]);
     setWiflixSources([]);
