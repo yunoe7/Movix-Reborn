@@ -9,7 +9,7 @@ import CatalogSkeleton from '../components/skeletons/CatalogSkeleton';
 import TelegramPromotion from '../components/TelegramPromotion';
 import HeroSlider from '../components/HeroSlider';
 import EmblaCarousel from '../components/EmblaCarousel';
-import EmblaCarouselPlatforms from '../components/EmblaCarouselPlatforms';
+import InlineStreamingCatalog from '../components/InlineStreamingCatalog';
 import { useWrappedTracker } from '../hooks/useWrappedTracker';
 import LazySection from '../components/LazySection';
 import { SquareBackground } from '../components/ui/square-background';
@@ -388,6 +388,7 @@ const Home: React.FC = () => {
   const [streamingPlatformsHidden, setStreamingPlatformsHidden] = useState(() => {
     return readLocalStorage('settings_hide_streaming_platforms') === 'true';
   });
+  const [selectedStreamingProvider, setSelectedStreamingProvider] = useState(8);
 
   const [continueWatching, setContinueWatching] = useState<ContinueWatching[]>([]);
   const [continueWatchingRemoval, setContinueWatchingRemoval] = useState<ContinueWatchingRemoval | null>(null);
@@ -1193,11 +1194,6 @@ const Home: React.FC = () => {
     [t]
   );
 
-  const platformsTitle = useMemo(
-    () => <CarouselTitle icon={Tv} iconClass="text-white" label={t('home.streamingPlatforms')} />,
-    [t]
-  );
-
   const platformsItems = useMemo(() => [
     { id: 8, src: "https://u.cubeupload.com/mystic/8df6ce62504c1ab31aab.png", video: "https://media.tenor.com/hd7jyV_dMS8AAAPo/netflix-media-services-provider.mp4", alt: "Netflix", route: "/provider/8", label: t('home.filmsAndSeries', { count: 2817 }) },
     { id: 119, src: "https://u.cubeupload.com/mystic/b222691607d658c2fa52.png", video: "https://media.tenor.com/T7L_NCdPIvAAAAPo/prime-video.mp4", alt: "Prime Video", route: "/provider/119", label: t('home.filmsAndSeries', { count: 2799 }) },
@@ -1252,10 +1248,34 @@ const Home: React.FC = () => {
                 className="home-section w-full relative z-0 px-4 md:px-8"
               >
                 <div className="w-full overflow-hidden">
-                  <EmblaCarouselPlatforms
-                    title={platformsTitle}
-                    items={platformsItems}
-                  />
+                  <div className="flex items-center justify-between gap-4 mb-4">
+                    <h2 className="text-lg md:text-xl font-bold text-white">{t('home.streamingPlatforms')}</h2>
+                    <span className="hidden sm:block text-xs text-white/40">Choisis une plateforme</span>
+                  </div>
+                  <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-3 scrollbar-hide">
+                    {platformsItems.map((platform) => (
+                      <button
+                        key={platform.id}
+                        type="button"
+                        onClick={() => setSelectedStreamingProvider(platform.id)}
+                        aria-label={`Afficher les contenus ${platform.alt}`}
+                        aria-pressed={selectedStreamingProvider === platform.id}
+                        className={`group flex-none w-11 h-11 sm:w-12 sm:h-12 rounded-xl border transition-all duration-200 flex items-center justify-center p-1.5
+                          ${selectedStreamingProvider === platform.id
+                            ? 'border-white bg-white/10 ring-2 ring-white/80 scale-105 shadow-lg shadow-white/10'
+                            : 'border-white/10 bg-white/[0.04] opacity-60 hover:opacity-100 hover:border-white/40 hover:bg-white/10'}`}
+                      >
+                        <img src={platform.src} alt={platform.alt} className="w-full h-full object-contain" loading="lazy" />
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-2">
+                    <InlineStreamingCatalog
+                      key={selectedStreamingProvider}
+                      providerId={selectedStreamingProvider}
+                      providerName={platformsItems.find((platform) => platform.id === selectedStreamingProvider)?.alt || 'Streaming'}
+                    />
+                  </div>
                 </div>
               </motion.div>
             )}
