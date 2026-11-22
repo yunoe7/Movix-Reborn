@@ -8,7 +8,7 @@ import { MovixWordmark } from './brand/MovixWordmark';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { isHiddenOnTv } from '@/routing/registry';
-import { Film, Search, X, Star, Tv2, Users, Clapperboard, Bell, Tv, Lightbulb, Network, List, Radio, Unlock, ChevronDown, ExternalLink, LayoutGrid, Settings, Dices, Sparkles, HelpCircle, Github, CalendarDays, Puzzle, Smartphone, MonitorPlay, ShieldCheck } from 'lucide-react';
+import { Film, Search, X, Star, Tv2, Users, Clapperboard, Bell, Tv, Lightbulb, Network, List, Radio, Unlock, ChevronDown, ExternalLink, LayoutGrid, Settings, Dices, Sparkles, HelpCircle, Github, CalendarDays, Puzzle, Smartphone, MonitorPlay, ShieldCheck, House } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfileMenu from './ProfileMenu';
 import NotificationsPopup from './NotificationsPopup';
@@ -119,12 +119,12 @@ const Header: React.FC = () => {
   } = useSearch();
   const { items: ageFilteredAutocomplete } = useAgeRestrictedContent(autocompleteSuggestions);
 
-  // 4 items principaux visibles dans le header
+  // Navigation compacte façon plateforme cinéma : accueil, catégories, recherche.
   const mainNavItems = useMemo(() => [
-    { name: t('nav.movies'), path: '/movies', icon: <Clapperboard size={16} />, isActive: location.pathname === '/movies' },
-    { name: t('nav.tvShows'), path: '/tv-shows', icon: <Tv2 size={16} />, isActive: location.pathname === '/tv-shows' },
-    { name: t('nav.anime'), path: '/anime', icon: <Sparkles size={16} />, isActive: location.pathname === '/anime' },
-    { name: t('nav.search'), path: '/search', icon: <Search size={16} />, isActive: location.pathname === '/search' },
+    { name: t('nav.home', 'Accueil'), path: '/', icon: <House size={15} />, isActive: location.pathname === '/' },
+    { name: t('nav.movies'), path: '/movies', icon: <Clapperboard size={15} />, isActive: location.pathname === '/movies' },
+    { name: t('nav.tvShows'), path: '/tv-shows', icon: <Tv2 size={15} />, isActive: location.pathname === '/tv-shows' },
+    { name: t('nav.anime'), path: '/anime', icon: <Sparkles size={15} />, isActive: location.pathname === '/anime' },
   ], [t, location.pathname]);
 
   // Groupes du mega menu — rangés par intention plutôt que par type de contenu :
@@ -467,7 +467,7 @@ const Header: React.FC = () => {
                 à ceux des petits écrans pour que la ligne tienne avec la
                 cloche et l'avatar. Sous 361 px, marge de 8 px au lieu de 12
                 pour la même raison. */}
-            <div className={`flex items-center h-16 px-3 sm:px-6 md:px-12 lg:px-20 gap-3 md:gap-5 lg:gap-3 xl:gap-5 max-[360px]:gap-1 max-[360px]:px-2 ${showHalloweenToggle ? 'max-[389px]:gap-1' : ''}`}>
+            <div className={`flex items-center h-[76px] px-4 sm:px-6 md:px-10 lg:px-12 xl:px-16 gap-3 md:gap-5 max-[360px]:gap-1 max-[360px]:px-2 ${showHalloweenToggle ? 'max-[389px]:gap-1' : ''}`}>
 
               {/* Logo */}
               <Link
@@ -487,24 +487,22 @@ const Header: React.FC = () => {
               >
                 {/* Logo long [Movix] : rouge fixe hors palette, lettres claires. Le thème
                     Halloween lui ajoute une lueur et une chauve-souris. */}
-                <span data-movix-logo className="inline-flex text-[#f4f4f0]">
-                  <MovixWordmark className="h-[30px] w-auto md:h-9" />
-                </span>
+                <span data-movix-logo aria-label="Movix" className="inline-flex items-center justify-center select-none text-[42px] font-black leading-none tracking-[-0.09em] text-[#e50914] drop-shadow-[0_2px_14px_rgba(229,9,20,0.28)]">M</span>
               </Link>
 
               {/* Canaux officiels : un petit menu Matrix. */}
               <CommunityMenu />
 
               {/* Desktop Nav: 3 items principaux + Explorer */}
-              <nav className="hidden lg:flex items-center gap-1" data-main-nav>
+              <nav className="hidden lg:flex items-center gap-1 rounded-[17px] border border-white/[0.12] bg-[#111]/85 p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-2xl" data-main-nav>
                 {mainNavItems.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-1.5 px-2 xl:px-3 py-1.5 rounded-lg text-sm transition-all duration-200 max-xl:[&>svg]:hidden ${
+                    className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-2 rounded-xl text-[13px] transition-all duration-200 ${
                       item.isActive
-                        ? 'text-white bg-white/10 font-medium'
-                        : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        ? 'text-white bg-white/[0.13] font-semibold shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]'
+                        : 'text-white/60 hover:text-white hover:bg-white/[0.07]'
                     }`}
                   >
                     {item.icon}
@@ -544,7 +542,7 @@ const Header: React.FC = () => {
                   </Link>
                 )}
 
-                {/* Bouton Explorer */}
+                {/* Explorer reste disponible dans son panneau, sans alourdir la barre principale. */}
                 <button
                   ref={exploreTriggerRef}
                   type="button"
@@ -552,7 +550,7 @@ const Header: React.FC = () => {
                   aria-expanded={isExploreOpen}
                   aria-controls={isExploreOpen ? 'explore-menu' : undefined}
                   onClick={() => setIsExploreOpen(!isExploreOpen)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-[color,background-color,border-color] duration-200 border ${
+                  className={`hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-[color,background-color,border-color] duration-200 border ${
                     isExploreOpen
                       // Ouvert : le liquide du menu le remplit et le borde.
                       ? 'text-white bg-transparent border-transparent'
@@ -573,7 +571,7 @@ const Header: React.FC = () => {
               {/* Desktop Search. min-w-0 : c'est lui qui rétrécit quand la ligne
                   manque de place (marges du HeroSlider, 1024-1280 px) ; sans
                   lui, la largeur minimale du champ écrasait le profil. */}
-              <div className="hidden md:block relative min-w-0 w-[14rem] lg:w-[15rem] xl:w-[20rem] 2xl:w-[22rem]">
+              <div className="hidden md:block relative min-w-0 w-0">
                 <form onSubmit={handleSearchSubmit} className="relative" data-header-search>
                   <input
                     ref={searchInputRef}
@@ -597,7 +595,7 @@ const Header: React.FC = () => {
               </div>
 
               {/* Right section */}
-              <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+              <div className="flex shrink-0 items-center gap-1 rounded-[17px] border border-white/[0.12] bg-[#111]/85 p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-2xl sm:gap-1.5">
                 {isAprilFoolsAdminVisible && (
                   <Link
                     to={APRIL_FOOLS_ADMIN_PATH}
@@ -615,7 +613,7 @@ const Header: React.FC = () => {
 
                 {/* Mobile search icon */}
                 <motion.button
-                  className="md:hidden p-2 text-gray-400 hover:text-white transition-colors"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-white/65 transition-colors hover:bg-white/[0.08] hover:text-white"
                   whileTap={{ scale: 0.9 }}
                   onClick={() => setIsMobileSearchOpen(true)}
                 >
@@ -796,7 +794,7 @@ const Header: React.FC = () => {
       <AnimatePresence>
         {isMobileSearchOpen && (
           <motion.div
-            className="md:hidden fixed inset-x-0 top-0 z-[11002] bg-black/95 p-4"
+            className="fixed inset-x-0 top-0 z-[11002] bg-black/95 p-4 backdrop-blur-xl"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
