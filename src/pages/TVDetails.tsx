@@ -2851,8 +2851,8 @@ const TVDetails: React.FC = () => {
   }
 
   // Helper function to determine default dropdown mode based on episode count
-  const getDefaultDropdownMode = (episodeCount: number) => {
-    return episodeCount > 15;
+  const getDefaultDropdownMode = (episodeCount: number, isAnime = false) => {
+    return !isAnime && episodeCount > 15;
   };
   // Function to render episodes (either dropdown or grid)
   const renderEpisodes = (episodes: any[], type: 'anime' | 'standard') => {
@@ -2904,7 +2904,7 @@ const TVDetails: React.FC = () => {
     const episodeFallbackPoster = episodeSeasonPoster || episodeSeriesPoster;
 
     // Déterminer le mode par défaut basé sur le nombre d'épisodes
-    const defaultDropdownMode = nonEmptyEpisodes.length > 15;
+    const defaultDropdownMode = type === 'anime' ? false : nonEmptyEpisodes.length > 15;
 
     const dropdownOptions = nonEmptyEpisodes.map((ep: any) => {
       if (type === 'anime') {
@@ -4165,7 +4165,7 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-6 rounded-2xl border bg-slate-950/25 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.12)] backdrop-blur-sm seasons-section ${animeMode ? 'anime-seasons-section border-rose-400/35 ring-1 ring-rose-500/20' : 'border-white/[0.08]'}`}
+                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${animeMode ? 'anime-seasons-section border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
@@ -4218,7 +4218,7 @@ const TVDetails: React.FC = () => {
                       <AnimatePresence>
                         {animeMode && animeSeasonsWithStills.length > 0 ? (
                           /* Affichage des saisons pour les animes */
-                          animeData.seasons
+                          animeSeasonsWithStills
                             // N'afficher que les saisons réellement disponibles.
                             .filter((season: any) =>
                               season?.available !== false &&
@@ -4441,7 +4441,7 @@ const TVDetails: React.FC = () => {
                                         className="px-4 py-2 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 text-white dropdown-toggle-button"
                                         onClick={() => {
                                           const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0);
+                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0, true);
                                           setDropdownMode((prev) => prev !== null ? !prev : !currentDefault);
                                         }}
                                       >
