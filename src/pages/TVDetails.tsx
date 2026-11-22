@@ -4203,7 +4203,9 @@ const TVDetails: React.FC = () => {
                             );
                             const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${seasonNumber}`);
                             const seasonUnavailable = season?.available === false || season?.status === 'unavailable';
-                            const imageUrl = detailsMediaSlot.width > 0
+                            // Les saisons sans épisodes restent accessibles, mais ne chargent
+                            // pas une affiche géante inutile : leur carte est volontairement compacte.
+                            const imageUrl = !seasonUnavailable && detailsMediaSlot.width > 0
                               ? getTmdbImageUrl(seasonImageSource, {
                                 kind: 'poster',
                                 quality: effectiveImageQuality,
@@ -4221,10 +4223,26 @@ const TVDetails: React.FC = () => {
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 0.3, delay: index * 0.05 }}
-                                className={`anime-season-card group cursor-pointer rounded-lg overflow-hidden border-2 transition-[border-color,transform] duration-200 bg-gray-900 hover:-translate-y-[5px] ${selectedSeason === seasonNumber ? 'border-red-600' : seasonUnavailable ? 'border-amber-800/70 hover:border-amber-500' : 'border-gray-800 hover:border-red-500'}`}
+                                transition={{ duration: seasonUnavailable ? 0 : 0.3, delay: seasonUnavailable ? 0 : index * 0.05 }}
+                                className={`anime-season-card group cursor-pointer rounded-lg overflow-hidden border-2 transition-[border-color,transform] duration-200 bg-gray-900 hover:-translate-y-[5px] ${seasonUnavailable ? 'min-h-[76px] self-start' : ''} ${selectedSeason === seasonNumber ? 'border-red-600' : seasonUnavailable ? 'border-amber-800/70 hover:border-amber-500' : 'border-gray-800 hover:border-red-500'}`}
                                 onClick={() => handleSeasonChange(seasonNumber)}
                               >
+                                {seasonUnavailable ? (
+                                  <div className="flex min-h-[76px] items-center gap-3 px-3 py-3">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-amber-900/30 text-amber-400">
+                                      <Archive className="h-5 w-5" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <h3 className="text-sm font-semibold leading-snug text-white">
+                                        {shouldHide('episodeNames') ? getMaskedContent(season.name, 'episodeNames') : season.name}
+                                      </h3>
+                                      <span className="mt-1 block text-xs text-amber-400">
+                                        {t('details.seasonUnavailableShort')}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                <>
                                 <div className="relative pb-[150%] bg-gray-900">
                                   {!shouldHide('seasonImages') ? (
                                     <img
@@ -4278,6 +4296,8 @@ const TVDetails: React.FC = () => {
                                       : `${season.episodes.length} ${t('details.episodes')}`}
                                   </span>
                                 </div>
+                                </>
+                                )}
                               </motion.div>
                             );
                           })
