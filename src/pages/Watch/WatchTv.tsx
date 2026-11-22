@@ -503,12 +503,6 @@ const WatchTv: React.FC = () => {
 
 
 
-  // FStream source states
-  const [, setFstreamData] = useState<FStreamTvResponse | null>(null);
-  const [fstreamSources, setFstreamSources] = useState<{ url: string; label: string; category: string }[]>([]);
-  const [selectedFstreamSource, setSelectedFstreamSource] = useState<number>(0);
-  const [loadingFstream, setLoadingFstream] = useState(true);
-
   // Wiflix source states
   const [, setWiflixData] = useState<WiflixTvResponse | null>(null);
   const [wiflixSources, setWiflixSources] = useState<{ url: string; label: string; category: string }[]>([]);
@@ -579,21 +573,6 @@ const WatchTv: React.FC = () => {
   // Listes triées par priorité hoster utilisateur (avec override par top-level).
   // On annote chaque source avec son `type` détecté via `detectHoster` puis on
   // trie avec `sortHostersByPriority`. Les listes d'origine restent inchangées.
-  const sortedFstream = useMemo(() => {
-    const prefs = getSourcePriorityPrefs();
-    const annotated = fstreamSources.map((s) => ({
-      ...s,
-      type: detectHoster(s.url, {
-        patternOverrides: prefs.patternOverrides,
-        customHosters: prefs.customHosters,
-      }) ?? 'unknown',
-    }));
-    return sortHostersByPriority(annotated, { category: 'moviesTv', topLevel: 'fstream' });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  // Stabilité UX (M4) : pas de prefsVersion en deps — pin update les prefs et
-  // l'indicateur #1, mais l'ordre affiché reste stable jusqu'au prochain refresh.
-  }, [fstreamSources]);
-
   const sortedWiflix = useMemo(() => {
     const prefs = getSourcePriorityPrefs();
     const annotated = wiflixSources.map((s) => ({
@@ -1247,13 +1226,9 @@ const WatchTv: React.FC = () => {
         setLoadingCustom(true);
         setLoadingSibnet(false);
         setLoadingFrembed(true);
-        setLoadingFstream(true);
         setLoadingExtractions(true);
         // Reset MP4 sources specifically before fetching new ones
         setMp4Sources([]); // Add this line
-        setFstreamData(null);
-        setFstreamSources([]);
-
         // ========== EXÉCUTION PARALLÈLE DE TOUTES LES REQUÊTES API ==========
         const releaseYearData = new Date(show.first_air_date).getFullYear();
 
@@ -1373,23 +1348,6 @@ const WatchTv: React.FC = () => {
           }
         })();
 
-        // ========== CHECK FSTREAM SOURCE ==========
-        const fstreamPromise = (async () => {
-          try {
-            // Méthode serveur : clé VIP + `resolve=1`, le serveur résout les
-            // m3u8 du SEUL épisode demandé (`?episode=`) et les renvoie
-            // signées. Méthode extension/userscript : liens bruts, extraction
-            // locale.
-            const fstreamResponse = await axios.get(`${MAIN_API}/api/fstream/tv/${id}/season/${seasonNumber}`,
-              serverResolveRequest({ episode: episodeNumber }));
-            return fstreamResponse.data;
-          } catch (error) {
-            console.error('Error fetching FStream TV sources:', error);
-            return null;
-          } finally {
-                      }
-        })();
-
         // ========== CHECK WIFLIX (LYNX) SOURCE ==========
         const lynxViperDisabled = LYNX_VIPER_DISABLED_TV_IDS.has(String(id));
         const wiflixPromise = (async () => {
@@ -1469,7 +1427,6 @@ const WatchTv: React.FC = () => {
           coflixResult,
           rawOmegaData,
           purstreamResult,
-          fstreamResult,
           wiflixResult,
           viperResult,
           voxResult,
@@ -1483,7 +1440,6 @@ const WatchTv: React.FC = () => {
           coflixPromise,
           omegaPromise,
           purstreamPromise,
-          fstreamPromise,
           wiflixPromise,
           viperPromise,
           voxPromise,
@@ -2148,76 +2104,6 @@ const WatchTv: React.FC = () => {
           customPassPromise, coflixPassPromise, j1fPassPromise,
           swiftflowPassPromise, wiflixPassPromise, viperPassPromise, voxPassPromise,
         ]);
-        console.log(`?? FStream TV HLS sources extracted: ${fstreamHlsSources.length}`);
-
-        finalHlsSources = [
-          ...finalHlsSources, ...customPass.hls, ...coflixPass.hls,
-          ...j1fPass.hls, ...swiftflowPass.hls,
-        ];
-        finalFileSources = [
-          ...finalFileSources, ...customPass.file, ...coflixPass.file,
-          ...j1fPass.file, ...swiftflowPass.file,
-        ];
-        // Wiflix puis Viper : VF devant, VOSTFR derrière — l'ordre historique.
-        for (const pass of [wiflixPass, viperPass]) {
-          finalHlsSources = [
-            ...pass.hls.filter(s => !s.isVostfr),
-            ...finalHlsSources,
-            ...pass.hls.filter(s => s.isVostfr),
-          ];
-          finalFileSources = [
-            ...pass.file.filter(s => !s.isVostfr),
-            ...finalFileSources,
-            ...pass.file.filter(s => s.isVostfr),
-          ];
-        }
-        finalHlsSources = [...finalHlsSources, ...voxPass.hls];
-        finalFileSources = [...finalFileSources, ...voxPass.file];
-
-        // Ajouter les sources HLS FStream aux sources finales
-        if (fstreamHlsSources.length > 0) {
-          // Prioriser les sources VF puis Default pour FStream HLS
-          const fsvidVfSources = fstreamHlsSources.filter(s => s.category === 'VF');
-          const fsvidDefaultSources = fstreamHlsSources.filter(s => s.category === 'Default');
-          const fsvidOtherSources = fstreamHlsSources.filter(s => s.category !== 'VF' && s.category !== 'Default');
-
-          const prioritizedFstreamHls = [...fsvidVfSources, ...fsvidDefaultSources, ...fsvidOtherSources];
-          finalHlsSources = [...prioritizedFstreamHls, ...finalHlsSources];
-          console.log(`?? Added ${fstreamHlsSources.length} FStream TV HLS sources to final sources`);
-        }
-
-        // Set the final sources
-        setNexusHlsSources(finalHlsSources);
-        setNexusFileSources(finalFileSources);
-
-        // =========== FIN DES EXTRACTIONS ===========
-        console.log('? Extractions M3U8 terminées');
-        setLoadingExtractions(false);
-
-        // Check for Sibnet links for anime
-        if (show.genres.some((genre: any) => genre.id === 16)) { // 16 is Animation genre
-          setLoadingSibnet(true);
-          try {
-            const sibnetVideoId = extractSibnetIdFromUrl();
-            if (sibnetVideoId) {
-              const sibnetSourceUrl = await checkSibnetAvailability(sibnetVideoId);
-              setSibnetUrl(sibnetSourceUrl);
-            }
-          } catch (error) {
-            console.error('Error checking Sibnet availability:', error);
-          } finally {
-            setLoadingSibnet(false);
-          }
-        }
-
-        // ========== DETERMINE DEFAULT SELECTED SOURCE (priority-driven) ==========
-        // L'ordre est piloté par `pickAutoSelectedSource` qui lit les prefs utilisateur.
-        // Par défaut (prefs vides) → ordre hardcodé historique, 100% rétrocompat.
-        //
-        // Legacy priority pour référence :
-        // nexus_hls > [uqload custom promu] > nexus_file > bravo > mp4 > darkino >
-        // omega (supervideo) > wiflix > viper > adFree (m3u8) > mp4 (dup) > fstream >
-        // omega (deep fallback) > wiflix/viper (deep) > coflix (multi) > fstream (deep) >
         // custom > frembed > vox > vostfr
 
         console.log('=== INITIALFETCH SOURCE PRIORITY LOGIC ===');
@@ -2227,7 +2113,6 @@ const WatchTv: React.FC = () => {
         console.log('Darkino sources count:', darkinoResult && typeof darkinoResult === 'object' ? darkinoResult.sources?.length : 0);
         console.log('MP4 sources count:', fetchedMp4Sources.length);
         console.log('Viper sources count:', viperProcessedSources.length);
-        console.log('FStream sources count:', fstreamProcessedSources.length);
         console.log('AdFree M3U8 URL:', adFreeM3u8Url);
         console.log('Custom sources available:', customLinksResult.customLinks?.length || 0);
 
@@ -2939,17 +2824,6 @@ const WatchTv: React.FC = () => {
         setEmbedType(type as string); // type is known to be a string here
         setSelectedSource(type as PlayerSourceType);
         currentSourceRef.current = type as PlayerSourceType; // Or null for embeds if ref not used
-
-        // Handle FStream source selection
-        if (type === 'fstream') {
-          const index = sortedFstream.findIndex(s => s.url === url);
-          if (index !== -1) {
-            setSelectedFstreamSource(index);
-          } else if (sortedFstream.length > 0) {
-            setSelectedFstreamSource(0);
-            setEmbedUrl(sortedFstream[0].url);
-          }
-
           // Ne pas déclencher le popup ads si on change juste de source FStream
           // Le popup ne doit se déclencher qu'au chargement initial, pas lors du changement de source
         }
@@ -3381,15 +3255,7 @@ const WatchTv: React.FC = () => {
         setSelectedMp4Source(0);
         setVideoSource(mp4Sources[0].url);
       }
-      // If no mp4 sources, try fstream
-      else if (sortedFstream.length > 0) {
-        console.log(`No mp4 sources available, switching to fstream`);
-        setSelectedSource('fstream');
-        setSelectedFstreamSource(0);
-        setEmbedUrl(sortedFstream[0].url);
-        setEmbedType('fstream');
-      }
-      // If no fstream sources, try omega
+      // If no mp4 sources, try omega
       else if (sortedOmega.length > 0) {
         console.log(`No mp4 sources available, switching to omega`);
         setSelectedSource('omega');
