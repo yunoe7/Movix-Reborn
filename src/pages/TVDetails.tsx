@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles, Tv } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
@@ -194,6 +194,8 @@ const getAnimeLanguageLabel = (language: string, t: TFunction): string =>
   t(`details.languages.${language.toLowerCase()}`, { defaultValue: language.toUpperCase() });
 
 interface AnimeEpisodeImageData {
+  name?: string | null;
+  streaming_links?: Array<{ language?: string | null }> | null;
   still_path?: string | null;
   still_url?: string | null;
   tmdb_episode_number?: number | string | null;
@@ -204,6 +206,12 @@ interface AnimeEpisodeImageData {
 }
 
 interface AnimeSeasonImageData {
+  name?: string | null;
+  poster_path?: string | null;
+  posterPath?: string | null;
+  image?: string | null;
+  available?: boolean;
+  status?: string;
   number?: number | string | null;
   season_number?: number | string | null;
   seasonNumber?: number | string | null;
@@ -1138,6 +1146,11 @@ const TVDetails: React.FC = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [recommendationsLoaded, setRecommendationsLoaded] = useState<boolean>(false);
   const [animeMode, setAnimeMode] = useState<boolean>(false);
+  // Anime presentation controls are separate from the optional Anime-Sama playback mode.
+  const [animeEpisodeSearchOpen, setAnimeEpisodeSearchOpen] = useState(false);
+  const [animeEpisodeSearch, setAnimeEpisodeSearch] = useState('');
+  const [animeEpisodeSortDescending, setAnimeEpisodeSortDescending] = useState(false);
+  const [animeEpisodeView, setAnimeEpisodeView] = useState<'list' | 'grid'>('list');
   const [animeData, setAnimeData] = useState<any>(null);
   const [loadingAnimeData, setLoadingAnimeData] = useState<boolean>(false);
   const [tmdbKeywords, setTmdbKeywords] = useState<TmdbKeywordsResponse | null>(null);
@@ -1575,6 +1588,10 @@ const TVDetails: React.FC = () => {
       setEpisodeWarningOpen(false);
       setPendingEpisode(null);
       setAnimeMode(false);
+      setAnimeEpisodeSearchOpen(false);
+      setAnimeEpisodeSearch('');
+      setAnimeEpisodeSortDescending(false);
+      setAnimeEpisodeView('list');
       setAnimeData(null);
       setSelectedAnimeEpisode(null);
       setSelectedLanguage(null);
@@ -1677,10 +1694,10 @@ const TVDetails: React.FC = () => {
 
   const handleSeasonChange = (season: number) => {
     setSelectedSeason(season);
-    // Ne plus sélectionner automatiquement d'épisode en mode anime
     setSelectedEpisode(null);
-    // Réinitialiser le mode dropdown pour utiliser le mode par défaut basé sur le nombre d'épisodes
     setDropdownMode(null);
+    setAnimeEpisodeSearch('');
+    setAnimeEpisodeSearchOpen(false);
 
     // Scroll vers le bouton de menu déroulant pour qu'il soit au centre de l'écran
     setTimeout(() => {
@@ -2461,9 +2478,12 @@ const TVDetails: React.FC = () => {
       .split(/[?#]/, 1)[0]
       .replace(/\/t\/p\/(?:w\d+|original)\//, '/t/p/{size}/');
 
-    const seasons = animeSeasons.map((season) => {
+    const seasons = animeSeasons.map((season, seasonIndex) => {
       if (!Array.isArray(season.episodes)) return season;
-      const seasonNumber = Number(season.number ?? season.season_number ?? season.seasonNumber);
+      const seasonNameNumber = /(?:season|saison)\s*(\d+)/i.exec(String((season as { name?: unknown }).name ?? ''))?.[1];
+      const seasonNumber = Number(
+        season.number ?? season.season_number ?? season.seasonNumber ?? seasonNameNumber ?? (seasonIndex + 1)
+      );
       if (!Number.isInteger(seasonNumber) || seasonNumber <= 0) return season;
 
       // Anime-Sama may repeat a single still_url for a whole run of episodes.
@@ -2514,7 +2534,7 @@ const TVDetails: React.FC = () => {
         }
         return episode;
       });
-      return { ...season, episodes };
+      return { ...season, number: seasonNumber, episodes };
     });
 
     return { ...data, seasons };
@@ -2527,6 +2547,70 @@ const TVDetails: React.FC = () => {
     const enriched = attachTmdbStillsToAnime(animeData);
     return Array.isArray(enriched?.seasons) ? enriched.seasons as AnimeSeasonImageData[] : [];
   }, [animeData, attachTmdbStillsToAnime]);
+
+  const availableAnimeSeasons = useMemo(
+    () => animeSeasonsWithStills.filter((season) =>
+      season?.available !== false &&
+      season?.status !== 'unavailable' &&
+      Array.isArray(season?.episodes) &&
+      season.episodes.length > 0
+    ),
+    [animeSeasonsWithStills],
+  );
+
+  // Anime season posters must be season-specific. Reusing the series poster for
+  // every missing season image was making entire grids look like duplicates.
+  const animeSeasonCards = useMemo(() => {
+    const usedArtwork = new Set<string>();
+    const seriesArtwork = [
+      animeData?.poster_path,
+      animeData?.posterPath,
+      animeData?.image,
+      tvShow?.poster_path,
+    ]
+      .filter((source): source is string => typeof source === 'string' && source.trim().length > 0)
+      .map((source) => source.trim().split(/[?#]/, 1)[0]);
+
+    return availableAnimeSeasons.map((season, index) => {
+      const seasonNumber = Number(season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1));
+      const matchingTmdbSeason = tvShow?.seasons?.find(
+        (tmdbSeason) => Number(tmdbSeason.season_number) === seasonNumber
+      );
+      const candidate = firstNonEmptyImage(
+        matchingTmdbSeason?.poster_path,
+        season.poster_path,
+        season.posterPath,
+        season.image,
+      );
+      const imageKey = candidate?.trim().split(/[?#]/, 1)[0] ?? null;
+      const isSeriesPoster = Boolean(imageKey && seriesArtwork.includes(imageKey));
+      const isRepeatedPoster = Boolean(imageKey && usedArtwork.has(imageKey));
+      const posterPath = imageKey && !isSeriesPoster && !isRepeatedPoster ? candidate : null;
+      if (posterPath && imageKey) usedArtwork.add(imageKey);
+
+      return {
+        season,
+        seasonNumber,
+        seasonTitle: getSeasonDisplayName(seasonNumber, t, season.name),
+        posterPath,
+      };
+    });
+  }, [availableAnimeSeasons, animeData?.poster_path, animeData?.posterPath, animeData?.image, tvShow?.poster_path, tvShow?.seasons, t]);
+
+  // The Anime catalog is a presentation choice. The Anime playback toggle only
+  // controls the source/player; it must not decide which season/episode UI is shown.
+  const useAnimeSeasonLayout = animeSeasonCards.length > 0;
+
+  useEffect(() => {
+    if (!useAnimeSeasonLayout || animeSeasonCards.length === 0) return;
+    const validSeasonNumbers = animeSeasonCards.map((card) => card.seasonNumber);
+    if (selectedSeason === null || !validSeasonNumbers.includes(Number(selectedSeason))) {
+      setSelectedSeason(validSeasonNumbers[0]);
+      setSelectedEpisode(null);
+      setAnimeEpisodeSearch('');
+      setAnimeEpisodeSearchOpen(false);
+    }
+  }, [useAnimeSeasonLayout, animeSeasonCards, selectedSeason]);
 
   const loadAnimeData = useCallback(async () => {
     if (!tvShow?.name) return;
@@ -2857,12 +2941,22 @@ const TVDetails: React.FC = () => {
   // Function to render episodes (either dropdown or grid)
   const renderEpisodes = (episodes: any[], type: 'anime' | 'standard') => {
     // Filter out empty episodes first to avoid issues
-    const nonEmptyEpisodes = episodes.filter(ep => {
-      if (type === 'anime') {
-        return ep && ep.streaming_links && ep.streaming_links.length > 0;
-      }
-      return true;
-    });
+    const isAnime = type === 'anime';
+    const nonEmptyEpisodes = episodes.filter((episode) => Boolean(episode));
+    const visibleEpisodes = isAnime
+      ? [...nonEmptyEpisodes]
+          .filter((episode: any) => {
+            const query = animeEpisodeSearch.trim().toLocaleLowerCase();
+            if (!query) return true;
+            return [episode.name, episode.index, episode.episode_number]
+              .some((value) => String(value ?? '').toLocaleLowerCase().includes(query));
+          })
+          .sort((left: any, right: any) => {
+            const leftNumber = Number(left.index ?? left.episode_number ?? 0);
+            const rightNumber = Number(right.index ?? right.episode_number ?? 0);
+            return animeEpisodeSortDescending ? rightNumber - leftNumber : leftNumber - rightNumber;
+          })
+      : nonEmptyEpisodes;
 
     if (nonEmptyEpisodes.length === 0) {
       return (
@@ -2872,11 +2966,10 @@ const TVDetails: React.FC = () => {
       );
     }
 
-    const showToggle = true; // Toujours afficher le bouton de menu déroulant
-    const isAnime = type === 'anime';
+    const showToggle = !isAnime; // Les anime restent sur la liste de streaming, quel que soit le mode de lecture.
 
-    // Replis d'image des vignettes : affiche TMDB de la saison, puis Anime-Sama,
-    // puis l'affiche de la série. Les numéros sont normalisés comme dans les cartes.
+    // Le fallback affiche de saison/série reste réservé aux séries classiques.
+    // Pour un anime, une vignette absente reste un placeholder : aucune fausse image répétée.
     const currentAnimeSeason = type === 'anime'
       ? animeData?.seasons?.find((season: SeasonPosterSource & { season_number?: number | string | null; seasonNumber?: number | string | null }, index: number) =>
         Number(season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)) === Number(selectedSeason))
@@ -2895,24 +2988,21 @@ const TVDetails: React.FC = () => {
       currentStandardSeason?.poster_path,
       currentStandardSeason?.posterPath,
     );
-    const episodeSeriesPoster = firstNonEmptyImage(
-      type === 'anime' ? animeData?.poster_path : null,
-      type === 'anime' ? animeData?.posterPath : null,
-      type === 'anime' ? animeData?.image : null,
-      tvShow?.poster_path,
-    );
-    const episodeFallbackPoster = episodeSeasonPoster || episodeSeriesPoster;
+    const episodeSeriesPoster = type === 'standard' ? firstNonEmptyImage(tvShow?.poster_path) : null;
+    const episodeFallbackPoster = type === 'standard'
+      ? (episodeSeasonPoster || episodeSeriesPoster)
+      : null;
 
     // Déterminer le mode par défaut basé sur le nombre d'épisodes
     const defaultDropdownMode = type === 'anime' ? false : nonEmptyEpisodes.length > 15;
 
     const dropdownOptions = nonEmptyEpisodes.map((ep: any) => {
       if (type === 'anime') {
-        const allLanguages = ep.streaming_links.map((link: any) => {
+        const allLanguages = (Array.isArray(ep.streaming_links) ? ep.streaming_links : []).map((link: any) => {
           return getAnimeLanguageLabel(link.language, t);
         }).join(', ');
         return {
-          value: ep.index.toString(),
+          value: String(ep.index ?? ep.episode_number ?? ''),
           // Le nom vient d'Anime-Sama (« Episode 62 ») : pas de rang devant.
           label: `${ep.name || ep.index} ${allLanguages ? `(${allLanguages})` : ''}`,
         };
@@ -2935,16 +3025,18 @@ const TVDetails: React.FC = () => {
         if (episode) {
           setSelectedEpisode(episode.index);
           setSelectedAnimeEpisode(episode);
-
-          const hasVf = episode.streaming_links.some((link: any) => link.language === 'vf');
-          const hasVostfr = episode.streaming_links.some((link: any) => link.language === 'vostfr');
+          const episodeLinks = Array.isArray(episode.streaming_links) ? episode.streaming_links : [];
+          const hasVf = episodeLinks.some((link: any) => link.language === 'vf');
+          const hasVostfr = episodeLinks.some((link: any) => link.language === 'vostfr');
 
           if (hasVf) {
             setSelectedLanguage('vf');
           } else if (hasVostfr) {
             setSelectedLanguage('vostfr');
+          } else {
+            setSelectedLanguage(episodeLinks[0]?.language || null);
           }
-          setSelectedPlayer('0');
+          setSelectedPlayer(episodeLinks.length > 0 ? '0' : null);
 
           if (cinemaMode && id && selectedSeason) {
             navigate(`/watch/anime/${encodeId(id)}/season/${selectedSeason}/episode/${episode.index}`);
@@ -2961,15 +3053,18 @@ const TVDetails: React.FC = () => {
       setSelectedEpisode(episode.index);
       setSelectedAnimeEpisode(episode);
 
-      const hasVf = episode.streaming_links.some((link: any) => link.language === 'vf');
-      const hasVostfr = episode.streaming_links.some((link: any) => link.language === 'vostfr');
+      const episodeLinks = Array.isArray(episode.streaming_links) ? episode.streaming_links : [];
+      const hasVf = episodeLinks.some((link: any) => link.language === 'vf');
+      const hasVostfr = episodeLinks.some((link: any) => link.language === 'vostfr');
 
       if (hasVf) {
         setSelectedLanguage('vf');
       } else if (hasVostfr) {
         setSelectedLanguage('vostfr');
+      } else {
+        setSelectedLanguage(episodeLinks[0]?.language || null);
       }
-      setSelectedPlayer('0');
+      setSelectedPlayer(episodeLinks.length > 0 ? '0' : null);
 
       if (cinemaMode && id && selectedSeason) {
         // Rediriger vers la page de visionnage anime en mode cinéma
@@ -2983,7 +3078,92 @@ const TVDetails: React.FC = () => {
     // un instant vide (sortie puis entrée) qui faisait clignoter la section.
     return (
       <>
-        {showToggle && (dropdownMode !== null ? dropdownMode : defaultDropdownMode) ? (
+        {isAnime && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="text-lg font-semibold tracking-tight text-white">{t('details.episodes')}</h4>
+              <p className="mt-0.5 text-xs font-medium text-white/45">
+                {visibleEpisodes.length} {t('details.episodes').toLocaleLowerCase()}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {animeEpisodeSearchOpen ? (
+                <div className="flex h-9 w-52 items-center gap-2 rounded-lg border border-white/10 bg-[#19191b] px-2.5 focus-within:border-white/25 sm:w-64">
+                  <Search className="h-4 w-4 shrink-0 text-white/45" />
+                  <input
+                    autoFocus
+                    value={animeEpisodeSearch}
+                    onChange={(event) => setAnimeEpisodeSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setAnimeEpisodeSearch('');
+                        setAnimeEpisodeSearchOpen(false);
+                      }
+                    }}
+                    placeholder={t('details.selectEpisode')}
+                    aria-label={t('details.selectEpisode')}
+                    className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnimeEpisodeSearch('');
+                      setAnimeEpisodeSearchOpen(false);
+                    }}
+                    aria-label={t('common.close')}
+                    className="rounded p-0.5 text-white/45 transition-colors hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAnimeEpisodeSearchOpen(true)}
+                  aria-label={t('details.selectEpisode')}
+                  title={t('details.selectEpisode')}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.07] text-white/75 transition-colors hover:bg-white/[0.13] hover:text-white"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setAnimeEpisodeSortDescending((value) => !value)}
+                aria-label={animeEpisodeSortDescending ? t('common.sortAscending', 'Tri croissant') : t('common.sortDescending', 'Tri décroissant')}
+                title={animeEpisodeSortDescending ? t('common.sortAscending', 'Tri croissant') : t('common.sortDescending', 'Tri décroissant')}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.07] text-white/75 transition-colors hover:bg-white/[0.13] hover:text-white"
+              >
+                <ArrowDownUp className="h-4 w-4" />
+              </button>
+              <div className="flex h-9 items-center rounded-full bg-white/[0.07] p-0.5" role="group" aria-label={t('details.episodeListSource')}>
+                <button
+                  type="button"
+                  aria-pressed={animeEpisodeView === 'list'}
+                  onClick={() => setAnimeEpisodeView('list')}
+                  title={t('details.episodeListTmdb')}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${animeEpisodeView === 'list' ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                >
+                  <List className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={animeEpisodeView === 'grid'}
+                  onClick={() => setAnimeEpisodeView('grid')}
+                  title={t('details.showEpisodeGrid')}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${animeEpisodeView === 'grid' ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {isAnime && visibleEpisodes.length === 0 && animeEpisodeSearch.trim() ? (
+          <p className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-8 text-center text-sm text-white/50">
+            {t('details.noEpisodesForSeason')}
+          </p>
+        ) : showToggle && (dropdownMode !== null ? dropdownMode : defaultDropdownMode) ? (
           // Dropdown mode (si > 15 épisodes par défaut, ou si activé manuellement)
           <motion.div
             key="dropdown"
@@ -3015,22 +3195,24 @@ const TVDetails: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
           >
-            <div className="grid grid-cols-1 gap-3 mb-6">
-              {nonEmptyEpisodes.map((ep: any, index: number) => {
+            <div className={isAnime && animeEpisodeView === 'grid'
+              ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
+              : "mb-6 grid grid-cols-1 gap-3"}>
+              {visibleEpisodes.map((ep: any, index: number) => {
                 // ... grid item rendering ...
                 if (isAnime) {
                   const isSelected = selectedEpisode === ep.index;
                   const episodeKey = `s${selectedSeason}e${ep.index}`;
                   const episodeNumber = Number(ep.index);
                   const availableLanguages = Array.isArray(ep.streaming_links)
-                    ? ep.streaming_links.map((link: any) => link.language).filter(Boolean)
+                    ? [...new Set(ep.streaming_links.map((link: any) => link?.language).filter(Boolean))]
                     : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
-                  const imageSource = episodeStillSource || (ep.duplicate_still ? null : episodeFallbackPoster);
-                  const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
+                  const imageSource = isAnime ? episodeStillSource : (episodeStillSource || episodeFallbackPoster);
+                  const fallbackSvg = getSeasonFallbackSvg(`${t('details.episode').toUpperCase()} ${episodeNumber}`.trim());
                   const sourceKey = episodeStillSource
                     ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
-                    : (episodeSeasonPoster ? 'season-poster' : 'series-poster');
+                    : (isAnime ? 'no-still' : (episodeSeasonPoster ? 'season-poster' : 'series-poster'));
                   const episodeImageKey = `anime-episode-s${selectedSeason || 'unknown'}-e${ep.index}-${sourceKey}`;
                   const episodeImageFailed = failedImages[episodeImageKey];
                   const imageUrl = detailsMediaSlot.width > 0 && imageSource
@@ -3124,8 +3306,13 @@ const TVDetails: React.FC = () => {
                                 key={retryUrl}
                               />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+                              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#24242a] via-[#17171b] to-[#0f0f11] text-white/40">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/[0.04]">
+                                  <Play className="ml-0.5 h-4 w-4" />
+                                </span>
+                                <span className="text-[9px] font-semibold uppercase tracking-[0.16em]">
+                                  {t('details.episode')} {episodeNumber}
+                                </span>
                               </div>
                             )}
 
@@ -3170,33 +3357,10 @@ const TVDetails: React.FC = () => {
                                 <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {episodeTitle}
                                 </h4>
-                                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
-                                  <div className="flex items-center gap-1.5">
-                                    <Tv className="h-3.5 w-3.5 text-red-400 opacity-70" />
-                                    <span>{t('details.episode')} {episodeNumber}</span>
-                                  </div>
+                                <div className="mt-1 text-sm text-white/55">
+                                  {tvShow?.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} min` : ''}
                                 </div>
-                                {ep.overview && (
-                                  <EpisodeOverview
-                                    text={shouldHide('episodeOverviews') ? getMaskedContent(ep.overview, 'episodeOverviews') : ep.overview}
-                                    expanded={!!expandedCards[episodeKey]}
-                                    onToggle={toggleCardExpansion(episodeKey)}
-                                    t={t}
-                                  />
-                                )}
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                  {availableLanguages.map((language: string, i: number) => (
-                                    <span
-                                      key={`lang-badge-${language}-${i}`}
-                                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 ${language === 'vostfr' ? 'bg-blue-600/70' :
-                                        language === 'vf' ? 'bg-green-600/70' :
-                                          'bg-purple-600/70'
-                                        }`}
-                                    >
-                                      {getAnimeLanguageLabel(language, t)}
-                                    </span>
-                                  ))}
-                                </div>
+
                               </div>
                             </div>
                             <div className="ml-2 flex shrink-0 items-center gap-1 self-center justify-end">
@@ -3207,7 +3371,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatchlist', !watchStatus.episodeWatchlist[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-400' : 'text-white/45'}`}
                                 title={t('details.addToWatchlistTitle')}
                               >
                                 <List className="w-4 h-4" />
@@ -3219,7 +3383,7 @@ const TVDetails: React.FC = () => {
                                     updateWatchStatus('episodeWatched', !watchStatus.episodeWatched[episodeKey], episodeKey);
                                   }
                                 }}
-                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${isEpisodeWatched ? 'text-red-400' : 'text-white/45'}`}
                                 title={t('details.markAsWatched')}
                               >
                                 <Check className="w-4 h-4" />
@@ -3235,6 +3399,17 @@ const TVDetails: React.FC = () => {
                                   {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
                                 </span>
                               )}
+
+                            </div>
+                            <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
+                              {availableLanguages.map((language: string, languageIndex: number) => (
+                                <span
+                                  key={`anime-language-${language}-${languageIndex}`}
+                                  className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85 ${language === 'vf' ? 'border-emerald-400/20 bg-emerald-500/15' : language === 'vostfr' ? 'border-sky-400/20 bg-sky-500/15' : 'border-white/10 bg-white/[0.06]'}`}
+                                >
+                                  {language === 'vf' ? 'DUB' : language === 'vostfr' ? 'SUB' : language.toUpperCase().slice(0, 4)}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         </div>
@@ -4165,7 +4340,7 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${animeMode ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
+                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${useAnimeSeasonLayout ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
@@ -4192,7 +4367,7 @@ const TVDetails: React.FC = () => {
                             <span className="truncate">{t('details.backToStandardMode')}</span>
                           </button>
                         )}
-                        {hasNetflixLayout && !animeMode && id && (
+                        {hasNetflixLayout && !useAnimeSeasonLayout && id && (
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm text-gray-400">{t('details.seasonLayout')}</span>
                             <div className="flex rounded-xl border border-white/[0.08] bg-black/25 p-1" role="group">
@@ -4214,41 +4389,14 @@ const TVDetails: React.FC = () => {
                     </div>
 
                     {/* Compact season picker for Anime; poster grid stays for standard series. */}
-                    <div className={animeMode ? "mb-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"}>
+                    <div className={useAnimeSeasonLayout ? "mb-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"}>
                       <AnimatePresence>
-                        {animeMode && animeSeasonsWithStills.length > 0 ? (
+                        {useAnimeSeasonLayout ? (
                           /* Affichage des saisons pour les animes */
-                          animeSeasonsWithStills
-                            // N'afficher que les saisons réellement disponibles.
-                            .filter((season: any) =>
-                              season?.available !== false &&
-                              season?.status !== 'unavailable' &&
-                              Array.isArray(season?.episodes) &&
-                              season.episodes.length > 0
-                            )
-                            .map((season: any, index: number) => {
-                            const seasonNumber = Number(
-                              season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)
-                            );
-                            const seasonTitle = getSeasonDisplayName(seasonNumber, t, season.name);
-                            // Les fiches Anime-Sama peuvent réutiliser l'affiche de la série
-                            // pour toutes les saisons. Priorité à l'affiche TMDB de la saison
-                            // portant exactement le même numéro, puis aux données Anime-Sama.
-                            const matchingTmdbSeason = tvShow?.seasons?.find(
-                              (tmdbSeason) => Number(tmdbSeason.season_number) === seasonNumber
-                            );
-                            const seasonImageSource = firstNonEmptyImage(
-                              matchingTmdbSeason?.poster_path,
-                              season?.poster_path,
-                              season?.posterPath,
-                              animeData?.poster_path,
-                              animeData?.posterPath,
-                              animeData?.image,
-                              tvShow?.poster_path,
-                            );
+                          animeSeasonCards.map(({ season, seasonNumber, seasonTitle, posterPath }, index) => {
                             const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${seasonNumber}`);
-                            const imageUrl = detailsMediaSlot.width > 0
-                              ? getTmdbImageUrl(seasonImageSource, {
+                            const imageUrl = posterPath && detailsMediaSlot.width > 0
+                              ? getTmdbImageUrl(posterPath, {
                                 kind: 'poster',
                                 quality: effectiveImageQuality,
                                 width: Math.ceil(seasonCardCssWidth * imageDpr),
@@ -4262,10 +4410,10 @@ const TVDetails: React.FC = () => {
                             return (
                               <motion.div
                                 key={`anime-season-${seasonNumber}`}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 0.3, delay: index * 0.05 }}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 8 }}
+                                transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.18) }}
                                 className={`anime-season-card group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border bg-[#151517] p-2.5 text-left transition-[background,border-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-[#1b1b1e] ${selectedSeason === seasonNumber ? 'border-red-500/70 ring-1 ring-red-500/20' : 'border-white/[0.08] hover:border-white/20'}`}
                                 role="button"
                                 tabIndex={0}
@@ -4279,16 +4427,16 @@ const TVDetails: React.FC = () => {
                                 onClick={() => handleSeasonChange(seasonNumber)}
                               >
                                 <div className="relative h-24 w-[68px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:h-28 sm:w-[76px]">
-                                  {!shouldHide('seasonImages') ? (
+                                  {!shouldHide('seasonImages') && posterPath ? (
                                     <img
                                       src={hasFailed ? fallbackSvg : retryUrl}
                                       alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : seasonTitle}
                                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                      onError={(e) => {
+                                      onError={(event) => {
                                         if (!hasFailed) {
-                                          setFailedImages(prev => ({ ...prev, [imageKey]: true }));
+                                          setFailedImages((previous) => ({ ...previous, [imageKey]: true }));
                                         } else {
-                                          e.currentTarget.src = fallbackSvg;
+                                          event.currentTarget.src = fallbackSvg;
                                         }
                                       }}
                                       loading="lazy"
@@ -4298,31 +4446,23 @@ const TVDetails: React.FC = () => {
                                       key={retryUrl}
                                     />
                                   ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-gray-800">
-                                      <div className="flex flex-col items-center gap-2 text-gray-400">
-                                        <EyeOff className="w-12 h-12" />
-                                        <span className="text-sm">{t('details.imageMasked')}</span>
-                                      </div>
+                                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#242429] to-[#111114] text-white/35">
+                                      {shouldHide('seasonImages') ? <EyeOff className="h-6 w-6" /> : <Tv className="h-6 w-6" />}
+                                      <span className="text-[10px] font-semibold uppercase tracking-wider">{t('details.season')} {seasonNumber}</span>
                                     </div>
                                   )}
-                                  {/* Gradient retiré si nécessaire ou laissé pour l'esthétique */}
-                                  {/* <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3">
-                          <h3 className="text-base font-bold text-white line-clamp-2">{season.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-gray-400 ml-auto">{season.episodes.length} épisodes</span>
-                          </div>
-                        </div> */}
                                   {selectedSeason === seasonNumber && (
-                                    <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">{t('details.currentSeasonBadge')}</div>
+                                    <div className="absolute right-1.5 top-1.5 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                                      {t('details.currentSeasonBadge')}
+                                    </div>
                                   )}
                                 </div>
-                                {/* Nom complet de la saison affiché en dessous pour les animes */}
                                 <div className="min-w-0 flex-1 py-1 pr-1">
                                   <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-white transition-colors group-hover:text-rose-200 sm:text-[15px]">
                                     {shouldHide('episodeNames') ? getMaskedContent(seasonTitle, 'episodeNames') : seasonTitle}
                                   </h3>
                                   <span className="mt-2 block text-xs font-medium text-white/50">
-                                    {season.episodes.length} {t('details.episodes')}
+                                    {season.episodes?.length ?? 0} {t('details.episodes')}
                                   </span>
                                 </div>
                                 <ChevronRight className="mr-1 h-4 w-4 shrink-0 text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70" aria-hidden="true" />
@@ -4423,7 +4563,7 @@ const TVDetails: React.FC = () => {
                         >
                           {/* AnimatePresence pour la transition anime/standard */}
                           <AnimatePresence mode="wait">
-                            {animeMode && animeData?.seasons ? (
+                            {useAnimeSeasonLayout ? (
                               <motion.div
                                 key="anime-view"
                                 initial={{ opacity: 0, y: -10 }} // Départ légèrement au-dessus
@@ -4431,35 +4571,10 @@ const TVDetails: React.FC = () => {
                                 exit={{ opacity: 0, y: 10 }}    // Sortie légèrement vers le bas
                                 transition={{ duration: 0.3 }}
                               >
-                                {/* Toggle Button (toujours affiché) */}
-                                {(() => {
-                                  const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                  return currentSeason?.episodes?.length > 0;
-                                })() && (
-                                    <div className="flex justify-start mb-4"> {/* Alignement à gauche */}
-                                      <button
-                                        ref={dropdownToggleButtonRef}
-                                        className="px-4 py-2 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 text-white dropdown-toggle-button"
-                                        onClick={() => {
-                                          const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0, true);
-                                          setDropdownMode((prev) => prev !== null ? !prev : !currentDefault);
-                                        }}
-                                      >
-                                        {(() => {
-                                          const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0);
-                                          const currentMode = dropdownMode !== null ? dropdownMode : currentDefault;
-                                          return currentMode ? t('details.showEpisodeGrid') : t('details.showDropdown');
-                                        })()}
-                                      </button>
-                                    </div>
-                                  )}
-                                {/* Render Dropdown or Grid */}
-                                {(() => {
-                                  const currentSeason = animeSeasonsWithStills.find((s) => (s.number || (animeSeasonsWithStills.indexOf(s) + 1)) === selectedSeason);
-                                  return renderEpisodes(currentSeason?.episodes || [], 'anime');
-                                })()}
+                                {renderEpisodes(
+                                  animeSeasonCards.find((seasonCard) => seasonCard.seasonNumber === Number(selectedSeason))?.season.episodes || [],
+                                  'anime'
+                                )}
                               </motion.div>
                             ) : (
                               <motion.div
