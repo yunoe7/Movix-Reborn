@@ -789,6 +789,33 @@ async function cleanupOldCacheFiles(safeAnimeName, animeCacheDir) {
   }
 }
 
+
+ // Fonction pour formater les erreurs Coflix
+function formatCoflixError(error, context = '') {
+  if (error && error.isAxiosError) {
+    const url = error.config && error.config.url ? error.config.url : '';
+    const statusCode = error.response ? error.response.status : '';
+    const statusText = error.response ? error.response.statusText : '';
+
+    // Ne pas logger les erreurs 400
+    if (statusCode === 400) {
+      return '';
+    }
+
+    return `[AxiosError] ${error.code || ''} ${error.message} ${statusCode ? `(${statusCode} ${statusText})` : ''} ${url}`;
+  } else {
+    const msg = error && error.message
+      ? error.message
+      : (typeof error === 'string' ? error : JSON.stringify(error));
+    // Ne jamais dumper des pages HTML entières dans les logs.
+    if (typeof msg === 'string' && msg.length > 300) {
+      return `${msg.slice(0, 300).replace(/\\s+/g, ' ')}… [tronqué, ${msg.length} chars]`;
+    }
+    return msg;
+  }
+}
+
+
 module.exports = {
   configure,
 
