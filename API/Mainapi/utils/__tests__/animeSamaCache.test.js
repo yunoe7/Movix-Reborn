@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { canReuseSeasonCache, hasMissingSeasonPaths } = require('../animeSamaCache');
+const { canReuseSeasonCache, hasMissingSeasonPaths, hasHiddenSeasons } = require('../animeSamaCache');
 
 const sameEpisodes = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -38,4 +38,26 @@ test('does not flag seasons that already have a path', () => {
 test('does not flag an empty or malformed season cache', () => {
   assert.equal(hasMissingSeasonPaths({}), false);
   assert.equal(hasMissingSeasonPaths(null), false);
+});
+
+// Une saison « masquée » n'a jamais été vérifiée par le code qui l'a mise en
+// cache : sa page peut encore publier des repères lien:. Sans ce marqueur, un
+// cache tout juste écrit par une actualisation précédente reste servi une heure
+// sans que la page soit relue, même après correction du classement.
+test('detects announced seasons cached as hidden without a page check', () => {
+  assert.equal(hasHiddenSeasons({
+    'Saison 2': { path: 'saison2', available: false, status: 'unavailable', unavailableReason: 'hidden', episodes: [] },
+  }), true);
+});
+
+test('does not flag genuinely empty, absent or playable seasons as hidden', () => {
+  assert.equal(hasHiddenSeasons({ 'Saison 2': { unavailableReason: 'empty', episodes: [] } }), false);
+  assert.equal(hasHiddenSeasons({ 'Saison 2': { unavailableReason: 'absent', episodes: [] } }), false);
+  assert.equal(hasHiddenSeasons({ 'Saison 2': { available: true, episodes: [{}] } }), false);
+});
+
+test('does not flag an empty or malformed season cache as hidden', () => {
+  assert.equal(hasHiddenSeasons({}), false);
+  assert.equal(hasHiddenSeasons(null), false);
+  assert.equal(hasHiddenSeasons([]), false);
 });

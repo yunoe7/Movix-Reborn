@@ -20,4 +20,18 @@ function hasMissingSeasonPaths(seasons) {
   ));
 }
 
-module.exports = { canReuseSeasonCache, hasMissingSeasonPaths };
+/**
+ * A season stored as `hidden` was written without ever reading its season page.
+ * Anime-Sama can keep publishing `lien:` markers on that page, so such a cache
+ * must be checked once even when it looks fresh. A top-level
+ * `hiddenSeasonsChecked` marker on the title cache closes the loop afterwards.
+ */
+function hasHiddenSeasons(seasons) {
+  if (!seasons || typeof seasons !== 'object' || Array.isArray(seasons)) return false;
+  return Object.values(seasons).some((season) => (
+    season?.unavailableReason === 'hidden'
+    && Array.isArray(season?.episodes) && season.episodes.length === 0
+  ));
+}
+
+module.exports = { canReuseSeasonCache, hasMissingSeasonPaths, hasHiddenSeasons };

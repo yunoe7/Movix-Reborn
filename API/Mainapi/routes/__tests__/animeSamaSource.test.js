@@ -43,6 +43,21 @@
  *     jamais ouvert.
  * 13. Une lecture d'épisode pendant une actualisation perd des adresses du
  *     carnet (deux écritures croisées du même fichier).
+ * 14. Une fiche commente ses derniers panneaux (Détective Conan, ~31 saisons)
+ *     alors que leurs pages publient encore des repères `lien:` : les garder
+ *     indisponibles sans lire ces pages déclare à tort ~29 saisons mortes.
+ *     Le E2E live ne voit pas ce cas : il ne lit que les panneaux visibles du
+ *     jour, et une fiche dont tous les panneaux sont visibles ne le reproduit
+ *     pas.
+ * 15. Un cache écrit par l'ancien classement porte déjà ces saisons comme
+ *     « masquées » avec une date récente : une actualisation normale l'estime
+ *     à jour et ne relit jamais la page devenue disponible. Le E2E live repart
+ *     d'un cache vide à chaque exécution, donc il ne le voit pas non plus.
+ *
+ * Les quatre états à distinguer : saison réellement vide (« Bientôt de
+ * retour »), saison avec épisodes dont les adresses restent à demander
+ * (`pending`, disponible), lecteurs morts (`unplayable`), panneau masqué dont
+ * la page n'existe plus (`hidden`). Seul le second état doit rester jouable.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -699,7 +714,7 @@ test('fiche sans anime (saison masquée conservée, scans seuls vidés) ; fiche 
     const h = loadAnimeSama({ site, files: seeded() });
     await h.refresh();
     assert.deepEqual(h.failures(), [], `${label} : aucun échec journalisé`);
-    assert.deepEqual(h.pageCalls(), [], `${label} : aucune page de saison lue`);
+    assert.deepEqual(h.pageCalls(), label === 'saison masquée' ? ['saison1/vostfr'] : [], `${label} : seule la page du panneau masqué est vérifiée`);
     const seasons = (await h.search()).body[0].seasons;
     if (label === 'saison masquée') {
       assert.deepEqual(seasons.map(season => [season.name, season.status, season.episodes.length]), [
@@ -889,7 +904,7 @@ test('deux saisons visibles : l’ordre annoncé est conservé, aucune adresse n
   await settle();
 });
 
-test('une saison commentée resteVisible avec son chemin, sans page lue ni lecteur demandé', async () => {
+test('une saison commentée dont la page n’existe pas resteVisible avec son chemin, sans lecteur demandé', async () => {
   const site = createSite();
   site.fiche = [
     'panneauAnime("Saison 1", "saison1/vostfr");',
@@ -901,20 +916,113 @@ test('une saison commentée resteVisible avec son chemin, sans page lue ni lecte
   const h = loadAnimeSama({ site });
 
   await h.refresh();
-  assert.deepEqual(h.pageCalls(), ['saison1/vostfr', 'film/vostfr']);
+  assert.deepEqual(h.pageCalls(), ['saison2/vostfr', 'saison1/vostfr', 'film/vostfr'], 'la page masquée est vérifiée, puis la fiche est parcourue');
   const { seasons } = (await h.search()).body[0];
   assert.deepEqual(seasonSummary(seasons), [
     { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
     { name: 'Saison 2', path: 'saison2', available: false, status: 'unavailable', episodes: 0 },
     { name: 'Films', path: 'film', available: true, status: 'available', episodes: 1 },
   ]);
-  assert.equal(seasons[1].unavailableReason, 'hidden');
+  assert.equal(seasons[1].unavailableReason, 'hidden', 'page introuvable : la saison reste masquée');
   assert.deepEqual(seasons[1].episodes, []);
   assert.deepEqual(h.linkCalls(), []);
   assert.deepEqual(h.title('example').seasons['Saison 2'], {
     path: 'saison2', status: 'unavailable', available: false,
     unavailableReason: 'hidden', episodes: [], timestamp: now,
   });
+  await settle();
+});
+
+// Détective Conan : la fiche annonce 31 saisons mais commente les derniers
+// panneaux. Leurs pages restent lisibles et listent des `lien:` ; aucune adresse
+// n'est mise en cache (site.links volontairement vide). Ce que le visiteur doit
+// voir : ces saisons sont disponibles, avec des lecteurs en attente, et seules
+// les pages réellement vidées par le site restent « Indisponible ».
+test('Détective Conan : 31 saisons, les panneaux masqués à repères lien: restent disponibles sans résoudre d’adresse', async () => {
+  const site = createSite();
+  const panels = [];
+  const withRefs = [];
+  const emptied = [];
+  for (let number = 1; number <= 31; number += 1) {
+    const path = `saison${number}`;
+    const name = `Saison ${number}`;
+    const hidden = number >= 25;
+    const empty = number >= 30;
+    panels.push(`${hidden ? '<!--' : ''}panneauAnime("${name}", "${path}/vostfr");${hidden ? '-->' : ''}`);
+    const token = `jeton-${number}`;
+    if (empty) {
+      site.pages[`${path}/vostfr`] = { langs: ['vostfr'], token, eps: [] };
+      emptied.push(name);
+    } else {
+      const firstId = number * 1000;
+      // Pas de site.links[id] : le carnet n'a aucune adresse, seulement des
+      // repères. La liste doit quand même annoncer deux épisodes jouables.
+      site.pages[`${path}/vostfr`] = { langs: ['vostfr'], token, eps: [[`lien:${firstId}`, `lien:${firstId + 1}`]] };
+      if (hidden) withRefs.push(name);
+    }
+  }
+  site.fiche = panels;
+  const h = loadAnimeSama({ site, animes: ['Detective Conan'] });
+
+  await h.refresh();
+  const { seasons } = (await h.search()).body[0];
+  assert.equal(seasons.length, 31, 'aucune saison annoncée ne disparaît');
+  const byName = new Map(seasons.map(season => [season.name, season]));
+  for (const name of withRefs) {
+    const season = byName.get(name);
+    assert.equal(season.available, true, `${name} publie encore des repères lien:`);
+    assert.equal(season.status, 'available');
+    assert.equal(season.episodes.length, 2);
+    for (const episode of season.episodes) {
+      assert.deepEqual(linksView(episode.streaming_links), [['vostfr', 1]]);
+    }
+  }
+  for (const name of emptied) {
+    const season = byName.get(name);
+    assert.equal(season.available, false, `${name} a été vidée par anime-sama`);
+    assert.equal(season.status, 'unavailable');
+    assert.equal(season.unavailableReason, 'empty');
+    assert.deepEqual(season.episodes, []);
+  }
+  const pages = h.pageCalls();
+  for (const number of [25, 29, 30, 31]) {
+    assert.ok(pages.includes(`saison${number}/vostfr`), `la page de la saison ${number} est vérifiée`);
+  }
+  assert.deepEqual(h.linkCalls(), [], 'aucune adresse de lecteur n’est demandée pour une liste de saisons');
+  await settle();
+});
+
+test('un cache récent de saisons masquées est revérifié une fois : les repères lien: redeviennent disponibles', async () => {
+  const site = createSite();
+  site.fiche = [
+    'panneauAnime("Saison 1", "saison1/vostfr");',
+    '<!--panneauAnime("Saison 2", "saison2/vostfr");-->',
+  ];
+  site.pages['saison1/vostfr'] = { langs: ['vostfr'], token: 'j-1', eps: [['lien:1']] };
+  site.pages['saison2/vostfr'] = { langs: ['vostfr'], token: 'j-2', eps: [['lien:20', 'lien:21']] };
+  const recent = now - 10 * 60 * 1000;
+  const cached = {
+    'Saison 1': { timestamp: recent, path: 'saison1', available: true, status: 'available', episodes: [
+      episodeOf(1, [{ language: 'vostfr', refs: [{ id: '1', host: 'inconnu.invalid' }] }]),
+    ] },
+    // Écrit par l'ancien classement : jamais vérifié, mais trop récent pour une
+    // actualisation normale.
+    'Saison 2': { timestamp: recent, path: 'saison2', available: false, status: 'unavailable', unavailableReason: 'hidden', episodes: [] },
+  };
+  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile(cached, { ageMs: 10 * 60 * 1000 }) } });
+
+  const before = (await h.search()).body[0];
+  assert.equal(before.seasons.find(season => season.name === 'Saison 2').available, false);
+  await settle();
+
+  const after = (await h.search()).body[0];
+  const repaired = after.seasons.find(season => season.name === 'Saison 2');
+  assert.equal(repaired.available, true, 'la page masquée est relue malgré le cache récent');
+  assert.equal(repaired.status, 'available');
+  assert.equal(repaired.episodes.length, 2);
+  assert.deepEqual(linksView(repaired.episodes[0].streaming_links), [['vostfr', 1]]);
+  assert.equal(h.ficheCalls().length, 1, 'une seule réparation, pas une relecture à chaque recherche');
+  assert.deepEqual(h.linkCalls(), []);
   await settle();
 });
 

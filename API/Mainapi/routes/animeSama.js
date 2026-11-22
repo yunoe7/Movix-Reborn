@@ -35,7 +35,7 @@ const {
   episodeLabelsFromCalls,
 } = require('../utils/animeSamaPages');
 const { createLinkResolver, isLinkTokenError, isLinkRateError } = require('../utils/animeSamaLinks');
-const { canReuseSeasonCache, hasMissingSeasonPaths } = require('../utils/animeSamaCache');
+const { canReuseSeasonCache, hasMissingSeasonPaths, hasHiddenSeasons } = require('../utils/animeSamaCache');
 const { createAnimeSamaFallback } = require('../utils/animeSamaFallback');
 const animeSamaFallback = createAnimeSamaFallback();
 const DEBUG_ANIMESAMA = process.env.DEBUG_ANIMESAMA === 'true';
@@ -224,6 +224,12 @@ const unavailableSeasonEntry = (source = {}, reason = 'absent', timestamp = Date
 
 const isUnavailableSeasonEntry = (entry) => Boolean(entry)
   && (entry.available === false || entry.status === 'unavailable');
+
+// Un cache écrit avant la vérification des panneaux masqués doit être relu une
+// fois, même s'il est récent : ses `lien:` peuvent déjà être disponibles. Le
+// marqueur du fichier évite de rejouer cette réparation à chaque recherche.
+const needsSeasonCacheRepair = (cached) => hasMissingSeasonPaths(cached?.data?.seasons)
+  || (cached?.data?.hiddenSeasonsChecked !== true && hasHiddenSeasons(cached?.data?.seasons));
 
 /**
  * Fusionne le cache avec les saisons annoncées par la fiche.
@@ -1068,11 +1074,13 @@ function refreshAnime(anime, client) {
     }
     const existingData = source?.data || {};
     const originalMtime = source?.mtime || 0;
-    const needsLegacyPathRepair = hasMissingSeasonPaths(existingData.seasons);
+    const needsHiddenFlag = existingData.hiddenSeasonsChecked !== true;
+    const needsCacheRepair = needsSeasonCacheRepair(source);
     // Les anciennes saisons sans chemin ne peuvent pas être résolues par le
-    // client. Elles forcent une actualisation même si le cache est récent.
-    if (!needsLegacyPathRepair && animeRefresh.recentlyChecked(paths.titlePath, ANIME_CHECK_INTERVAL)) return;
-    if (!needsLegacyPathRepair && source && Date.now() - Math.max(originalMtime, Number(existingData.lastCheckedAt) || 0) < ANIME_CHECK_INTERVAL) return;
+    // client ; les saisons masquées n'ont jamais eu leur page lue. Les deux
+    // forcent une actualisation même si le cache est récent.
+    if (!needsCacheRepair && animeRefresh.recentlyChecked(paths.titlePath, ANIME_CHECK_INTERVAL)) return;
+    if (!needsCacheRepair && source && Date.now() - Math.max(originalMtime, Number(existingData.lastCheckedAt) || 0) < ANIME_CHECK_INTERVAL) return;
 
     // Une œuvre se lit en plusieurs pages (la fiche, puis une page par saison
     // et par langue) : un seul worker s'en charge. Ni « vérifié » ni « en
@@ -1091,6 +1099,7 @@ function refreshAnime(anime, client) {
       const existingAnimeCache = existingData.seasons || {};
       const catalogueObj = new Catalogue(anime.url, anime.name, client, anime);
       const seasonsList = await catalogueObj.seasons(true);
+      const visiblePaths = new Set(seasonsList.map(season => season.path));
       const announced = catalogueObj.announcedSeasons.length
         ? catalogueObj.announcedSeasons
         : seasonsList.map(season => ({ name: season.name, path: season.path, available: true }));
@@ -1108,12 +1117,43 @@ function refreshAnime(anime, client) {
       const unreadable = [];
       const usedLinkIds = new Set();
 
-      // Les panneaux masqués sont des saisons annoncées : on garde leur vrai
-      // nom et, quand il est lisible, leur chemin. Aucune page n'est lue pour
-      // eux, aucun épisode n'est fabriqué.
+      // Un panneau commenté n'est pas une preuve d'indisponibilité : anime-sama
+      // laisse souvent sa page publier des repères `lien:`. On la lit comme une
+      // saison visible, mais aucun épisode n'est joué ici et aucune adresse
+      // n'est demandée à /api/lien.php. Une page vidée ou introuvable reste
+      // indisponible ; des repères suffisent à rouvrir la saison.
       for (const panel of announced) {
         if (panel.available !== false) continue;
-        updatedAnimeCache[panel.name] = unavailableSeasonEntry(panel, panel.unavailableReason || 'hidden');
+        if (panel.path && !visiblePaths.has(panel.path)) {
+          const baseUrl = anime.url.split('?')[0];
+          const hiddenSeason = new Season(
+            `${baseUrl}${panel.path}/`,
+            panel.name,
+            anime.name,
+            client,
+            panel.lang,
+            panel.path
+          );
+          const hiddenEpisodes = toCachedEpisodes(await hiddenSeason.episodes(false, {
+            knownLangs: languagesOf(existingAnimeCache[panel.name]?.episodes),
+          }));
+          for (const id of hiddenSeason.usedLinkIds) usedLinkIds.add(id);
+          if (hiddenEpisodes.length) {
+            updatedAnimeCache[panel.name] = {
+              timestamp: Date.now(),
+              path: panel.path,
+              available: true,
+              status: 'available',
+              episodes: hiddenEpisodes,
+            };
+          } else if (hiddenSeason.emptiedBySite) {
+            updatedAnimeCache[panel.name] = unavailableSeasonEntry(panel, 'empty');
+          } else {
+            updatedAnimeCache[panel.name] = unavailableSeasonEntry(panel, panel.unavailableReason || 'hidden');
+          }
+        } else {
+          updatedAnimeCache[panel.name] = unavailableSeasonEntry(panel, panel.unavailableReason || 'hidden');
+        }
         animeDataUpdated = true;
       }
 
@@ -1186,9 +1226,10 @@ function refreshAnime(anime, client) {
         catch (error) { if (error.code !== 'ENOENT') throw error; }
       }
       if (latestMtime !== originalMtime) return;
-      if (animeDataUpdated) {
+      if (animeDataUpdated || needsHiddenFlag) {
         await writeCacheFile(paths.titlePath, {
           ...existingData,
+          hiddenSeasonsChecked: true,
           timestamp: Date.now(),
           lastCheckedAt: Date.now(),
           seasons: updatedAnimeCache,
@@ -1421,7 +1462,7 @@ router.get('/search/:query', async (req, res) => {
     const refreshedBeforeResponse = new Set();
     await Promise.all(cachedResults.map(async (anime) => {
       const cached = await readTitleCache(anime);
-      if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
+      if (!cached || needsSeasonCacheRepair(cached)) {
         refreshedBeforeResponse.add(cachePathsFor(anime).titlePath);
         await waitAtMost(refreshAnime(anime, searchClient.client), deps.firstScanWaitMs);
       }
@@ -1603,7 +1644,7 @@ router.get('/tmdb/:type/:id', async (req, res) => {
     const refreshedBeforeResponse = new Set();
     await Promise.all(animes.map(async (anime) => {
       const cached = await readTitleCache(anime);
-      if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
+      if (!cached || needsSeasonCacheRepair(cached)) {
         refreshedBeforeResponse.add(cachePathsFor(anime).titlePath);
         await waitAtMost(refreshAnime(anime, client.client), deps.firstScanWaitMs);
       }
