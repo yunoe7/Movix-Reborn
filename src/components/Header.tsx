@@ -402,11 +402,24 @@ const Header: React.FC = () => {
   // including it churns listener registration on every keystroke
   }, [showAutocomplete, isMobileSearchOpen]);
 
-  // Focus mobile search input when opened
+  // Focus, verrouille le scroll et ferme la recherche au clavier.
   useEffect(() => {
-    if (isMobileSearchOpen && mobileSearchInputRef.current) {
-      mobileSearchInputRef.current.focus();
-    }
+    if (!isMobileSearchOpen) return;
+    mobileSearchInputRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsMobileSearchOpen(false);
+        setShowAutocomplete(false);
+        mobileSearchInputRef.current?.blur();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isMobileSearchOpen]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -566,32 +579,6 @@ const Header: React.FC = () => {
               </nav>
 
 
-
-              {/* Desktop Search. min-w-0 : c'est lui qui rétrécit quand la ligne
-                  manque de place (marges du HeroSlider, 1024-1280 px) ; sans
-                  lui, la largeur minimale du champ écrasait le profil. */}
-              <div className="hidden md:block relative min-w-0 w-0">
-                <form onSubmit={handleSearchSubmit} className="relative" data-header-search>
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={headerQuery}
-                    onChange={handleQueryChange}
-                    placeholder={t('header.searchPlaceholder')}
-                    className="w-full py-2 pl-9 pr-3 bg-white/5 text-white rounded-xl border border-white/10 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/30 focus:bg-white/10 placeholder-gray-500 text-sm transition-all"
-                  />
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                  {headerQuery && (
-                    <button
-                      type="button"
-                      onClick={() => { setHeaderQuery(''); clearAutocompleteSuggestions(); setShowAutocomplete(false); }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </form>
-              </div>
 
               {/* Right section */}
               <div className="flex shrink-0 items-center gap-1 rounded-[17px] border border-white/[0.12] bg-[#111]/85 p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-2xl sm:gap-1.5">
@@ -789,36 +776,61 @@ const Header: React.FC = () => {
         getOverlayPortalRoot(),
       )}
 
-      {/* Mobile Search Overlay */}
+      {/* Recherche plein écran : le contenu de la page est masqué pendant la saisie. */}
       <AnimatePresence>
         {isMobileSearchOpen && (
           <motion.div
-            className="fixed inset-x-0 top-0 z-[11002] bg-black/95 p-4 backdrop-blur-xl"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[11500] flex items-start justify-center bg-black/[0.94] px-4 pt-[min(16vh,140px)] backdrop-blur-2xl"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setIsMobileSearchOpen(false);
+                setShowAutocomplete(false);
+              }
+            }}
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('header.searchPlaceholder')}
           >
-            <form onSubmit={handleSearchSubmit} className="flex items-center gap-3">
-              <div className="flex-1 relative">
-                <input
-                  ref={mobileSearchInputRef}
-                  type="text"
-                  value={headerQuery}
-                  onChange={handleQueryChange}
-                  placeholder={t('header.searchPlaceholder')}
-                  className="w-full py-3 pl-10 pr-4 bg-white/10 text-white rounded-xl border border-white/15 focus:outline-none focus:border-red-500/50 placeholder-gray-500 text-sm"
-                />
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              </div>
-              <button
-                type="button"
-                onClick={() => { setIsMobileSearchOpen(false); setHeaderQuery(''); clearAutocompleteSuggestions(); setShowAutocomplete(false); }}
-                className="p-2 text-gray-400 hover:text-white"
-              >
-                <X size={22} />
-              </button>
-            </form>
+            <motion.div
+              className="w-full max-w-3xl"
+              initial={{ opacity: 0, y: 12, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.99 }}
+              transition={{ duration: 0.22, ease: 'easeOut' }}
+            >
+              <form onSubmit={handleSearchSubmit} className="flex items-center gap-3">
+                <div className="relative min-w-0 flex-1">
+                  <Search size={19} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-white/45" />
+                  <input
+                    ref={mobileSearchInputRef}
+                    type="text"
+                    value={headerQuery}
+                    onChange={handleQueryChange}
+                    placeholder={t('header.searchPlaceholder')}
+                    autoComplete="off"
+                    className="h-14 w-full rounded-2xl border border-white/15 bg-[#171717] pl-12 pr-4 text-base text-white shadow-[0_18px_60px_rgba(0,0,0,0.45)] outline-none transition-colors placeholder:text-white/35 focus:border-white/30 focus:bg-[#1c1c1c]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  aria-label={t('common.close', 'Fermer')}
+                  onClick={() => {
+                    setIsMobileSearchOpen(false);
+                    setHeaderQuery('');
+                    clearAutocompleteSuggestions();
+                    setShowAutocomplete(false);
+                  }}
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/60 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <X size={22} />
+                </button>
+              </form>
+              <p className="mt-4 pl-1 text-xs text-white/35">{t('header.searchPlaceholder')}</p>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
