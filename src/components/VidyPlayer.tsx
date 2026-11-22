@@ -41,6 +41,11 @@ function readContinueWatching(): { movies: Array<number | ContinueWatchingEntry>
 
 function getSavedProgress(kind: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): number {
   if (typeof window === 'undefined') return 0;
+  try {
+    if (window.localStorage.getItem('settings_disable_history') === 'true') return 0;
+  } catch {
+    return 0;
+  }
 
   const id = Number(tmdbId);
   if (!Number.isSafeInteger(id) || id <= 0) return 0;
@@ -67,10 +72,7 @@ const VidyPlayer: React.FC<VidyPlayerProps> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastSavedAtRef = useRef(0);
-  const savedProgress = useMemo(
-    () => getSavedProgress(kind, tmdbId, season, episode),
-    [kind, tmdbId, season, episode],
-  );
+  const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
 
   const src = useMemo(() => {
     const path = kind === 'movie'
