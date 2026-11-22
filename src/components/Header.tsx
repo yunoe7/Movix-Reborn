@@ -4,7 +4,6 @@ import { useLightMode } from '@/context/LightModeContext';
 import { isHalloweenSeason, setHalloweenTheme, useHalloweenTheme } from '@/hooks/useHalloweenTheme';
 import { HalloweenBatIcon, HalloweenLantern, HalloweenPumpkinIcon, HalloweenThemeToggleIcon } from './halloween/HalloweenIcons';
 import HalloweenDayBanner from './halloween/HalloweenDayBanner';
-import { MovixWordmark } from './brand/MovixWordmark';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -28,7 +27,6 @@ import { APRIL_FOOLS_ADMIN_PATH, isAprilFoolsAdminEnabled } from '../utils/april
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
 import { useAgeRestrictedContent } from '../hooks/useAgeRestrictedContent';
 import { readLocalStorage } from '../utils/browserStorage';
-import CommunityMenu from './header/CommunityMenu';
 import { AMBIENT_TOGGLE_EVENT, readAmbientActive } from './ambient/ambientOptions';
 import { API_BASE_URL } from '../config/api';
 
@@ -491,7 +489,6 @@ const Header: React.FC = () => {
               </Link>
 
               {/* Canaux officiels : un petit menu Matrix. */}
-              <div className="hidden" aria-hidden="true"><CommunityMenu /></div>
 
               <div className="flex-1" />
 
