@@ -469,10 +469,6 @@ const ProfileMenu: React.FC = () => {
 
   const renderContent = (variant: MenuVariant) => (isAuthenticated ? renderConnected(variant) : renderSignIn(variant));
 
-  const displayName = isAuthenticated
-    ? (username.length > 12 ? `${username.substring(0, 12)}...` : username)
-    : t('auth.login');
-
   return (
     <div className="relative flex items-center">
       {/* Le bouton du profil : une pastille que le liquide du menu remplit à
