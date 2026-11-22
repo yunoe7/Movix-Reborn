@@ -626,25 +626,65 @@ const WatchMovie: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
-    // Fetch movie sources
-    if (id) {
+    let isCurrentRoute = true;
+    const isCurrentRequest = () => isCurrentRoute;
 
-      // Call function directly instead of reference
-      const getVideoSources = async () => {
-        try {
-          await fetchVideoSources();
-          // Fetch next movie after sources to avoid dependency issues
-          await fetchNextMovie();
-        } catch (error) {
-          setIsLoading(false);
-        }
-      };
+    // Reset page-scoped state when React Router reuses this component for
+    // another movie or version.
+    setIsLoading(Boolean(id));
+    setSelectedSource(null);
+    setIsBlocked(false);
+    setContentCert('');
+    setAdPopupTriggered(false);
+    setAdPopupBypass(false);
+    setHasClickedAd(false);
+    setLoadingError(false);
+    setLoadingDarkino(true);
+    setLoadingCoflix(true);
+    setLoadingOmega(true);
+    setLoadingFrembed(true);
+    setLoadingWiflix(true);
+    setLoadingJ1f(true);
+    setLoadingSwiftflow(true);
+    setLoadingViper(true);
+    setLoadingExtractions(true);
+    setDarkinoSources([]);
+    setMp4Sources([]);
+    setWiflixSources([]);
+    setJ1fSources([]);
+    setSwiftflowSources([]);
+    setViperSources([]);
+    setCoflixData(null);
+    setOmegaData(null);
+    setEmbedUrl(null);
 
-      getVideoSources();
-    } else {
+    if (!id) {
       setIsLoading(false);
+      return () => {
+        isCurrentRoute = false;
+      };
     }
-  }, []); // Empty dependency array to run once
+
+    const getVideoSources = async () => {
+      try {
+        await fetchVideoSources(isCurrentRequest);
+        if (isCurrentRoute) {
+          // Fetch next movie only after the current movie metadata has loaded.
+          await fetchNextMovie();
+        }
+      } catch (error) {
+        if (isCurrentRoute) setIsLoading(false);
+      }
+    };
+
+    void getVideoSources();
+    return () => {
+      isCurrentRoute = false;
+    };
+    // The route key owns this request lifecycle; the functions below close over
+    // the current render and are intentionally invoked only from this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, versionKey]);
 
   // Function to update VIP retry message
   const updateVipRetryMessage = (message: string) => {
@@ -671,8 +711,8 @@ const WatchMovie: React.FC = () => {
   }, [loadingDarkino, loadingCoflix, loadingOmega, loadingFrembed, loadingWiflix, loadingJ1f, loadingSwiftflow, loadingViper, loadingExtractions]);
 
   // Fetch video sources
-  const fetchVideoSources = async () => {
-    if (!id) {
+  const fetchVideoSources = async (isCurrentRequest: () => boolean = () => true) => {
+    if (!id || !isCurrentRequest()) {
       return;
     }
 
@@ -689,6 +729,7 @@ const WatchMovie: React.FC = () => {
         console.error('Error fetching TMDB data:', error);
         return { data: { title: '', backdrop_path: null, release_date: '' } };
       });
+      if (!isCurrentRequest()) return;
 
       setMovieTitle(movieVersion && tmdbResponse.data.title
         ? `${tmdbResponse.data.title} — ${t(movieVersion.labelKey)}`
@@ -703,6 +744,7 @@ const WatchMovie: React.FC = () => {
           const certResponse = await axios.get(`https://api.themoviedb.org/3/movie/${id}/release_dates`, {
             params: { api_key: TMDB_API_KEY },
           });
+          if (!isCurrentRequest()) return;
           const results = certResponse.data.results;
           let cert = '';
           const frRelease = results.find((r: any) => r.iso_3166_1 === 'FR');
@@ -727,6 +769,8 @@ const WatchMovie: React.FC = () => {
           console.log('Could not fetch certifications for age check');
         }
       }
+
+      if (!isCurrentRequest()) return;
 
       // Add movie to continueWatching (if history is enabled)
       try {
@@ -786,6 +830,7 @@ const WatchMovie: React.FC = () => {
       return;
 
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('Error in fetchVideoSources:', error);
 
       // Default to VOSTFR when no sources are available
