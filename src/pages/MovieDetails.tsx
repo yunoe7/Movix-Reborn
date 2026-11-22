@@ -2120,7 +2120,7 @@ const MovieDetails = (): JSX.Element => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="sr-only"
+          className="hidden"
         >
           <h1 className="section-title text-4xl md:text-5xl font-bold">
             {movie.title} {movieYear && <>({movieYear})</>}
