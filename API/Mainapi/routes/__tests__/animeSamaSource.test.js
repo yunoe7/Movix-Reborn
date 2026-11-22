@@ -1026,6 +1026,62 @@ test('un cache récent de saisons masquées est revérifié une fois : les repè
   await settle();
 });
 
+test('panneau masqué : une panne passagère de sa page ne dégrade pas un cache encore disponible', async () => {
+  const site = createSite();
+  site.fiche = [
+    'panneauAnime("Saison 1", "saison1/vostfr");',
+    '<!--panneauAnime("Saison 2", "saison2/vostfr");-->',
+  ];
+  simpleSeason(site, 'saison1', ['vostfr'], 1, { firstId: 1 });
+  site.pages['saison2/vostfr'] = { langs: ['vostfr'], token: 'j-2', eps: [['lien:20']] };
+  // Une 503 n'est pas une preuve que le panneau est vidé : le dernier état connu
+  // doit survivre à la panne, puis être revérifié à l'actualisation suivante.
+  site.fail = (kind, key) => (kind === 'page' && key === 'saison2/vostfr' ? httpError(503) : null);
+  const cached = {
+    'Saison 1': { timestamp: now - 2 * HOUR, path: 'saison1', available: true, status: 'available', episodes: [
+      episodeOf(1, [{ language: 'vostfr', refs: [{ id: '1', host: 'a.invalid' }] }]),
+    ] },
+    'Saison 2': { timestamp: now - 2 * HOUR, path: 'saison2', available: true, status: 'available', episodes: [
+      episodeOf(1, [{ language: 'vostfr', refs: [{ id: '20', host: 'a.invalid' }] }]),
+    ] },
+  };
+  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile(cached) } });
+
+  await h.refresh();
+  const { seasons } = (await h.search()).body[0];
+  const hidden = seasons.find(season => season.name === 'Saison 2');
+  assert.equal(hidden.available, true, 'une panne passagère ne rend pas la saison indisponible');
+  assert.equal(hidden.status, 'available');
+  assert.equal(hidden.episodes.length, 1);
+  assert.ok(h.pageCalls().includes('saison2/vostfr'), 'la page du panneau masqué a bien été tentée');
+  assert.deepEqual(h.linkCalls(), [], 'aucune adresse n’est demandée');
+  await settle();
+});
+
+test('fiche annonçant deux langues : une page sans languesDispo ne supprime pas la langue déclarée', async () => {
+  const site = createSite();
+  site.fiche = [
+    '<h1 id="titreOeuvre" class="oe-titre">Example</h1>',
+    '<dl class="oe-infos"><dt>Sur le site</dt><dd>VOSTFR VF</dd></dl>',
+    '<script>var OE_BASE = "/catalogue/example/";',
+    'function panneauAnime(nom, url) { oePanneau(nom, url, false); }</script>',
+    '<script>panneauAnime("Saison 1", "saison1/vostfr");</script>',
+  ].join('\n');
+  // La page VOSTFR ne publie pas de table `languesDispo`, mais la fiche annonce
+  // les deux langues et la page VF liste bien ses propres repères.
+  site.pages['saison1/vostfr'] = { token: 'j-vostfr', eps: [['lien:1']] };
+  site.pages['saison1/vf'] = { token: 'j-vf', eps: [['lien:2']] };
+  const h = loadAnimeSama({ site });
+
+  await h.refresh();
+  const { seasons } = (await h.search()).body[0];
+  assert.equal(seasons.length, 1);
+  assert.deepEqual(linksView(seasons[0].episodes[0].streaming_links), [['vostfr', 1], ['vf', 1]]);
+  assert.ok(h.pageCalls().includes('saison1/vf'), 'la langue annoncée par la fiche est lue');
+  assert.deepEqual(h.linkCalls(), [], 'aucune adresse n’est demandée pour une liste de saisons');
+  await settle();
+});
+
 test('une saison annoncée vidée par le site reste visible, sans épisode ni langue vide', async () => {
   const site = createSite();
   site.fiche = ['panneauAnime("Saison 1", "saison1/vostfr");', 'panneauAnime("Saison 2", "saison2/vostfr");'];

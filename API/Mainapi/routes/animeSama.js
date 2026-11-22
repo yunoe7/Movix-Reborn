@@ -556,7 +556,7 @@ async function updateLinkBook(file, added, { keepOnly = null, label = '' } = {})
 // ---- Classes ----
 
 class Season {
-  constructor(url, name = "", serieName = "", client = null, announcedLang = null, seasonPath = "") {
+  constructor(url, name = "", serieName = "", client = null, announcedLang = null, seasonPath = "", titleLanguages = []) {
     const normalizedUrl = url.endsWith('/') ? url : url + '/';
     this.url = normalizedUrl;
     this.siteUrl = url.split('/').slice(0, 3).join('/') + '/';
@@ -567,6 +567,9 @@ class Season {
     this.path = seasonPath || normalizedUrl.split('/').filter(Boolean).slice(-1)[0];
     // Langue du lien `panneauAnime` de la fiche : sa page existe à coup sûr.
     this.announcedLang = LANGUAGE_IDS.includes(announcedLang) ? announcedLang : LANGUAGE_IDS[0];
+    // Langues annoncées par la fiche (« Sur le site ») : repli quand la page de
+    // saison ne publie pas elle-même sa table `languesDispo`.
+    this.titleLanguages = LANGUAGE_IDS.filter(lang => (titleLanguages || []).includes(lang));
     // Vrai après `episodes()` si la page de la saison existe sans aucun épisode :
     // c'est anime-sama qui l'a vidée (saison masquée, « Bientôt de retour »).
     this.emptiedBySite = false;
@@ -644,8 +647,11 @@ class Season {
     // Ensuite, les langues que la page publie (`languesDispo`), plus celles du
     // cache : une table en retard ne doit jamais retirer une langue déjà connue,
     // et un échec passager sur l'une d'elles fait échouer l'actualisation au
-    // lieu de la faire disparaître.
-    const others = [...new Set([...(first.langs || []), ...knownLangs])]
+    // lieu de la faire disparaître. Quand la page n'a pas de table lisible, les
+    // langues annoncées par la fiche prennent le relais : une saison VF réelle
+    // ne doit pas disparaître du payload faute de `languesDispo`.
+    const publishedLangs = first.langs && first.langs.length ? first.langs : this.titleLanguages;
+    const others = [...new Set([...(publishedLangs || []), ...knownLangs])]
       .filter(lang => lang !== this.announcedLang && LANGUAGE_IDS.includes(lang));
     // Attendre aussi les langues restantes avant de libérer la tâche commune.
     const outcomes = await Promise.allSettled(others.map(lang => this._readPage(lang)));
@@ -805,7 +811,8 @@ class Catalogue {
         this.name,
         this.client,
         season.lang,
-        season.path
+        season.path,
+        fiche.languages
       ));
     } catch (error) {
       if (strict) throw error;
@@ -1134,11 +1141,22 @@ function refreshAnime(anime, client) {
             panel.lang,
             panel.path
           );
-          const hiddenEpisodes = toCachedEpisodes(await hiddenSeason.episodes(false, {
-            knownLangs: languagesOf(existingAnimeCache[panel.name]?.episodes),
-          }));
+          let hiddenEpisodes = [];
+          let hiddenReadFailed = false;
+          try {
+            hiddenEpisodes = toCachedEpisodes(await hiddenSeason.episodes(true, {
+              knownLangs: languagesOf(existingAnimeCache[panel.name]?.episodes),
+            }));
+          } catch {
+            // 503, timeout, quota : on ne conclut rien sur une page qu'on n'a
+            // pas pu lire. Le dernier état connu reste affiché tel quel.
+            hiddenReadFailed = true;
+          }
           for (const id of hiddenSeason.usedLinkIds) usedLinkIds.add(id);
-          if (hiddenEpisodes.length) {
+          if (hiddenReadFailed) {
+            if (existingAnimeCache[panel.name]) continue;
+            updatedAnimeCache[panel.name] = unavailableSeasonEntry(panel, panel.unavailableReason || 'hidden');
+          } else if (hiddenEpisodes.length) {
             updatedAnimeCache[panel.name] = {
               timestamp: Date.now(),
               path: panel.path,

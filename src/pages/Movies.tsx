@@ -299,6 +299,9 @@ const Movies: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observer = useRef<IntersectionObserver>();
+  // Une requête lente qui se termine après un changement de section ne doit
+  // ni écrire son cache, ni modifier l'état d'une page déjà démontée.
+  const fetchGeneration = useRef(0);
   const [isTop10CardHovered, setIsTop10CardHovered] = React.useState(false);
   const top10RowRef = React.useRef<HTMLDivElement>(null);
   const [genreItems, setGenreItems] = useState<{ id: number; name: string; route: string; imageUrl?: string }[]>([
@@ -341,6 +344,8 @@ const Movies: React.FC = () => {
   }, [loading, hasMore]);
 
   const fetchMovies = async (pageNumber: number) => {
+    const generation = ++fetchGeneration.current;
+    const isCurrent = () => fetchGeneration.current === generation;
     try {
       setIsLoadingMore(pageNumber > 1);
 
@@ -388,6 +393,7 @@ const Movies: React.FC = () => {
           include_adult: false
         }
       });
+      if (!isCurrent()) return;
 
       // Get additional data for the first page to create meaningful categories
       let additionalData: Movie[] = [];
@@ -539,6 +545,7 @@ const Movies: React.FC = () => {
         ];
 
         const responses = await Promise.all(genreRequests);
+        if (!isCurrent()) return;
         additionalData = responses.flatMap(response => response.data.results);
       }
 
@@ -567,6 +574,7 @@ const Movies: React.FC = () => {
               language: getTmdbLanguage()
             }
           });
+          if (!isCurrent()) return;
 
           // Filtrer les films pour exclure les films chinois et ceux qui ne sont pas encore sortis
           const today = new Date();
@@ -667,16 +675,20 @@ const Movies: React.FC = () => {
         }
       }
     } catch (error) {
+      if (!isCurrent()) return;
       console.error('Error fetching movies:', error);
       setError(t('home.errorLoadingData'));
     } finally {
-      setLoading(false);
-      setIsLoadingMore(false);
+      if (isCurrent()) {
+        setLoading(false);
+        setIsLoadingMore(false);
+      }
     }
   };
 
   useEffect(() => {
     fetchMovies(1);
+    return () => { fetchGeneration.current += 1; };
   }, []);
 
   // Fetch representative TMDB images for each genre and cache for 1 day

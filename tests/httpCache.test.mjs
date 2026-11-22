@@ -216,34 +216,55 @@ test('une erreur réseau n\'est pas mise en cache', async () => {
   assert.equal(calls, 2);
 });
 
-test('une entrée périmée est resservie tout de suite puis revalidée', async () => {
-  const session = setupGlobals();
-  const first = loadModule();
-  const { instance } = makeInstance(first.installHttpCache, () => ({ v: 'ancien' }));
-  await instance.get(TMDB, { params: { page: 1 } });
-
-  // On rembobine l'horodatage au-delà de la fraîcheur, en deçà de la
-  // péremption dure : l'entrée devient périmée mais encore servable.
+// Rembobine l'horodatage au-delà de la fraîcheur, en deçà de la péremption
+// dure : l'entrée devient périmée mais encore servable.
+const expirePersisted = (session) => {
   for (let i = 0; i < session.length; i++) {
     const key = session.key(i);
     const entry = JSON.parse(session.getItem(key));
     entry.ts = Date.now() - 10 * 60 * 1000;
     session.setItem(key, JSON.stringify(entry));
   }
+};
+
+test('une entrée périmée rend la réponse fraîche à la vue, sans refresh manuel', async () => {
+  const session = setupGlobals();
+  const first = loadModule();
+  const { instance } = makeInstance(first.installHttpCache, () => ({ v: 'ancien' }));
+  await instance.get(TMDB, { params: { page: 1 } });
+  expirePersisted(session);
 
   // Module neuf : le cache mémoire repart vide, seule la couche persistante
-  // subsiste — exactement la situation d'une nouvelle page.
+  // subsiste — exactement la situation d'un retour Films → Séries → Films.
   const second = loadModule();
   const { instance: fresh, state } = makeInstance(second.installHttpCache, () => ({ v: 'frais' }));
 
-  const stale = await fresh.get(TMDB, { params: { page: 1 } });
-  assert.deepEqual(stale.data, { v: 'ancien' }, 'la réponse en cache n\'a pas été resservie');
+  const response = await fresh.get(TMDB, { params: { page: 1 } });
+  assert.deepEqual(response.data, { v: 'frais' }, 'la vue a reçu la réponse périmée');
+  assert.equal(state.calls, 1, 'la revalidation n\'a pas été faite');
 
-  await new Promise((r) => setTimeout(r, 30));
-  assert.equal(state.calls, 1, 'aucune revalidation en arrière-plan');
+  const next = await fresh.get(TMDB, { params: { page: 1 } });
+  assert.deepEqual(next.data, { v: 'frais' });
+  assert.equal(state.calls, 1, 'la réponse fraîche n\'a pas été mise en cache');
+});
 
-  const revalidated = await fresh.get(TMDB, { params: { page: 1 } });
-  assert.deepEqual(revalidated.data, { v: 'frais' });
+test('si la revalidation échoue, l’entrée périmée reste servie sans bloquer la navigation', async () => {
+  const session = setupGlobals();
+  const first = loadModule();
+  const { instance } = makeInstance(first.installHttpCache, () => ({ v: 'ancien' }));
+  await instance.get(TMDB, { params: { page: 1 } });
+  expirePersisted(session);
+
+  const second = loadModule();
+  let calls = 0;
+  const offline = axios.create({
+    adapter: () => { calls++; return Promise.reject(new Error('réseau indisponible')); },
+  });
+  second.installHttpCache(offline);
+
+  const response = await offline.get(TMDB, { params: { page: 1 } });
+  assert.deepEqual(response.data, { v: 'ancien' }, 'le repli périmé a été perdu');
+  assert.equal(calls, 1);
 });
 
 test('le cache reste hors de localStorage', async () => {

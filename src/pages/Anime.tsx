@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import HeroSlider from '../components/HeroSlider';
@@ -356,6 +356,9 @@ const Anime: React.FC = () => {
   const [siteShows, setSiteShows] = useState<SiteShows>(NO_SITE_SHOWS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Une réponse lue après un changement de section ou de langue ne doit pas
+  // écrire son cache ni modifier l'état d'une page déjà démontée.
+  const fetchGeneration = useRef(0);
 
   const dataCacheKey = `movix_anime_data_v2_${tmdbLanguage}`;
   const dataCacheTsKey = `${dataCacheKey}_timestamp`;
@@ -453,6 +456,8 @@ const Anime: React.FC = () => {
   }, [getGenreLabel, t]);
 
   const fetchAnimeShows = useCallback(async () => {
+    const generation = ++fetchGeneration.current;
+    const isCurrent = () => fetchGeneration.current === generation;
     try {
       setLoading(true);
       setError(null);
@@ -478,6 +483,7 @@ const Anime: React.FC = () => {
       }
 
       const animeKeywordId = await resolveTmdbKeywordId('anime', tmdbLanguage);
+      if (!isCurrent()) return;
 
       const discoverRequests = [
         ...Array.from({ length: 3 }, (_, index) =>
@@ -498,6 +504,7 @@ const Anime: React.FC = () => {
       ];
 
       const responses = await Promise.all(discoverRequests);
+      if (!isCurrent()) return;
       const allShows = uniqueById(
         responses.flatMap((response) =>
           (response.data?.results || [])
@@ -509,6 +516,7 @@ const Anime: React.FC = () => {
         ),
       ).sort(compareAnimeByPopularity);
       const safeShows = await filterMatureAnime(allShows);
+      if (!isCurrent()) return;
 
       const heroShows = safeShows
         .filter((show) => show.backdrop_path && show.overview)
@@ -527,15 +535,17 @@ const Anime: React.FC = () => {
       }));
       sessionStorage.setItem(dataCacheTsKey, Date.now().toString());
     } catch (fetchError) {
+      if (!isCurrent()) return;
       console.error('Error fetching anime shows:', fetchError);
       setError(t('home.errorLoadingData'));
     } finally {
-      setLoading(false);
+      if (isCurrent()) setLoading(false);
     }
   }, [dataCacheKey, dataCacheTsKey, organizeContentByCategories, t, tmdbLanguage]);
 
   useEffect(() => {
     fetchAnimeShows();
+    return () => { fetchGeneration.current += 1; };
   }, [fetchAnimeShows]);
 
   // Rangées du catalogue de la source anime. Indépendantes du reste : la page
