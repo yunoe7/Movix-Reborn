@@ -842,13 +842,17 @@ const WatchMovie: React.FC = () => {
             return itemId === movieIdInt;
           });
 
+          const existingEntry = existingIndex !== -1 && typeof continueWatching.movies[existingIndex] === 'object'
+            ? continueWatching.movies[existingIndex]
+            : null;
+
           if (existingIndex !== -1) {
-            // Remove existing entry to move it to the front
+            // Move the existing entry to the front without losing Vidy progress.
             continueWatching.movies.splice(existingIndex, 1);
           }
 
-          // Add movie with timestamp at the beginning (no limit)
           continueWatching.movies.unshift({
+            ...(existingEntry || {}),
             id: movieIdInt,
             lastAccessed: new Date().toISOString()
           });
