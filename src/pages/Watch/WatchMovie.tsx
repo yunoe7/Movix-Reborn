@@ -631,7 +631,13 @@ const WatchMovie: React.FC = () => {
   });
 
   useEffect(() => {
+    // Vidy est le lecteur unique des Films : ne pas lancer de résolution KissKH.
     kisskhRequestAbortRef.current?.abort();
+    setKisskhSources([]);
+    setKisskhSubtitles([]);
+    setLoadingKisskh(false);
+    return;
+
     const kisskhController = new AbortController();
     const kisskhGeneration = kisskhRequestGenerationRef.current + 1;
     kisskhRequestGenerationRef.current = kisskhGeneration;
