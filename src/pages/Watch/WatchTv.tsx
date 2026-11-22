@@ -1189,10 +1189,18 @@ const WatchTv: React.FC = () => {
             const existingShow = continueWatching.tv.find((tvShow: any) => tvShow?.id === showIdInt);
 
             if (existingShow) {
-              // Update existing show with current episode and timestamp
+              // Keep the saved Vidy position when reopening the same episode.
+              const previousEpisode = existingShow.currentEpisode;
+              const isSameEpisode = previousEpisode?.season === seasonNumber
+                && previousEpisode?.episode === episodeNumber;
               existingShow.currentEpisode = {
                 season: seasonNumber,
-                episode: episodeNumber
+                episode: episodeNumber,
+                ...(isSameEpisode ? {
+                  progress: previousEpisode.progress,
+                  duration: previousEpisode.duration,
+                  completed: previousEpisode.completed,
+                } : {}),
               };
               existingShow.lastAccessed = new Date().toISOString();
               // Move to front of array
