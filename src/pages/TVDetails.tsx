@@ -2984,11 +2984,11 @@ const TVDetails: React.FC = () => {
 
     const dropdownOptions = nonEmptyEpisodes.map((ep: any) => {
       if (type === 'anime') {
-        const allLanguages = ep.streaming_links.map((link: any) => {
+        const allLanguages = (Array.isArray(ep.streaming_links) ? ep.streaming_links : []).map((link: any) => {
           return getAnimeLanguageLabel(link.language, t);
         }).join(', ');
         return {
-          value: ep.index.toString(),
+          value: String(ep.index ?? ep.episode_number ?? ''),
           // Le nom vient d'Anime-Sama (« Episode 62 ») : pas de rang devant.
           label: `${ep.name || ep.index} ${allLanguages ? `(${allLanguages})` : ''}`,
         };
@@ -3037,15 +3037,18 @@ const TVDetails: React.FC = () => {
       setSelectedEpisode(episode.index);
       setSelectedAnimeEpisode(episode);
 
-      const hasVf = episode.streaming_links.some((link: any) => link.language === 'vf');
-      const hasVostfr = episode.streaming_links.some((link: any) => link.language === 'vostfr');
+      const episodeLinks = Array.isArray(episode.streaming_links) ? episode.streaming_links : [];
+      const hasVf = episodeLinks.some((link: any) => link.language === 'vf');
+      const hasVostfr = episodeLinks.some((link: any) => link.language === 'vostfr');
 
       if (hasVf) {
         setSelectedLanguage('vf');
       } else if (hasVostfr) {
         setSelectedLanguage('vostfr');
+      } else {
+        setSelectedLanguage(episodeLinks[0]?.language || null);
       }
-      setSelectedPlayer('0');
+      setSelectedPlayer(episodeLinks.length > 0 ? '0' : null);
 
       if (cinemaMode && id && selectedSeason) {
         // Rediriger vers la page de visionnage anime en mode cinéma
@@ -3345,19 +3348,7 @@ const TVDetails: React.FC = () => {
                                     t={t}
                                   />
                                 )}
-                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                  {availableLanguages.map((language: string, i: number) => (
-                                    <span
-                                      key={`lang-badge-${language}-${i}`}
-                                      className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 ${language === 'vostfr' ? 'bg-blue-600/70' :
-                                        language === 'vf' ? 'bg-green-600/70' :
-                                          'bg-purple-600/70'
-                                        }`}
-                                    >
-                                      {getAnimeLanguageLabel(language, t)}
-                                    </span>
-                                  ))}
-                                </div>
+
                               </div>
                             </div>
                             <div className="ml-2 flex shrink-0 items-center gap-1 self-center justify-end">
@@ -3396,6 +3387,27 @@ const TVDetails: React.FC = () => {
                                   {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
                                 </span>
                               )}
+                              {seenOnServer && (
+                                <span
+                                  role="img"
+                                  aria-label={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
+                                  title={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
+                                  className="inline-flex h-8 items-center gap-1 self-center rounded border border-dashed border-white/25 px-1.5 text-[11px] text-white/60"
+                                >
+                                  <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                                  {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
+                                </span>
+                              )}
+                            </div>
+                            <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
+                              {availableLanguages.map((language: string, languageIndex: number) => (
+                                <span
+                                  key={`anime-language-${language}-${languageIndex}`}
+                                  className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85 ${language === 'vf' ? 'border-emerald-400/20 bg-emerald-500/15' : language === 'vostfr' ? 'border-sky-400/20 bg-sky-500/15' : 'border-white/10 bg-white/[0.06]'}`}
+                                >
+                                  {language === 'vf' ? 'DUB' : language === 'vostfr' ? 'SUB' : language.toUpperCase().slice(0, 4)}
+                                </span>
+                              ))}
                             </div>
                           </div>
                         </div>
