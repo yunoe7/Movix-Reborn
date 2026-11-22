@@ -491,9 +491,11 @@ const Header: React.FC = () => {
               </Link>
 
               {/* Canaux officiels : un petit menu Matrix. */}
-              <CommunityMenu />
+              <div className="hidden" aria-hidden="true"><CommunityMenu /></div>
 
-              {/* Desktop Nav: 3 items principaux + Explorer */}
+              <div className="flex-1" />
+
+              {/* Navigation principale flottante */}
               <nav className="hidden lg:flex items-center gap-1 rounded-[17px] border border-white/[0.12] bg-[#111]/85 p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.07)] backdrop-blur-2xl" data-main-nav>
                 {mainNavItems.map((item) => (
                   <Link
@@ -565,8 +567,7 @@ const Header: React.FC = () => {
                 </button>
               </nav>
 
-              {/* Spacer */}
-              <div className="flex-1" />
+
 
               {/* Desktop Search. min-w-0 : c'est lui qui rétrécit quand la ligne
                   manque de place (marges du HeroSlider, 1024-1280 px) ; sans
