@@ -68,9 +68,9 @@ Le fichier `API/Mainapi/.env.example` est la référence complète. En pratique,
 - connexion Discord / Google : `DISCORD_CLIENT_ID`, `GOOGLE_CLIENT_ID` (les mêmes que `src/config/discord.ts` et `src/config/google.ts`)
 - paiement / VIP : variables `VIP_*`, `BLOCKCYPHER_TOKEN`
 
-Certaines intégrations sont très spécifiques à des sources données, par exemple les cookies `DARKIWORLD_*`, `FSTREAM_LOGIN_*` ou `XTREAM_*`.
+Certaines intégrations sont très spécifiques à des sources données, par exemple les cookies `DARKIWORLD_*` ou `XTREAM_*`.
 
-`FSTREAM_BASE_URL` définit le domaine FrenchStream (`https://french-stream.net` par défaut).
+
 
 Les sources de streaming gardent leurs résultats en cache (Redis si disponible, sinon mémoire du worker) et passent par les proxys de `SOCKS5_PROXIES` / `HTTP_PROXIES`. Cpasmal est coupé par défaut (`CPASMAL_ENABLED=true` pour le réactiver) ; activée, une route Cpasmal sans cache répond `202` avec `Retry-After` : rappeler la même URL.
 
@@ -89,7 +89,7 @@ Démarrer ou redémarrer Main API après l’installation des fichiers. Sans ces
 - auth et profils : `routes/authRoutes.js`, `routes/sessions.js`, `routes/profiles.js`
 - persistance frontend : `routes/sync.js`, historique et progression : `routes/history.js`
 - recherche et catalogues : `routes/search.js`, `routes/tmdb.js`
-- scraping / lecture : `routes/cpasmal.js`, `routes/fstream.js`, `routes/wiflix.js`, `liveTvRoutes.js`
+- scraping / lecture : `routes/cpasmal.js`, `routes/wiflix.js`, `liveTvRoutes.js`
 - communautaire : `commentsRoutes.js`, `likesRoutes.js`, `sharedListsRoutes.js`, `wishboardRoutes.js`, `linkSubmissionsRoutes.js`
 - VIP / paiements : `utils/vipDonations.js`, `routes/vipDonations.js` ; réglages des dons gérés depuis l'admin (montant libre, moyens actifs, cartes cadeaux, contacts) : `utils/vipDonationSettings.js`
 - publicités réglées depuis l'admin (emplacements, rotation, ciblage, statistiques) : `routes/monetization.js`, `utils/monetizationSettings.js`, `utils/monetizationPicker.js`, `utils/monetizationStats.js`
