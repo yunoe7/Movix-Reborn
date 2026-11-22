@@ -3,10 +3,7 @@ import { getFrembedBase, initFrembedBase } from '../../utils/frembedConfig';
 import { useParams, useNavigate } from 'react-router-dom'; // Added useNavigate
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import HLSPlayer from '../../components/HLSPlayer';
 import VidyPlayer from '../../components/VidyPlayer';
-import PlayerOverlayPortal from '../../components/PlayerOverlayPortal';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
@@ -42,7 +39,6 @@ import {
   syncHlsActiveSource,
 } from '../../utils/hlsAutoFallbackGuard';
 import { resolveKisskhTv } from '../../services/kisskhService';
-import SwiftfluxGate from '../../components/SwiftfluxGate';
 import {
   readSwiftflux,
   type SwiftfluxEntry,
