@@ -140,10 +140,10 @@ google-cast-launcher {
    Pendant ce temps, on coupe pointer-events sur tous les slides Embla,
    ce qui empêche le navigateur de tester le hover et de déclencher des
    transitions/repaints. */
-body.is-scrolling .embla-slide,
-body.embla-scrolling .embla-slide {
-  pointer-events: none;
-}
+/* Ne jamais désactiver pointer-events sur les slides pendant le scroll :
+   les liens et actions des cartes doivent rester activables, y compris juste
+   après un geste tactile ou pendant l'inertie de Lenis. Les effets de survol
+   sont gérés séparément par les styles de transition. */
 
 /* Cartes de saisons Anime : même garde-fou que les carousels. Sans ça, chaque
    carte qui passe sous le curseur pendant un scroll vertical déclenche un
@@ -151,9 +151,8 @@ body.embla-scrolling .embla-slide {
    en micro-freezes quand la grille contient beaucoup de saisons. Le filtre
    de fond de la section Anime est suspendu pendant le défilement pour ne pas
    recomposer la couche à chaque frame ; il revient dès que le scroll s'arrête. */
-body.is-scrolling .anime-season-card {
-  pointer-events: none;
-}
+/* Les cartes de saisons restent interactives pendant et après le scroll.
+   Le blocage pointer-events ici rendait les taps perdus sur mobile et desktop. */
 body.is-scrolling .anime-seasons-section {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
