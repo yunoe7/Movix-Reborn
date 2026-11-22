@@ -4182,7 +4182,16 @@ const TVDetails: React.FC = () => {
                       <AnimatePresence>
                         {animeMode && animeData?.seasons ? (
                           /* Affichage des saisons pour les animes */
-                          animeData.seasons.map((season: any, index: number) => {
+                          animeData.seasons
+                            .map((season: any, index: number) => ({ season, index }))
+                            // Regrouper les saisons sans épisodes à la fin pour que leurs
+                            // cartes compactes ne soient pas étirées par les affiches voisines.
+                            .sort((a, b) => {
+                              const aUnavailable = a.season?.available === false || a.season?.status === 'unavailable';
+                              const bUnavailable = b.season?.available === false || b.season?.status === 'unavailable';
+                              return Number(aUnavailable) - Number(bUnavailable);
+                            })
+                            .map(({ season, index }) => {
                             const seasonNumber = Number(
                               season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)
                             );
