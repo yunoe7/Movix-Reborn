@@ -99,21 +99,23 @@ const EmblaCarouselGenres: React.FC<EmblaCarouselGenresProps> = ({ title, items 
           <div className="flex gap-4 md:gap-6 pr-4 md:pr-6 py-4 pl-4 md:pl-6">
             {items.map((genre) => (
               <div key={genre.id} className="flex-none">
-                <Link to={genre.route} className="block w-[180px] h-[100px] md:w-[220px] md:h-[120px] group select-none">
-                  <div data-ambient-surface className="w-full h-full relative rounded-xl overflow-hidden bg-gradient-to-br from-red-600/20 to-red-400/10 ring-1 ring-white/10">
+                <Link to={genre.route} className="group block h-[104px] w-[188px] select-none sm:h-[112px] sm:w-[210px] md:h-[124px] md:w-[236px]">
+                  <div data-ambient-surface className="relative h-full w-full overflow-hidden rounded-xl border border-white/[0.09] bg-[#171719] shadow-[0_8px_24px_rgba(0,0,0,.16)] transition-[border-color,transform,box-shadow] duration-300 group-hover:-translate-y-0.5 group-hover:border-white/20 group-hover:shadow-[0_14px_32px_rgba(0,0,0,.28)]">
                     {genre.imageUrl && (
                       <img
                         src={genre.imageUrl}
-                        alt={genre.name}
-                        className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity duration-300"
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 h-full w-full object-cover opacity-45 transition-transform duration-500 group-hover:scale-[1.04] group-hover:opacity-60"
                         loading="lazy"
                         decoding="async"
                         draggable={false}
                       />
                     )}
-                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-white font-semibold text-base md:text-lg tracking-wide drop-shadow-md">
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/20 to-black/35" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-white/[0.035]" />
+                    <div className="absolute inset-0 flex items-center justify-center px-3">
+                      <span className="text-center font-semibold text-[15px] leading-snug tracking-[-0.025em] text-white drop-shadow-[0_2px_12px_rgba(0,0,0,.72)] md:text-base">
                         {genre.name}
                       </span>
                     </div>
