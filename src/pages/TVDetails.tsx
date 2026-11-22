@@ -4326,7 +4326,7 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${useAnimeSeasonLayout ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]'} : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
+                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${useAnimeSeasonLayout ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
@@ -4549,7 +4549,7 @@ const TVDetails: React.FC = () => {
                         >
                           {/* AnimatePresence pour la transition anime/standard */}
                           <AnimatePresence mode="wait">
-                            {animeMode && animeData?.seasons ? (
+                            {useAnimeSeasonLayout ? (
                               <motion.div
                                 key="anime-view"
                                 initial={{ opacity: 0, y: -10 }} // Départ légèrement au-dessus
@@ -4557,36 +4557,14 @@ const TVDetails: React.FC = () => {
                                 exit={{ opacity: 0, y: 10 }}    // Sortie légèrement vers le bas
                                 transition={{ duration: 0.3 }}
                               >
-                                {/* Toggle Button (toujours affiché) */}
-                                {(() => {
-                                  const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                  return currentSeason?.episodes?.length > 0;
-                                })() && (
-                                    <div className="flex justify-start mb-4"> {/* Alignement à gauche */}
-                                      <button
-                                        ref={dropdownToggleButtonRef}
-                                        className="px-4 py-2 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 text-white dropdown-toggle-button"
-                                        onClick={() => {
-                                          const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0, true);
-                                          setDropdownMode((prev) => prev !== null ? !prev : !currentDefault);
-                                        }}
-                                      >
-                                        {(() => {
-                                          const currentSeason = animeData.seasons.find((s: any) => (s.number || (animeData.seasons.indexOf(s) + 1)) === selectedSeason);
-                                          const currentDefault = getDefaultDropdownMode(currentSeason?.episodes?.length || 0);
-                                          const currentMode = dropdownMode !== null ? dropdownMode : currentDefault;
-                                          return currentMode ? t('details.showEpisodeGrid') : t('details.showDropdown');
-                                        })()}
-                                      </button>
-                                    </div>
-                                  )}
-                                {/* Render Dropdown or Grid */}
-                                {(() => {
-                                  const currentSeason = animeSeasonsWithStills.find((s) => (s.number || (animeSeasonsWithStills.indexOf(s) + 1)) === selectedSeason);
-                                  return renderEpisodes(currentSeason?.episodes || [], 'anime');
-                                })()}
+                                {renderEpisodes(
+                                  animeSeasonsWithStills.find((season) =>
+                                    Number(season.number ?? season.season_number ?? season.seasonNumber ?? (animeSeasonsWithStills.indexOf(season) + 1)) === Number(selectedSeason)
+                                  )?.episodes || [],
+                                  'anime'
+                                )}
                               </motion.div>
+                            ) : (                              </motion.div>
                             ) : (
                               <motion.div
                                 key="standard-view"
