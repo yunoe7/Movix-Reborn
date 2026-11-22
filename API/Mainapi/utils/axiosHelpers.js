@@ -12,16 +12,12 @@ const fsp = require('fs').promises;
 const path = require('path');
 const writeFileAtomic = require('write-file-atomic');
 const { isHydrackerBlackout, buildBlackoutError } = require('./hydrackerBlackout');
-const { canonicalFStreamUrl } = require('../config/fstream');
-const { isFStreamSocketReset } = require('./fstreamProxyPicker');
-const { adoptFStreamChallengeCookie } = require('./fstreamChallenge');
 
 const {
   ENABLE_DARKINO_PROXY,
   ENABLE_COFLIX_PROXY,
   ENABLE_FRENCH_STREAM_PROXY,
   ENABLE_LECTEURVIDEO_PROXY,
-  ENABLE_FSTREAM_PROXY,
   ENABLE_ANIME_PROXY,
   ENABLE_WIFLIX_PROXY,
   DARKINO_PROXIES,
@@ -942,151 +938,6 @@ async function cleanupOldCacheFiles(safeAnimeName, animeCacheDir) {
   }
 }
 
-// Fonction pour supprimer les lecteurs fsvid des r\u00e9ponses FStream
-function removeFsvidPlayers(data, isVip = false) {
-  // Si pas de donn\u00e9es, retourner tel quel
-  if (!data) {
-    return data;
-  }
-
-  // Si l'utilisateur est VIP, ne pas filtrer les lecteurs fsvid
-  if (isVip) {
-    return data;
-  }
-
-  // Par d\u00e9faut, toujours filtrer les lecteurs fsvid (m\u00eame si remove_fsvid est false)
-
-  // Pour les films : filtrer players.organized
-  if (data.players && typeof data.players === 'object') {
-    const filteredPlayers = {};
-    let totalPlayers = 0;
-
-    Object.keys(data.players).forEach(playerType => {
-      if (Array.isArray(data.players[playerType])) {
-        // Filtrer les lecteurs dont l'URL contient "fsvid"
-        const filteredPlayerList = data.players[playerType].filter(player => {
-          return !player.url || !player.url.includes('fsvid');
-        });
-
-        if (filteredPlayerList.length > 0) {
-          filteredPlayers[playerType] = filteredPlayerList;
-          totalPlayers += filteredPlayerList.length;
-        }
-      } else {
-        // Si ce n'est pas un array, garder tel quel
-        filteredPlayers[playerType] = data.players[playerType];
-      }
-    });
-
-    return {
-      ...data,
-      players: filteredPlayers,
-      total: totalPlayers,
-      metadata: {
-        ...data.metadata,
-        fsvidFiltered: true
-      }
-    };
-  }
-
-  // Pour les s\u00e9ries : filtrer episodes
-  if (data.episodes && typeof data.episodes === 'object') {
-    const filteredEpisodes = {};
-    let totalPlayers = 0;
-
-    Object.keys(data.episodes).forEach(episodeKey => {
-      const episode = data.episodes[episodeKey];
-      if (episode && typeof episode === 'object') {
-        const filteredEpisode = { ...episode };
-
-        // V\u00e9rifier si l'\u00e9pisode a une structure "languages"
-        if (episode.languages && typeof episode.languages === 'object') {
-          const filteredLanguages = {};
-
-          Object.keys(episode.languages).forEach(languageKey => {
-            const languagePlayers = episode.languages[languageKey];
-
-            if (Array.isArray(languagePlayers)) {
-              // Filtrer les lecteurs dont l'URL contient "fsvid"
-              const filteredPlayerList = languagePlayers.filter(player => {
-                return !player.url || !player.url.includes('fsvid');
-              });
-
-              if (filteredPlayerList.length > 0) {
-                filteredLanguages[languageKey] = filteredPlayerList;
-                totalPlayers += filteredPlayerList.length;
-              }
-            } else {
-              // Si ce n'est pas un array, garder tel quel
-              filteredLanguages[languageKey] = languagePlayers;
-            }
-          });
-
-          filteredEpisode.languages = filteredLanguages;
-        } else {
-          // Structure ancienne sans "languages" - filtrer directement
-          Object.keys(episode).forEach(playerType => {
-            if (Array.isArray(episode[playerType])) {
-              // Filtrer les lecteurs dont l'URL contient "fsvid"
-              const filteredPlayerList = episode[playerType].filter(player => {
-                return !player.url || !player.url.includes('fsvid');
-              });
-
-              if (filteredPlayerList.length > 0) {
-                filteredEpisode[playerType] = filteredPlayerList;
-                totalPlayers += filteredPlayerList.length;
-              }
-            }
-          });
-        }
-
-        // Garder l'\u00e9pisode seulement s'il a encore des lecteurs
-        if (episode.languages ? Object.keys(filteredEpisode.languages).length > 0 : Object.keys(filteredEpisode).some(key => Array.isArray(filteredEpisode[key]) && filteredEpisode[key].length > 0)) {
-          filteredEpisodes[episodeKey] = filteredEpisode;
-        }
-      }
-    });
-
-    return {
-      ...data,
-      episodes: filteredEpisodes,
-      total: totalPlayers,
-      metadata: {
-        ...data.metadata,
-        fsvidFiltered: true
-      }
-    };
-  }
-
-  return data;
-}
-
-// Fonction pour formater les erreurs Coflix
-function formatCoflixError(error, context = '') {
-  if (error && error.isAxiosError) {
-    const url = error.config && error.config.url ? error.config.url : '';
-    const statusCode = error.response ? error.response.status : '';
-    const statusText = error.response ? error.response.statusText : '';
-
-    // Ne pas logger les erreurs 400
-    if (statusCode === 400) {
-      return '';
-    }
-
-    return `[AxiosError] ${error.code || ''} ${error.message} ${statusCode ? `(${statusCode} ${statusText})` : ''} ${url}`;
-  } else {
-    const msg = error && error.message
-      ? error.message
-      : (typeof error === 'string' ? error : JSON.stringify(error));
-    // Payloads HTML entiers (ex: le domaine Coflix redirige vers une page Telegram) :
-    // ne jamais dumper des pages completes dans les logs.
-    if (typeof msg === 'string' && msg.length > 300) {
-      return `${msg.slice(0, 300).replace(/\s+/g, ' ')}… [tronqué, ${msg.length} chars]`;
-    }
-    return msg;
-  }
-}
-
 module.exports = {
   configure,
 
@@ -1104,9 +955,6 @@ module.exports = {
   // LecteurVideo
   axiosLecteurVideoRequest,
 
-  // FStream
-  axiosFStreamRequest,
-
   // AnimeSama
   axiosAnimeSamaRequest,
 
@@ -1116,8 +964,5 @@ module.exports = {
   // Streaming link utilities
   mergeStreamingLinks,
   migrateOldCacheFiles,
-  cleanupOldCacheFiles,
-
-  // FStream player filter
-  removeFsvidPlayers
+  cleanupOldCacheFiles
 };
