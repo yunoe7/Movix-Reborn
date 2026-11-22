@@ -2111,17 +2111,17 @@ const TVDetails: React.FC = () => {
   };
   const WatchButtons = () => {
     return (
-      <div className="mt-5 flex flex-col gap-4 bg-transparent p-0">
+      <div className="mt-5 flex w-fit max-w-full flex-col gap-3 bg-transparent p-0">
         {/* Première ligne avec Regarder et Bande-annonce */}
-        <div className="grid w-full min-w-0 grid-cols-2 gap-3">
+        <div className="flex w-fit max-w-full flex-wrap gap-2.5">
           <motion.button
             whileHover={{ y: -2, scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={handleContinueWatching}
-            className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-rose-300/25 bg-gradient-to-br from-rose-600 via-red-600 to-red-800 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_12px_30px_rgba(185,28,28,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-200/45 hover:shadow-[0_16px_34px_rgba(220,38,38,0.3)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
+            className="group relative inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-white bg-white px-5 py-2.5 text-sm font-bold text-[#151515] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/90"
           >
-            <Play className="h-6 w-6 flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:scale-110" />
+            <Play className="h-5 w-5 flex-shrink-0 text-[#151515] transition-transform duration-300 group-hover:scale-110" />
             <div className="text-left">
               {resumeData.hasProgress ? (
                 <div className="flex min-w-0 flex-col items-start text-left">
@@ -2129,7 +2129,7 @@ const TVDetails: React.FC = () => {
                       <span>{resumeData.estimated
                         ? t('details.watchBtn')
                         : t('details.resumeEpisode', { episode: resumeData.episodeNumber, season: getSeasonDisplayName(resumeData.seasonNumber, t) })}</span>
-                  <span className="mt-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] font-medium text-white/85">
+                  <span className="mt-1 rounded-md bg-black/[0.07] px-2 py-0.5 text-[11px] font-semibold text-black/75">
                     {resumeData.estimated
                       ? t('profilePage.progress.estimated', { percent: Math.round((resumeData.position / resumeData.duration) * 100), defaultValue: '≈ {{percent}} % · estimé' })
                       : `${formatTime(resumeData.position)}/${formatTime(resumeData.duration)}`}
@@ -2151,9 +2151,9 @@ const TVDetails: React.FC = () => {
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => navigate(`/download/tv/${tvShow?.id}`)}
-              className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-white/[0.11] bg-gradient-to-br from-[#202632]/95 to-[#111722]/95 px-4 py-3 text-left text-sm font-bold text-slate-100 shadow-[0_10px_26px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:from-[#283242] hover:to-[#171f2c] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/15"
+              className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
-              <Download className="h-6 w-6 flex-shrink-0 text-slate-200" />
+              <Download className="h-5 w-5 flex-shrink-0 text-white" />
               <span className="text-left">{t('details.downloadBtn')}</span>
             </motion.button>
           )}
@@ -2166,7 +2166,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => setShowTrailerPopup(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-500/[0.09] px-4 py-2.5 text-sm font-semibold text-rose-100 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-rose-300/35 hover:bg-rose-500/[0.15] disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-sm font-semibold text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] disabled:cursor-not-allowed disabled:opacity-45"
             disabled={!trailerVideo}
           >
             <Video className="w-4 h-4" />
@@ -2177,7 +2177,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
             className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -2190,7 +2190,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -2203,7 +2203,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watched
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -3794,7 +3794,7 @@ const TVDetails: React.FC = () => {
                   whileHover={{ y: -2, scale: 1.015 }}
                   whileTap={{ scale: 0.985 }}
                   onClick={() => setShowAntiSpoilerModal(true)}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-violet-300/20 bg-black/35 px-3 py-2.5 text-xs font-semibold text-violet-100 backdrop-blur-sm transition-colors hover:border-violet-300/40 hover:bg-violet-500/15 sm:text-sm"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-3 py-2.5 text-xs font-semibold text-white/90 backdrop-blur-md transition-colors hover:border-white/25 hover:bg-white/[0.2] sm:text-sm"
                   title={t('details.antiSpoilConfig')}
                 >
                   <Shield className="h-4 w-4" /><span>{t('details.antiSpoil')}</span>
