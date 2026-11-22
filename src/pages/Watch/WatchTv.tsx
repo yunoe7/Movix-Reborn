@@ -780,6 +780,31 @@ const WatchTv: React.FC = () => {
   // Ajout de l'état pour savoir si l'utilisateur a cliqué sur la pub
   const [hasClickedAd, setHasClickedAd] = useState(false);
 
+  // React Router can reuse this page when changing shows or episodes. Reset
+  // the page-level ad gate and source selection before the new metadata fetch.
+  useEffect(() => {
+    setAdPopupTriggered(false);
+    setAdPopupBypass(false);
+    setHasClickedAd(false);
+    setSelectedSource(null);
+    setIsLoading(true);
+    setLoadingError(false);
+    setIsBlocked(false);
+    setContentCert('');
+    setDarkinoSources([]);
+    setMp4Sources([]);
+    setWiflixSources([]);
+    setJ1fSources([]);
+    setSwiftflowSources([]);
+    setViperSources([]);
+    setVoxSources([]);
+    setCoflixData(null);
+    setOmegaData(null);
+    setSibnetUrl(null);
+    setAdFreeM3u8Url(null);
+    setEmbedUrl(null);
+  }, [id, seasonNumber, episodeNumber]);
+
   // Movix Wrapped 2026 - Track TV viewing time
   useWrappedTracker({
     mode: 'viewing',
@@ -825,21 +850,24 @@ const WatchTv: React.FC = () => {
 
 
   // --- Fetch Seasons Data ---
-  const fetchSeasons = async () => {
+  const fetchSeasons = async (isCurrentRoute: () => boolean = () => true) => {
     try {
-      if (!id) return;
+      if (!id || !isCurrentRoute()) return;
 
       // La saison peut manquer sur TMDB avec le découpage Netflix (ex. partie 4).
       const seasonResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}/season/${seasonNumber}`, {
         params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() }
       }).catch(() => null);
+      if (!isCurrentRoute()) return;
 
       // Fetch all seasons for the show
       const allSeasonsResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}`, {
         params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() }
       });
+      if (!isCurrentRoute()) return;
 
       const override = await getEpisodeListOverride(id);
+      if (!isCurrentRoute()) return;
       const tmdbSeasons: Season[] = (allSeasonsResponse.data?.seasons ?? []).filter((s: Season) => s.season_number > 0);
       if (override?.kind === 'netflix') {
         // Les saisons TMDB ne correspondent pas aux parties Netflix : seuls
@@ -868,7 +896,7 @@ const WatchTv: React.FC = () => {
   };
 
   // --- Fetch Next Episode Data ---
-  const fetchNextEpisodeData = useCallback(async () => {
+  const fetchNextEpisodeData = useCallback(async (isCurrentRoute: () => boolean = () => true) => {
     // Note: `!seasonNumber` est faux pour S0 (épisode spécial) car 0 est falsy en JS — utiliser
     // un check explicite contre null/undefined. Sinon, sur les Spéciaux, fetchNextEpisodeData
     // sortait sans poser nextEpisodeData, ce qui cachait le groupe précédent/épisodes/suivant
@@ -880,6 +908,7 @@ const WatchTv: React.FC = () => {
     try {
       // Check if there's a next episode in the current season
       const nextEpisodeInCurrentSeason = await isNextEpisodeAvailable(id, seasonNumber, episodeNumber + 1);
+      if (!isCurrentRoute()) return;
 
       if (nextEpisodeInCurrentSeason) {
         setNextEpisodeData({
@@ -896,10 +925,12 @@ const WatchTv: React.FC = () => {
       } else {
         // Check if there's a next season
         const nextSeason = await isNextSeasonAvailable(id, seasonNumber + 1);
+        if (!isCurrentRoute()) return;
 
         if (nextSeason) {
           // Check if the first episode of next season is available
           const firstEpisodeOfNextSeason = await isNextEpisodeAvailable(id, seasonNumber + 1, 1);
+          if (!isCurrentRoute()) return;
 
           if (firstEpisodeOfNextSeason) {
             setNextEpisodeData({
@@ -921,10 +952,12 @@ const WatchTv: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Error checking next episode:', error);
-      setNextEpisodeData(null);
+      if (isCurrentRoute()) {
+        console.error('Error checking next episode:', error);
+        setNextEpisodeData(null);
+      }
     } finally {
-      setLoadingNextEpisode(false);
+      if (isCurrentRoute()) setLoadingNextEpisode(false);
     }
   }, [id, seasonNumber, episodeNumber, showTitle]);
 
@@ -1105,6 +1138,7 @@ const WatchTv: React.FC = () => {
 
   // Initial Fetch Effect
   useEffect(() => {
+    let isCurrentRoute = true;
     kisskhRequestAbortRef.current?.abort();
     const kisskhController = new AbortController();
     const kisskhGeneration = kisskhRequestGenerationRef.current + 1;
@@ -1120,7 +1154,10 @@ const WatchTv: React.FC = () => {
       setLoadingError(true);
       setIsLoading(false);
       setLoadingKisskh(false);
-      return () => kisskhController.abort();
+      return () => {
+        isCurrentRoute = false;
+        kisskhController.abort();
+      };
     }
 
     const initialFetch = async () => {
@@ -1142,6 +1179,7 @@ const WatchTv: React.FC = () => {
           }).then((response) => response.data).catch(() => null),
           getTvmazeSeasonsOverride(id),
         ]);
+        if (!isCurrentRoute) return;
         const tvmazeEpisode = tvmazeSeasons?.[seasonNumber]?.find((item) => item.episode_number === episodeNumber);
         if (!tvmazeEpisode && !tmdbEpisode) throw new Error(`Episode S${seasonNumber}E${episodeNumber} not found`);
 
@@ -1152,6 +1190,7 @@ const WatchTv: React.FC = () => {
             const ratingsResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}/content_ratings`, {
               params: { api_key: TMDB_API_KEY },
             });
+            if (!isCurrentRoute) return;
             const ratings = Array.isArray(ratingsResponse.data?.results) ? ratingsResponse.data.results : [];
             const frenchRating = ratings.find((item: any) => item.iso_3166_1 === 'FR')?.rating?.trim() ?? '';
             const usRating = ratings.find((item: any) => item.iso_3166_1 === 'US')?.rating?.trim() ?? '';
@@ -1169,6 +1208,8 @@ const WatchTv: React.FC = () => {
             console.warn('Could not fetch TV certifications for age check');
           }
         }
+
+        if (!isCurrentRoute) return;
 
         // Set show info
         const show = showResponse.data;
@@ -1250,13 +1291,14 @@ const WatchTv: React.FC = () => {
         }
 
         // Get seasons information for episode navigation
-        await fetchSeasons();
+        await fetchSeasons(() => isCurrentRoute);
+        if (!isCurrentRoute) return;
 
         // Resume playback functionality removed
 
         // Vidy est le lecteur unique des Séries : les métadonnées et la navigation TMDB sont conservées,
         // mais les anciens fournisseurs ne sont plus sollicités.
-        void fetchNextEpisodeData();
+        void fetchNextEpisodeData(() => isCurrentRoute);
         // Les anciens fournisseurs ne tournent plus : libérer leurs indicateurs
         // pour que la porte publicitaire ne reste pas bloquée en attente.
         setLoadingDarkino(false);
@@ -1273,6 +1315,7 @@ const WatchTv: React.FC = () => {
         return;
 
       } catch (error) { // This catch belongs to the main try block starting after initialFetch declaration
+        if (!isCurrentRoute) return;
         console.error("Error loading TV data:", error);
         setLoadingError(true);
         setLoadingText(t('watch.dataLoadError'));
@@ -1281,8 +1324,9 @@ const WatchTv: React.FC = () => {
       } // End of main try-catch block
     }; // End of initialFetch function
 
-    initialFetch();
+    void initialFetch();
     return () => {
+      isCurrentRoute = false;
       kisskhController.abort();
       if (kisskhRequestAbortRef.current === kisskhController) {
         kisskhRequestAbortRef.current = null;
