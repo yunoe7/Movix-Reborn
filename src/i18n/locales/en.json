@@ -8946,7 +8946,7 @@
       "howTitle": "How to enable it",
       "howBody": "Go to Settings → Source priority. The toggle <1/> labelled \"Remember last chosen player\" sits right above the priority panel. Flip it on and you're done: your selection is saved every time you change the player from the Servers menu. Off by default (opt-in).",
       "priorityTitle": "Priority over the source order",
-      "priorityBody": "When the option is enabled and a last player is remembered, it wins over the user-defined source order in the priority panel <1/>. So even if Darkino sits at the top of your list, if you just watched an episode with FStream and FStream is available on the next one, FStream is reused.",
+      "priorityBody": "When the option is enabled and a last player is remembered, it takes precedence over the source order in the priority panel <1/>. The last player used is reused when it is available for the next episode.",
       "fallbackTitle": "When the player isn't available",
       "fallbackBody": "If the remembered player isn't available for the new content (e.g. you were on Darkino but the movie has no Darkino version), Movix automatically falls back to your standard priority order — as if the option wasn't enabled for this specific content.",
       "limitsTitle": "Limits",
