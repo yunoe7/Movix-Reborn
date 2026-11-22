@@ -12,7 +12,7 @@ export type TopLevelSourceId = typeof TOP_LEVEL_SOURCE_IDS[number];
  * Ids historiques retirés de l'UI de priorité.
  * mergeWithDefaults les strip des prefs persistées (cleanup migration).
  */
-export const DEPRECATED_SOURCE_IDS = ['nexus_file', 'rivestream_hls', 'rivestream'] as const;
+export const DEPRECATED_SOURCE_IDS = ['nexus_file', 'rivestream_hls', 'rivestream', 'fstream'] as const;
 export const DEPRECATED_HOSTER_IDS = [] as const;
 
 /**
