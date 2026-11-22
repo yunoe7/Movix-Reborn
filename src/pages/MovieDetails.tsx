@@ -2161,7 +2161,7 @@ const MovieDetails = (): JSX.Element => {
             aria-label={movie.title}
             className="relative isolate -mx-4 -mt-6 mb-0 flex min-h-[76vh] w-[calc(100%+2rem)] items-end overflow-hidden border-0 bg-[#101014] bg-cover bg-center md:-mx-8 md:min-h-[80vh] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[82vh] lg:w-[calc(100%+8rem)]"
             style={{
-              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.46) 42%, rgba(0,0,0,0.06) 100%), linear-gradient(0deg, rgba(0,0,0,0.66) 0%, rgba(0,0,0,0.08) 72%), url(' + (backdropImage || playerBackdropImage || mainPosterUrl) + ')',
+              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.64) 0%, rgba(0,0,0,0.38) 42%, rgba(0,0,0,0.045) 100%), linear-gradient(0deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.06) 72%), url(' + (backdropImage || playerBackdropImage || mainPosterUrl) + ')',
               backgroundPosition: 'center 38%',
             }}
           >
