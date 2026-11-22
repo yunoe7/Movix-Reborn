@@ -97,8 +97,23 @@ function takeServerResolved(...embedUrls: string[]): string | null {
 function notResolved(hoster: string): M3u8Result {
   return {
     success: false,
+    reason: 'unresolved',
     error: `Source ${hoster} non résolue par le serveur (installez l'extension pour l'extraction locale)`,
   };
+}
+
+/**
+ * URL de flux effectivement rendue par un extracteur, ou `null`.
+ *
+ * Les extracteurs historiques utilisent `hlsUrl`, les plus récents `m3u8Url`.
+ * Les consommateurs (WatchMovie/WatchTv) ne doivent pas décider du succès sur
+ * une seule de ces clés : un succès avec l'autre clé était jusqu'ici signalé
+ * comme « no HLS URL returned ». Aucune URL n'est construite ici : seules les
+ * valeurs déjà présentes dans la réponse sont renvoyées.
+ */
+export function extractedStreamUrl(result: M3u8Result | null | undefined): string | null {
+  if (!result?.success) return null;
+  return result.hlsUrl || result.m3u8Url || null;
 }
 
 /**
@@ -229,7 +244,11 @@ export interface M3u8Result {
   hlsCandidates?: SeekStreamingCandidate[];
   success: boolean;
   error?: string;
-  reason?: 'deleted';
+  /**
+   * Cause d'un échec, quand elle est connue. `disabled` = extracteur retiré
+   * (aucune requête), `unresolved` = aucun flux rendu par les sources autorisées.
+   */
+  reason?: 'deleted' | 'disabled' | 'unresolved';
   fromCache?: boolean;
   /** Pistes du lecteur de l'hébergeur (Uqload), via l'extension ou le userscript. */
   subtitles?: unknown;
@@ -276,55 +295,56 @@ export async function extractM3u8FromEmbed(
   player: PlayerInfo,
   _MAIN_API: string
 ): Promise<M3u8Result | null> {
-  // Vérifier le type d'extraction spécifique
-  if (player.player && player.player.toLowerCase().includes('supervideo') && !SUPERVIDEO_EXTRACTIONS_ENABLED) {
-    return {
-      success: false,
-      error: 'Extractions Supervideo désactivées'
-    };
-  }
-
-  if (player.player && player.player.toLowerCase().includes('dropload') && !DROPLOAD_EXTRACTIONS_ENABLED) {
-    return {
-      success: false,
-      error: 'Extractions Dropload désactivées'
-    };
-  }
-
   if (!player || !player.link) return null;
 
   const url = player.link;
+  const hoster = player.player?.toLowerCase() || '';
+  const isSupervideo = hoster.includes('supervideo') || url.toLowerCase().includes('supervideo');
+  const isDropload = hoster.includes('dropload') || url.toLowerCase().includes('dropload');
+  if (!isSupervideo && !isDropload) return null;
+
+  // Une m3u8 déjà résolue par le serveur reste consommable même si l'extracteur
+  // local est retiré : le drapeau désactive une extraction, pas l'usage d'un
+  // flux que le catalogue a déjà fourni. Aucun appel réseau n'est fait ici.
+  const resolved = takeServerResolved(url);
+  if (resolved) {
+    return { m3u8Url: resolved, success: true };
+  }
+
+  const disabled = (isSupervideo && !SUPERVIDEO_EXTRACTIONS_ENABLED)
+    || (isDropload && !DROPLOAD_EXTRACTIONS_ENABLED);
+  if (disabled) {
+    const name = isSupervideo ? 'Supervideo' : 'Dropload';
+    return {
+      success: false,
+      reason: 'disabled',
+      error: `Extractions ${name} désactivées`
+    };
+  }
 
   // Vérifier si cette URL a déjà échoué
   if (failedUrlsCache.has(url)) {
     return {
       success: false,
+      reason: 'unresolved',
       error: 'URL précédemment échouée - pas de nouvelle tentative',
       fromCache: true
     };
   }
-
-  const hoster = player.player?.toLowerCase() || '';
-  if (!hoster.includes('supervideo') && !hoster.includes('dropload')) return null;
 
   try {
     // Comme les autres hébergeurs, la m3u8 vient du catalogue résolu côté
     // serveur. Les anciens endpoints `/api/extract-supervideo` et
     // `/api/extract-dropload` prenaient une URL en paramètre — ils n'existent
     // plus dans mainapi et ne sont plus appelés.
-    const resolved = takeServerResolved(url);
-    if (resolved) {
-      return { m3u8Url: resolved, success: true };
-    }
-
-    return notResolved(hoster.includes('supervideo') ? 'Supervideo' : 'Dropload');
-
+    return notResolved(isSupervideo ? 'Supervideo' : 'Dropload');
   } catch (error) {
     console.error('Error extracting m3u8:', error);
     // Ajouter l'URL au cache des échecs
     failedUrlsCache.add(url);
     return {
       success: false,
+      reason: 'unresolved',
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }

@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
-import { extractM3u8FromEmbed, extractUqloadFile, extractVidzyM3u8, extractFsvidM3u8, extractDoodStreamFile, isDoodStreamExtractionEnabled, registerServerResolvedSources, type M3u8Result } from '../../utils/extractM3u8';
+import { extractM3u8FromEmbed, extractedStreamUrl, extractUqloadFile, extractVidzyM3u8, extractFsvidM3u8, extractDoodStreamFile, isDoodStreamExtractionEnabled, registerServerResolvedSources, type M3u8Result } from '../../utils/extractM3u8';
 import type { SeekStreamingHlsSource } from '../../utils/seekStreamingCandidates';
 import { runExtractionPass, type ExtractionPassResult } from '../../utils/runExtractionPass';
 import { pickAutoSelectedSource, sortHostersByPriority, hosterKeyOf, type SourceAvailability } from '../../utils/sourceAutoSelect';
@@ -1261,7 +1261,6 @@ const WatchMovie: React.FC = () => {
         if (supervideo) {
           console.log('🎬 Found supervideo player:', supervideo);
           console.log('🔗 Supervideo URL to extract:', supervideo.link);
-          console.log('🌐 API endpoint will be:', `${MAIN_API}/api/extract-supervideo?url=${encodeURIComponent(supervideo.link)}`);
 
           omegaExtractionPromises.push(
             extractM3u8FromEmbed(supervideo, MAIN_API).then(result => ({
@@ -1304,17 +1303,23 @@ const WatchMovie: React.FC = () => {
           omegaResults.forEach(({ type, result, label }) => {
             if (type === 'supervideo') {
               console.log('📡 Supervideo extraction result:', result);
-              if (result?.success && result.hlsUrl) {
-                finalHlsSources = [...finalHlsSources, { url: result.hlsUrl, label }];
-                console.log(`✅ Added ${label} source (lower priority):`, result.hlsUrl);
+              const streamUrl = extractedStreamUrl(result);
+              if (streamUrl) {
+                finalHlsSources = [...finalHlsSources, { url: streamUrl, label }];
+                console.log(`✅ Added ${label} source (lower priority):`, streamUrl);
+              } else if (result?.reason === 'disabled') {
+                // Extracteur retiré : ni requête ni panne réseau, seulement un
+                // lecteur embed à laisser jouable avec les autres sources.
+                console.debug('ℹ️ Supervideo extraction indisponible (extracteur retiré):', result);
               } else {
                 console.warn('❌ Supervideo extraction failed or no HLS URL returned:', result);
               }
             } else if (type === 'dropload') {
               console.log('📡 Dropload extraction result:', result);
-              if (result?.success && result.m3u8Url) {
-                finalHlsSources = [...finalHlsSources, { url: result.m3u8Url, label }];
-                console.log(`✅ Added ${label} source (lower priority):`, result.m3u8Url);
+              const streamUrl = extractedStreamUrl(result);
+              if (streamUrl) {
+                finalHlsSources = [...finalHlsSources, { url: streamUrl, label }];
+                console.log(`✅ Added ${label} source (lower priority):`, streamUrl);
               }
             } else if (type === 'doodstream') {
               console.log('📡 DoodStream extraction result:', result);
@@ -1342,8 +1347,9 @@ const WatchMovie: React.FC = () => {
                   link: droploadUrl
                 }, MAIN_API);
                 console.log('📡 Firebase Dropload extraction result:', droploadResult);
-                if (droploadResult?.success && droploadResult.m3u8Url) {
-                  return { url: droploadResult.m3u8Url, label: 'Dropload HLS 720p' };
+                const streamUrl = extractedStreamUrl(droploadResult);
+                if (streamUrl) {
+                  return { url: streamUrl, label: 'Dropload HLS 720p' };
                 }
               } catch (error) {
                 console.error('❌ Error extracting m3u8 from Firebase dropload link:', error);
