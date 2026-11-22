@@ -55,7 +55,7 @@ const onAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
 
 // Couleur pleine et opacité sur l'icône seule : une couleur translucide
 // éclaircirait les croisements de ses tracés.
-const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/50 transition-[color,opacity,transform,filter] duration-200 group-hover:scale-105 group-hover:text-[#a9baff] group-hover:opacity-100 group-hover:drop-shadow-[0_0_7px_rgba(133,158,255,0.48)]';
+const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/50 transition-[color,opacity,transform,filter] duration-200 group-hover:scale-105 group-hover:text-[#ff5a64] group-hover:opacity-100 group-hover:drop-shadow-[0_0_7px_rgba(229,9,20,0.42)]';
 // Fond de survol simple du panneau mobile, seulement avec une souris
 // (fenêtre étroite sur ordinateur) : au toucher, il resterait accroché.
 const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.055] [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045)]';
