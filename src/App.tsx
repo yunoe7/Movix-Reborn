@@ -1813,6 +1813,8 @@ const AppWithIntro: React.FC = () => {
     currentPath === '/movies' ||
     currentPath === '/anime' ||
     currentPath === '/tv-shows' ||
+    currentPath.startsWith('/movie/') ||
+    currentPath.startsWith('/tv/') ||
     currentPath.startsWith('/provider/');
   const isWrappedRoute = currentPath === '/wrapped' || currentPath.startsWith('/wrapped/');
   const shouldShowHeader = !isWatchRoute && !isWrappedRoute;
