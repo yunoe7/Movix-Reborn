@@ -62,12 +62,98 @@ function splitHtmlComments(html) {
 const PANEL = /panneau(Anime|Scan)\s*\(\s*(["'])(.*?)\2\s*,\s*(["'])(.*?)\4\s*\)/g;
 
 // Panneaux d'un fragment. « nom » est l'exemple du mode d'emploi de la page.
-function panelsOf(text) {
+// La position est conservée pour retrouver l'ordre annoncé par la fiche.
+function panelsOf(text, offset = 0) {
   const panels = [];
-  for (const [, kind, , name, , target] of String(text).matchAll(PANEL)) {
-    if (name.trim() && name.trim() !== 'nom') panels.push({ kind, name: decodeEntities(name.trim()), target });
+  for (const match of String(text).matchAll(PANEL)) {
+    const [, kind, , name, , target] = match;
+    if (name.trim() && name.trim() !== 'nom') {
+      panels.push({ kind, name: decodeEntities(name.trim()), target, index: offset + match.index });
+    }
   }
   return panels;
+}
+
+/**
+ * Portées commentées d'une fiche. Les panneaux qu'elles contiennent ne sont
+ * pas des saisons lisibles, mais anime-sama les annonce encore : la route doit
+ * pouvoir les garder avec leur nom et leur chemin. Les commentaires JS ne sont
+ * reconnus qu'à l'intérieur d'un `<script>`, comme dans `splitHtmlComments`.
+ */
+function commentSpans(html) {
+  const spans = [];
+  let pos = 0;
+  let scriptEnd = -1;
+  while (pos < html.length) {
+    if (scriptEnd < 0) {
+      const comment = html.indexOf('<!--', pos);
+      const script = /<script\b[^>]*>/gi;
+      script.lastIndex = pos;
+      const scriptMatch = script.exec(html);
+      const candidates = [
+        [comment, 'comment'],
+        [scriptMatch ? scriptMatch.index : -1, 'script'],
+      ].filter(([index]) => index >= 0).sort(([a], [b]) => a - b);
+      const [start, kind] = candidates[0] || [];
+      if (start === undefined) break;
+      if (kind === 'comment') {
+        const end = html.indexOf('-->', start + 4);
+        const stop = end === -1 ? html.length : end + 3;
+        spans.push([start, stop]);
+        pos = stop;
+      } else {
+        scriptEnd = scriptMatch.index + scriptMatch[0].length;
+        pos = scriptEnd;
+      }
+      continue;
+    }
+
+    const close = /<\/script\s*>/gi;
+    close.lastIndex = pos;
+    const closeMatch = close.exec(html);
+    const limit = closeMatch ? closeMatch.index : html.length;
+    // Les motifs ne se chevauchent pas : on les ajoute dans l'ordre du script.
+    const chunk = html.slice(pos, limit);
+    const local = [];
+    for (const [pattern, toLineEnd] of [
+      [/\/\*[\s\S]*?\*\//g, false],
+      [/<!--[^\n]*/g, true],
+      [/^[ \t]*\/\/[^\n]*/gm, true],
+    ]) {
+      for (const match of chunk.matchAll(pattern)) {
+        local.push([pos + match.index, pos + match.index + match[0].length, toLineEnd]);
+      }
+    }
+    local.sort(([a], [b]) => a - b);
+    let cursor = pos;
+    for (const [start, end, toLineEnd] of local) {
+      if (start < cursor) continue;
+      const stop = toLineEnd
+        ? Math.min(limit, (html.indexOf('\n', end - 1) === -1 ? limit : html.indexOf('\n', end - 1) + 1))
+        : end;
+      spans.push([start, stop]);
+      cursor = stop;
+    }
+    pos = limit;
+    if (closeMatch) {
+      pos = closeMatch.index + closeMatch[0].length;
+      scriptEnd = -1;
+    }
+  }
+  return spans.sort(([a], [b]) => a - b);
+}
+
+// Copie de `html` où l'on ne garde que les commentaires (ou au contraire tout
+// ce qui n'en est pas). Les positions sont conservées pour retrouver l'ordre
+// annoncé des panneaux.
+function maskComments(html, spans, keepComments) {
+  const marked = new Uint8Array(html.length);
+  for (const [start, end] of spans) marked.fill(1, start, Math.min(end, html.length));
+  let masked = '';
+  for (let index = 0; index < html.length; index++) {
+    masked += Boolean(marked[index]) === keepComments ? html[index] : ' ';
+  }
+  return masked;
 }
 
 // « saison1/vostfr », « /catalogue/<œuvre>/saison1/vostfr/ » ou une adresse
@@ -129,7 +215,7 @@ function infosOf(html) {
 const EMPTY_TITLE = Object.freeze({
   valid: false, name: '', altNames: [], synopsis: '', genres: [], image: '', posterPath: null,
   tmdb: null, anilistId: null, malId: null, format: '', status: '', year: null, languages: [],
-  seasons: [], hiddenSeasons: 0, hasScans: false,
+  seasons: [], announcedSeasons: [], hiddenSeasons: 0, hasScans: false,
 });
 
 /**
@@ -142,30 +228,34 @@ const EMPTY_TITLE = Object.freeze({
 function parseTitlePage(html, { slug = '' } = {}) {
   if (typeof html !== 'string' || !html) return { ...EMPTY_TITLE };
 
-  const { kept, removed } = splitHtmlComments(html);
-  let hiddenSeasons = 0;
-  const countHidden = (chunk) => {
-    hiddenSeasons += panelsOf(chunk).filter(panel => panel.kind === 'Anime').length;
-    return '';
-  };
-  removed.forEach(countHidden);
-  // Dans un <script>, `/* … */`, `<!--` jusqu'à la fin de la ligne et `//` en
-  // début de ligne sont des commentaires.
-  const code = kept
-    .replace(/\/\*[\s\S]*?\*\//g, countHidden)
-    .replace(/<!--.*$/gm, countHidden)
-    .replace(/^[ \t]*\/\/.*$/gm, countHidden);
+  const { kept } = splitHtmlComments(html);
+  const spans = commentSpans(html);
+  const visiblePanels = panelsOf(maskComments(html, spans, false));
+  const hiddenPanels = panelsOf(maskComments(html, spans, true)).map(panel => ({ ...panel, hidden: true }));
+  const panels = [...visiblePanels, ...hiddenPanels].sort((a, b) => a.index - b.index);
+  const hiddenSeasons = hiddenPanels.filter(panel => panel.kind === 'Anime').length;
 
-  const panels = panelsOf(code);
+  // `seasons` reste la liste des seules saisons lisibles. `announcedSeasons`
+  // garde l'ordre de la fiche, y compris les panneaux commentés : la route
+  // peut les conserver comme saisons indisponibles, sans rien inventer.
   const seasons = [];
+  const announcedSeasons = [];
   for (const panel of panels) {
     if (panel.kind !== 'Anime') continue;
     const target = parseSeasonTarget(panel.target, slug);
-    if (target) seasons.push({ name: panel.name, path: target.path, lang: target.lang });
+    const entry = {
+      name: panel.name,
+      ...(target ? { path: target.path, lang: target.lang } : {}),
+      ...(panel.hidden
+        ? { available: false, unavailableReason: 'hidden' }
+        : { available: true }),
+    };
+    if (!panel.hidden && target) seasons.push({ name: panel.name, path: target.path, lang: target.lang });
+    announcedSeasons.push(entry);
   }
 
   const isTitlePage = /id=["']titreOeuvre["']/.test(kept) && /\bvar\s+OE_BASE\b|\bfunction\s+panneauAnime\b/.test(kept);
-  if (!seasons.length && !isTitlePage) return { ...EMPTY_TITLE };
+  if (!announcedSeasons.length && !isTitlePage) return { ...EMPTY_TITLE };
 
   const ld = jsonLdOf(kept);
   const infos = infosOf(kept);
@@ -200,8 +290,9 @@ function parseTitlePage(html, { slug = '' } = {}) {
     year: yearText ? Number(yearText) : null,
     languages: siteLanguages.length ? siteLanguages : uniq(seasons.map(season => season.lang)),
     seasons,
+    announcedSeasons,
     hiddenSeasons,
-    hasScans: panels.some(panel => panel.kind === 'Scan'),
+    hasScans: visiblePanels.some(panel => panel.kind === 'Scan'),
   };
 }
 

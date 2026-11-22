@@ -213,9 +213,11 @@ function loadAnimeSama({ site = createSite(), animes = ['Example'], files = {}, 
     },
     '../utils/cacheManager': { ANIME_SAMA_CACHE_DIR: CACHE_DIR, generateCacheKey: () => 'fixture-key' },
     '../config/redis': { memoryCache: { get: async () => undefined, set: async () => {} } },
+    '../utils/animeSamaFallback': require('../../utils/animeSamaFallback'),
     '../utils/embedExtraction': { buildM3u8Map: async () => ({}) },
     '../utils/animeSamaDeadPlayers': require('../../utils/animeSamaDeadPlayers'),
     '../utils/animeSamaPages': require('../../utils/animeSamaPages'),
+    '../utils/animeSamaCache': require('../../utils/animeSamaCache'),
     '../utils/animeSamaLinks': require('../../utils/animeSamaLinks'),
     '../utils/concurrency': require('../../utils/concurrency'),
   };
@@ -244,7 +246,9 @@ function loadAnimeSama({ site = createSite(), animes = ['Example'], files = {}, 
     ...(deadPlayers ? { deadPlayerList: stubs['../utils/animeSamaDeadPlayers'].createDeadPlayerList({ request, now: () => now, logger: null }) } : {}),
     ...(lock ? { acquireRefreshLock: lock } : {}),
     ...(index ? { animeIndex: index } : {}),
-    ...(firstScanWaitMs !== undefined ? { firstScanWaitMs } : {}),
+    // Par défaut le harnais ne bloque pas la réponse sur le premier scan : les
+    // tests attendent ensuite `settle()` quand ils veulent voir le cache.
+    firstScanWaitMs: firstScanWaitMs ?? 0,
   });
   const call = async (route, req) => {
     const res = { statusCode: 200, headers: {}, set(name, value) { this.headers[name.toLowerCase()] = value; return this; }, status(code) { this.statusCode = code; return this; }, json(body) { this.body = clone(body); return this; } };
@@ -574,7 +578,7 @@ test('trois pannes d’affilée mettent la source en pause : plus aucune requêt
   simpleSeason(site, 'saison1', ['vostfr'], 1);
   site.fail = kind => (kind === 'page' ? httpError(403, '<html class="cf-wrapper">Just a moment...</html>') : null);
   const animes = ['Anime A', 'Anime B', 'Anime C', 'Anime D'];
-  const cached = { 'Saison 1': { timestamp: now, episodes: [episodeOf(1, [{ language: 'vostfr', players: ['https://ancien.invalid/1'] }])] } };
+  const cached = { 'Saison 1': { timestamp: now, path: 'saison1', episodes: [episodeOf(1, [{ language: 'vostfr', players: ['https://ancien.invalid/1'] }])] } };
   const files = Object.fromEntries(animes.map(name => [`${TITLE_DIR}/${name.toLowerCase().replace(' ', '-')}.json`, titleFile(cached)]));
   const h = loadAnimeSama({ site, animes, files });
 
@@ -639,14 +643,14 @@ test('langues : la langue annoncée d’abord, puis celles que la page publie et
   await settle();
 });
 
-test('une saison vidée par le site quitte le cache ; une saison illisible garde le sien sans bloquer les autres', async () => {
+test('une saison vidée par le site reste indisponible ; une saison illisible garde son cache sans bloquer les autres', async () => {
   const site = createSite();
   site.fiche = ['panneauAnime("Saison 1", "saison1/vostfr");', 'panneauAnime("Saison 2", "saison2/vostfr");', 'panneauAnime("Saison 3", "saison3/vostfr");'];
   // Saison 1 : la page existe mais n'a plus aucun épisode (saison masquée,
   // « Bientôt de retour »). Saison 2 : page introuvable. Saison 3 : normale.
   site.pages['saison1/vostfr'] = { langs: ['vostfr'], token: null, eps: [] };
   simpleSeason(site, 'saison3', ['vostfr'], 2, { firstId: 30 });
-  const old = name => ({ timestamp: now, episodes: [{ name: 'Episode 1', serie_name: 'Example', season_name: name, index: 1, streaming_links: [{ language: 'vostfr', players: [`https://ancien.invalid/${name}`] }] }] });
+  const old = name => ({ timestamp: now, path: `saison${name.slice(-1)}`, episodes: [{ name: 'Episode 1', serie_name: 'Example', season_name: name, index: 1, streaming_links: [{ language: 'vostfr', players: [`https://ancien.invalid/${name}`] }] }] });
   const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile({ 'Saison 1': old('Saison 1'), 'Saison 2': old('Saison 2'), 'Saison 3': old('Saison 3') }) } });
 
   await h.refresh();
@@ -654,20 +658,34 @@ test('une saison vidée par le site quitte le cache ; une saison illisible garde
   assert(h.logs.some(line => line.includes('Saison 1') && line.includes('vidée par anime-sama')));
   assert(h.logs.some(line => line.includes('Saison 2') && line.includes('illisible')));
   const { body } = await h.search(); await settle();
-  assert.deepEqual(body[0].seasons.map(season => [season.name, season.episodes.length]), [['Saison 2', 1], ['Saison 3', 2]]);
-  assert.deepEqual(body[0].seasons[0].episodes[0].streaming_links[0].players, ['https://ancien.invalid/Saison 2']);
+  assert.deepEqual(body[0].seasons.map(season => [season.name, season.status, season.episodes.length]), [
+    ['Saison 1', 'unavailable', 0],
+    ['Saison 2', 'available', 1],
+    ['Saison 3', 'available', 2],
+  ]);
+  assert.deepEqual(body[0].seasons[1].episodes[0].streaming_links[0].players, ['https://ancien.invalid/Saison 2']);
 
   // Une page de saison qui n'en est pas une (erreur servie en 200) ne vide rien non plus.
   now += 2 * HOUR; h.forget();
   site.pages['saison3/vostfr'] = { html: '<!doctype html><html><title>Erreur</title></html>' };
   await h.refresh();
   assert.deepEqual(h.failures(), []);
-  assert.deepEqual((await h.search()).body[0].seasons.map(season => [season.name, season.episodes.length]), [['Saison 2', 1], ['Saison 3', 2]]);
+  assert.deepEqual((await h.search()).body[0].seasons.map(season => [season.name, season.status, season.episodes.length]), [
+    ['Saison 1', 'unavailable', 0],
+    ['Saison 2', 'available', 1],
+    ['Saison 3', 'available', 2],
+  ]);
   await settle();
 });
 
-test('fiche sans anime (saisons masquées, scans seuls) : le cache est vidé sans échec ; fiche cassée : il est gardé', async () => {
-  const cached = { 'Saison 1': { timestamp: now, episodes: [episodeOf(1, [{ language: 'vostfr', players: ['https://ancien.invalid/1'] }])] } };
+test('fiche sans anime (saison masquée conservée, scans seuls vidés) ; fiche cassée : le cache est gardé', async () => {
+  const cached = {
+    'Saison 1': {
+      timestamp: now,
+      path: 'saison1',
+      episodes: [episodeOf(1, [{ language: 'vostfr', players: ['https://ancien.invalid/1'] }])],
+    },
+  };
   const seeded = () => ({ [`${TITLE_DIR}/example.json`]: titleFile(cached) });
   const cases = [
     // Danshi Koukousei no Nichijou : la seule saison est en commentaire.
@@ -682,7 +700,14 @@ test('fiche sans anime (saisons masquées, scans seuls) : le cache est vidé san
     await h.refresh();
     assert.deepEqual(h.failures(), [], `${label} : aucun échec journalisé`);
     assert.deepEqual(h.pageCalls(), [], `${label} : aucune page de saison lue`);
-    assert.deepEqual((await h.search()).body[0].seasons, [], `${label} : plus rien n’est servi`);
+    const seasons = (await h.search()).body[0].seasons;
+    if (label === 'saison masquée') {
+      assert.deepEqual(seasons.map(season => [season.name, season.status, season.episodes.length]), [
+        ['Saison 1', 'unavailable', 0],
+      ], 'la saison annoncée reste visible, sans lecteur resservi');
+    } else {
+      assert.deepEqual(seasons.map(season => season.name), [], 'une fiche sans anime ne conserve aucune saison');
+    }
     await settle();
 
     // Les recherches suivantes ne relisent rien avant une heure, et ne logguent plus rien.
@@ -835,4 +860,224 @@ test('recherche par ID TMDB : sans index, index en panne ou slug douteux, la ré
   assert.deepEqual((await odd.byTmdb('tv', 5)).body, []);
   await settle();
   assert.deepEqual(odd.calls, []);
+});
+
+// ---- Saisons annoncées, indisponibles et conservées ----
+
+const seasonSummary = seasons => seasons.map(season => ({
+  name: season.name,
+  path: season.path,
+  available: season.available,
+  status: season.status,
+  episodes: season.episodes.length,
+}));
+
+test('deux saisons visibles : l’ordre annoncé est conservé, aucune adresse n’est demandée', async () => {
+  const site = createSite();
+  site.fiche = ['panneauAnime("Saison 1", "saison1/vostfr");', 'panneauAnime("Saison 2", "saison2/vostfr");'];
+  simpleSeason(site, 'saison1', ['vostfr'], 2, { firstId: 1 });
+  simpleSeason(site, 'saison2', ['vostfr'], 1, { firstId: 20 });
+  const h = loadAnimeSama({ site });
+
+  await h.refresh();
+  const { seasons } = (await h.search()).body[0];
+  assert.deepEqual(seasonSummary(seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 2 },
+    { name: 'Saison 2', path: 'saison2', available: true, status: 'available', episodes: 1 },
+  ]);
+  assert.deepEqual(h.linkCalls(), [], 'la liste ne résout aucun lecteur');
+  await settle();
+});
+
+test('une saison commentée resteVisible avec son chemin, sans page lue ni lecteur demandé', async () => {
+  const site = createSite();
+  site.fiche = [
+    'panneauAnime("Saison 1", "saison1/vostfr");',
+    '<!--panneauAnime("Saison 2", "saison2/vostfr");-->',
+    'panneauAnime("Films", "film/vostfr");',
+  ];
+  simpleSeason(site, 'saison1', ['vostfr'], 1, { firstId: 1 });
+  simpleSeason(site, 'film', ['vostfr'], 1, { firstId: 10 });
+  const h = loadAnimeSama({ site });
+
+  await h.refresh();
+  assert.deepEqual(h.pageCalls(), ['saison1/vostfr', 'film/vostfr']);
+  const { seasons } = (await h.search()).body[0];
+  assert.deepEqual(seasonSummary(seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
+    { name: 'Saison 2', path: 'saison2', available: false, status: 'unavailable', episodes: 0 },
+    { name: 'Films', path: 'film', available: true, status: 'available', episodes: 1 },
+  ]);
+  assert.equal(seasons[1].unavailableReason, 'hidden');
+  assert.deepEqual(seasons[1].episodes, []);
+  assert.deepEqual(h.linkCalls(), []);
+  assert.deepEqual(h.title('example').seasons['Saison 2'], {
+    path: 'saison2', status: 'unavailable', available: false,
+    unavailableReason: 'hidden', episodes: [], timestamp: now,
+  });
+  await settle();
+});
+
+test('une saison annoncée vidée par le site reste visible, sans épisode ni langue vide', async () => {
+  const site = createSite();
+  site.fiche = ['panneauAnime("Saison 1", "saison1/vostfr");', 'panneauAnime("Saison 2", "saison2/vostfr");'];
+  simpleSeason(site, 'saison1', ['vostfr'], 1, { firstId: 1 });
+  site.pages['saison2/vostfr'] = { langs: ['vostfr'], token: 'jeton-vide', eps: [] };
+  const h = loadAnimeSama({ site });
+
+  await h.refresh();
+  const { seasons } = (await h.search()).body[0];
+  assert.deepEqual(seasonSummary(seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
+    { name: 'Saison 2', path: 'saison2', available: false, status: 'unavailable', episodes: 0 },
+  ]);
+  assert.equal(seasons[1].unavailableReason, 'empty');
+  assert.deepEqual(h.failures(), []);
+  assert.deepEqual(h.linkCalls(), []);
+  await settle();
+});
+
+test('un cache dont tous les lecteurs sont morts reste visible et indisponible', async () => {
+  const cached = { 'Saison 1': { timestamp: now - 1000, path: 'saison1', episodes: [
+    episodeOf(1, [{ language: 'vostfr', players: ['https://video.sibnet.ru/shell.php?videoid=1'] }]),
+  ] } };
+  const h = loadAnimeSama({
+    files: { [`${TITLE_DIR}/example.json`]: titleFile(cached, { ageMs: 1000 }) },
+    deadPlayers: true,
+  });
+
+  const { seasons } = (await h.search()).body[0];
+  assert.deepEqual(seasonSummary(seasons), [
+    { name: 'Saison 1', path: 'saison1', available: false, status: 'unavailable', episodes: 0 },
+  ]);
+  assert.deepEqual(h.calls, []);
+  await settle();
+});
+
+test('un cache mi-mort mi-vivant garde ses lecteurs fonctionnels', async () => {
+  const live = 'https://ansembed.invalid/embed-1.html';
+  const cached = { 'Saison 1': { timestamp: now - 1000, path: 'saison1', episodes: [
+    episodeOf(1, [{ language: 'vostfr', players: ['https://video.sibnet.ru/shell.php?videoid=1', live] }]),
+  ] } };
+  const h = loadAnimeSama({
+    files: { [`${TITLE_DIR}/example.json`]: titleFile(cached, { ageMs: 1000 }) },
+    deadPlayers: true,
+  });
+
+  const { seasons } = (await h.search()).body[0];
+  assert.deepEqual(seasonSummary(seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
+  ]);
+  assert.deepEqual(playersOf(seasons), [[[['vostfr', live]]]]);
+  assert.deepEqual(h.calls, []);
+  await settle();
+});
+
+test('une saison absente de la fiche reste en cache à sa place, sans lecteur resservi', async () => {
+  const site = createSite();
+  site.fiche = ['panneauAnime("Saison 1", "saison1/vostfr");', 'panneauAnime("Saison 3", "saison3/vostfr");'];
+  simpleSeason(site, 'saison1', ['vostfr'], 1, { firstId: 1 });
+  simpleSeason(site, 'saison3', ['vostfr'], 1, { firstId: 30 });
+  const old = (name, path) => ({ timestamp: now - HOUR, path, episodes: [
+    episodeOf(1, [{ language: 'vostfr', players: [`https://ancien.invalid/${name}`] }]),
+  ] });
+  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile({
+    'Saison 1': old('Saison 1', 'saison1'),
+    'Saison 2': old('Saison 2', 'saison2'),
+    'Saison 3': old('Saison 3', 'saison3'),
+  }) } });
+
+  await h.refresh();
+  const { seasons } = (await h.search()).body[0];
+  assert.deepEqual(seasonSummary(seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
+    { name: 'Saison 2', path: 'saison2', available: false, status: 'unavailable', episodes: 0 },
+    { name: 'Saison 3', path: 'saison3', available: true, status: 'available', episodes: 1 },
+  ]);
+  assert.equal(seasons[1].unavailableReason, 'absent');
+  assert.deepEqual(h.pageCalls(), ['saison1/vostfr', 'saison3/vostfr'], 'la saison absente n’est pas lue');
+  assert.deepEqual(h.linkCalls(), []);
+  assert.equal(Object.keys(h.title('example').seasons).length, 3, 'aucune saison perdue ni doublée');
+  await settle();
+});
+
+test('une nouvelle saison annoncée s’ajoute après les saisons connues', async () => {
+  const site = createSite();
+  site.fiche = ['panneauAnime("Saison 1", "saison1/vostfr");', 'panneauAnime("Saison 2", "saison2/vostfr");'];
+  simpleSeason(site, 'saison1', ['vostfr'], 1, { firstId: 1 });
+  simpleSeason(site, 'saison2', ['vostfr'], 1, { firstId: 20 });
+  const cached = { 'Saison 1': { timestamp: now - HOUR, path: 'saison1', episodes: [
+    episodeOf(1, [{ language: 'vostfr', players: ['https://ancien.invalid/1'] }]),
+  ] } };
+  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile(cached) } });
+
+  await h.refresh();
+  assert.deepEqual(seasonSummary((await h.search()).body[0].seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
+    { name: 'Saison 2', path: 'saison2', available: true, status: 'available', episodes: 1 },
+  ]);
+  await settle();
+});
+
+test('films, OAV et spéciaux gardent l’ordre exact annoncé par la fiche', async () => {
+  const site = createSite();
+  const paths = ['saison1', 'film', 'oav', 'special'];
+  site.fiche = paths.map((item, index) => `panneauAnime("${['Saison 1', 'Films', 'OAV', 'Spéciaux'][index]}", "${item}/vostfr");`);
+  paths.forEach((item, index) => simpleSeason(site, item, ['vostfr'], 1, { firstId: (index + 1) * 10 }));
+  const h = loadAnimeSama({ site });
+
+  await h.refresh();
+  assert.deepEqual(seasonSummary((await h.search()).body[0].seasons).map(season => season.name), ['Saison 1', 'Films', 'OAV', 'Spéciaux']);
+  await settle();
+});
+
+test('une saison indisponible n’empêche pas la lecture différée d’un épisode disponible', async () => {
+  const site = createSite();
+  site.fiche = [
+    'panneauAnime("Saison 1", "saison1/vostfr");',
+    '<!--panneauAnime("Saison 2", "saison2/vostfr");-->',
+  ];
+  site.links = { 1: 'https://ansembed.invalid/embed-1.html' };
+  site.pages['saison1/vostfr'] = { langs: ['vostfr'], token: 'j-1', eps: [['lien:1']] };
+  const h = loadAnimeSama({ site, files: {
+    [`${TITLE_DIR}/example.json`]: titleFile({
+      'Saison 1': { timestamp: now, path: 'saison1', episodes: [
+        episodeOf(1, [{ language: 'vostfr', players: [], refs: [{ id: '1', host: 'ansembed.invalid' }] }]),
+      ] },
+    }),
+  } });
+
+  await h.refresh();
+  const pagesBeforeEpisode = h.site.pageReads;
+  const beforeEpisode = h.pageCalls().length;
+  assert.deepEqual(linksView((await h.episode('saison1', 1)).body.streaming_links), [
+    ['vostfr', 0, 'https://ansembed.invalid/embed-1.html'],
+  ]);
+  assert.deepEqual(h.linkCalls(), ['1']);
+  assert.deepEqual(h.site.pageReads, pagesBeforeEpisode, 'aucune page de saison relue à l’ouverture');
+  assert.equal(h.pageCalls().length, beforeEpisode + 1);
+  await settle();
+});
+
+test('ancien cache sans chemin ni statut : la fiche lui donne son chemin et garde la saison masquée', async () => {
+  const site = createSite();
+  site.fiche = [
+    'panneauAnime("Saison 1", "saison1/vostfr");',
+    '<!--panneauAnime("Saison 2", "saison2/vostfr");-->',
+  ];
+  simpleSeason(site, 'saison1', ['vostfr'], 1, { firstId: 1 });
+  const legacy = name => ({ timestamp: now - HOUR, episodes: [
+    episodeOf(1, [{ language: 'vostfr', players: [`https://ancien.invalid/${name}`] }]),
+  ] });
+  const h = loadAnimeSama({ site, files: { [`${TITLE_DIR}/example.json`]: titleFile({
+    'Saison 1': legacy('Saison 1'),
+    'Saison 2': legacy('Saison 2'),
+  }) } });
+
+  await h.refresh();
+  assert.deepEqual(seasonSummary((await h.search()).body[0].seasons), [
+    { name: 'Saison 1', path: 'saison1', available: true, status: 'available', episodes: 1 },
+    { name: 'Saison 2', path: 'saison2', available: false, status: 'unavailable', episodes: 0 },
+  ]);
+  await settle();
 });

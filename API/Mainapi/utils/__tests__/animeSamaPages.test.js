@@ -197,6 +197,35 @@ test('fiche : toutes les saisons masquées ou seulement des scans, la fiche rest
   assert.equal(scansOnly.hasScans, true);
 });
 
+test('fiche : une saison masquée garde son nom, son rang et son statut indisponible', () => {
+  const fiche = parseTitlePage([
+    ficheHead,
+    animeBlock([
+      'panneauAnime("Saison 1", "saison1/vostfr");',
+      '<!--panneauAnime("Saison 2", "saison2/vostfr");-->',
+      'panneauAnime("Films", "film/vostfr");',
+      '// panneauAnime("Saison 3", "saison3/vostfr");',
+    ]),
+  ].join('\n'));
+
+  // `seasons` reste la liste des saisons lisibles, pour les consommateurs
+  // existants (index du catalogue) ; `announcedSeasons` garde l'ordre annoncé.
+  assert.deepEqual(fiche.seasons.map(season => season.name), ['Saison 1', 'Films']);
+  assert.deepEqual(fiche.announcedSeasons, [
+    { name: 'Saison 1', path: 'saison1', lang: 'vostfr', available: true },
+    { name: 'Saison 2', path: 'saison2', lang: 'vostfr', available: false, unavailableReason: 'hidden' },
+    { name: 'Films', path: 'film', lang: 'vostfr', available: true },
+    { name: 'Saison 3', path: 'saison3', lang: 'vostfr', available: false, unavailableReason: 'hidden' },
+  ]);
+});
+
+test('fiche : une saison masquée sans chemin exploitable n’invente ni chemin ni langue', () => {
+  const fiche = parseTitlePage(`${ficheHead}\n${animeBlock(['<!--panneauAnime("Bientôt", "bientot");-->'])}`);
+  assert.deepEqual(fiche.announcedSeasons, [
+    { name: 'Bientôt', available: false, unavailableReason: 'hidden' },
+  ]);
+});
+
 test('fiche : une page qui n’est pas une fiche n’est jamais « une œuvre sans anime »', () => {
   const notFound = '<!doctype html><html><head><title>Page introuvable</title></head><body><h1>404</h1></body></html>';
   const challenge = '<html><head><title>Just a moment...</title></head><body class="cf-wrapper">Cloudflare</body></html>';

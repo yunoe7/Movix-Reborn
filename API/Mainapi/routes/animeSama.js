@@ -210,18 +210,100 @@ const EMPTY_PLAYER_PATTERNS = [
 const isEmptyPlayerUrl = (url) =>
   typeof url === 'string' && EMPTY_PLAYER_PATTERNS.some((re) => re.test(url));
 
-// Le cache reprend exactement les saisons du site, dans le même ordre. Avant,
-// une saison renommée par anime-sama (« Avec Fillers » devenu « Saison 1 -
-// Avec Fillers ») restait en cache sous l'ancien nom et s'affichait en double,
-// et les nouvelles saisons s'ajoutaient en fin de liste.
-const alignToSiteSeasons = (cache, siteNames) => {
-  const seasons = {};
-  for (const name of siteNames) {
-    if (cache[name] && !(name in seasons)) seasons[name] = cache[name];
+// Une saison indisponible est une saison annoncée par la fiche (ou déjà connue
+// en cache) mais sans lecteur à servir. On garde son nom et son chemin quand
+// ils sont connus ; surtout, on ne fabrique ni épisode ni langue vide.
+const unavailableSeasonEntry = (source = {}, reason = 'absent', timestamp = Date.now()) => ({
+  ...(typeof source.path === 'string' && source.path ? { path: source.path } : {}),
+  available: false,
+  status: 'unavailable',
+  unavailableReason: reason,
+  episodes: [],
+  timestamp,
+});
+
+const isUnavailableSeasonEntry = (entry) => Boolean(entry)
+  && (entry.available === false || entry.status === 'unavailable');
+
+/**
+ * Fusionne le cache avec les saisons annoncées par la fiche.
+ *
+ * Les saisons absentes d'une fiche ne sont plus supprimées : une fiche peut
+ * masquer une saison le temps d'une actualisation. Elles restent à leur place,
+ * marquées indisponibles. Un renommage avec le même chemin est reconnu pour ne
+ * jamais afficher deux fois la même saison.
+ */
+function mergeSeasonCache(cache, announcedSeasons, updated = {}) {
+  const original = cache && typeof cache === 'object' ? cache : {};
+  const entries = Object.entries(original).filter(([, entry]) => entry && typeof entry === 'object');
+  const byName = new Map(entries);
+  const ownerByPath = new Map();
+  for (const [name, entry] of entries) {
+    if (typeof entry.path === 'string' && entry.path) ownerByPath.set(entry.path, name);
   }
-  const before = Object.keys(cache).join('\n');
-  return { seasons, changed: before !== Object.keys(seasons).join('\n') };
-};
+
+  const ordered = [];
+  const consumed = new Set();
+  const oldPosition = new Map(entries.map(([name], index) => [name, index]));
+  const oldNameOf = new Map();
+
+  for (const announced of announcedSeasons || []) {
+    if (!announced?.name) continue;
+    let oldName = announced.name;
+    let existing = byName.get(oldName);
+    if (!existing && announced.path && ownerByPath.has(announced.path)) {
+      oldName = ownerByPath.get(announced.path);
+      existing = byName.get(oldName);
+    }
+    const updatedEntry = updated[announced.name];
+    let entry = updatedEntry || existing || {};
+    if (!updatedEntry && !announced.available) {
+      entry = isUnavailableSeasonEntry(existing)
+        ? existing
+        : unavailableSeasonEntry({ ...existing, ...announced }, announced.unavailableReason || 'hidden');
+    }
+    if (announced.path && typeof announced.path === 'string' && !entry.path) {
+      entry = { ...entry, path: announced.path };
+    }
+    ordered.push({ name: announced.name, oldName, entry });
+    consumed.add(oldName);
+    oldNameOf.set(announced.name, oldName);
+  }
+
+  // Les saisons que la fiche ne mentionne plus sont réinsérées près de leur
+  // position d'origine, avec le statut indisponible : elles peuvent revenir.
+  for (const [name, entry] of entries) {
+    if (consumed.has(name)) continue;
+    // Une fiche sans aucun panneau annoncé (œuvre en scans, page cassée)
+    // mentionne explicitement l'absence d'anime : le cache est vidé. Une
+    // saison simplement absente d'une fiche qui en annonce d'autres reste,
+    // elle, indisponible le temps d'une éventuelle actualisation.
+    if (!ordered.length && !announcedSeasons?.length) continue;
+    const unavailable = isUnavailableSeasonEntry(entry)
+      ? entry
+      : unavailableSeasonEntry(entry, 'absent', entry.timestamp || Date.now());
+    let insertAt = ordered.length;
+    const position = oldPosition.get(name) ?? -1;
+    for (let index = ordered.length - 1; index >= 0; index--) {
+      const previousPosition = oldPosition.get(oldNameOf.get(ordered[index].name)) ?? -1;
+      if (previousPosition < position) {
+        insertAt = index + 1;
+        break;
+      }
+    }
+    ordered.splice(insertAt, 0, { name, oldName: name, entry: unavailable });
+  }
+
+  const seasons = {};
+  for (const { name, entry } of ordered) if (!(name in seasons)) seasons[name] = entry;
+  const before = JSON.stringify(original);
+  return { seasons, changed: before !== JSON.stringify(seasons) };
+}
+
+// Ancienne signature, conservée pour les appelants qui ne connaissent que les
+// noms : une saison absente n'est plus supprimée pour autant.
+const alignToSiteSeasons = (cache, siteNames) =>
+  mergeSeasonCache(cache, (siteNames || []).map(name => ({ name, available: true })));
 
 // Les épisodes en cache reprennent eux aussi exactement le site. Avant, une
 // actualisation ne faisait qu'ajouter : un lecteur supprimé, une langue retirée
@@ -679,6 +761,9 @@ class Catalogue {
     this.slug = slugOfUrl(this.url);
     // Fiche lue par `seasons()` : identifiants externes, genres, saisons masquées…
     this.fiche = null;
+    // Toutes les saisons annoncées par la fiche, y compris masquées, dans leur
+    // ordre d'origine. `seasons()` ne rend que les saisons encore lisibles.
+    this.announcedSeasons = [];
 
     if (additionalData) {
       this.image = additionalData.image || '';
@@ -703,6 +788,9 @@ class Catalogue {
       const fiche = parseTitlePage(String(response.data ?? ''), { slug: this.slug || '' });
       if (!fiche.valid) throw new Error('Fiche AnimeSama illisible');
       this.fiche = fiche;
+      this.announcedSeasons = Array.isArray(fiche.announcedSeasons) && fiche.announcedSeasons.length
+        ? fiche.announcedSeasons
+        : fiche.seasons.map(season => ({ ...season, available: true }));
 
       const baseUrl = this.url.split('?')[0];
       return fiche.seasons.map(season => new Season(
@@ -1003,15 +1091,15 @@ function refreshAnime(anime, client) {
       const existingAnimeCache = existingData.seasons || {};
       const catalogueObj = new Catalogue(anime.url, anime.name, client, anime);
       const seasonsList = await catalogueObj.seasons(true);
+      const announced = catalogueObj.announcedSeasons.length
+        ? catalogueObj.announcedSeasons
+        : seasonsList.map(season => ({ name: season.name, path: season.path, available: true }));
       // La fiche vient d'être lue : l'index du catalogue en profite (ID TMDB…).
       if (catalogueObj.slug && typeof deps.animeIndex?.recordTitle === 'function') {
         Promise.resolve().then(() => deps.animeIndex.recordTitle(catalogueObj.slug, catalogueObj.fiche)).catch(() => {});
       }
-      if (!seasonsList.length && Object.keys(existingAnimeCache).length) {
-        const reason = catalogueObj.fiche?.hiddenSeasons
-          ? `${catalogueObj.fiche.hiddenSeasons} saison(s) masquée(s) par anime-sama`
-          : 'plus aucune saison d’anime sur la fiche';
-        console.log(`[ANIME-SAMA] ${anime.name} : ${reason}, cache vidé`);
+      if (!announced.length && Object.keys(existingAnimeCache).length) {
+        console.log(`[ANIME-SAMA] ${anime.name} : plus aucune saison annoncée, cache vidé`);
       }
 
       // Un cache encore rangé par nom est repris sous son slug.
@@ -1019,6 +1107,15 @@ function refreshAnime(anime, client) {
       let updatedAnimeCache = { ...existingAnimeCache };
       const unreadable = [];
       const usedLinkIds = new Set();
+
+      // Les panneaux masqués sont des saisons annoncées : on garde leur vrai
+      // nom et, quand il est lisible, leur chemin. Aucune page n'est lue pour
+      // eux, aucun épisode n'est fabriqué.
+      for (const panel of announced) {
+        if (panel.available !== false) continue;
+        updatedAnimeCache[panel.name] = unavailableSeasonEntry(panel, panel.unavailableReason || 'hidden');
+        animeDataUpdated = true;
+      }
 
       for (const seasonObj of seasonsList) {
         const seasonCache = existingAnimeCache[seasonObj.name];
@@ -1037,23 +1134,24 @@ function refreshAnime(anime, client) {
             unreadable.push(seasonObj.name);
             continue;
           }
-          // Anime-sama l'a vidée lui-même (saison masquée, « Bientôt de
-          // retour ») : le cache suit le site au lieu de resservir des lecteurs
-          // retirés à chaque recherche.
-          if (seasonCache) {
-            if (cachedEpisodes && cachedEpisodes.length) {
-              console.log(`[ANIME-SAMA] ${anime.name} : « ${seasonObj.name} » vidée par anime-sama, retirée du cache`);
-            }
-            delete updatedAnimeCache[seasonObj.name];
-            animeDataUpdated = true;
+          // Anime-sama l'a vidée lui-même (« Bientôt de retour », saison
+          // annoncée sans lecteur) : elle reste visible, indisponible, sans
+          // lecteur resservi.
+          if (cachedEpisodes && cachedEpisodes.length) {
+            console.log(`[ANIME-SAMA] ${anime.name} : « ${seasonObj.name} » vidée par anime-sama, saison indisponible`);
           }
+          updatedAnimeCache[seasonObj.name] = unavailableSeasonEntry(seasonObj, 'empty');
+          animeDataUpdated = true;
           continue;
         }
-        if (canReuseSeasonCache(seasonCache, seasonObj.path, cachedEpisodes, siteEpisodes, sameEpisodes)) continue;
+        if (!isUnavailableSeasonEntry(seasonCache)
+          && canReuseSeasonCache(seasonCache, seasonObj.path, cachedEpisodes, siteEpisodes, sameEpisodes)) continue;
 
         updatedAnimeCache[seasonObj.name] = {
           timestamp: Date.now(),
           path: seasonObj.path,
+          available: true,
+          status: 'available',
           episodes: siteEpisodes
         };
         animeDataUpdated = true;
@@ -1063,19 +1161,20 @@ function refreshAnime(anime, client) {
         console.warn(`[ANIME-SAMA] ${anime.name} : page de saison illisible, cache gardé : ${unreadable.join(', ')}`);
       }
 
-      const aligned = alignToSiteSeasons(updatedAnimeCache, seasonsList.map(s => s.name));
-      if (aligned.changed) {
-        updatedAnimeCache = aligned.seasons;
+      const merged = mergeSeasonCache(existingAnimeCache, announced, updatedAnimeCache);
+      if (merged.changed) {
+        updatedAnimeCache = merged.seasons;
         animeDataUpdated = true;
       }
 
-      // Le carnet ne garde que les liens encore listés par le site. Quand une
-      // saison n'a pas pu être lue, ou que la fiche n'a plus d'anime (saisons
-      // masquées : elles reviennent), rien n'est retiré.
+      // Le carnet ne garde que les liens encore listés par le site. Tant qu'une
+      // saison est indisponible (masquée, vidée ou absente de la fiche), rien
+      // n'est retiré : elle peut revenir avec les mêmes lecteurs.
+      const hasUnavailable = Object.values(updatedAnimeCache).some(isUnavailableSeasonEntry);
       await updateLinkBook(
         paths.linksPath,
         Object.fromEntries(Object.entries(links).filter(([id]) => !knownBefore.has(id))),
-        { keepOnly: seasonsList.length && !unreadable.length ? usedLinkIds : null, label: anime.name },
+        { keepOnly: seasonsList.length && !unreadable.length && !hasUnavailable ? usedLinkIds : null, label: anime.name },
       );
 
       // Une vérification réussie espace aussi le prochain scan sans nouveau lecteur.
@@ -1111,13 +1210,17 @@ function refreshAnime(anime, client) {
   })).catch(() => {});
 }
 
-// Actualisation de fond, une œuvre après l'autre, après la réponse.
-function refreshInBackground(animes) {
+// Actualisation de fond, une œuvre après l'autre, après la réponse. Les œuvres
+// déjà actualisées avant la réponse (premier scan, réparation d'un ancien
+// cache) ne sont pas relancées : deux workers ne doivent pas prendre le même
+// verrou deux fois pour une seule recherche.
+function refreshInBackground(animes, alreadyRefreshed = new Set()) {
   (async () => {
     const client = new AnimeSama(deps.ANIME_SAMA_URL);
     for (const anime of animes) {
       // Skip entries without valid catalogue URLs
       if (!anime.url || !anime.url.includes('/catalogue/') || !anime.name) continue;
+      if (alreadyRefreshed.has(cachePathsFor(anime).titlePath)) continue;
       await refreshAnime(anime, client.client);
     }
   })();
@@ -1152,13 +1255,19 @@ async function attachCachedSeasons(animes, searchCacheKey = null) {
           streaming_links: (episode.streaming_links || []).map(linkObj => (Array.isArray(linkObj?.refs)
             ? materializeLink(linkObj, links, hostStatus)
             : deps.normalizeAnimeSamaUrls({ streaming_links: [linkObj] }).streaming_links[0]
-          )).filter(Boolean),
+          )).filter(link => link && hasPlayable(link)),
         }));
+        const unavailable = isUnavailableSeasonEntry(seasonData);
         return {
           name: seasonName,
           ...(typeof seasonData.path === 'string' ? { path: seasonData.path } : {}),
-          episodes,
-          episodeCount: episodes.length,
+          available: !unavailable,
+          status: unavailable ? 'unavailable' : 'available',
+          ...(unavailable && typeof seasonData.unavailableReason === 'string'
+            ? { unavailableReason: seasonData.unavailableReason }
+            : {}),
+          episodes: unavailable ? [] : episodes,
+          episodeCount: unavailable ? 0 : episodes.length,
           cacheFile: path.basename(cached.file),
           timestamp: seasonData.timestamp || cached.data.timestamp || null
         };
@@ -1175,6 +1284,8 @@ async function attachCachedSeasons(animes, searchCacheKey = null) {
           const seasonCache = deps.normalizeAnimeSamaUrls(JSON.parse(seasonContent));
           return {
             name: seasonFile.replace(safeAnimeName + '_', '').replace('.json', ''),
+            available: true,
+            status: 'available',
             episodes: seasonCache.episodes || [],
             episodeCount: (seasonCache.episodes || []).length,
             cacheFile: seasonFile,
@@ -1196,36 +1307,44 @@ async function attachCachedSeasons(animes, searchCacheKey = null) {
 }
 
 // Les lecteurs hors service sortent aussi du cache déjà écrit, sans attendre
-// sa prochaine actualisation ; une langue sans lecteur restant disparaît, comme
-// un épisode ou une saison sans lecteur. Un lecteur dont l'adresse reste à
-// demander (`pending`) compte comme un lecteur : son épisode reste listé.
+// sa prochaine actualisation ; une langue ou un épisode sans lecteur restant
+// disparaît. Une saison annoncée reste visible, marquée indisponible si tous
+// ses lecteurs sont morts. Un lecteur dont l'adresse reste à demander
+// (`pending`) compte comme un lecteur : son épisode reste listé.
 function stripUnplayable(animesWithSeasons) {
   const hostStatus = deps.deadPlayerList.current();
   animesWithSeasons.forEach(anime => {
-    if (anime.seasons && Array.isArray(anime.seasons)) {
-      anime.seasons.forEach(season => {
-        if (season.episodes && Array.isArray(season.episodes)) {
-          season.episodes.forEach(ep => {
-            if (ep.streaming_links && Array.isArray(ep.streaming_links)) {
-              ep.streaming_links.forEach(linkObj => {
-                if (linkObj.players && Array.isArray(linkObj.players)) {
-                  linkObj.players = linkObj.players.filter(url => !isEmptyPlayerUrl(url) && !isDeadPlayerUrl(url, hostStatus));
-                }
-              });
-              ep.streaming_links = ep.streaming_links.filter(hasPlayable);
-            }
-          });
-          season.episodes = season.episodes.filter(ep =>
-            Array.isArray(ep.streaming_links) && ep.streaming_links.some(hasPlayable)
-          );
-          season.episodeCount = season.episodes.length;
-        }
+    if (!Array.isArray(anime.seasons)) return;
+    anime.seasons.forEach(season => {
+      // Une saison déjà annoncée indisponible reste dans la liste : c'est une
+      // information utile au lecteur, pas une saison à masquer.
+      if (season.available === false || season.status === 'unavailable') {
+        season.episodes = [];
+        season.episodeCount = 0;
+        return;
+      }
+      if (!Array.isArray(season.episodes)) return;
+      season.episodes.forEach(ep => {
+        if (!Array.isArray(ep.streaming_links)) return;
+        ep.streaming_links.forEach(linkObj => {
+          if (Array.isArray(linkObj.players)) {
+            linkObj.players = linkObj.players.filter(url => !isEmptyPlayerUrl(url) && !isDeadPlayerUrl(url, hostStatus));
+          }
+        });
+        ep.streaming_links = ep.streaming_links.filter(hasPlayable);
       });
-
-      anime.seasons = anime.seasons.filter(season =>
-        Array.isArray(season.episodes) && season.episodes.length > 0
+      season.episodes = season.episodes.filter(ep =>
+        Array.isArray(ep.streaming_links) && ep.streaming_links.some(hasPlayable)
       );
-    }
+      season.episodeCount = season.episodes.length;
+      // Tous les lecteurs connus sont hors service : la saison reste visible,
+      // mais on ne présente ni épisode vide ni langue sans lecteur.
+      if (!season.episodes.length) {
+        season.available = false;
+        season.status = 'unavailable';
+        season.unavailableReason = 'unplayable';
+      }
+    });
   });
 }
 
@@ -1299,9 +1418,11 @@ router.get('/search/:query', async (req, res) => {
     // demander les liens de l'épisode. Les réparer avant de construire la
     // réponse (avec une attente bornée, comme pour le premier scan TMDB).
     const searchClient = new AnimeSama(deps.ANIME_SAMA_URL);
+    const refreshedBeforeResponse = new Set();
     await Promise.all(cachedResults.map(async (anime) => {
       const cached = await readTitleCache(anime);
       if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
+        refreshedBeforeResponse.add(cachePathsFor(anime).titlePath);
         await waitAtMost(refreshAnime(anime, searchClient.client), deps.firstScanWaitMs);
       }
     }));
@@ -1309,7 +1430,7 @@ router.get('/search/:query', async (req, res) => {
     stripUnplayable(animesWithSeasons);
 
     await respondWithAnimeSources(req, res, animesWithSeasons);
-    refreshInBackground(animesWithSeasons);
+    refreshInBackground(animesWithSeasons, refreshedBeforeResponse);
 
   } catch (error) {
     console.error('Erreur /anime/search/:query:', error);
@@ -1338,7 +1459,8 @@ async function episodeLinks(slug, seasonPath, index) {
   const cached = await readTitleCache(anime);
   const seasons = cached?.data?.seasons && typeof cached.data.seasons === 'object' ? cached.data.seasons : {};
   const entry = Object.entries(seasons).find(([, season]) => season?.path === seasonPath);
-  const episode = (entry?.[1]?.episodes || []).find(candidate => candidate?.index === index);
+  if (!entry || isUnavailableSeasonEntry(entry[1])) return null;
+  const episode = (entry[1].episodes || []).find(candidate => candidate?.index === index);
   if (!episode) return null;
 
   const hostStatus = deps.deadPlayerList.current();
@@ -1478,9 +1600,11 @@ router.get('/tmdb/:type/:id', async (req, res) => {
     // Une œuvre jamais lue n'a encore aucun épisode : plutôt que de répondre
     // vide, attendre (un peu) sa première lecture.
     const client = new AnimeSama(deps.ANIME_SAMA_URL);
+    const refreshedBeforeResponse = new Set();
     await Promise.all(animes.map(async (anime) => {
       const cached = await readTitleCache(anime);
       if (!cached || hasMissingSeasonPaths(cached.data?.seasons)) {
+        refreshedBeforeResponse.add(cachePathsFor(anime).titlePath);
         await waitAtMost(refreshAnime(anime, client.client), deps.firstScanWaitMs);
       }
     }));
@@ -1489,7 +1613,7 @@ router.get('/tmdb/:type/:id', async (req, res) => {
     stripUnplayable(animesWithSeasons);
 
     await respondWithAnimeSources(req, res, animesWithSeasons);
-    refreshInBackground(animesWithSeasons);
+    refreshInBackground(animesWithSeasons, refreshedBeforeResponse);
   } catch (error) {
     console.error('Erreur /anime/tmdb/:type/:id:', error);
     return res.status(500).json({ error: 'Erreur serveur' });
@@ -1563,6 +1687,8 @@ router.get('/planning', async (req, res) => {
 module.exports = router;
 module.exports.configure = configure;
 module.exports.alignToSiteSeasons = alignToSiteSeasons;
+module.exports.mergeSeasonCache = mergeSeasonCache;
+module.exports.unavailableSeasonEntry = unavailableSeasonEntry;
 module.exports.toCachedEpisodes = toCachedEpisodes;
 module.exports.sameEpisodes = sameEpisodes;
 module.exports.parseEpisodeListCalls = parseEpisodeListCalls;
