@@ -629,87 +629,10 @@ const WatchMovie: React.FC = () => {
   useEffect(() => {
     // Vidy est le lecteur unique des Films : ne pas lancer de résolution KissKH.
     kisskhRequestAbortRef.current?.abort();
+    kisskhRequestAbortRef.current = null;
     setKisskhSources([]);
     setKisskhSubtitles([]);
     setLoadingKisskh(false);
-    return;
-
-    const kisskhController = new AbortController();
-    const kisskhGeneration = kisskhRequestGenerationRef.current + 1;
-    kisskhRequestGenerationRef.current = kisskhGeneration;
-    kisskhRequestAbortRef.current = kisskhController;
-    setKisskhSources([]);
-    setKisskhSubtitles([]);
-    setLoadingKisskh(true);
-
-    // KissKH cherche par ID TMDB : il rendrait la version cinéma.
-    if (!id || movieVersion) {
-      setLoadingKisskh(false);
-      return () => kisskhController.abort();
-    }
-
-    const resolveMovie = async () => {
-      try {
-        const capabilities = await getSourceCapabilities(MAIN_API, kisskhController.signal);
-        if (
-          kisskhController.signal.aborted
-          || kisskhRequestGenerationRef.current !== kisskhGeneration
-        ) {
-          return;
-        }
-        if (!isSourceEnabled(capabilities, 'kisskh')) {
-          console.info('[KissKH] Fournisseur désactivé, source ignorée', { tmdbId: id });
-          return;
-        }
-        const resolution = await resolveKisskhMovie(Number(id), { signal: kisskhController.signal });
-        if (
-          kisskhController.signal.aborted
-          || kisskhRequestGenerationRef.current !== kisskhGeneration
-        ) {
-          return;
-        }
-        setKisskhSources(resolution.sources);
-        setKisskhSubtitles(resolution.subtitles);
-      } catch (error) {
-        if (
-          kisskhController.signal.aborted
-          || kisskhRequestGenerationRef.current !== kisskhGeneration
-        ) {
-          return;
-        }
-        if (error instanceof KisskhServiceError && error.code === 'retrieval_in_progress') {
-          return;
-        }
-        if (error instanceof KisskhServiceError && error.code === 'provider_disabled') {
-          console.info('[KissKH] Fournisseur désactivé par Main API', { tmdbId: id });
-          return;
-        }
-        if (error instanceof KisskhServiceError && error.code === 'route_missing') {
-          console.error('[KissKH] Route Main API introuvable', {
-            url: `${MAIN_API}/api/kisskh/movie/${id}`,
-          });
-          return;
-        }
-        // KissKH is additive; other provider sources remain usable on failure.
-        const code = error instanceof KisskhServiceError ? error.code : 'unknown';
-        console.warn('[KissKH] Résolution indisponible, fallback conservé', { tmdbId: id, code });
-      } finally {
-        if (
-          !kisskhController.signal.aborted
-          && kisskhRequestGenerationRef.current === kisskhGeneration
-        ) {
-          setLoadingKisskh(false);
-        }
-      }
-    };
-
-    void resolveMovie();
-    return () => {
-      kisskhController.abort();
-      if (kisskhRequestAbortRef.current === kisskhController) {
-        kisskhRequestAbortRef.current = null;
-      }
-    };
   }, [id]);
 
   useEffect(() => {
