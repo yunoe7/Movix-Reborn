@@ -2111,17 +2111,17 @@ const TVDetails: React.FC = () => {
   };
   const WatchButtons = () => {
     return (
-      <div className="mt-5 flex flex-col gap-4 bg-transparent p-0">
+      <div className="mt-5 flex w-fit max-w-full flex-col gap-3 bg-transparent p-0">
         {/* Première ligne avec Regarder et Bande-annonce */}
-        <div className="grid w-full min-w-0 grid-cols-2 gap-3">
+        <div className="flex w-fit max-w-full flex-wrap gap-2.5">
           <motion.button
             whileHover={{ y: -2, scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={handleContinueWatching}
-            className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-rose-300/25 bg-gradient-to-br from-rose-600 via-red-600 to-red-800 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_12px_30px_rgba(185,28,28,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-200/45 hover:shadow-[0_16px_34px_rgba(220,38,38,0.3)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
+            className="group relative inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-white bg-white px-5 py-2.5 text-sm font-bold text-[#151515] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/90"
           >
-            <Play className="h-6 w-6 flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:scale-110" />
+            <Play className="h-5 w-5 flex-shrink-0 text-[#151515] transition-transform duration-300 group-hover:scale-110" />
             <div className="text-left">
               {resumeData.hasProgress ? (
                 <div className="flex min-w-0 flex-col items-start text-left">
@@ -2129,7 +2129,7 @@ const TVDetails: React.FC = () => {
                       <span>{resumeData.estimated
                         ? t('details.watchBtn')
                         : t('details.resumeEpisode', { episode: resumeData.episodeNumber, season: getSeasonDisplayName(resumeData.seasonNumber, t) })}</span>
-                  <span className="mt-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] font-medium text-white/85">
+                  <span className="mt-1 rounded-md bg-black/[0.07] px-2 py-0.5 text-[11px] font-semibold text-black/75">
                     {resumeData.estimated
                       ? t('profilePage.progress.estimated', { percent: Math.round((resumeData.position / resumeData.duration) * 100), defaultValue: '≈ {{percent}} % · estimé' })
                       : `${formatTime(resumeData.position)}/${formatTime(resumeData.duration)}`}
@@ -2151,9 +2151,9 @@ const TVDetails: React.FC = () => {
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => navigate(`/download/tv/${tvShow?.id}`)}
-              className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-white/[0.11] bg-gradient-to-br from-[#202632]/95 to-[#111722]/95 px-4 py-3 text-left text-sm font-bold text-slate-100 shadow-[0_10px_26px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:from-[#283242] hover:to-[#171f2c] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/15"
+              className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
-              <Download className="h-6 w-6 flex-shrink-0 text-slate-200" />
+              <Download className="h-5 w-5 flex-shrink-0 text-white" />
               <span className="text-left">{t('details.downloadBtn')}</span>
             </motion.button>
           )}
@@ -2166,7 +2166,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => setShowTrailerPopup(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-500/[0.09] px-4 py-2.5 text-sm font-semibold text-rose-100 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-rose-300/35 hover:bg-rose-500/[0.15] disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-sm font-semibold text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] disabled:cursor-not-allowed disabled:opacity-45"
             disabled={!trailerVideo}
           >
             <Video className="w-4 h-4" />
@@ -2177,7 +2177,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
             className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -2190,7 +2190,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -2203,7 +2203,7 @@ const TVDetails: React.FC = () => {
             whileTap={{ scale: 0.985 }}
             onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watched
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -2986,7 +2986,7 @@ const TVDetails: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
           >
-            <div className={`grid grid-cols-1 ${isAnime ? 'md:grid-cols-3' : 'md:grid-cols-3 lg:grid-cols-4'} gap-4 mb-6`}>
+            <div className="grid grid-cols-1 gap-3 mb-6">
               {nonEmptyEpisodes.map((ep: any, index: number) => {
                 // ... grid item rendering ...
                 if (isAnime) {
@@ -3055,14 +3055,14 @@ const TVDetails: React.FC = () => {
                       key={`anime-${selectedSeason}-${ep.index}`}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1, transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 } }}
-                      className={`group relative rounded-xl overflow-hidden border border-white/10 hover:border-red-500 transition-all duration-300 bg-white/10 flex flex-col ${isSelected ? 'ring-2 ring-red-500' : ''}`}
+                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-all duration-300 hover:border-red-500/70 hover:bg-white/[0.075] md:min-h-[132px] ${isSelected ? 'ring-2 ring-red-500' : ''}`}
                       whileHover={{ y: -5, transition: { duration: 0.2 } }}
                       layout={false}
                     >
                       <div
                         role="button"
                         tabIndex={0}
-                        className="flex flex-col flex-1 w-full text-left cursor-pointer"
+                        className="flex w-full min-w-0 flex-1 flex-row items-center gap-3 p-2 text-left cursor-pointer md:gap-4 md:p-3"
                         onClick={() => handleAnimeGridClick(ep)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -3070,8 +3070,9 @@ const TVDetails: React.FC = () => {
                           }
                         }}
                       >
-                        <div className="flex flex-col flex-1">
-                          <div className="relative aspect-video w-full">
+                        <div className="flex min-w-0 flex-1 flex-row items-center gap-3 md:gap-4">
+                          <span className="hidden w-7 shrink-0 text-center text-xl font-semibold text-white/45 sm:inline-flex">{episodeNumber}</span>
+                          <div className="relative aspect-video w-[36%] min-w-[108px] max-w-[220px] shrink-0 overflow-hidden rounded-lg bg-black/30">
                             {shouldHide('episodeImages') ? (
                               <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
                                 <div className="flex flex-col items-center gap-2 text-gray-400">
@@ -3134,7 +3135,7 @@ const TVDetails: React.FC = () => {
                             )}
                           </div>
 
-                          <div className="p-4 flex flex-col flex-1">
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2 md:gap-5 md:p-4">
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-red-500 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
@@ -3262,14 +3263,14 @@ const TVDetails: React.FC = () => {
                         // TVmaze attendait plus d'une seconde avant d'apparaître.
                         transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 }
                       }}
-                      className={`group relative rounded-xl overflow-hidden border border-white/10 hover:border-red-500 transition-all duration-300 bg-white/10 flex flex-col ${isSelected ? 'ring-2 ring-red-500' : ''}`}
+                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-all duration-300 hover:border-red-500/70 hover:bg-white/[0.075] md:min-h-[132px] ${isSelected ? 'ring-2 ring-red-500' : ''}`}
                       whileHover={{ y: -5, transition: { duration: 0.2 } }}
                       layout={false}
                     >
                       <div
                         role="button"
                         tabIndex={0}
-                        className="flex flex-col flex-1 w-full text-left cursor-pointer"
+                        className="flex w-full min-w-0 flex-1 flex-row items-center gap-3 p-2 text-left cursor-pointer md:gap-4 md:p-3"
                         onClick={() => handleEpisodeChange(ep.episode_number)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -3278,8 +3279,8 @@ const TVDetails: React.FC = () => {
                         }}
                       >
                         {/* ... Grid item content for standard episodes ... */}
-                        <div className="flex flex-col flex-1">
-                          <div className="relative aspect-video w-full">
+                        <div className="flex min-w-0 flex-1 flex-row items-center gap-3 md:gap-4"><span className="hidden w-7 shrink-0 text-center text-xl font-semibold text-white/45 sm:inline-flex">{ep.episode_number}</span>
+                          <div className="relative aspect-video w-[36%] min-w-[108px] max-w-[220px] shrink-0 overflow-hidden rounded-lg bg-black/30">
                             {(() => {
                               if (shouldHide('episodeImages')) {
                                 return (
@@ -3382,7 +3383,7 @@ const TVDetails: React.FC = () => {
                             )}
 
                           </div>
-                          <div className="p-4 flex flex-col flex-1">
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2 md:gap-5 md:p-4">
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 {/* Hauteur fixe de deux lignes : la date reste au même niveau sur toutes les cartes. */}
@@ -3709,12 +3710,12 @@ const TVDetails: React.FC = () => {
         transition={{ duration: 0.5 }}
         className="text-white px-4 md:px-8 lg:px-16 py-6"
       >
-        {/* Header avec titre et année */}
+        {/* Titre sémantique conservé pour l'accessibilité ; le titre visible est dans le hero. */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mb-8"
+          className="hidden"
         >
           <h1 className="section-title text-4xl md:text-5xl font-bold">
             {tvShow.name} {tvYear && <>({tvYear})</>}
@@ -3735,37 +3736,69 @@ const TVDetails: React.FC = () => {
             </p>
           )}
         </motion.div>
-        {/* Contenu principal - poster à gauche, infos à droite */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Colonne gauche - Poster */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
+        {/* Hero Série / Anime pleine largeur, puis synopsis, saisons et épisodes en dessous. */}
+        <div className="grid grid-cols-1 gap-8">
+          {/* Hero Série / Anime */}
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+            aria-label={tvShow.name}
+            className="relative isolate -mx-4 -mt-6 mb-2 flex min-h-[560px] w-[calc(100%+2rem)] items-end overflow-hidden border-0 border-b border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:-mx-8 md:min-h-[620px] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[690px] lg:w-[calc(100%+8rem)]"
+            style={{
+              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.93) 0%, rgba(0,0,0,0.75) 42%, rgba(0,0,0,0.12) 100%), linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.14) 72%), url(' + (backdropImage || mainPosterUrl) + ')',
+              backgroundPosition: 'center 38%',
+            }}
           >
-            <motion.img
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: "spring", stiffness: 300, damping: 10 }}
-              src={mainPosterUrl}
-              alt={tvShow.name}
-              className="w-full rounded-lg shadow-lg"
-            />
-            {/* Boutons d'action en-dessous du poster */}
-            <div className="mt-6">
-              <WatchButtons />
-              {/* Anti-Spoil et mode Anime : deux réglages indépendants, côte à côte. */}
-              <div className="mt-4 flex flex-wrap gap-2.5">
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(255,255,255,0.10),transparent_34%)]" />
+            <div className="relative z-10 w-full max-w-3xl px-6 pb-9 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
+              {animeMode && (
+                <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-300/40 bg-rose-600/25 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-rose-100 backdrop-blur-sm">
+                  <Sparkles className="h-3.5 w-3.5" />{t('details.animeModeActiveBadge')}
+                </span>
+              )}
+              <h1 className="mb-4 text-3xl font-black leading-[1.04] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-5xl lg:text-6xl">
+                {tvShow.name} {tvYear && <span className="text-white/75">({tvYear})</span>}
+              </h1>
+              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-white/85">
+                {tvShow.vote_average > 0 && (
+                  <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />{tvShow.vote_average.toFixed(1)}/10</span>
+                )}
+                {tvYear && <span>{tvYear}</span>}
+                {tvShow.number_of_seasons ? <span>{tvShow.number_of_seasons} {t('details.seasonsLabel').toLowerCase()}</span> : null}
+                {tvShow.number_of_episodes ? <span>{tvShow.number_of_episodes} {t('details.episodes').toLowerCase()}</span> : null}
+                {tvShow.episode_run_time?.[0] ? <span>{tvShow.episode_run_time[0]} min/épisode</span> : null}
+              </div>
+              {(showAiring.kind !== 'unconfirmed' || showAiring.date) && (
+                <div className="mb-4">
+                  <span className={showAiring.kind === 'unconfirmed' ? "inline-flex max-w-full rounded-md bg-black/40 px-2.5 py-1 text-xs font-semibold text-white/80" : showAiring.kind === 'aired' ? "inline-flex max-w-full rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-semibold text-white" : "inline-flex max-w-full rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-semibold text-black"}>
+                    {getAiringLabel(showAiring, t, i18n.language, airingNow)}
+                  </span>
+                </div>
+              )}
+              {tvShow.genres?.length > 0 && (
+                <div className="mb-5 flex flex-wrap gap-2">
+                  {tvShow.genres.slice(0, 5).map((genre) => (
+                    <span key={genre.id} className="rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">{t('genres.id_' + genre.id, { defaultValue: String(genre.id) })}</span>
+                  ))}
+                </div>
+              )}
+              {tvShow.overview && (
+                <p className="mb-6 max-w-2xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-4">
+                  {shouldHide('episodeOverviews') ? getMaskedContent(tvShow.overview, 'episodeOverviews') : tvShow.overview}
+                </p>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                <WatchButtons />
                 <motion.button
                   whileHover={{ y: -2, scale: 1.015 }}
                   whileTap={{ scale: 0.985 }}
                   onClick={() => setShowAntiSpoilerModal(true)}
-                  className="inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-violet-300/15 bg-violet-500/[0.08] px-3 py-2.5 text-xs font-semibold text-violet-100 transition-all duration-200 hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-violet-500/[0.14] sm:text-sm"
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-3 py-2.5 text-xs font-semibold text-white/90 backdrop-blur-md transition-colors hover:border-white/25 hover:bg-white/[0.2] sm:text-sm"
                   title={t('details.antiSpoilConfig')}
                 >
-                  <Shield className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{t('details.antiSpoil')}</span>
+                  <Shield className="h-4 w-4" /><span>{t('details.antiSpoil')}</span>
                 </motion.button>
-
                 {isAnime() && (
                   <motion.button
                     whileHover={{ y: -2, scale: 1.015 }}
@@ -3773,50 +3806,34 @@ const TVDetails: React.FC = () => {
                     onClick={handleAnimeModeToggle}
                     disabled={loadingAnimeData}
                     aria-pressed={animeMode}
-                    className={`inline-flex min-h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a] sm:text-sm ${animeMode
-                      ? 'border-rose-300/40 bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 text-white shadow-[0_8px_24px_rgba(225,29,72,0.32)] ring-1 ring-inset ring-white/20 hover:-translate-y-0.5 hover:from-rose-500 hover:via-red-500 hover:to-rose-500'
-                      : 'border-white/10 bg-white/[0.06] text-gray-200 hover:border-rose-300/25 hover:bg-white/[0.1]'
-                      } ${loadingAnimeData ? 'cursor-wait opacity-70' : ''}`}
+                    className={"inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all sm:text-sm " + (animeMode ? 'border-rose-300/40 bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-lg' : 'border-white/15 bg-black/35 text-gray-100 hover:bg-white/10') + (loadingAnimeData ? ' cursor-wait opacity-70' : '')}
                   >
-                    {animeMode ? (
-                      <>
-                        <Video className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{t('details.backToStandardMode')}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 flex-shrink-0" />
-                        <span className="truncate">{t('details.animeModeLabel')}</span>
-                      </>
-                    )}
+                    {animeMode ? <Video className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                    <span>{animeMode ? t('details.backToStandardMode') : t('details.animeModeLabel')}</span>
                   </motion.button>
                 )}
               </div>
-
               {animeMode && (
-                <div className="mt-3 rounded-xl border border-rose-400/25 bg-rose-500/[0.08] px-3 py-2.5 text-center text-xs font-bold uppercase tracking-wide text-rose-100 shadow-[0_8px_24px_rgba(225,29,72,0.12)] sm:text-sm">
-                  <span className="inline-flex max-w-full items-center justify-center gap-2">
-                    <Sparkles className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{t('details.animeModeActiveBadge')}</span>
-                  </span>
-                </div>
-              )}
-
-              {animeMode && ( // Afficher la note seulement quand on est en mode ANIME
-                <p className="mt-3 flex items-start justify-center gap-2.5 rounded-xl border border-amber-400/25 bg-gradient-to-r from-amber-500/[0.13] via-yellow-500/[0.09] to-amber-500/[0.13] px-4 py-3 text-center text-[13px] font-medium leading-relaxed text-amber-200 shadow-[0_8px_24px_rgba(245,158,11,0.07)] ring-1 ring-inset ring-white/[0.03] backdrop-blur-sm">
-                  <AlertTriangle className="w-4 h-4 inline-block flex-shrink-0" />
-                  <span>{t('details.standardModeAvailable')}</span>
+                <p className="mt-4 max-w-xl rounded-xl border border-amber-400/25 bg-black/45 px-4 py-3 text-xs font-medium leading-relaxed text-amber-100 backdrop-blur-sm">
+                  <AlertTriangle className="mr-2 inline h-4 w-4" />{t('details.standardModeAvailable')}
                 </p>
               )}
-
+              {airingSchedule && (
+                <p className="mt-3 text-xs text-white/60">
+                  {t('details.airing.source')}{' '}
+                  <a href={airingSchedule.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white">TVmaze</a>
+                </p>
+              )}
             </div>
-          </motion.div>
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
+          </motion.section>
+
           {/* Colonne droite - Informations */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="md:col-span-2"
+            className="w-full min-w-0"
           >
             {/* Tabs */}
             <div className="relative">

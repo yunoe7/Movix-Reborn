@@ -457,7 +457,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
                           decoding="async"
                         />
                       ) : (
-                        <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold leading-tight line-clamp-2">
+                        <h1 className="hero-cinematic-title text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold leading-tight line-clamp-2 tracking-tight">
                           <ShinyText
                             text={item.title || item.name || ''}
                             speed={4}
@@ -480,7 +480,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
                         <Link
                           to={`/${item.media_type}/${encodeId(item.id)}`}
                           data-hero-cta
-                          className="inline-flex items-center justify-center gap-2 bg-white/15 hover:bg-white/25 text-white px-5 sm:px-6 md:px-7 py-3 sm:py-3 min-h-[48px] rounded-xl sm:rounded-2xl text-sm sm:text-base font-medium border border-white/20 transition-colors touch-manipulation"
+                          className="inline-flex items-center justify-center gap-2 bg-white text-zinc-950 hover:bg-red-500 hover:text-white px-5 sm:px-6 md:px-7 py-3 min-h-[48px] rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold border border-white/70 shadow-lg shadow-black/25 transition-all duration-300 touch-manipulation"
                         >
                           <Info className="w-4 h-4 sm:w-5 sm:h-5" />
                           {t('home.hero.moreInfo')}
@@ -519,6 +519,61 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
           .hero-progress-fill.is-paused {
             animation-play-state: paused;
           }
+          @keyframes hero-image-drift {
+            from { transform: scale(1); }
+            to { transform: scale(1.075); }
+          }
+          @keyframes hero-border-beam {
+            from { transform: translateX(0); }
+            to { transform: translateX(375%); }
+          }
+          .hero-border-beam {
+            position: absolute;
+            z-index: 16;
+            top: 0;
+            left: -40%;
+            width: 40%;
+            height: 1px;
+            pointer-events: none;
+            opacity: .78;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.9), rgba(239,68,68,.9), transparent);
+            animation: hero-border-beam 8s ease-in-out infinite;
+          }
+          .hero-cinematic-frame {
+            isolation: isolate;
+            box-shadow: 0 28px 90px -34px rgba(0, 0, 0, .9), 0 0 0 1px rgba(255,255,255,.035);
+          }
+          .hero-cinematic-frame::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: 11;
+            pointer-events: none;
+            background:
+              linear-gradient(90deg, rgba(5,5,8,.82) 0%, rgba(5,5,8,.58) 30%, rgba(5,5,8,.16) 66%, transparent 100%),
+              linear-gradient(0deg, rgba(5,5,8,.56) 0%, transparent 38%, rgba(5,5,8,.10) 100%);
+          }
+          .hero-cinematic-frame::after {
+            content: "";
+            position: absolute;
+            left: -12%;
+            bottom: -42%;
+            width: 54%;
+            height: 76%;
+            z-index: 13;
+            pointer-events: none;
+            background: radial-gradient(ellipse, rgba(220,38,38,.15), transparent 68%);
+            filter: blur(24px);
+          }
+          .hero-cinematic-image.is-active {
+            animation: hero-image-drift 8s cubic-bezier(.2,.65,.3,1) both;
+          }
+          .hero-cinematic-title {
+            text-shadow: 0 3px 28px rgba(0,0,0,.58);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .hero-cinematic-image.is-active, .hero-border-beam { animation: none; }
+          }
         `}
       </style>
       {/* Garder une hauteur explicite en vh pour les WebView sans svh :
@@ -536,8 +591,9 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
       <div
         ref={imageContainerRef}
         data-hero-frame
-        className="relative isolate w-full h-[62vh] supports-[height:100svh]:h-[62svh] max-h-[760px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[360px] sm:min-h-[440px] md:min-h-[540px]"
+        className="hero-cinematic-frame relative isolate w-full h-[64vh] supports-[height:100svh]:h-[64svh] max-h-[790px] rounded-2xl sm:rounded-3xl overflow-hidden [clip-path:inset(0_round_1rem)] sm:[clip-path:inset(0_round_1.5rem)] border border-white/10 shadow-2xl min-h-[360px] sm:min-h-[440px] md:min-h-[540px]"
       >
+        <div aria-hidden="true" className="hero-border-beam" />
         {isMorph && (
           <div className="pointer-events-none absolute inset-0" aria-hidden="true">
             {(morphStatus !== 'ready' || !effectivePrefs.transitions) && isVisible && documentVisible && slides.map((slide, idx) => {
@@ -593,7 +649,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
                       ref={(image) => { backdropRefs.current[idx] = image; }}
                       src={morphImages[idx] || undefined}
                       alt={getSlideLabel(slide)}
-                      className="absolute inset-0 w-full h-full object-cover z-0"
+                      className={`hero-cinematic-image absolute inset-0 w-full h-full object-cover z-0 ${isActive ? 'is-active' : ''}`}
                       style={{ objectPosition: getSlideObjectPosition(slide) }}
                       draggable={false}
                       loading={isActive || shouldPreload(idx) ? 'eager' : 'lazy'}
@@ -630,7 +686,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
 
         {/* Bottom controls: dots + progress bar + pause */}
         <div className="absolute bottom-3 sm:bottom-4 md:bottom-6 left-0 right-0 z-30 flex items-center justify-center gap-4 px-3 sm:px-6 pointer-events-none">
-          <div className="flex items-center gap-2 sm:gap-3 bg-black/60 border border-white/10 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 pointer-events-auto">
+          <div className="flex items-center gap-2 sm:gap-3 bg-black/55 backdrop-blur-xl border border-white/15 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 shadow-[0_10px_35px_rgba(0,0,0,.42)] pointer-events-auto">
             {/* Dots — le point ne mesure que 6px : le bouton l'entoure d'une zone
                 tactile de 14x30px via un padding réabsorbé par une marge
                 négative — le rendu visuel de la barre reste identique. */}
@@ -662,7 +718,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
             {effectivePrefs.carouselAutoplay && slideCount > 1 && <div className="w-12 sm:w-20 h-1 bg-white/15 rounded-full overflow-hidden">
               <div
                 key={progressKey}
-                className={`h-full w-full bg-red-500 rounded-full hero-progress-fill ${frozen ? 'is-paused' : ''}`}
+                className={`h-full w-full bg-gradient-to-r from-red-600 via-red-400 to-red-500 rounded-full shadow-[0_0_12px_rgba(239,68,68,.75)] hero-progress-fill ${frozen ? 'is-paused' : ''}`}
                 style={{ ['--hero-duration' as string]: `${AUTO_SLIDE_MS}ms` } as React.CSSProperties}
               />
             </div>}

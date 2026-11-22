@@ -1449,29 +1449,29 @@ const MovieDetails = (): JSX.Element => {
     };
 
     return (
-      <div className="mt-5 flex flex-col gap-4 bg-transparent p-0">
+      <div className="mt-5 flex w-fit max-w-full flex-col gap-3 bg-transparent p-0">
         {/* Première ligne avec Regarder et Bande-annonce */}
-        <div className="grid w-full min-w-0 grid-cols-2 gap-3">
+        <div className="flex w-fit max-w-full flex-wrap gap-2.5">
           <motion.button
             whileHover={{ y: -2, scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={handleWatchClick}
-            className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-rose-300/25 bg-gradient-to-br from-rose-600 via-red-600 to-red-800 px-4 py-3 text-left text-sm font-bold text-white shadow-[0_12px_30px_rgba(185,28,28,0.24)] transition-all duration-300 hover:-translate-y-0.5 hover:border-rose-200/45 hover:shadow-[0_16px_34px_rgba(220,38,38,0.3)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/30"
+            className="group relative inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-white bg-white px-5 py-2.5 text-sm font-bold text-[#151515] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/90"
           >
             {hasProgress ? (
               <>
-                <Play className="h-6 w-6 flex-shrink-0 drop-shadow-sm transition-transform duration-300 group-hover:scale-110" />
+                <Play className="h-5 w-5 flex-shrink-0 text-[#151515] transition-transform duration-300 group-hover:scale-110" />
                 <div className="flex min-w-0 flex-col items-start text-left">
                   <span>{t('details.continueBtn')}</span>
-                  <span className="mt-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] font-medium text-white/85">
+                  <span className="mt-1 rounded-md bg-black/[0.07] px-2 py-0.5 text-[11px] font-semibold text-black/75">
                     {formatTime(watchProgress)}/{formatTime(videoDuration)}
                   </span>
                 </div>
               </>
             ) : serverResume ? (
               <>
-                <Play className="h-6 w-6 flex-shrink-0 text-slate-200" />
+                <Play className="h-5 w-5 flex-shrink-0 text-[#151515]" />
                 <div className="flex min-w-0 flex-col items-start text-left">
                   {/* Estimé seul : le lecteur repartira du début, donc « Regarder ». */}
                   <span>{serverResume.estimated ? t('details.watchBtn') : t('details.continueBtn')}</span>
@@ -1484,7 +1484,7 @@ const MovieDetails = (): JSX.Element => {
               </>
             ) : (
               <>
-                <Play className="h-6 w-6 flex-shrink-0 text-slate-200" />
+                <Play className="h-5 w-5 flex-shrink-0 text-white" />
                 <span className="text-left">{t('details.watchBtn')}</span>
               </>
             )}
@@ -1496,9 +1496,9 @@ const MovieDetails = (): JSX.Element => {
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => navigate(`/download/movie/${id}`)}
-              className="group relative flex min-h-[84px] flex-1 min-w-0 flex-row items-center justify-start gap-3 overflow-hidden rounded-2xl border border-white/[0.11] bg-gradient-to-br from-[#202632]/95 to-[#111722]/95 px-4 py-3 text-left text-sm font-bold text-slate-100 shadow-[0_10px_26px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-0.5 hover:border-white/20 hover:from-[#283242] hover:to-[#171f2c] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/15"
+              className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
-              <Download className="h-6 w-6 flex-shrink-0 text-slate-200" />
+              <Download className="h-5 w-5 flex-shrink-0 text-white" />
               <span className="text-left">{t('details.downloadBtn')}</span>
             </motion.button>
           )}
@@ -1514,7 +1514,7 @@ const MovieDetails = (): JSX.Element => {
                 whileTap={{ scale: 0.985 }}
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 onClick={() => startWatching(version.key)}
-                className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/25 bg-[#171c27] px-4 py-3 text-xs font-medium text-white/90 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-red-400/45 hover:bg-[#202838] sm:text-sm"
+                className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-xs font-medium text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] sm:text-sm"
               >
                 <Film className="w-4 h-4 flex-shrink-0" />
                 <span className="text-left">
@@ -1533,7 +1533,7 @@ const MovieDetails = (): JSX.Element => {
             whileTap={{ scale: 0.985 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => setShowTrailerPopup(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-500/[0.09] px-4 py-2.5 text-sm font-semibold text-rose-100 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-rose-300/35 hover:bg-rose-500/[0.15] disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-sm font-semibold text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] disabled:cursor-not-allowed disabled:opacity-45"
             disabled={!trailerVideoId}
           >
             <Video className="w-4 h-4" />
@@ -1545,7 +1545,7 @@ const MovieDetails = (): JSX.Element => {
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
             className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -1565,7 +1565,7 @@ const MovieDetails = (): JSX.Element => {
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -1587,7 +1587,7 @@ const MovieDetails = (): JSX.Element => {
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
             onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
             className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchedView.toggleOn
-              ? 'border-rose-300/30 bg-rose-500/15 text-rose-100 shadow-[0_6px_18px_rgba(220,38,38,0.12)]'
+              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
               : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
               }`}
           >
@@ -2115,12 +2115,12 @@ const MovieDetails = (): JSX.Element => {
         transition={{ duration: 0.5 }}
         className="relative z-10 min-h-screen text-white px-4 md:px-8 lg:px-16 py-6"
       >
-        {/* Header avec titre et année */}
+        {/* Titre sémantique conservé pour l'accessibilité ; le titre visible est dans le hero. */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mb-8"
+          className="hidden"
         >
           <h1 className="section-title text-4xl md:text-5xl font-bold">
             {movie.title} {movieYear && <>({movieYear})</>}
@@ -2151,35 +2151,80 @@ const MovieDetails = (): JSX.Element => {
           )}
         </motion.div>
 
-        {/* Contenu principal - poster à gauche, infos à droite */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Colonne gauche - Poster */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
+        {/* Hero cinématique pleine largeur ; synopsis et détails restent en dessous. */}
+        <div className="grid grid-cols-1 gap-8">
+          {/* Hero Film */}
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+            aria-label={movie.title}
+            className="relative isolate -mx-4 -mt-6 mb-2 flex min-h-[560px] w-[calc(100%+2rem)] items-end overflow-hidden border-0 border-b border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:-mx-8 md:min-h-[620px] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[690px] lg:w-[calc(100%+8rem)]"
+            style={{
+              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 42%, rgba(0,0,0,0.12) 100%), linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.16) 72%), url(' + (backdropImage || playerBackdropImage || mainPosterUrl) + ')',
+              backgroundPosition: 'center 38%',
+            }}
           >
-            <motion.img
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: "spring", stiffness: 300, damping: 10 }}
-              src={mainPosterUrl}
-              alt={movie.title}
-              className="w-full rounded-lg shadow-lg"
-            />
-
-            {/* Boutons d'action en-dessous du poster */}
-            <div className="mt-6">
-              <WatchButtons />
-              <EstimateInfoDialog open={estimateInfoOpen} onOpenChange={setEstimateInfoOpen} />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(255,255,255,0.10),transparent_34%)]" />
+            <div className="relative z-10 w-full max-w-3xl px-6 pb-9 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {!movieReleaseWarningsEnabled && (
+                  <span className={movieIsReleased ? "rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white" : "rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-black"}>
+                    {t(movieIsReleased ? 'details.releasedBadge' : 'details.notReleasedBadge')}
+                  </span>
+                )}
+                {movieReleaseWarningsEnabled && (
+                  <>
+                    <span data-halloween-frame="orange" className="rounded-md border border-white/15 bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                      {getMovieReleaseLabel(movieReleases.homeVideo, 'homeVideo', t, i18n.language, releaseNow)}
+                    </span>
+                    {movieReleases.theatrical ? (
+                      <span data-halloween-frame="green" className="rounded-md border border-white/15 bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                        {getMovieReleaseLabel(movieReleases.theatrical, 'theatrical', t, i18n.language, releaseNow)}
+                      </span>
+                    ) : movieReleases.referenceDate && (
+                      <span data-halloween-frame="green" className="rounded-md border border-white/15 bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                        {t('details.movieRelease.announcedDate', { date: formatMovieReleaseDate(movieReleases.referenceDate, i18n.language) })}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              <h1 className="mb-4 text-3xl font-black leading-[1.04] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-5xl lg:text-6xl">
+                {movie.title} {movieYear && <span className="text-white/75">({movieYear})</span>}
+              </h1>
+              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-white/85">
+                {movie.vote_average > 0 && (
+                  <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />{movie.vote_average.toFixed(1)}/10</span>
+                )}
+                {movie.runtime > 0 && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}min</span>}
+                {movieYear && <span>{movieYear}</span>}
+              </div>
+              <div className="mb-5 flex flex-wrap gap-2">
+                {movie.genres?.map((genre) => (
+                  <span key={genre.id} className="rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">{genre.name}</span>
+                ))}
+              </div>
+              {movie.overview && (
+                <p className="mb-6 max-w-2xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-4">{movie.overview}</p>
+              )}
+              {movieReleaseWarningsEnabled && (
+                <p className="mb-4 text-xs text-white/65">{t('details.movieRelease.availabilityNote')}</p>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                <WatchButtons />
+                <EstimateInfoDialog open={estimateInfoOpen} onOpenChange={setEstimateInfoOpen} />
+              </div>
             </div>
-          </motion.div>
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
+          </motion.section>
 
           {/* Colonne droite - Informations */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="md:col-span-2"
+            className="w-full min-w-0"
           >
             {/* Tabs */}
             <div className="relative">

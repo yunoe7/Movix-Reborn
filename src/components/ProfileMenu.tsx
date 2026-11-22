@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Check, ChevronDown, Crown, KeyRound, List, LogOut, Settings, Shield, Star, User } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -55,7 +55,7 @@ const onAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
 
 // Couleur pleine et opacité sur l'icône seule : une couleur translucide
 // éclaircirait les croisements de ses tracés.
-const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/50 transition-[color,opacity,transform,filter] duration-200 group-hover:scale-105 group-hover:text-[#a9baff] group-hover:opacity-100 group-hover:drop-shadow-[0_0_7px_rgba(133,158,255,0.48)]';
+const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/50 transition-colors duration-200 group-hover:text-white group-hover:opacity-100';
 // Fond de survol simple du panneau mobile, seulement avec une souris
 // (fenêtre étroite sur ordinateur) : au toucher, il resterait accroché.
 const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.055] [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045)]';
@@ -335,10 +335,11 @@ const ProfileMenu: React.FC = () => {
   );
 
   const navLinks = [
-    { to: '/profile', label: t('profile.title'), Icon: User },
-    { to: '/profile?tab=watchlist', label: t('profile.watchlist'), Icon: List },
+    { to: '/profile?tab=watched', label: t('profile.watched', 'Historique'), Icon: History },
+    { to: '/profile?tab=watchlist', label: t('profile.watchlist', 'Ma liste'), Icon: List },
+    { to: '/watchparty/list', label: t('nav.watchParty', 'Watch Party'), Icon: Users },
     { to: '/profile?tab=favorites', label: t('common.favorites'), Icon: Star },
-    { to: '/profile?tab=watched', label: t('profile.watched'), Icon: Check },
+    { to: '/profile', label: t('profile.title'), Icon: User },
   ];
 
   const renderConnected = (variant: MenuVariant) => (
@@ -467,10 +468,6 @@ const ProfileMenu: React.FC = () => {
   );
 
   const renderContent = (variant: MenuVariant) => (isAuthenticated ? renderConnected(variant) : renderSignIn(variant));
-
-  const displayName = isAuthenticated
-    ? (username.length > 12 ? `${username.substring(0, 12)}...` : username)
-    : t('auth.login');
 
   return (
     <div className="relative flex items-center">
