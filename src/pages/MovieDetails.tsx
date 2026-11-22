@@ -2115,12 +2115,12 @@ const MovieDetails = (): JSX.Element => {
         transition={{ duration: 0.5 }}
         className="relative z-10 min-h-screen text-white px-4 md:px-8 lg:px-16 py-6"
       >
-        {/* Header avec titre et année */}
+        {/* Titre sémantique conservé pour l'accessibilité ; le titre visible est dans le hero. */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mb-8"
+          className="sr-only"
         >
           <h1 className="section-title text-4xl md:text-5xl font-bold">
             {movie.title} {movieYear && <>({movieYear})</>}
@@ -2151,35 +2151,80 @@ const MovieDetails = (): JSX.Element => {
           )}
         </motion.div>
 
-        {/* Contenu principal - poster à gauche, infos à droite */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Colonne gauche - Poster */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
+        {/* Hero cinématique pleine largeur ; synopsis et détails restent en dessous. */}
+        <div className="grid grid-cols-1 gap-8">
+          {/* Hero Film */}
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55 }}
+            aria-label={movie.title}
+            className="relative isolate mb-2 flex min-h-[560px] w-full items-end overflow-hidden rounded-[26px] border border-white/10 bg-[#101014] bg-cover bg-center shadow-[0_28px_80px_rgba(0,0,0,0.5)] md:min-h-[620px] lg:min-h-[690px]"
+            style={{
+              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 42%, rgba(0,0,0,0.12) 100%), linear-gradient(0deg, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.16) 72%), url(' + (backdropImage || playerBackdropImage || mainPosterUrl) + ')',
+              backgroundPosition: 'center 38%',
+            }}
           >
-            <motion.img
-              whileHover={{ scale: 1.03 }}
-              transition={{ type: "spring", stiffness: 300, damping: 10 }}
-              src={mainPosterUrl}
-              alt={movie.title}
-              className="w-full rounded-lg shadow-lg"
-            />
-
-            {/* Boutons d'action en-dessous du poster */}
-            <div className="mt-6">
-              <WatchButtons />
-              <EstimateInfoDialog open={estimateInfoOpen} onOpenChange={setEstimateInfoOpen} />
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(255,255,255,0.10),transparent_34%)]" />
+            <div className="relative z-10 w-full max-w-3xl px-6 pb-9 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                {!movieReleaseWarningsEnabled && (
+                  <span className={movieIsReleased ? "rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white" : "rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-black"}>
+                    {t(movieIsReleased ? 'details.releasedBadge' : 'details.notReleasedBadge')}
+                  </span>
+                )}
+                {movieReleaseWarningsEnabled && (
+                  <>
+                    <span data-halloween-frame="orange" className="rounded-md border border-white/15 bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                      {getMovieReleaseLabel(movieReleases.homeVideo, 'homeVideo', t, i18n.language, releaseNow)}
+                    </span>
+                    {movieReleases.theatrical ? (
+                      <span data-halloween-frame="green" className="rounded-md border border-white/15 bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                        {getMovieReleaseLabel(movieReleases.theatrical, 'theatrical', t, i18n.language, releaseNow)}
+                      </span>
+                    ) : movieReleases.referenceDate && (
+                      <span data-halloween-frame="green" className="rounded-md border border-white/15 bg-black/45 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+                        {t('details.movieRelease.announcedDate', { date: formatMovieReleaseDate(movieReleases.referenceDate, i18n.language) })}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              <h1 className="mb-4 text-3xl font-black leading-[1.04] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-5xl lg:text-6xl">
+                {movie.title} {movieYear && <span className="text-white/75">({movieYear})</span>}
+              </h1>
+              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-white/85">
+                {movie.vote_average > 0 && (
+                  <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />{movie.vote_average.toFixed(1)}/10</span>
+                )}
+                {movie.runtime > 0 && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}min</span>}
+                {movieYear && <span>{movieYear}</span>}
+              </div>
+              <div className="mb-5 flex flex-wrap gap-2">
+                {movie.genres?.map((genre) => (
+                  <span key={genre.id} className="rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">{genre.name}</span>
+                ))}
+              </div>
+              {movie.overview && (
+                <p className="mb-6 max-w-2xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-4">{movie.overview}</p>
+              )}
+              {movieReleaseWarningsEnabled && (
+                <p className="mb-4 text-xs text-white/65">{t('details.movieRelease.availabilityNote')}</p>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                <WatchButtons />
+                <EstimateInfoDialog open={estimateInfoOpen} onOpenChange={setEstimateInfoOpen} />
+              </div>
             </div>
-          </motion.div>
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent" />
+          </motion.section>
 
           {/* Colonne droite - Informations */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
-            className="md:col-span-2"
+            className="w-full min-w-0"
           >
             {/* Tabs */}
             <div className="relative">
