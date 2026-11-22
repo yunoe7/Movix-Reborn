@@ -760,13 +760,18 @@ const WatchMovie: React.FC = () => {
             }
           }
           if (!isContentAllowed(cert, profileAge)) {
-            setContentCert(cert);
+            setContentCert(cert || 'Non classé');
             setIsBlocked(true);
             setIsLoading(false);
             return;
           }
         } catch (e) {
-          console.log('Could not fetch certifications for age check');
+          if (!isCurrentRequest()) return;
+          console.warn('Could not verify movie certification; blocking restricted profile');
+          setContentCert('Non classé');
+          setIsBlocked(true);
+          setIsLoading(false);
+          return;
         }
       }
 
