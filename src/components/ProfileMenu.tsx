@@ -504,7 +504,7 @@ const ProfileMenu: React.FC = () => {
           )}
         </span>
         <span className="hidden max-w-[80px] truncate text-sm font-medium sm:inline lg:max-w-[120px]">
-          {displayName}
+          {username || (isAuthenticated ? t('header.profile') : t('auth.login'))}
         </span>
         <ChevronDown
           aria-hidden="true"
