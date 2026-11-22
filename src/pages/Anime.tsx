@@ -101,33 +101,21 @@ const pageStyles = `
 }
 
 .section-title::after {
-  width: 34px;
-  height: 2px;
-  bottom: 0;
-  background: linear-gradient(90deg, #ef4444, rgba(239,68,68,.35));
-}
-
-.section-title:hover::after {
-  width: 56px;
-}
-
-.section-title::after {
   content: '';
   position: absolute;
   left: 0;
   bottom: 0;
-  width: 40px;
-  height: 3px;
-  background: linear-gradient(90deg, #f11 0%, #f66 100%);
-  border-radius: 3px;
-  animation: expandWidth 0.6s ease-out forwards 0.3s;
+  width: 34px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ef4444, rgba(239,68,68,.35));
+  animation: expandWidth 0.45s ease-out both 0.15s;
   transform-origin: left;
-  transition: all 0.3s ease;
+  transition: width 220ms ease;
 }
 
 .section-title:hover::after {
-  width: 100%;
-  background: linear-gradient(90deg, #ff3333, #ff9999);
+  width: 56px;
 }
 `;
 
@@ -642,7 +630,7 @@ const Anime: React.FC = () => {
                     .filter((show: AnimeShow) => show.backdrop_path || show.poster_path)
                     .sort(compareAnimeByPopularity)
                 : [];
-              const safeCandidateShows = await filterMatureAnime(uniqueById(candidateShows));
+              const safeCandidateShows = await filterMatureAnime(uniqueById(candidateShows.slice(0, 6)));
               return [genre.id, safeCandidateShows] as const;
             } catch {
               return [genre.id, []] as const;
