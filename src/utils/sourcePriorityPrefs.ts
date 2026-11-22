@@ -21,7 +21,7 @@ const CHANGE_EVENT = 'movix-source-priority-changed';
  * le comportement effectif des users qui avaient des patterns perso.
  *
  * **v2 → v3** (2026-05-25) : ordre par défaut des hosters Films/Séries
- * passe `vidzy` avant `uqload` (les préférences de priorité des hosters sont migrées sans écraser les choix utilisateur). Migration n'écrase l'ordre stocké QUE si
+ * passe `vidzy` avant `uqload`. Migration n'écrase l'ordre stocké QUE si
  * l'ordre des built-ins matche l'ancien default (= user n'a pas reordré).
  * Les `custom_*` sont préservés à leur position relative.
  *
@@ -59,7 +59,7 @@ const V2_DEFAULT_BUILTIN_HOSTER_ORDER: readonly string[] = [
  *
  * Note design : la spec §3 fusionne Films et Séries en une seule catégorie
  * `moviesTv` alors que les 2 Watch pages avaient historiquement des ordres
- * hardcodés légèrement différents (en TV et en Movies). Ce default conserve l'ordre fonctionnel des sources restantes.
+ * hardcodés légèrement différents. Ce default conserve l'ordre fonctionnel des sources restantes.
  * Les utilisateurs qui préfèrent l'ancien ordre TV peuvent le recomposer
  * manuellement via Settings → Priorité des sources.
  *
