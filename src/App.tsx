@@ -1806,7 +1806,7 @@ const AppWithIntro: React.FC = () => {
     window.addEventListener('screensaver_settings_changed', handleSettingsChange);
     return () => window.removeEventListener('screensaver_settings_changed', handleSettingsChange);
   }, []);
-  // Pages avec hero header (pas d'espace top): Home, ProviderContent, Movies, TVShows
+  // Pages avec hero plein écran sous la navigation : catalogues et détails film/série
   const currentPath = location.pathname;
   const isHeroHeaderPage =
     currentPath === '/' ||
