@@ -237,6 +237,12 @@ const GenreGrid: React.FC<GenreGridProps> = ({
 
   // Obtenir l'URL d'image pour un genre donné
   const getGenreImageUrl = (genreId: number): string => {
+    // Visuels éditoriaux fixes pour les trois premières catégories TV :
+    // ils restent distincts même si TMDB renvoie le même titre populaire.
+    if (mediaType === 'tv' && genreId === 16) return FALLBACK_IMAGES.tv[16];
+    if (mediaType === 'tv' && genreId === 10759) return FALLBACK_IMAGES.tv[10759];
+    if (mediaType === 'tv' && genreId === 10765) return FALLBACK_IMAGES.tv[10765];
+
     const genrePoster = genrePosters.find(poster => poster.genreId === genreId);
     
     if (genrePoster?.posterPath) {
@@ -304,7 +310,7 @@ const GenreGrid: React.FC<GenreGridProps> = ({
           {genresToShow.map((genreId) => (
             <motion.div
               key={genreId}
-              className="flex-none relative h-36 w-64 rounded-lg overflow-hidden cursor-pointer"
+              className="flex-none relative h-36 w-64 md:h-[7.75rem] md:w-[14rem] rounded-2xl overflow-hidden cursor-pointer ring-1 ring-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:ring-red-500/60 transition-[box-shadow,ring-color] duration-300"
               variants={cardVariants}
               initial="initial"
               whileHover="hover"
@@ -313,7 +319,7 @@ const GenreGrid: React.FC<GenreGridProps> = ({
               onClick={() => handleGenreSelect(genreId)}
               layoutId={`genre-${genreId}`}
             >
-              <div className="absolute inset-0 bg-black/50 group-hover:bg-black/40 transition-all z-10"></div>
+              <div className="absolute inset-0 z-10 bg-gradient-to-t from-black/75 via-black/35 to-black/20 transition-all duration-300 group-hover:from-black/55 group-hover:via-black/20" />
               {loading ? (
                 <div className="w-full h-full bg-gray-800">
                   <div className="absolute inset-0 flex items-center justify-center">
@@ -324,7 +330,7 @@ const GenreGrid: React.FC<GenreGridProps> = ({
                 <motion.img 
                   src={getGenreImageUrl(genreId)} 
                   alt={GENRES[genreId]}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-700 ease-out"
                   initial={{ scale: 1 }}
                   animate={{ 
                     scale: selectedGenreId === genreId ? 1.1 : 1,
@@ -382,7 +388,7 @@ const GenreGrid: React.FC<GenreGridProps> = ({
               )}
               <div className="absolute inset-0 flex items-center justify-center z-20">
                 <motion.h3 
-                  className="text-white font-bold text-center text-lg md:text-xl px-2 py-1 rounded-md"
+                  className="text-white font-extrabold text-center text-base md:text-lg tracking-wide leading-tight px-3 py-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)]"
                   initial={{ y: 0 }}
                   animate={{ 
                     y: selectedGenreId === genreId ? -5 : 0,
