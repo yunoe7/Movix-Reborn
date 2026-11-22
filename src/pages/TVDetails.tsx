@@ -2060,13 +2060,18 @@ const TVDetails: React.FC = () => {
     let seasonToWatch = resumeData.hasProgress || resumeData.fromServer ? resumeData.seasonNumber : defaultStartSeason;
     let episodeToWatch = resumeData.hasProgress || resumeData.fromServer ? resumeData.episodeNumber : 1;
 
-    // Validation: si la saison demandée n'est pas disponible, prendre la première disponible
-    // Cela gère le cas où la saison 1 n'existe pas dans la liste affichée.
-    // En mode anime on valide contre animeData.seasons (numérotation anime) car
-    // availableSeasons ne reflète que les saisons TMDB — ce qui renverrait à tort
-    // S1E1 lorsqu'un anime a des saisons/cours additionnels non présents dans TMDB.
+    // En mode anime, la reprise et la navigation ne considèrent que les
+    // saisons qui possèdent réellement des épisodes lisibles.
     const animeSeasonNumbers = animeMode && animeData?.seasons
-      ? (animeData.seasons as any[]).map((s, idx) => Number(s?.number ?? (idx + 1)))
+      ? (animeData.seasons as any[])
+          .map((season, index) => ({ season, index }))
+          .filter(({ season }) =>
+            season?.available !== false &&
+            season?.status !== 'unavailable' &&
+            Array.isArray(season?.episodes) &&
+            season.episodes.length > 0
+          )
+          .map(({ season, index }) => Number(season?.number ?? (index + 1)))
       : null;
 
     if (animeSeasonNumbers && animeSeasonNumbers.length > 0) {
