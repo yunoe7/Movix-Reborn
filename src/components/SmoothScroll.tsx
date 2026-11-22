@@ -366,6 +366,12 @@ const SmoothScroll = () => {
     window.addEventListener('touchmove', onUserScrollInput, { passive: true, capture: true });
     window.addEventListener('keydown', onKeydown, { passive: true, capture: true });
 
+    // Quand Lenis est désactivé (économie d'énergie, faible CPU, mouvement
+    // réduit), le scroll reste natif : la classe doit quand même être posée
+    // pour neutraliser les hover coûteux pendant le défilement.
+    const onNativeScroll = () => setIsScrollingClass();
+    window.addEventListener('scroll', onNativeScroll, { passive: true });
+
     return () => {
       stopRaf();
 
@@ -392,6 +398,7 @@ const SmoothScroll = () => {
       window.removeEventListener('wheel', onUserScrollInput, { capture: true });
       window.removeEventListener('touchmove', onUserScrollInput, { capture: true });
       window.removeEventListener('keydown', onKeydown, { capture: true });
+      window.removeEventListener('scroll', onNativeScroll);
     };
   }, [effectivePrefs.transitions]);
 
