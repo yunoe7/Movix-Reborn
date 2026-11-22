@@ -3026,7 +3026,7 @@ const TVDetails: React.FC = () => {
                     ? ep.streaming_links.map((link: any) => link.language).filter(Boolean)
                     : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
-                  const imageSource = episodeStillSource || episodeFallbackPoster;
+                  const imageSource = episodeStillSource || (ep.duplicate_still ? null : episodeFallbackPoster);
                   const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
                   const sourceKey = episodeStillSource
                     ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
@@ -3084,14 +3084,14 @@ const TVDetails: React.FC = () => {
                       key={`anime-${selectedSeason}-${ep.index}`}
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1, transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 } }}
-                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-all duration-300 hover:border-red-500/70 hover:bg-white/[0.075] md:min-h-[132px] ${isSelected ? 'ring-2 ring-red-500' : ''}`}
+                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-red-500/70 ring-1 ring-red-500/25' : ''}`}
                       whileHover={{ y: -5, transition: { duration: 0.2 } }}
                       layout={false}
                     >
                       <div
                         role="button"
                         tabIndex={0}
-                        className="flex w-full min-w-0 flex-1 flex-row items-center gap-3 p-2 text-left cursor-pointer md:gap-4 md:p-3"
+                        className="flex w-full min-w-0 flex-1 flex-row items-center gap-2.5 p-2 text-left cursor-pointer sm:gap-3 md:p-2.5"
                         onClick={() => handleAnimeGridClick(ep)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
@@ -3101,9 +3101,9 @@ const TVDetails: React.FC = () => {
                       >
                         <div className="flex min-w-0 flex-1 flex-row items-center gap-3 md:gap-4">
                           <span className="hidden w-7 shrink-0 text-center text-xl font-semibold text-white/45 sm:inline-flex">{episodeNumber}</span>
-                          <div className="relative aspect-video w-[36%] min-w-[108px] max-w-[220px] shrink-0 overflow-hidden rounded-lg bg-black/30">
+                          <div className="relative aspect-video w-[34%] min-w-[108px] max-w-[192px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:w-[190px] sm:min-w-[150px]">
                             {shouldHide('episodeImages') ? (
-                              <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                              <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
                                 <div className="flex flex-col items-center gap-2 text-gray-400">
                                   <EyeOff className="w-8 h-8" />
                                   <span className="text-sm">{t('details.imageMasked')}</span>
@@ -3167,7 +3167,7 @@ const TVDetails: React.FC = () => {
                           <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2 md:gap-5 md:p-4">
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
-                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-red-500 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
+                                <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {episodeTitle}
                                 </h4>
                                 <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
@@ -3184,7 +3184,7 @@ const TVDetails: React.FC = () => {
                                     t={t}
                                   />
                                 )}
-                                <div className="flex flex-wrap gap-2 mt-3">
+                                <div className="mt-2 flex flex-wrap gap-1.5">
                                   {availableLanguages.map((language: string, i: number) => (
                                     <span
                                       key={`lang-badge-${language}-${i}`}
@@ -3199,7 +3199,7 @@ const TVDetails: React.FC = () => {
                                 </div>
                               </div>
                             </div>
-                            <div className="flex gap-2 mt-auto pt-3 justify-end">
+                            <div className="ml-2 flex shrink-0 items-center gap-1 self-center justify-end">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
