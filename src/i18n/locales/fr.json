@@ -8946,7 +8946,7 @@
       "howTitle": "Comment l'activer",
       "howBody": "Va dans Réglages → Priorité des sources. Le toggle <1/> « Se souvenir du dernier lecteur choisi » est juste au-dessus du panneau de priorité. Active-le et c'est bon : ta sélection est mémorisée à chaque fois que tu changes de lecteur depuis le menu Serveurs. Désactivé par défaut (opt-in).",
       "priorityTitle": "Priorité face à l'ordre des sources",
-      "priorityBody": "Quand l'option est activée et qu'un dernier lecteur est mémorisé, il l'emporte sur l'ordre user défini dans le panneau de priorité <1/>. Donc même si Darkino est en haut de ta liste, si tu viens de regarder un épisode avec FStream et que FStream est dispo sur l'épisode suivant, FStream sera repris.",
+      "priorityBody": "Quand l'option est activée et qu'un dernier lecteur est mémorisé, il l'emporte sur l'ordre défini dans le panneau de priorité <1/>. Le dernier lecteur utilisé sera donc repris s'il est disponible pour l'épisode suivant.",
       "fallbackTitle": "Quand le lecteur n'est pas dispo",
       "fallbackBody": "Si le dernier lecteur mémorisé n'est pas disponible pour le nouveau contenu (ex. tu étais sur Darkino mais le film n'a pas de version Darkino), Movix bascule automatiquement sur ton ordre de priorité standard — comme si l'option n'était pas activée pour ce contenu précis.",
       "limitsTitle": "Limites",
