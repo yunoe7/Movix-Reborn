@@ -684,7 +684,7 @@ const WatchMovie: React.FC = () => {
     // The route key owns this request lifecycle; the functions below close over
     // the current render and are intentionally invoked only from this effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, versionKey]);
+  }, [id, versionKey, currentProfile?.ageRestriction]);
 
   // Function to update VIP retry message
   const updateVipRetryMessage = (message: string) => {
