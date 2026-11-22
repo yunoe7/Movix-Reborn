@@ -9,6 +9,7 @@ import VidyPlayer from '../../components/VidyPlayer';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
+import { getAdPopupMode } from '../../utils/adPopupMode';
 import { registerServerResolvedSources } from '../../utils/extractM3u8';
 import type { SeekStreamingHlsSource } from '../../utils/seekStreamingCandidates';
 import { runExtractionPass } from '../../utils/runExtractionPass';
@@ -1342,8 +1343,54 @@ const WatchMovie: React.FC = () => {
     );
   }
 
+  // Respect the ad gate before mounting the Vidy iframe.
+  // In click-anywhere mode the iframe is preloaded and the ad catcher is an overlay.
+  if (
+    showAdFreePopup
+    && adPopupTriggered
+    && !adPopupBypass
+    && getAdPopupMode() !== 'click-anywhere'
+  ) {
+    return (
+      <div className="fixed inset-0 bg-black">
+        {!shouldLoadIframe && !hasClickedAd && <AdWaitingScreen />}
+        <AdFreePlayerAds
+          onClose={handlePopupClose}
+          onAccept={handlePopupAccept}
+          adType={adType}
+          onAdClick={() => setHasClickedAd(true)}
+        />
+      </div>
+    );
+  }
+
+  if (adPopupBypass) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-black">
+        <div className="text-white text-2xl font-bold mb-4">{t('watch.mustWatchAd')}</div>
+        <div className="text-gray-400 text-lg">{t('watch.reloadToRetry')}</div>
+      </div>
+    );
+  }
+
+  if (adPopupTriggered && !shouldLoadIframe && !hasClickedAd) {
+    return <AdWaitingScreen />;
+  }
+
   if (!isLoading && id) {
-    return <VidyPlayer kind="movie" tmdbId={id} title={movieTitle} posterPath={playerPoster} />;
+    return (
+      <div className="fixed inset-0 bg-black">
+        <VidyPlayer kind="movie" tmdbId={id} title={movieTitle} posterPath={playerPoster} />
+        {showAdFreePopup && adPopupTriggered && !adPopupBypass && (
+          <AdFreePlayerAds
+            onClose={handlePopupClose}
+            onAccept={handlePopupAccept}
+            adType={adType}
+            onAdClick={() => setHasClickedAd(true)}
+          />
+        )}
+      </div>
+    );
   }
 
   return (
