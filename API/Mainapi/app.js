@@ -288,17 +288,6 @@ const commonDeps = {
   axiosDarkinoRequest: axiosHelpers.axiosDarkinoRequest,
 };
 
-// --- Configure cpasmal ---
-const cpasmalRouter = require("./routes/cpasmal");
-cpasmalRouter.configure({
-  CPASMAL_BASE_URL,
-  TMDB_API_URL,
-  TMDB_API_KEY,
-  makeCpasmalRequest: require("./utils/proxyManager").makeCpasmalRequest,
-  getFromCacheNoExpiration,
-  shouldUpdateCache,
-});
-
 // --- Configure coflix (helper, not a router) ---
 const coflix = require("./routes/coflix");
 coflix.configure({
@@ -408,39 +397,6 @@ downloadRouter.configure({
   refreshDarkinoSessionIfNeeded,
 });
 
-// --- Configure darkiworld ---
-const darkiworldRouter = require("./routes/darkiworld");
-darkiworldRouter.configure({
-  DARKINO_MAINTENANCE,
-  DOWNLOAD_CACHE_DIR,
-  darkiHeaders,
-  axiosDarkinoRequest: axiosHelpers.axiosDarkinoRequest,
-  getFromCacheNoExpiration,
-  saveToCache,
-  shouldUpdateCache,
-  shouldUpdateCache24h,
-  shouldUpdateCache48h,
-  refreshDarkinoSessionIfNeeded,
-  redis,
-});
-
-// --- Configure voirdrama ---
-const voirdramaRouter = require("./routes/voirdrama");
-voirdramaRouter.configure({
-  TMDB_API_KEY,
-  TMDB_API_URL,
-  getFromCacheNoExpiration,
-  saveToCache,
-  shouldUpdateCache24h,
-});
-
-// --- Configure francetv ---
-const francetvRouter = require("./routes/francetv");
-francetvRouter.configure({
-  getFromCacheWithExpiration,
-  saveToCache,
-});
-
 const {
   router: vipDonationsRouter,
   ensureVipDonationsTables
@@ -460,14 +416,10 @@ app.use("/api/shared-lists", sharedListsRouter);
 app.use("/api/livetv", require("./liveTvRoutes"));
 
 // New modular routes
-app.use('/api/cpasmal', cpasmalRouter);
 app.use('/anime', animeSamaRouter);
 app.use('/api', tmdbRouter);
 app.use('/', searchRouter);
 app.use('/api', downloadRouter);
-app.use('/api/wiflix', require('./routes/wiflix'));
-app.use('/api/j1f', require('./routes/j1f'));
-app.use('/api/swiftflow', require('./routes/swiftflow'));
 app.use('/api', require('./routes/sync'));
 app.use('/api', require('./routes/mediaSegments'));
 app.use('/api/profiles', require('./routes/profiles'));
@@ -488,43 +440,6 @@ app.use('/api', require('./routes/monetization').router);
 app.use('/api', require('./routes/referral').router);
 // Promos du grand carrousel : /api/hero-promos*, /api/admin/hero-promos*.
 app.use('/api', require('./routes/heroPromos').router);
-app.use('/api/darkiworld', darkiworldRouter);
-app.use('/api/drama', voirdramaRouter);
-app.use('/api/ftv', francetvRouter);
-const purstreamRouter = require('./routes/purstream');
-purstreamRouter.configure({
-  TMDB_API_KEY,
-  TMDB_API_URL,
-  PROXY_SERVER_URL: process.env.PROXY_SERVER_URL,
-  verifyAccessKey: require("./checkVip").verifyAccessKey,
-  getFromCacheNoExpiration,
-  saveToCache,
-  shouldUpdateCache,
-});
-app.use("/api/purstream", purstreamRouter);
-
-const kisskhRouter = require('./routes/kisskh');
-kisskhRouter.configure({
-  redis,
-  env: process.env,
-  getProxyCandidates: require('./utils/proxyManager').getKisskhProxyCandidates,
-  reserveProxy: require('./utils/proxyManager').reserveKisskhProxy,
-  verifyAccessKey: require("./checkVip").verifyAccessKey,
-  TMDB_API_KEY,
-  TMDB_API_URL,
-  cacheDir: require('path').join(__dirname, 'cache', 'kisskh'),
-});
-app.use('/api/kisskh', kisskhRouter);
-
-// Capacités des lecteurs optionnels : le frontend évite d'appeler un fournisseur
-// désactivé côté backend, sans jamais retirer une source dont l'état est inconnu.
-app.get('/api/source-capabilities', (_req, res) => {
-  res.json({
-    kisskh: { enabled: kisskhRouter.isEnabled?.() === true },
-    cpasmal: { enabled: cpasmalRouter.isEnabled?.() === true },
-  });
-});
-
 // Passerelle VIP vers proxiesembed : le frontend n'appelle plus le service
 // d'extraction en direct, il passe par ici avec sa clé VIP (cf. routes/mediaExtract.js).
 app.use('/api/media', require('./routes/mediaExtract'));
