@@ -39,7 +39,7 @@ function readContinueWatching(): { movies: Array<number | ContinueWatchingEntry>
   }
 }
 
-function getSavedProgress(kind: 'movie' | 'tv', tmdbId: string): number {
+function getSavedProgress(kind: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): number {
   if (typeof window === 'undefined') return 0;
   try {
     if (window.localStorage.getItem('settings_disable_history') === 'true') return 0;
@@ -47,15 +47,17 @@ function getSavedProgress(kind: 'movie' | 'tv', tmdbId: string): number {
     return 0;
   }
 
-  // Vidy's documented PLAYER_EVENT payload contains time/duration but no
-  // season/episode identity. Never replay a TV timestamp against an episode
-  // that may have changed inside the cross-origin iframe.
-  if (kind === 'tv') return 0;
-
   const id = Number(tmdbId);
   if (!Number.isSafeInteger(id) || id <= 0) return 0;
 
   const history = readContinueWatching();
+  if (kind === 'tv') {
+    const entry = history.tv.find((item) => item?.id === id);
+    const current = entry?.currentEpisode;
+    if (current?.season !== season || current?.episode !== episode) return 0;
+    return Number.isFinite(current.progress) ? Math.max(0, current.progress ?? 0) : 0;
+  }
+
   const entry = history.movies.find((item) => (typeof item === 'number' ? item : item?.id) === id);
   return typeof entry === 'object' && entry && Number.isFinite(entry.progress) ? Math.max(0, entry.progress ?? 0) : 0;
 }
@@ -70,7 +72,7 @@ const VidyPlayer: React.FC<VidyPlayerProps> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastSavedAtRef = useRef(0);
-  const savedProgress = getSavedProgress(kind, tmdbId);
+  const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
 
   const src = useMemo(() => {
     const path = kind === 'movie'
@@ -145,9 +147,9 @@ const VidyPlayer: React.FC<VidyPlayerProps> = ({
         return;
       }
 
-      // MEDIA_DATA contient l'historique interne de Vidy ; PLAYER_EVENT expose
-      // les événements de lecture documentés et leurs temps de lecture.
-      if (payload.type === 'MEDIA_DATA') return;
+      // Vidy also posts MEDIA_DATA for its own local history. Only handle
+      // the documented playback event envelope from the iframe.
+      if (payload.type !== 'PLAYER_EVENT') return;
       const playerEvent = payload.event;
       if (!['timeupdate', 'play', 'pause', 'ended'].includes(playerEvent ?? '')) return;
 
