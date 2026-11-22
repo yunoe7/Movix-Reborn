@@ -1484,7 +1484,7 @@ const MovieDetails = (): JSX.Element => {
               </>
             ) : (
               <>
-                <Play className="h-5 w-5 flex-shrink-0 text-white" />
+                <Play className="h-5 w-5 flex-shrink-0 text-[#151515]" />
                 <span className="text-left">{t('details.watchBtn')}</span>
               </>
             )}
