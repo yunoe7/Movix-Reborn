@@ -427,8 +427,17 @@ const WatchTv: React.FC = () => {
   const { t } = useTranslation();
 
   // Ensure IDs are valid before parsing
-  const seasonNumber = parseInt(seasonParam || '1', 10);
-  const episodeNumber = parseInt(episodeParam || '1', 10);
+  const seasonValue = seasonParam || '1';
+  const episodeValue = episodeParam || '1';
+  const seasonNumber = Number.parseInt(seasonValue, 10);
+  const episodeNumber = Number.parseInt(episodeValue, 10);
+  const isValidEpisodeRoute = Boolean(id)
+    && /^\d+$/.test(seasonValue)
+    && /^\d+$/.test(episodeValue)
+    && Number.isInteger(seasonNumber)
+    && seasonNumber >= 0
+    && Number.isInteger(episodeNumber)
+    && episodeNumber >= 1;
   const autoFallbackGuard = useMemo(() => createHlsAutoFallbackGuard(2), [id, seasonNumber, episodeNumber]);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -475,7 +484,7 @@ const WatchTv: React.FC = () => {
   // rien à l'utilisateur.
   const [swiftfluxGateOpen, setSwiftfluxGateOpen] = useState(false);
   const [watchProgress] = useState<number>(0); // Used to set initial HLSPlayer time
-  const [, setLoadingError] = useState<boolean>(false);
+  const [loadingError, setLoadingError] = useState<boolean>(false);
   const [nextEpisodeData, setNextEpisodeData] = useState<NextEpisodeType | null>(null);
   const [, setLoadingNextEpisode] = useState<boolean>(false);
 
@@ -1105,7 +1114,7 @@ const WatchTv: React.FC = () => {
     setLoadingKisskh(true);
 
     // Validate parameters
-    if (!id || isNaN(seasonNumber) || isNaN(episodeNumber) || seasonNumber < 0 || episodeNumber < 1) {
+    if (!isValidEpisodeRoute) {
       console.error("Invalid ID, season, or episode number in URL");
       setLoadingError(true);
       setIsLoading(false);
@@ -1252,7 +1261,7 @@ const WatchTv: React.FC = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, seasonNumber, episodeNumber]); // Rerun if essential params change
+  }, [id, seasonNumber, episodeNumber, isValidEpisodeRoute]); // Rerun if essential params change
 
   // Progress saving functionality removed
 
@@ -2240,6 +2249,24 @@ const WatchTv: React.FC = () => {
       document.documentElement.style.height = '';
     };
   }, []);
+
+  // Invalid route or failed TMDB metadata must never produce a Vidy URL
+  // containing NaN/invalid identifiers, nor leave the player loading forever.
+  if (loadingError || !isValidEpisodeRoute) {
+    return (
+      <main className="fixed inset-0 flex items-center justify-center bg-black px-6 text-white">
+        <div className="max-w-md text-center">
+          <p className="mb-6 text-gray-300">{t('watch.dataLoadError')}</p>
+          <button
+            onClick={() => navigate(-1)}
+            className="rounded-lg bg-red-600 px-6 py-3 font-medium text-white transition-colors hover:bg-red-700"
+          >
+            {t('details.goBack')}
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   // Now, after all hooks, you can do conditional returns:
   // Normal/auto replace the whole view with the popup (dialog/auto over the gated
