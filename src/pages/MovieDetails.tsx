@@ -1498,7 +1498,7 @@ const MovieDetails = (): JSX.Element => {
               onClick={() => navigate(`/download/movie/${id}`)}
               className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
-              <Download className="h-6 w-6 flex-shrink-0 text-slate-200" />
+              <Download className="h-5 w-5 flex-shrink-0 text-white" />
               <span className="text-left">{t('details.downloadBtn')}</span>
             </motion.button>
           )}
