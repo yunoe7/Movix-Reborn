@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Info, Star, Loader2, History, Flame, Users, Sparkles, Target, Tv } from 'lucide-react';
+import { Info, Star, Loader2, History, Flame, Users, Sparkles, Target } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import CatalogSkeleton from '../components/skeletons/CatalogSkeleton';
