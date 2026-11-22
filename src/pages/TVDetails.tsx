@@ -4230,6 +4230,7 @@ const TVDetails: React.FC = () => {
                             const seasonNumber = Number(
                               season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)
                             );
+                            const seasonTitle = getSeasonDisplayName(seasonNumber, t, season.name);
                             // Les fiches Anime-Sama peuvent réutiliser l'affiche de la série
                             // pour toutes les saisons. Priorité à l'affiche TMDB de la saison
                             // portant exactement le même numéro, puis aux données Anime-Sama.
@@ -4281,7 +4282,7 @@ const TVDetails: React.FC = () => {
                                   {!shouldHide('seasonImages') ? (
                                     <img
                                       src={hasFailed ? fallbackSvg : retryUrl}
-                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : (season.name || getSeasonDisplayName(seasonNumber, t))}
+                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : seasonTitle}
                                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                                       onError={(e) => {
                                         if (!hasFailed) {
@@ -4318,7 +4319,7 @@ const TVDetails: React.FC = () => {
                                 {/* Nom complet de la saison affiché en dessous pour les animes */}
                                 <div className="min-w-0 flex-1 py-1 pr-1">
                                   <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-white transition-colors group-hover:text-rose-200 sm:text-[15px]">
-                                    {shouldHide('episodeNames') ? getMaskedContent(season.name, 'episodeNames') : season.name}
+                                    {shouldHide('episodeNames') ? getMaskedContent(seasonTitle, 'episodeNames') : seasonTitle}
                                   </h3>
                                   <span className="mt-2 block text-xs font-medium text-white/50">
                                     {season.episodes.length} {t('details.episodes')}
