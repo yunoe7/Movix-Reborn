@@ -71,29 +71,44 @@ const pageStyles = `
   100% { width: 40px; }
 }
 
+.anime-page,
+.anime-page button,
+.anime-page input,
+.anime-page select {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
 .section-title {
-  font-size: 1.5rem;
-  font-weight: 700;
   position: relative;
-  background: linear-gradient(90deg, #ffffff, #e2e2e2);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
-  letter-spacing: 0.5px;
-  padding-bottom: 0.5rem;
-  text-transform: uppercase;
-  display: inline-block;
-  animation: fadeInTitle 0.8s ease-out forwards;
-  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  padding-bottom: 0.7rem;
+  color: #f7f7f8;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.05rem, 1.35vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+  text-transform: none;
+  text-shadow: none;
+  animation: fadeInTitle 0.45s ease-out both;
 }
 
 .section-title:hover {
-  background: linear-gradient(90deg, #ff3333, #ff9999);
-  -webkit-background-clip: text;
-  background-clip: text;
-  transform: translateY(-2px);
-  text-shadow: 0px 4px 8px rgba(255, 51, 51, 0.4);
+  color: #fff;
+  transform: none;
+  text-shadow: none;
+}
+
+.section-title::after {
+  width: 34px;
+  height: 2px;
+  bottom: 0;
+  background: linear-gradient(90deg, #ef4444, rgba(239,68,68,.35));
+}
+
+.section-title:hover::after {
+  width: 56px;
 }
 
 .section-title::after {
@@ -362,7 +377,7 @@ const Anime: React.FC = () => {
 
   const dataCacheKey = `movix_anime_data_v2_${tmdbLanguage}`;
   const dataCacheTsKey = `${dataCacheKey}_timestamp`;
-  const genreImageCacheKey = `movix_anime_genre_images_v2_${tmdbLanguage}`;
+  const genreImageCacheKey = `movix_anime_genre_images_v3_${tmdbLanguage}`;
   const genreImageCacheTsKey = `${genreImageCacheKey}_timestamp`;
 
   useWrappedTracker({
@@ -592,18 +607,27 @@ const Anime: React.FC = () => {
   ].filter((row) => row.items.length >= SITE_ROW_MIN_ITEMS), [siteShows, t]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadGenreImages = async () => {
       try {
         const cachedImages = sessionStorage.getItem(genreImageCacheKey);
         const cachedTimestamp = sessionStorage.getItem(genreImageCacheTsKey);
 
         if (cachedImages && cachedTimestamp && (Date.now() - Number(cachedTimestamp)) < ONE_DAY_MS) {
-          setGenreImages(JSON.parse(cachedImages));
-          return;
+          const parsed = JSON.parse(cachedImages) as Record<number, string | undefined>;
+          const imageUrls = Object.values(parsed).filter((value): value is string => Boolean(value));
+          const uniqueUrls = new Set(imageUrls);
+          // Invalidate the previous cache when it contains the same artwork
+          // for multiple unrelated genres.
+          if (imageUrls.length === uniqueUrls.size) {
+            setGenreImages(parsed);
+            return;
+          }
         }
 
         const animeKeywordId = await resolveTmdbKeywordId('anime', tmdbLanguage);
-        const imageEntries = await Promise.all(
+        const candidateEntries = await Promise.all(
           ANIME_GENRE_CONFIG.map(async (genre) => {
             try {
               const response = await axios.get('https://api.themoviedb.org/3/discover/tv', {
@@ -614,20 +638,45 @@ const Anime: React.FC = () => {
               });
 
               const candidateShows = Array.isArray(response.data?.results)
-                ? response.data.results.filter((show: AnimeShow) => show.backdrop_path || show.poster_path)
+                ? response.data.results
+                    .filter((show: AnimeShow) => show.backdrop_path || show.poster_path)
+                    .sort(compareAnimeByPopularity)
                 : [];
-              const safeCandidateShows = await filterMatureAnime(candidateShows);
-              const firstVisual = safeCandidateShows[0] || null;
-              const imagePath = firstVisual?.backdrop_path || firstVisual?.poster_path || '';
-
-              return [genre.id, imagePath ? `https://image.tmdb.org/t/p/w780${imagePath}` : undefined] as const;
+              const safeCandidateShows = await filterMatureAnime(uniqueById(candidateShows));
+              return [genre.id, safeCandidateShows] as const;
             } catch {
-              return [genre.id, undefined] as const;
+              return [genre.id, []] as const;
             }
           }),
         );
 
-        const nextImages = Object.fromEntries(imageEntries);
+        if (cancelled) return;
+
+        // Each genre gets its own artwork. The discover results overlap heavily,
+        // so choosing result[0] independently caused Pikachu/the same poster to
+        // appear for Animation, Action and Fantasy alike.
+        const candidatesByGenre = new Map(candidateEntries);
+        const usedShowIds = new Set<number>();
+        const usedImagePaths = new Set<string>();
+        const nextImages = Object.fromEntries(
+          ANIME_GENRE_CONFIG.map((genre) => {
+            const candidates = candidatesByGenre.get(genre.id) ?? [];
+            const selected = candidates.find((show) => {
+              const imagePath = show.backdrop_path || show.poster_path;
+              return Boolean(imagePath)
+                && !usedShowIds.has(show.id)
+                && !usedImagePaths.has(imagePath);
+            });
+
+            if (!selected) return [genre.id, undefined] as const;
+
+            const imagePath = selected.backdrop_path || selected.poster_path;
+            usedShowIds.add(selected.id);
+            usedImagePaths.add(imagePath);
+            return [genre.id, `https://image.tmdb.org/t/p/w780${imagePath}`] as const;
+          }),
+        );
+
         setGenreImages(nextImages);
         sessionStorage.setItem(genreImageCacheKey, JSON.stringify(nextImages));
         sessionStorage.setItem(genreImageCacheTsKey, Date.now().toString());
@@ -637,6 +686,7 @@ const Anime: React.FC = () => {
     };
 
     loadGenreImages();
+    return () => { cancelled = true; };
   }, [genreImageCacheKey, genreImageCacheTsKey, tmdbLanguage]);
 
   useEffect(() => {
@@ -660,7 +710,7 @@ const Anime: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="anime-page min-h-screen bg-black font-sans text-white">
       <style>{pageStyles}</style>
 
       <div className="relative w-full">
