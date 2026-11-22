@@ -3715,7 +3715,7 @@ const TVDetails: React.FC = () => {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="sr-only"
+          className="hidden"
         >
           <h1 className="section-title text-4xl md:text-5xl font-bold">
             {tvShow.name} {tvYear && <>({tvYear})</>}
