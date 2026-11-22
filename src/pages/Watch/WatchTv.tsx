@@ -10,40 +10,29 @@ import AdWaitingScreen from '@/components/AdWaitingScreen';
 import { getAdPopupMode } from '../../utils/adPopupMode';
 import { openInNewTab } from '../../utils/openInNewTab';
 import { safeEmbedUrl } from '../../utils/safeEmbedUrl';
-import { extractM3u8FromEmbed, extractedStreamUrl, extractUqloadFile, extractVidzyM3u8, extractFsvidM3u8, registerServerResolvedSources, type M3u8Result } from '../../utils/extractM3u8';
+import { registerServerResolvedSources } from '../../utils/extractM3u8';
 import type { SeekStreamingHlsSource } from '../../utils/seekStreamingCandidates';
-import { runExtractionPass, type ExtractionPassResult } from '../../utils/runExtractionPass';
-import { pickAutoSelectedSource, sortHostersByPriority, hosterKeyOf, type SourceAvailability } from '../../utils/sourceAutoSelect';
-import {
-  isEmbedOriginUrl, EMBED_SOURCE_IDS, isRememberedPick, hasRememberedPlayer, pickCustomLink,
-} from '../../utils/embedOrigin';
-import { getSourcePriorityPrefs, buildDefaults, subscribeToPriorityChanges } from '../../utils/sourcePriorityPrefs';
+import { runExtractionPass } from '../../utils/runExtractionPass';
+import { sortHostersByPriority, hosterKeyOf } from '../../utils/sourceAutoSelect';
+
+import { getSourcePriorityPrefs, subscribeToPriorityChanges } from '../../utils/sourcePriorityPrefs';
 import { detectHoster } from '../../utils/hosterRegistry';
 import { setLastPlayer } from '../../utils/lastPlayerPref';
-import type { TopLevelSourceId } from '../../types/sourcePriority';
+
 import { getTmdbId, encodeId } from '../../utils/idEncoder';
 import { useAntiSpoilerSettings } from '../../hooks/useAntiSpoilerSettings';
 import { useWrappedTracker } from '../../hooks/useWrappedTracker';
 import { useTmdbImages, withTmdbImageSize } from '../../hooks/useTmdbImages';
-import { isUserVip, getVipHeaders } from '../../utils/authUtils';
+import { isUserVip } from '../../utils/authUtils';
 import { serverResolveRequest } from '../../utils/serverResolveRequest';
 import { isExtensionAvailable } from '../../utils/extensionProxy';
 import { getTmdbLanguage } from '../../i18n';
 import { useProfile } from '../../context/ProfileContext';
 import { getClassificationLabel } from '../../utils/certificationUtils';
 import { getCoflixPreferredUrl } from '../../utils/coflix';
-import {
-  createHlsAutoFallbackGuard,
-  resolveAcceptedWatchSource,
-  resolveRenderedWatchSource,
-  syncHlsActiveSource,
-} from '../../utils/hlsAutoFallbackGuard';
-import { resolveKisskhTv } from '../../services/kisskhService';
-import {
-  readSwiftflux,
-  type SwiftfluxEntry,
-  type SwiftfluxPlayback,
-} from '../../services/swiftfluxService';
+import { createHlsAutoFallbackGuard, resolveAcceptedWatchSource, resolveRenderedWatchSource, syncHlsActiveSource } from '../../utils/hlsAutoFallbackGuard';
+
+import { type SwiftfluxEntry, type SwiftfluxPlayback } from '../../services/swiftfluxService';
 import { isHevcPlayable } from '../../utils/videoCodecSupport';
 import type { KisskhSource, KisskhSubtitleTrack } from '../../types/kisskh';
 import { markEpisodeHandoff } from '../../utils/playerFullscreenPersistence';
