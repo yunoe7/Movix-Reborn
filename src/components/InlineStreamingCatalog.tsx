@@ -3,7 +3,6 @@ import axios from 'axios';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import EmblaCarousel from './EmblaCarousel';
-import CarouselTitle from './CarouselTitle';
 import { getTmdbLanguage } from '../i18n';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
@@ -95,7 +94,7 @@ const InlineStreamingCatalog: React.FC<Props> = ({ providerId, providerName }) =
     return () => controller.abort();
   }, [providerId]);
 
-  const title = <CarouselTitle icon={() => null} iconClass="" label={`Uniquement sur ${providerName}`} />;
+  const title = <span className="text-white text-xl font-bold">Uniquement sur {providerName}</span>;
 
   return (
     <section className="w-full min-w-0" aria-live="polite">
