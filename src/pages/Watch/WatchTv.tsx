@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'; // Added useNavigate
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import HLSPlayer from '../../components/HLSPlayer';
+import VidyPlayer from '../../components/VidyPlayer';
 import PlayerOverlayPortal from '../../components/PlayerOverlayPortal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
@@ -1222,6 +1223,12 @@ const WatchTv: React.FC = () => {
         await fetchSeasons();
 
         // Resume playback functionality removed
+
+        // Vidy est le lecteur unique des Séries : les métadonnées et la navigation TMDB sont conservées,
+        // mais les anciens fournisseurs ne sont plus sollicités.
+        void fetchNextEpisodeData();
+        setIsLoading(false);
+        return;
 
         // Initialize loading states
         setLoadingDarkino(true);
@@ -3481,6 +3488,10 @@ const WatchTv: React.FC = () => {
         return undefined;
     }
   })();
+
+  if (!isLoading && id) {
+    return <VidyPlayer kind="tv" tmdbId={id} season={seasonNumber} episode={episodeNumber} title={showTitle} posterPath={playerPoster} />;
+  }
 
   return (
     <div style={{ minHeight: 'calc(var(--vh, 1vh) * 100)', overflow: 'hidden' }} className="w-full bg-black text-white overflow-hidden fixed inset-0">
