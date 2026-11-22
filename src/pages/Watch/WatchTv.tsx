@@ -813,7 +813,7 @@ const WatchTv: React.FC = () => {
     setSibnetUrl(null);
     setAdFreeM3u8Url(null);
     setEmbedUrl(null);
-  }, [id, seasonNumber, episodeNumber]);
+  }, [id, seasonNumber, episodeNumber, currentProfile?.ageRestriction]);
 
   // Movix Wrapped 2026 - Track TV viewing time
   useWrappedTracker({
@@ -1347,7 +1347,7 @@ const WatchTv: React.FC = () => {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, seasonNumber, episodeNumber, isValidEpisodeRoute]); // Rerun if essential params change
+  }, [id, seasonNumber, episodeNumber, isValidEpisodeRoute, currentProfile?.ageRestriction]); // Rerun if route or active profile changes
 
   // Progress saving functionality removed
 
