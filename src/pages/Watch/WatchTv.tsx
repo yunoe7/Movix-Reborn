@@ -107,6 +107,10 @@ interface CoflixTvEpisodeResponse {
   };
 }
 
+// Séries pour lesquelles Lynx (Wiflix) et Viper (Cpasmal) sont désactivées :
+// leurs liens y sont mauvais. Clé = ID TMDB de la série.
+const LYNX_VIPER_DISABLED_TV_IDS = new Set(['96677']); // Lupin
+
 interface WiflixTvResponse {
   success: boolean;
   tmdb_id: string;
