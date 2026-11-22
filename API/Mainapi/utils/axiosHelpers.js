@@ -809,7 +809,7 @@ function formatCoflixError(error, context = '') {
       : (typeof error === 'string' ? error : JSON.stringify(error));
     // Ne jamais dumper des pages HTML entières dans les logs.
     if (typeof msg === 'string' && msg.length > 300) {
-      return `${msg.slice(0, 300).replace(/\\s+/g, ' ')}… [tronqué, ${msg.length} chars]`;
+      return `${msg.slice(0, 300).replace(/\s+/g, ' ')}… [tronqué, ${msg.length} chars]`;
     }
     return msg;
   }
