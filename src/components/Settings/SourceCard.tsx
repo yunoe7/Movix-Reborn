@@ -21,6 +21,7 @@ import type { TopLevelSourceId } from '../../types/sourcePriority';
  */
 export const SOURCE_LABELS: Record<TopLevelSourceId, string> = {
   darkino: 'Darkino',
+  fstream: 'FStream',
   mp4: 'MP4 direct',
   nexus_hls: 'Nexus HLS',
   bravo: 'Bravo/PurStream',
