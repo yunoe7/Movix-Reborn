@@ -151,8 +151,14 @@ body.embla-scrolling .embla-slide {
    en micro-freezes quand la grille contient beaucoup de saisons. Le filtre
    de fond de la section Anime est suspendu pendant le défilement pour ne pas
    recomposer la couche à chaque frame ; il revient dès que le scroll s'arrête. */
-body.is-scrolling .anime-season-card {
-  pointer-events: none;
+/* Désactiver les interactions pendant le scroll uniquement avec un vrai
+   pointeur (souris/stylet). Sur écran tactile, le scroll peut rester marqué
+   quelques centaines de ms après le geste : pointer-events:none bloquait alors
+   les taps sur les saisons et empêchait d'ouvrir la liste des épisodes. */
+@media (hover: hover) and (pointer: fine) {
+  body.is-scrolling .anime-season-card {
+    pointer-events: none;
+  }
 }
 body.is-scrolling .anime-seasons-section {
   backdrop-filter: none;
