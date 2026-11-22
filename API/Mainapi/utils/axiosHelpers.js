@@ -815,7 +815,6 @@ function formatCoflixError(error, context = '') {
   }
 }
 
-
 module.exports = {
   configure,
 
