@@ -116,10 +116,10 @@ const findAnimeEpisodeTarget = (
       s.name.toLowerCase() === `season ${season}`
     );
   if (!seasonEntry || isUnavailableAnimeSeason(seasonEntry)) return null;
-  const episodeIndex = Number(episode) - 1;
-  const episodeEntry = episodeIndex >= 0 && episodeIndex < seasonEntry.episodes.length
-    ? seasonEntry.episodes[episodeIndex]
-    : seasonEntry.episodes.find((e) => e.index === Number(episode));
+  // L'URL transporte l'identifiant Anime-Sama (episode.index), pas nécessairement
+  // le rang dans le tableau. Chercher cet identifiant avant le repli positionnel.
+  const episodeEntry = seasonEntry.episodes.find((e) => e.index === Number(episode))
+    ?? seasonEntry.episodes[Number(episode) - 1];
   return episodeEntry ? { seasonEntry, episodeEntry } : null;
 };
 
@@ -724,10 +724,9 @@ const WatchAnime: React.FC = () => {
       } else if (finalSeason) {
         console.log(`Found season: ${finalSeason.name}`);
         // Now find the matching episode by index
-        const episodeIndex = Number(episode) - 1;
-        const currentEpisode = episodeIndex >= 0 && episodeIndex < finalSeason.episodes.length
-          ? finalSeason.episodes[episodeIndex]
-          : finalSeason.episodes.find(e => e.index === Number(episode));
+        // La route transporte episode.index : ne pas le confondre avec le rang.
+        const currentEpisode = finalSeason.episodes.find(e => e.index === Number(episode))
+          ?? finalSeason.episodes[Number(episode) - 1];
 
         if (currentEpisode) {
           console.log(`Found episode: ${currentEpisode.name}`);
@@ -778,10 +777,9 @@ const WatchAnime: React.FC = () => {
         );
 
       if (currentSeason) {
-        const episodeIndex = Number(episode) - 1;
-        const currentEpisode = episodeIndex >= 0 && episodeIndex < currentSeason.episodes.length
-          ? currentSeason.episodes[episodeIndex]
-          : currentSeason.episodes.find(e => e.index === Number(episode));
+        // Utiliser d'abord l'identifiant Anime-Sama transmis dans l'URL.
+        const currentEpisode = currentSeason.episodes.find(e => e.index === Number(episode))
+          ?? currentSeason.episodes[Number(episode) - 1];
 
         if (currentEpisode) {
           // Ne traiter les sources que si c'est le chargement initial ou si aucune source n'est sélectionnée
