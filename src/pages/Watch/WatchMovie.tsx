@@ -798,7 +798,10 @@ const WatchMovie: React.FC = () => {
       setLoadingOmega(false);
       setLoadingDarkino(false);
       setLoadingFrembed(false);
-
+      setLoadingWiflix(false);
+      setLoadingJ1f(false);
+      setLoadingSwiftflow(false);
+      setLoadingViper(false);
       setLoadingExtractions(false);
       setIsLoading(false);
     }
