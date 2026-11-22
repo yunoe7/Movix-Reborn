@@ -1231,6 +1231,18 @@ const WatchTv: React.FC = () => {
         // Vidy est le lecteur unique des Séries : les métadonnées et la navigation TMDB sont conservées,
         // mais les anciens fournisseurs ne sont plus sollicités.
         void fetchNextEpisodeData();
+        // Les anciens fournisseurs ne tournent plus : libérer leurs indicateurs
+        // pour que la porte publicitaire ne reste pas bloquée en attente.
+        setLoadingDarkino(false);
+        setLoadingCoflix(false);
+        setLoadingOmega(false);
+        setLoadingCustom(false);
+        setLoadingSibnet(false);
+        setLoadingFrembed(false);
+        setLoadingExtractions(false);
+        setLoadingWiflix(false);
+        setLoadingVox(false);
+        setSelectedSource('vidy');
         setIsLoading(false);
         return;
 
@@ -3259,6 +3271,10 @@ const WatchTv: React.FC = () => {
 
         // Mapper les types de sources aux types de lecteurs pour le popup
         switch (selectedSource) {
+          case 'vidy':
+            // Vidy n'a pas de lecteur publicitaire dédié : réutiliser le flux générique.
+            playerType = 'adfree';
+            break;
           case 'nexus_hls':
           case 'nexus_file':
             playerType = 'nexus_' + selectedSource.split('_')[1];
@@ -3322,7 +3338,7 @@ const WatchTv: React.FC = () => {
         return;
       }
     }
-  }, [loadingDarkino, loadingCoflix, loadingOmega, loadingCustom, loadingSibnet, loadingFrembed, loadingWiflix, loadingVox, selectedSource, darkinoSources, mp4Sources, sibnetUrl, adFreeM3u8Url, omegaData, coflixData, wiflixSources, voxSources, adPopupTriggered, adPopupBypass, showPopupForPlayer, seasonNumber, episodeNumber]);
+  }, [loadingDarkino, loadingCoflix, loadingOmega, loadingCustom, loadingSibnet, loadingFrembed, loadingWiflix, loadingVox, selectedSource, darkinoSources, mp4Sources, sibnetUrl, adFreeM3u8Url, omegaData, coflixData, wiflixSources, voxSources, adPopupTriggered, adPopupBypass, showPopupForPlayer, seasonNumber, episodeNumber, loadingExtractions]);
 
   // Si on ferme le popup (croix), on bloque définitivement l'accès au lecteur (pas de bypass)
   useEffect(() => {
