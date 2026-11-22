@@ -3084,7 +3084,7 @@ const TVDetails: React.FC = () => {
                       key={`anime-${selectedSeason}-${ep.index}`}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: Math.min(index * 0.025, 0.2), duration: 0.22 } }}
-                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-red-500/70 ring-1 ring-red-500/25' : ''}`}
+                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-red-500/70 ring-1 ring-red-500/25' : ''}`}
                       whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
@@ -4165,7 +4165,7 @@ const TVDetails: React.FC = () => {
                   {/* Saisons et épisodes */}
                   <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${animeMode ? 'anime-seasons-section border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
+                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${animeMode ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5 }}
@@ -4213,7 +4213,7 @@ const TVDetails: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Grid of seasons with animations */}
+                    {/* Compact season picker for Anime; poster grid stays for standard series. */}
                     <div className={animeMode ? "mb-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"}>
                       <AnimatePresence>
                         {animeMode && animeSeasonsWithStills.length > 0 ? (
@@ -4409,7 +4409,7 @@ const TVDetails: React.FC = () => {
                       </AnimatePresence>
                     </div>
 
-                    {/* Episodes grid with animations */}
+                    {/* Compact episode list for Anime and standard series. */}
                     <AnimatePresence mode="wait">
                       {selectedSeason !== null && (
                         <motion.div
