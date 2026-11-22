@@ -297,7 +297,13 @@ function mergeWithDefaults(parsed: PersistedSourcePriorityPrefs): SourcePriority
   // Purge pinned pointing at a deprecated id (pin orphelin → null).
   const purgePinSource = <T extends string>(
     pin: { id: T; snapshot: Array<{ id: T; enabled: boolean }> } | null,
-  ) => (pin && deprecatedSources.has(pin.id) ? null : pin);
+  ) => {
+    if (!pin || deprecatedSources.has(pin.id)) return null;
+    return {
+      ...pin,
+      snapshot: pin.snapshot.filter((entry) => !deprecatedSources.has(entry.id)),
+    };
+  };
   const purgePinHoster = <T extends string>(
     pin: { id: T; snapshot: Array<{ id: T; enabled: boolean }> } | null,
   ) => (pin && deprecatedHosters.has(pin.id) ? null : pin);
