@@ -2927,12 +2927,22 @@ const TVDetails: React.FC = () => {
   // Function to render episodes (either dropdown or grid)
   const renderEpisodes = (episodes: any[], type: 'anime' | 'standard') => {
     // Filter out empty episodes first to avoid issues
-    const nonEmptyEpisodes = episodes.filter(ep => {
-      if (type === 'anime') {
-        return ep && ep.streaming_links && ep.streaming_links.length > 0;
-      }
-      return true;
-    });
+    const isAnime = type === 'anime';
+    const nonEmptyEpisodes = episodes.filter((episode) => Boolean(episode));
+    const visibleEpisodes = isAnime
+      ? [...nonEmptyEpisodes]
+          .filter((episode: any) => {
+            const query = animeEpisodeSearch.trim().toLocaleLowerCase();
+            if (!query) return true;
+            return [episode.name, episode.index, episode.episode_number]
+              .some((value) => String(value ?? '').toLocaleLowerCase().includes(query));
+          })
+          .sort((left: any, right: any) => {
+            const leftNumber = Number(left.index ?? left.episode_number ?? 0);
+            const rightNumber = Number(right.index ?? right.episode_number ?? 0);
+            return animeEpisodeSortDescending ? rightNumber - leftNumber : leftNumber - rightNumber;
+          })
+      : nonEmptyEpisodes;
 
     if (nonEmptyEpisodes.length === 0) {
       return (
@@ -2942,11 +2952,10 @@ const TVDetails: React.FC = () => {
       );
     }
 
-    const showToggle = true; // Toujours afficher le bouton de menu déroulant
-    const isAnime = type === 'anime';
+    const showToggle = !isAnime; // Les anime restent sur la liste de streaming, quel que soit le mode de lecture.
 
-    // Replis d'image des vignettes : affiche TMDB de la saison, puis Anime-Sama,
-    // puis l'affiche de la série. Les numéros sont normalisés comme dans les cartes.
+    // Le fallback affiche de saison/série reste réservé aux séries classiques.
+    // Pour un anime, une vignette absente reste un placeholder : aucune fausse image répétée.
     const currentAnimeSeason = type === 'anime'
       ? animeData?.seasons?.find((season: SeasonPosterSource & { season_number?: number | string | null; seasonNumber?: number | string | null }, index: number) =>
         Number(season.number ?? season.season_number ?? season.seasonNumber ?? (index + 1)) === Number(selectedSeason))
@@ -2965,13 +2974,10 @@ const TVDetails: React.FC = () => {
       currentStandardSeason?.poster_path,
       currentStandardSeason?.posterPath,
     );
-    const episodeSeriesPoster = firstNonEmptyImage(
-      type === 'anime' ? animeData?.poster_path : null,
-      type === 'anime' ? animeData?.posterPath : null,
-      type === 'anime' ? animeData?.image : null,
-      tvShow?.poster_path,
-    );
-    const episodeFallbackPoster = episodeSeasonPoster || episodeSeriesPoster;
+    const episodeSeriesPoster = type === 'standard' ? firstNonEmptyImage(tvShow?.poster_path) : null;
+    const episodeFallbackPoster = type === 'standard'
+      ? (episodeSeasonPoster || episodeSeriesPoster)
+      : null;
 
     // Déterminer le mode par défaut basé sur le nombre d'épisodes
     const defaultDropdownMode = type === 'anime' ? false : nonEmptyEpisodes.length > 15;
@@ -3053,7 +3059,92 @@ const TVDetails: React.FC = () => {
     // un instant vide (sortie puis entrée) qui faisait clignoter la section.
     return (
       <>
-        {showToggle && (dropdownMode !== null ? dropdownMode : defaultDropdownMode) ? (
+        {isAnime && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h4 className="text-lg font-semibold tracking-tight text-white">{t('details.episodes')}</h4>
+              <p className="mt-0.5 text-xs font-medium text-white/45">
+                {visibleEpisodes.length} {t('details.episodes').toLocaleLowerCase()}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {animeEpisodeSearchOpen ? (
+                <div className="flex h-9 w-52 items-center gap-2 rounded-lg border border-white/10 bg-[#19191b] px-2.5 focus-within:border-white/25 sm:w-64">
+                  <Search className="h-4 w-4 shrink-0 text-white/45" />
+                  <input
+                    autoFocus
+                    value={animeEpisodeSearch}
+                    onChange={(event) => setAnimeEpisodeSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setAnimeEpisodeSearch('');
+                        setAnimeEpisodeSearchOpen(false);
+                      }
+                    }}
+                    placeholder={t('details.selectEpisode')}
+                    aria-label={t('details.selectEpisode')}
+                    className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAnimeEpisodeSearch('');
+                      setAnimeEpisodeSearchOpen(false);
+                    }}
+                    aria-label={t('common.close')}
+                    className="rounded p-0.5 text-white/45 transition-colors hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAnimeEpisodeSearchOpen(true)}
+                  aria-label={t('details.selectEpisode')}
+                  title={t('details.selectEpisode')}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.07] text-white/75 transition-colors hover:bg-white/[0.13] hover:text-white"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setAnimeEpisodeSortDescending((value) => !value)}
+                aria-label={animeEpisodeSortDescending ? t('common.sortAscending', 'Tri croissant') : t('common.sortDescending', 'Tri décroissant')}
+                title={animeEpisodeSortDescending ? t('common.sortAscending', 'Tri croissant') : t('common.sortDescending', 'Tri décroissant')}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.07] text-white/75 transition-colors hover:bg-white/[0.13] hover:text-white"
+              >
+                <ArrowDownUp className="h-4 w-4" />
+              </button>
+              <div className="flex h-9 items-center rounded-full bg-white/[0.07] p-0.5" role="group" aria-label={t('details.episodeListSource')}>
+                <button
+                  type="button"
+                  aria-pressed={animeEpisodeView === 'list'}
+                  onClick={() => setAnimeEpisodeView('list')}
+                  title={t('details.episodeListTmdb')}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${animeEpisodeView === 'list' ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                >
+                  <List className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={animeEpisodeView === 'grid'}
+                  onClick={() => setAnimeEpisodeView('grid')}
+                  title={t('details.showEpisodeGrid')}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${animeEpisodeView === 'grid' ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {isAnime && visibleEpisodes.length === 0 && animeEpisodeSearch.trim() ? (
+          <p className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-8 text-center text-sm text-white/50">
+            {t('details.noEpisodesForSeason')}
+          </p>
+        ) : showToggle && (dropdownMode !== null ? dropdownMode : defaultDropdownMode) ? (
           // Dropdown mode (si > 15 épisodes par défaut, ou si activé manuellement)
           <motion.div
             key="dropdown"
@@ -3086,7 +3177,7 @@ const TVDetails: React.FC = () => {
             transition={{ duration: 0.15 }}
           >
             <div className="grid grid-cols-1 gap-3 mb-6">
-              {nonEmptyEpisodes.map((ep: any, index: number) => {
+              {visibleEpisodes.map((ep: any, index: number) => {
                 // ... grid item rendering ...
                 if (isAnime) {
                   const isSelected = selectedEpisode === ep.index;
@@ -3096,11 +3187,11 @@ const TVDetails: React.FC = () => {
                     ? ep.streaming_links.map((link: any) => link.language).filter(Boolean)
                     : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
-                  const imageSource = episodeStillSource || (ep.duplicate_still ? null : episodeFallbackPoster);
+                  const imageSource = isAnime ? episodeStillSource : (episodeStillSource || episodeFallbackPoster);
                   const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
                   const sourceKey = episodeStillSource
                     ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
-                    : (episodeSeasonPoster ? 'season-poster' : 'series-poster');
+                    : (isAnime ? 'no-still' : (episodeSeasonPoster ? 'season-poster' : 'series-poster'));
                   const episodeImageKey = `anime-episode-s${selectedSeason || 'unknown'}-e${ep.index}-${sourceKey}`;
                   const episodeImageFailed = failedImages[episodeImageKey];
                   const imageUrl = detailsMediaSlot.width > 0 && imageSource
