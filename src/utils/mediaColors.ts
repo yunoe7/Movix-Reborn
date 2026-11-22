@@ -28,8 +28,8 @@ export interface MediaPaletteOptions {
 }
 
 export const MEDIA_HERO_BASE_GRADIENT = `
-  linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.15) 65%, transparent 100%),
-  linear-gradient(to right, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.35) 30%, rgba(0,0,0,0.05) 60%, transparent 100%)
+  linear-gradient(to top, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.20) 35%, rgba(0,0,0,0.04) 65%, transparent 100%),
+  linear-gradient(to right, rgba(0,0,0,0.32) 0%, rgba(0,0,0,0.14) 30%, rgba(0,0,0,0.02) 60%, transparent 100%)
 `;
 
 export function normalizeMediaColor(value: unknown): string | null {
@@ -223,15 +223,15 @@ export async function extractMediaColor(
 }
 
 const POSITION_GRADIENTS: Record<HeroGradientPosition, (rgb: string) => string> = {
-  'center-left':  (rgb) => `linear-gradient(to right, rgb(${rgb}) 0%, rgb(${rgb}) 28%, rgba(${rgb}, 0.35) 55%, rgba(${rgb}, 0.08) 75%, transparent 100%)`,
-  'center-right': (rgb) => `linear-gradient(to left, rgb(${rgb}) 0%, rgb(${rgb}) 28%, rgba(${rgb}, 0.35) 55%, rgba(${rgb}, 0.08) 75%, transparent 100%)`,
-  'top':          (rgb) => `linear-gradient(to bottom, rgb(${rgb}) 0%, rgba(${rgb}, 0.4) 30%, rgba(${rgb}, 0.1) 55%, transparent 85%)`,
-  'bottom':       (rgb) => `linear-gradient(to top, rgb(${rgb}) 0%, rgba(${rgb}, 0.4) 30%, rgba(${rgb}, 0.1) 55%, transparent 85%)`,
-  'top-left':     (rgb) => `radial-gradient(ellipse 90% 80% at 0% 0%, rgb(${rgb}) 0%, rgba(${rgb}, 0.5) 28%, rgba(${rgb}, 0.15) 55%, transparent 85%)`,
-  'top-right':    (rgb) => `radial-gradient(ellipse 90% 80% at 100% 0%, rgb(${rgb}) 0%, rgba(${rgb}, 0.5) 28%, rgba(${rgb}, 0.15) 55%, transparent 85%)`,
-  'bottom-left':  (rgb) => `radial-gradient(ellipse 90% 80% at 0% 100%, rgb(${rgb}) 0%, rgba(${rgb}, 0.5) 28%, rgba(${rgb}, 0.15) 55%, transparent 85%)`,
-  'bottom-right': (rgb) => `radial-gradient(ellipse 90% 80% at 100% 100%, rgb(${rgb}) 0%, rgba(${rgb}, 0.5) 28%, rgba(${rgb}, 0.15) 55%, transparent 85%)`,
-  'center':       (rgb) => `radial-gradient(ellipse 85% 85% at 50% 50%, rgb(${rgb}) 0%, rgba(${rgb}, 0.45) 30%, rgba(${rgb}, 0.12) 60%, transparent 90%)`,
+  'center-left':  (rgb) => `linear-gradient(to right, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.42) 18%, rgba(${rgb}, 0.18) 48%, rgba(${rgb}, 0.06) 72%, transparent 100%)`,
+  'center-right': (rgb) => `linear-gradient(to left, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.42) 18%, rgba(${rgb}, 0.18) 48%, rgba(${rgb}, 0.06) 72%, transparent 100%)`,
+  'top':          (rgb) => `linear-gradient(to bottom, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.16) 30%, rgba(${rgb}, 0.06) 58%, transparent 85%)`,
+  'bottom':       (rgb) => `linear-gradient(to top, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.16) 30%, rgba(${rgb}, 0.06) 58%, transparent 85%)`,
+  'top-left':     (rgb) => `radial-gradient(ellipse 90% 80% at 0% 0%, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.17) 28%, rgba(${rgb}, 0.07) 55%, transparent 85%)`,
+  'top-right':    (rgb) => `radial-gradient(ellipse 90% 80% at 100% 0%, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.17) 28%, rgba(${rgb}, 0.07) 55%, transparent 85%)`,
+  'bottom-left':  (rgb) => `radial-gradient(ellipse 90% 80% at 0% 100%, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.17) 28%, rgba(${rgb}, 0.07) 55%, transparent 85%)`,
+  'bottom-right': (rgb) => `radial-gradient(ellipse 90% 80% at 100% 100%, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.17) 28%, rgba(${rgb}, 0.07) 55%, transparent 85%)`,
+  'center':       (rgb) => `radial-gradient(ellipse 85% 85% at 50% 50%, rgba(${rgb}, 0.42) 0%, rgba(${rgb}, 0.16) 30%, rgba(${rgb}, 0.06) 60%, transparent 90%)`,
 };
 
 export function createMediaPalette(color: string, options?: MediaPaletteOptions) {
