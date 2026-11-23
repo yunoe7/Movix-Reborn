@@ -392,9 +392,14 @@ const ProfileMenu: React.FC = () => {
         <MenuDivider />
         {navLinks.map(({ to, label, Icon }) => (
           <MenuItem key={to} variant={variant} value={to}>
-            <Link to={to} onClick={close} className={rowClass(variant)}>
-              <Icon className={ICON_CLASS} aria-hidden="true" />
-              <span>{label}</span>
+            <Link to={to} onClick={close} className={cn(rowClass(variant), to === '/watchparty/list' && 'min-h-[48px]')}>
+              <Icon className={cn(ICON_CLASS, to === '/watchparty/list' && 'h-[19px] w-[19px]')} aria-hidden="true" />
+              {to === '/watchparty/list' ? (
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="font-semibold leading-5">{label}</span>
+                  <span className="truncate text-xs font-normal leading-4 text-[#929292]">{t('nav.watchPartyDesc', 'Regardez ensemble en temps réel')}</span>
+                </span>
+              ) : <span>{label}</span>}
             </Link>
           </MenuItem>
         ))}
