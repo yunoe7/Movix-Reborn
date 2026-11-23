@@ -446,4 +446,3 @@ export const Clock3 = Clock;
 export const CreditCard = (p: Omit<Props, "name">) => <Icons8Icon name="creditcard" {...p} />;
 export const HandHeart = (p: Omit<Props, "name">) => <Icons8Icon name="handheart" {...p} />;
 export const TimerOff = (p: Omit<Props, "name">) => <Icons8Icon name="timeroff" {...p} />;
-export const MessageCircle = (p: Omit<Props, "name">) => <Icons8Icon name="messagecircle" {...p} />;
