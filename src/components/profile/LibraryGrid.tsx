@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Film, Layers, ListVideo, Monitor, Tv, X } from 'lucide-react';
+import { Film, Layers, ListVideo, Monitor, Tv, X } from '../icons/Icons8';
 import { useAgeRestrictedContent } from '@/hooks/useAgeRestrictedContent';
 import { encodeId } from '@/utils/idEncoder';
 import { getWatchItemKey, getWatchItemTitle, isTmdbWatchItem, posterUrl } from './storage';
