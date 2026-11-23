@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical } from 'lucide-react';
+import { GripVertical } from '../icons/Icons8';
 import { cn } from '../../lib/utils';
 
 interface SortableItemProps {
