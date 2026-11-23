@@ -25,7 +25,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle, ExternalLink, Loader2, ShieldCheck, X } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Loader2, ShieldCheck, X } from './icons/Icons8';
 
 import TurnstileWidget from './TurnstileWidget';
 import { Button } from './ui/button';

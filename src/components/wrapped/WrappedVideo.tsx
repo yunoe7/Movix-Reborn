@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Download, Loader2, Pause, Play, Share2, Volume2, VolumeX, X } from 'lucide-react';
+import { Download, Loader2, Pause, Play, Share2, Volume2, VolumeX, X } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { useIsPresent } from 'framer-motion';
 import { toast } from 'sonner';

@@ -18,7 +18,7 @@
 
 import React, { memo, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, Flag, Loader2, ShieldCheck, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { Check, Flag, Loader2, ShieldCheck, ThumbsDown, ThumbsUp, X } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 
 import {

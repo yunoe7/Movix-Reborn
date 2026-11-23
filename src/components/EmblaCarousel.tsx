@@ -4,7 +4,7 @@ import useEmblaCarousel, {
   reInitMountedEmblaKeepingLocation,
   watchMountedEmblaResize,
 } from '@/hooks/useFlexGapEmblaCarousel';
-import { Star, Calendar, Trash, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Calendar, Trash, Trash2, ChevronLeft, ChevronRight } from './icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';

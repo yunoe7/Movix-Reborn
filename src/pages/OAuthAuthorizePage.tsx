@@ -3,7 +3,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, Bell, BellPlus, BookmarkMinus, BookmarkPlus, ChevronDown, Crown, ExternalLink, Eye, EyeOff, FilePenLine, FolderPlus, FolderX, Heart, HeartHandshake, HeartOff, History, Library, List, ListChecks, ListMinus, ListPlus, PlayCircle, ShieldCheck, Star, StarOff, UserRound, UserRoundCog } from 'lucide-react';
+import { ArrowRight, Bell, BellPlus, BookmarkMinus, BookmarkPlus, ChevronDown, Crown, ExternalLink, Eye, EyeOff, FilePenLine, FolderPlus, FolderX, Heart, HeartHandshake, HeartOff, History, Library, List, ListChecks, ListMinus, ListPlus, PlayCircle, ShieldCheck, Star, StarOff, UserRound, UserRoundCog } from '../components/icons/Icons8';
 import { Button } from '../components/ui/button';
 import { discordAuth } from '../services/discordAuth';
 import { googleAuth } from '../services/googleAuth';

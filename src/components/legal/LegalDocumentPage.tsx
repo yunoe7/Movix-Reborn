@@ -1,7 +1,7 @@
 import React from 'react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
-import { ArrowLeft, CalendarDays, LucideIcon } from 'lucide-react';
+import { ArrowLeft, CalendarDays, LucideIcon } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import SEO from '../SEO';
 import { SquareBackground } from '../ui/square-background';

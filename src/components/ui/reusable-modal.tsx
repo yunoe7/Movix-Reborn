@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X } from '../icons/Icons8';
 import { getOverlayPortalRoot } from '../../utils/overlayPortal';
 
 interface ReusableModalProps {

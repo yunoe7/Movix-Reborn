@@ -3,7 +3,7 @@
 // « En cours » et l'onglet « Historique » du profil.
 
 import { useTranslation } from 'react-i18next';
-import { Info } from 'lucide-react';
+import { Info } from '../icons/Icons8';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from './ui';
 
