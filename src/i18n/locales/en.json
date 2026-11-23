@@ -2991,7 +2991,7 @@
     }
   },
   "lists": {
-    "addToList": "Add to a list",
+    "addToList": "Add to list",
     "removeFromList": "Remove from list",
     "createNewList": "Create a new list",
     "listName": "List name",
