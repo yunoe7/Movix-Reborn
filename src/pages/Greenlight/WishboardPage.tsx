@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Popcorn, Plus, Settings, Loader2, HelpCircle, Check, Clock, Search, Zap, X, Ghost, LinkIcon } from 'lucide-react';
+import { Popcorn, Plus, Settings, Loader2, HelpCircle, Check, Clock, Search, Zap, X, Ghost, LinkIcon } from '../../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { WishboardCard } from '../../components/Greenlight/WishboardCard';
 import { WishboardFilters } from '../../components/Greenlight/WishboardFilters';
