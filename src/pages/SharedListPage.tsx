@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { ArrowLeft, List, Film, Tv, Library, Share2, Copy, ExternalLink, Loader2, Flag } from 'lucide-react';
+import { ArrowLeft, List, Film, Tv, Library, Share2, Copy, ExternalLink, Loader2, Flag } from '../components/icons/Icons8';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { toast } from 'sonner';
