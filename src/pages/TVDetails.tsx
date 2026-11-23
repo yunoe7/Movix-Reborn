@@ -2138,7 +2138,7 @@ const TVDetails: React.FC = () => {
             onClick={handleContinueWatching}
             className="group relative inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-white bg-white px-5 py-2.5 text-sm font-bold text-[#151515] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/90"
           >
-            <Play className="h-5 w-5 flex-shrink-0 text-[#151515] transition-transform duration-300 group-hover:scale-110" />
+            <img src="/icons/play-button-icon.png" alt="" aria-hidden="true" className="h-5 w-5 flex-shrink-0 object-contain transition-transform duration-300 group-hover:scale-110" />
             <div className="text-left">
               {resumeData.hasProgress ? (
                 <div className="flex min-w-0 flex-col items-start text-left">

@@ -1461,7 +1461,7 @@ const MovieDetails = (): JSX.Element => {
           >
             {hasProgress ? (
               <>
-                <Play className="h-5 w-5 flex-shrink-0 text-[#151515] transition-transform duration-300 group-hover:scale-110" />
+                <img src="/icons/play-button-icon.png" alt="" aria-hidden="true" className="h-5 w-5 flex-shrink-0 object-contain transition-transform duration-300 group-hover:scale-110" />
                 <div className="flex min-w-0 flex-col items-start text-left">
                   <span>{t('details.continueBtn')}</span>
                   <span className="mt-1 rounded-md bg-black/[0.07] px-2 py-0.5 text-[11px] font-semibold text-black/75">
@@ -1471,7 +1471,7 @@ const MovieDetails = (): JSX.Element => {
               </>
             ) : serverResume ? (
               <>
-                <Play className="h-5 w-5 flex-shrink-0 text-[#151515]" />
+                <img src="/icons/play-button-icon.png" alt="" aria-hidden="true" className="h-5 w-5 flex-shrink-0 object-contain" />
                 <div className="flex min-w-0 flex-col items-start text-left">
                   {/* Estimé seul : le lecteur repartira du début, donc « Regarder ». */}
                   <span>{serverResume.estimated ? t('details.watchBtn') : t('details.continueBtn')}</span>
@@ -1484,7 +1484,7 @@ const MovieDetails = (): JSX.Element => {
               </>
             ) : (
               <>
-                <Play className="h-5 w-5 flex-shrink-0 text-[#151515]" />
+                <img src="/icons/play-button-icon.png" alt="" aria-hidden="true" className="h-5 w-5 flex-shrink-0 object-contain" />
                 <span className="text-left">{t('details.watchBtn')}</span>
               </>
             )}
