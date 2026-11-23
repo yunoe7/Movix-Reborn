@@ -404,6 +404,7 @@ try {
       const savedList = await page.evaluate(() => JSON.parse(localStorage.getItem('custom_lists') || '[]').find(list => list.name === 'E2E Watchlist'));
       assert.ok(savedList, `${kind}/${mode}: création de liste enregistrée`);
       assert.ok(savedList.items?.some(item => item.type === (kind === 'movie' ? 'movie' : 'tv')), `${kind}/${mode}: contenu ajouté à la nouvelle liste`);
+      await addToListPopover.waitFor({ state: 'hidden' });
 
       const screenshot = path.join(artifactDir, `${kind}-${mode}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
