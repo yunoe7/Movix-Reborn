@@ -5,7 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
-import { Camera, Check, Crown, Pencil, Repeat, Settings, X } from 'lucide-react';
+import { Camera, Check, Crown, Pencil, Repeat, Settings, X } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { buttonClass } from './ui';
 
