@@ -10,6 +10,7 @@ import TelegramPromotion from '../components/TelegramPromotion';
 import HeroSlider from '../components/HeroSlider';
 import EmblaCarousel from '../components/EmblaCarousel';
 import InlineStreamingCatalog from '../components/InlineStreamingCatalog';
+import StreamingPlatformSelector from '../components/StreamingPlatformSelector';
 import { useWrappedTracker } from '../hooks/useWrappedTracker';
 import LazySection from '../components/LazySection';
 import { SquareBackground } from '../components/ui/square-background';
@@ -1195,15 +1196,15 @@ const Home: React.FC = () => {
   );
 
   const platformsItems = useMemo(() => [
-    { id: 8, spriteIndex: 0, alt: "Netflix", route: "/provider/8", label: t('home.filmsAndSeries', { count: 2817 }) },
-    { id: 119, spriteIndex: 1, alt: "Prime Video", route: "/provider/119", label: t('home.filmsAndSeries', { count: 2799 }) },
-    { id: 531, spriteIndex: 2, alt: "Paramount+", route: "/provider/531", label: t('home.filmsAndSeries', { count: 502 }) },
-    { id: 337, spriteIndex: 3, alt: "Disney+", route: "/provider/337", label: t('home.filmsAndSeries', { count: 1152 }) },
-    { id: 1899, spriteIndex: 4, alt: "HBO Max", route: "/provider/1899", label: t('home.filmsAndSeries', { count: 2047 }) },
-    { id: 338, spriteIndex: 5, alt: "Marvel Studios", route: "/provider/338", label: t('home.filmsAndSeries', { count: 65 }) },
-    { id: 350, spriteIndex: 6, alt: "Apple TV+", route: "/provider/350", label: t('home.filmsAndSeries', { count: 138 }) },
-    { id: 355, spriteIndex: 7, alt: "Warner Bros", route: "/provider/355", label: t('home.filmsAndSeries', { count: 645 }) },
-    { id: 356, spriteIndex: 8, alt: "DC Comics", route: "/provider/356", label: t('home.filmsAndSeries', { count: 98 }) },
+    { id: 8, name: "Netflix", logo: '/platforms/logos/netflix.svg', alt: "Netflix", route: "/provider/8", label: t('home.filmsAndSeries', { count: 2817 }) },
+    { id: 119, name: "Prime Video", logo: '/platforms/logos/prime-video.svg', alt: "Prime Video", route: "/provider/119", label: t('home.filmsAndSeries', { count: 2799 }) },
+    { id: 531, name: "Paramount+", logo: '/platforms/logos/paramount-plus.svg', alt: "Paramount+", route: "/provider/531", label: t('home.filmsAndSeries', { count: 502 }) },
+    { id: 337, name: "Disney+", logo: '/platforms/logos/disney-plus.svg', alt: "Disney+", route: "/provider/337", label: t('home.filmsAndSeries', { count: 1152 }) },
+    { id: 1899, name: "HBO Max", logo: '/platforms/logos/hbo-max.svg', alt: "HBO Max", route: "/provider/1899", label: t('home.filmsAndSeries', { count: 2047 }) },
+    { id: 338, name: "Marvel Studios", logo: '/platforms/logos/marvel-studios.svg', alt: "Marvel Studios", route: "/provider/338", label: t('home.filmsAndSeries', { count: 65 }) },
+    { id: 350, name: "Apple TV+", logo: '/platforms/logos/apple-tv-plus.svg', alt: "Apple TV+", route: "/provider/350", label: t('home.filmsAndSeries', { count: 138 }) },
+    { id: 355, name: "Warner Bros", logo: '/platforms/logos/warner-bros.svg', alt: "Warner Bros", route: "/provider/355", label: t('home.filmsAndSeries', { count: 645 }) },
+    { id: 356, name: "DC Comics", logo: '/platforms/logos/dc-comics.svg', alt: "DC Comics", route: "/provider/356", label: t('home.filmsAndSeries', { count: 98 }) },
   ], [t]);
 
   if (loading) {
@@ -1252,34 +1253,11 @@ const Home: React.FC = () => {
                     <h2 className="text-lg md:text-xl font-bold text-white">{t('home.streamingPlatforms')}</h2>
                     <span className="hidden sm:block text-xs text-white/40">Choisis une plateforme</span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-2 pb-3">
-                    {platformsItems.map((platform) => (
-                      <button
-                        key={platform.id}
-                        type="button"
-                        onClick={() => setSelectedStreamingProvider(platform.id)}
-                        aria-label={`Afficher les contenus ${platform.alt}`}
-                        aria-pressed={selectedStreamingProvider === platform.id}
-                        title={platform.alt}
-                        className={`group flex-none w-[52px] h-[52px] sm:w-14 sm:h-14 rounded-[1.1rem] border transition-all duration-200 flex items-center justify-center p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black
-                          ${selectedStreamingProvider === platform.id
-                            ? 'border-white/90 border-2 bg-white/[0.09] shadow-[inset_0_0_0_1px_rgba(255,255,255,.12),0_8px_24px_rgba(0,0,0,.32)]'
-                            : 'border-white/[0.12] bg-white/[0.035] hover:border-white/30 hover:bg-white/[0.07] hover:-translate-y-0.5'}`}
-                      >
-                        <span
-                          role="img"
-                          aria-label={platform.alt}
-                          className="block w-full h-full rounded-[0.85rem] bg-no-repeat"
-                          style={{
-                            backgroundImage: "url('/platforms/platform-logos-sprite-v4.webp')",
-                            backgroundSize: '300% 300%',
-                            backgroundPosition: `${(platform.spriteIndex % 3) * 50}% ${Math.floor(platform.spriteIndex / 3) * 50}%`,
-                            backgroundRepeat: 'no-repeat',
-                          }}
-                        />
-                      </button>
-                    ))}
-                  </div>
+                  <StreamingPlatformSelector
+                    platforms={platformsItems}
+                    selectedId={selectedStreamingProvider}
+                    onSelect={setSelectedStreamingProvider}
+                  />
                   <div className="mt-2">
                     <InlineStreamingCatalog
                       key={selectedStreamingProvider}

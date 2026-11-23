@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, MapPin, Languages, Building, ArrowLeft, Image, Download, Shield, EyeOff, MessageSquare, Archive, CheckCircle, Info, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
@@ -10,7 +10,6 @@ import AddToListMenu from '../components/AddToListMenu';
 import DetailsSkeleton from '../components/skeletons/DetailsSkeleton';
 
 import CustomDropdown from '../components/CustomDropdown';
-import ShareButtons from '../components/ShareButtons';
 import { useAdFreePopup } from '../context/AdFreePopupContext';
 import AlertButton from '../components/AlertButton';
 import {
@@ -21,8 +20,6 @@ import {
   shouldDefaultAnimeModeToOff,
 } from '../utils/searchUtils';
 import { isLikelyAnime, type TmdbKeywordsResponse } from '../utils/animeSignals';
-import CharactersSection from '../components/CharactersSection';
-import DetailExtraMetadata from '../components/DetailExtraMetadata';
 import { loadDetailCharacters, type DetailCharacters } from '../services/detailCharacters';
 import { normalizeAlternateTitles, normalizeKeywords } from '../utils/tmdbMetadata';
 import { rememberMedia } from '../utils/mediaSearchIndex';
@@ -32,20 +29,22 @@ import {
   type AnimeSamaCandidate,
 } from '../utils/animeMatcher';
 import { fetchAnimeByTmdb } from '../services/animeSamaService';
-import EmblaCarousel from '../components/EmblaCarousel';
 import { encodeId, getTmdbId } from '../utils/idEncoder';
 import AntiSpoilerSettingsModal from '../components/AntiSpoilerSettings';
 import { useAntiSpoilerSettings } from '../hooks/useAntiSpoilerSettings';
 import { buildSiteUrl } from '../config/runtime';
-import CommentsSection from '../components/CommentsSection';
-import LikeDislikeButton, { calculateLikeDislikeRating, type LikeDislikeStats } from '../components/LikeDislikeButton';
+import LikeDislikeButton, { type LikeDislikeStats } from '../components/LikeDislikeButton';
 import MovixRatingInfoModal from '../components/MovixRatingInfoModal';
 import { useWrappedTracker } from '../hooks/useWrappedTracker';
-import LazySection from '../components/LazySection';
 import SEO from '../components/SEO';
 import { getTmdbLanguage } from '../i18n';
 import i18n from '../i18n';
 import { useProfile } from '../context/ProfileContext';
+import DetailHero from '../components/details/DetailHero';
+import DetailCastRail from '../components/details/DetailCastRail';
+import DetailRecommendations from '../components/details/DetailRecommendations';
+import DetailComments from '../components/details/DetailComments';
+import type { Media } from '../components/EmblaCarousel';
 import { getClassificationLabel as getClassificationLabelUtil, isContentAllowed } from '../utils/certificationUtils';
 import { useTvAiringSchedule } from '@/hooks/useTvAiringSchedule';
 import {
@@ -166,7 +165,6 @@ interface Episode {
 }
 
 const DEFAULT_IMAGE = 'https://www.shutterstock.com/image-vector/default-image-icon-vector-missing-600nw-2079504220.jpg';
-const PENDING_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 // Constante pour activer/désactiver la vérification VIP pour le bouton download
 const ENABLE_VIP_DOWNLOAD_CHECK = false;
@@ -179,12 +177,6 @@ interface TMDBImage {
   vote_average: number;
   vote_count: number;
   width: number;
-}
-
-interface TVImages {
-  backdrops: TMDBImage[];
-  logos: TMDBImage[];
-  posters: TMDBImage[];
 }
 
 // Use shared certification utility
@@ -294,697 +286,8 @@ const EpisodeOverview = ({ text, expanded, onToggle, t }: {
 };
 
 // Composant pour une image avec lazy loading
-const LazyTVImage =({ src, srcSet, sizes, alt, className, onLoad }: {
-  src: string;
-  srcSet?: string;
-  sizes?: string;
-  alt: string;
-  className: string;
-  onLoad?: () => void;
-}) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1, rootMargin: '50px' }
-    );
-
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  const handleLoad = () => {
-    setIsLoaded(true);
-    onLoad?.();
-  };
-
-  return (
-    <div ref={imgRef} className={className}>
-      {!isInView ? (
-        <div className="w-full h-full bg-gray-800 animate-pulse flex items-center justify-center">
-          <Image className="w-8 h-8 text-gray-600" />
-        </div>
-      ) : (
-        <>
-          {!isLoaded && (
-            <div className="absolute inset-0 bg-gray-800 animate-pulse flex items-center justify-center">
-              <Image className="w-8 h-8 text-gray-600" />
-            </div>
-          )}
-          <img
-            src={src}
-            srcSet={srcSet}
-            sizes={sizes}
-            alt={alt}
-            className={`w-full h-auto object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
-            onLoad={handleLoad}
-            loading="lazy"
-          />
-        </>
-      )}
-    </div>
-  );
-};
 
 // Composant pour la section Images des séries TV
-const TVImagesSection = ({ tvId }: { tvId: string }) => {
-  const { t } = useTranslation();
-  const { effectiveImageQuality } = useImageQuality();
-  const { width: viewportWidth, dpr } = useImageViewport();
-  const imageDpr = Math.min(dpr, effectiveImageQuality === 'high' ? 3 : 2);
-  const [images, setImages] = useState<TVImages | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<'backdrops' | 'posters' | 'logos'>('backdrops');
-  const [showImages, setShowImages] = useState(true);
-  const [, setLoadedImagesCount] = useState(0);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const mobileLogoGridRef = useRef<HTMLDivElement | null>(null);
-  const desktopLogoGridRef = useRef<HTMLDivElement | null>(null);
-  const logoSlotEnabled = !loading && Boolean(images) && showImages && selectedCategory === 'logos';
-  const mobileLogoGridSlot = useImageSlot(mobileLogoGridRef, logoSlotEnabled && viewportWidth < 768);
-  const desktopLogoGridSlot = useImageSlot(desktopLogoGridRef, logoSlotEnabled && viewportWidth >= 768);
-
-  // États pour le téléchargement ZIP
-  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
-  const [zipProgress, setZipProgress] = useState(0);
-  const [zipStatus, setZipStatus] = useState<'idle' | 'downloading' | 'zipping' | 'complete' | 'error'>('idle');
-  const [downloadedCount, setDownloadedCount] = useState(0);
-
-  const getGalleryImageProps = (image: TMDBImage) => {
-    if (selectedCategory === 'logos') {
-      const gridSlot = viewportWidth < 768 ? mobileLogoGridSlot : desktopLogoGridSlot;
-      if (gridSlot.width <= 0) return { src: PENDING_IMAGE };
-      const columns = viewportWidth < 768 ? 1 : viewportWidth < 1024 ? 3 : 4;
-      const cardWidth = viewportWidth < 768
-        ? (viewportWidth < 640 ? 256 : 288)
-        : (gridSlot.width - 16 * (columns - 1)) / columns;
-      const horizontalPadding = viewportWidth < 768 ? 48 : 64;
-      const imageWidth = Math.max(1, cardWidth - horizontalPadding);
-      return {
-        src: getTmdbImageUrl(image.file_path, {
-          kind: 'logo',
-          quality: effectiveImageQuality,
-          width: Math.ceil(imageWidth * imageDpr),
-          role: 'card',
-        }),
-      };
-    }
-
-    return getTmdbImageProps(image.file_path, {
-      kind: selectedCategory === 'posters' ? 'poster' : 'backdrop',
-      quality: effectiveImageQuality,
-      sizes: '(max-width: 639px) 16rem, (max-width: 767px) 18rem, (max-width: 1023px) calc(22.222vw - 1.778rem), calc(16.667vw - 2.25rem)',
-      role: 'card',
-      originalWidth: image.width,
-    });
-  };
-
-  const fetchImages = async () => {
-    if (images) return; // Ne pas refetch si déjà chargé
-
-    setLoading(true);
-    try {
-      const response = await axios.get(`https://api.themoviedb.org/3/tv/${tvId}/images`, {
-        params: { api_key: TMDB_API_KEY },
-      });
-      setImages(response.data);
-    } catch (error) {
-      console.error('Error fetching TV images:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggleImages = () => {
-    if (!showImages && !images) {
-      fetchImages();
-    }
-    setShowImages(!showImages);
-  };
-
-  const downloadImage = async (imagePath: string, filename: string) => {
-    try {
-      const imageUrl = `https://image.tmdb.org/t/p/original${imagePath}`;
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading image:', error);
-    }
-  };
-
-  // Télécharger toutes les images de la catégorie en ZIP
-  const downloadAllAsZip = async () => {
-    const imagesToDownload = getImagesByCategory();
-    if (imagesToDownload.length === 0) return;
-
-    setIsDownloadingZip(true);
-    setZipProgress(0);
-    setZipStatus('downloading');
-    setDownloadedCount(0);
-
-    try {
-      // Lazy-load jszip + file-saver only when the user triggers the bulk download.
-      const [jszipMod, fileSaverMod] = await Promise.all([
-        import('jszip'),
-        import('file-saver'),
-      ]);
-      const JSZip = jszipMod.default;
-      const { saveAs } = fileSaverMod;
-      const zip = new JSZip();
-      const folder = zip.folder(`tv-${tvId}-${selectedCategory}`);
-
-      // Télécharger chaque image
-      for (let i = 0; i < imagesToDownload.length; i++) {
-        const image = imagesToDownload[i];
-        const imageUrl = `https://image.tmdb.org/t/p/original${image.file_path}`;
-
-        try {
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          const extension = image.file_path.split('.').pop() || 'jpg';
-          const langSuffix = image.iso_639_1 ? `_${image.iso_639_1}` : '';
-          const filename = `${selectedCategory}_${i + 1}${langSuffix}_${image.width}x${image.height}.${extension}`;
-
-          folder?.file(filename, blob);
-          setDownloadedCount(i + 1);
-          setZipProgress(Math.round(((i + 1) / imagesToDownload.length) * 80)); // 80% for downloading
-        } catch (err) {
-          console.error(`Error downloading image ${i + 1}:`, err);
-        }
-      }
-
-      setZipStatus('zipping');
-      setZipProgress(90);
-
-      // Générer le ZIP
-      const content = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 }
-      }, (metadata) => {
-        setZipProgress(90 + Math.round(metadata.percent * 0.1)); // 10% for zipping
-      });
-
-      // Télécharger le fichier
-      const categoryName = selectedCategory === 'backdrops' ? 'arriere-plans' :
-        selectedCategory === 'posters' ? 'affiches' : 'logos';
-      saveAs(content, `tv-${tvId}-${categoryName}.zip`);
-
-      setZipProgress(100);
-      setZipStatus('complete');
-
-      // Reset après 3 secondes
-      setTimeout(() => {
-        setIsDownloadingZip(false);
-        setZipProgress(0);
-        setZipStatus('idle');
-        setDownloadedCount(0);
-      }, 3000);
-
-    } catch (error) {
-      console.error('Error creating ZIP:', error);
-      setZipStatus('error');
-      setTimeout(() => {
-        setIsDownloadingZip(false);
-        setZipProgress(0);
-        setZipStatus('idle');
-      }, 3000);
-    }
-  };
-
-  const getImagesByCategory = () => {
-    if (!images) return [];
-    const categoryImages = images[selectedCategory] || [];
-
-    if (selectedLanguage === 'all') {
-      return categoryImages;
-    }
-
-    return categoryImages.filter(image => {
-      if (selectedLanguage === 'no-text') {
-        return image.iso_639_1 === null;
-      }
-      return image.iso_639_1 === selectedLanguage;
-    });
-  };
-
-  const getCategoryCount = (category: 'backdrops' | 'posters' | 'logos') => {
-    if (!images) return 0;
-    return images[category]?.length || 0;
-  };
-
-  const getAvailableLanguages = () => {
-    if (!images) return [];
-    const categoryImages = images[selectedCategory] || [];
-    const languages = new Set<string>();
-
-    categoryImages.forEach(image => {
-      if (image.iso_639_1 === null) {
-        languages.add('no-text');
-      } else {
-        languages.add(image.iso_639_1);
-      }
-    });
-
-    return Array.from(languages).sort();
-  };
-
-  const getLanguageDisplayName = (langCode: string) => {
-    const languageNames: { [key: string]: string } = {
-      'en': t('details.langEnglish'),
-      'fr': t('details.langFrench'),
-      'es': t('details.langSpanish'),
-      'de': t('details.langGerman'),
-      'it': t('details.langItalian'),
-      'pt': t('details.langPortuguese'),
-      'ja': t('details.langJapanese'),
-      'ko': t('details.langKorean'),
-      'zh': t('details.langChinese'),
-      'ru': t('details.langRussian'),
-      'ar': t('details.langArabic'),
-      'hi': t('details.langHindi'),
-      'no-text': t('details.langNoText')
-    };
-
-    return languageNames[langCode] || langCode.toUpperCase();
-  };
-
-  const handleImageLoad = () => {
-    setLoadedImagesCount(prev => prev + 1);
-  };
-
-  // Reset loaded images count and language when category changes
-  useEffect(() => {
-    setLoadedImagesCount(0);
-    setSelectedLanguage('all');
-    setShowLanguageDropdown(false);
-  }, [selectedCategory]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (showLanguageDropdown && !target.closest('.language-dropdown')) {
-        setShowLanguageDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showLanguageDropdown]);
-
-  // Fetch TV images automatically on mount or when tvId changes
-  useEffect(() => {
-    if (!images) fetchImages();
-    setShowImages(true);
-  }, [tvId]);
-
-  return (
-    <div className="mb-8">
-      <motion.button
-        onClick={handleToggleImages}
-        className="flex items-center gap-3 text-xl font-bold text-white hover:text-blue-400 transition-colors"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <Image className="w-6 h-6" />
-        {t('details.imagesTab')}
-        <motion.div
-          animate={{ rotate: showImages ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </motion.div>
-      </motion.button>
-
-      <AnimatePresence>
-        {showImages && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-6"
-            style={{ overflow: 'visible' }}
-          >
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader className="w-8 h-8 animate-spin text-blue-400" />
-              </div>
-            ) : images ? (
-              <div>
-                {/* Tabs catégories — pattern shadcn (pastille rouge animée via layoutId).
-                    Même structure que SourcePriorityPanel / sidebar Settings. */}
-                <div role="tablist" className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-white/5 overflow-x-auto">
-                  {(['backdrops', 'posters', 'logos'] as const).map((category) => {
-                    const isActive = selectedCategory === category;
-                    const labelKey = category === 'backdrops' ? 'details.backgrounds' : `details.${category}`;
-                    return (
-                      <button
-                        key={category}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`relative flex-1 min-w-0 flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 ${
-                          isActive ? 'text-white' : 'text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="tv-images-tabs-indicator"
-                            className="absolute inset-0 bg-red-600 rounded-lg shadow-sm shadow-red-600/30"
-                            transition={{ type: 'spring', bounce: 0.15, duration: 0.45 }}
-                          />
-                        )}
-                        <span className="relative z-10 flex items-center gap-2">
-                          {category === 'backdrops' && (
-                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          {category === 'posters' && (
-                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          {category === 'logos' && (
-                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          <span>{t(labelKey)}</span>
-                          <span className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full font-semibold ${
-                            isActive ? 'bg-white/25 text-white' : 'bg-gray-800/70 text-gray-400'
-                          }`}>
-                            {getCategoryCount(category)}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Menu déroulant pour les langues */}
-                {getAvailableLanguages().length > 1 && (
-                  <div className="relative mb-6 language-dropdown">
-                    <motion.button
-                      onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                      className="flex items-center justify-between w-full md:w-64 px-4 py-3 bg-gray-800/70 hover:bg-gray-700/70 rounded-xl border border-gray-600/50 text-white transition-all duration-200 backdrop-blur-sm"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733 18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98a1 1 0 11-1.79.895L15.383 16h-4.764l-.724 1.447a1 1 0 11-1.788-.894l.99-1.98.019-.038 2.99-5.982A1 1 0 0113 8zm-1.382 6h2.764L13 11.236 11.618 14z" clipRule="evenodd" />
-                        </svg>
-                        <span className="font-medium">
-                          {selectedLanguage === 'all'
-                            ? `${t('details.allLanguages')} (${images?.[selectedCategory]?.length || 0})`
-                            : `${getLanguageDisplayName(selectedLanguage)} (${images?.[selectedCategory]?.filter(img =>
-                              selectedLanguage === 'no-text' ? img.iso_639_1 === null : img.iso_639_1 === selectedLanguage
-                            ).length || 0})`
-                          }
-                        </span>
-                      </div>
-                      <motion.svg
-                        className="w-5 h-5 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        animate={{ rotate: showLanguageDropdown ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </motion.svg>
-                    </motion.button>
-
-                    <AnimatePresence>
-                      {showLanguageDropdown && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute left-0 md:left-0 w-full md:w-64 mt-2 bg-gray-800/95 backdrop-blur-md rounded-xl border border-gray-600/50 shadow-2xl z-[9999] overflow-hidden max-h-64 overflow-y-auto"
-                        >
-                          <div className="py-2">
-                            <motion.button
-                              onClick={() => {
-                                setSelectedLanguage('all');
-                                setShowLanguageDropdown(false);
-                              }}
-                              className={`w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors flex items-center justify-between ${selectedLanguage === 'all' ? 'bg-blue-600/20 text-blue-400' : 'text-gray-300'
-                                }`}
-                              whileHover={{ x: 4 }}
-                            >
-                              <span>{t('details.allLanguages')}</span>
-                              <span className="text-xs bg-gray-600/50 px-2 py-1 rounded-full">
-                                {images?.[selectedCategory]?.length || 0}
-                              </span>
-                            </motion.button>
-                            {getAvailableLanguages().map((langCode) => (
-                              <motion.button
-                                key={langCode}
-                                onClick={() => {
-                                  setSelectedLanguage(langCode);
-                                  setShowLanguageDropdown(false);
-                                }}
-                                className={`w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors flex items-center justify-between ${selectedLanguage === langCode ? 'bg-blue-600/20 text-blue-400' : 'text-gray-300'
-                                  }`}
-                                whileHover={{ x: 4 }}
-                              >
-                                <span>{getLanguageDisplayName(langCode)}</span>
-                                <span className="text-xs bg-gray-600/50 px-2 py-1 rounded-full">
-                                  {images?.[selectedCategory]?.filter(img =>
-                                    langCode === 'no-text' ? img.iso_639_1 === null : img.iso_639_1 === langCode
-                                  ).length || 0}
-                                </span>
-                              </motion.button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
-                {/* Bouton Télécharger tout en ZIP */}
-                {getImagesByCategory().length > 0 && (
-                  <div className="mb-6">
-                    <motion.button
-                      onClick={downloadAllAsZip}
-                      disabled={isDownloadingZip}
-                      className={`relative overflow-hidden flex items-center gap-3 px-5 py-3 rounded-xl font-semibold transition-all duration-300 ${isDownloadingZip
-                        ? 'bg-gray-700 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg hover:shadow-emerald-500/25'
-                        }`}
-                      whileHover={!isDownloadingZip ? { scale: 1.02, y: -2 } : {}}
-                      whileTap={!isDownloadingZip ? { scale: 0.98 } : {}}
-                    >
-                      {/* Barre de progression en arrière-plan */}
-                      {isDownloadingZip && (
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600"
-                          initial={{ width: '0%' }}
-                          animate={{ width: `${zipProgress}%` }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      )}
-
-                      <span className="relative z-10 flex items-center gap-3">
-                        {zipStatus === 'idle' && (
-                          <>
-                            <Archive className="w-5 h-5" />
-                            <span>{t('details.downloadZip')}</span>
-                            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                              {t('details.imagesCount', { count: getImagesByCategory().length })}
-                            </span>
-                          </>
-                        )}
-                        {zipStatus === 'downloading' && (
-                          <>
-                            <Loader className="w-5 h-5 animate-spin" />
-                            <span>{t('details.downloading')} {downloadedCount}/{getImagesByCategory().length}</span>
-                            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                              {zipProgress}%
-                            </span>
-                          </>
-                        )}
-                        {zipStatus === 'zipping' && (
-                          <>
-                            <Loader className="w-5 h-5 animate-spin" />
-                            <span>{t('details.compressing')}</span>
-                          </>
-                        )}
-                        {zipStatus === 'complete' && (
-                          <>
-                            <CheckCircle className="w-5 h-5 text-green-300" />
-                            <span>{t('details.downloadComplete')}</span>
-                          </>
-                        )}
-                        {zipStatus === 'error' && (
-                          <>
-                            <AlertTriangle className="w-5 h-5 text-red-300" />
-                            <span>{t('details.downloadError')}</span>
-                          </>
-                        )}
-                      </span>
-                    </motion.button>
-
-                    {/* Barre de progression visible */}
-                    {isDownloadingZip && zipStatus !== 'complete' && (
-                      <div className="mt-3 bg-gray-800 rounded-full h-2 overflow-hidden">
-                        <motion.div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400"
-                          initial={{ width: '0%' }}
-                          animate={{ width: `${zipProgress}%` }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Mobile: Ligne défilante d'images (horizontal scroll) */}
-                <motion.div
-                  ref={mobileLogoGridRef}
-                  key={selectedCategory + '-mobile'}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex gap-4 overflow-x-auto py-4 snap-x snap-mandatory md:hidden"
-                >
-                  {getImagesByCategory().map((image, index) => (
-                    <motion.div
-                      key={`mobile-${selectedCategory}-${index}`}
-                      className="relative group rounded-lg overflow-hidden flex-shrink-0 w-64 sm:w-72 snap-center"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.02, duration: 0.25 }}
-                      whileHover={{ scale: 1.03 }}
-                    >
-                      <div className={`w-full h-auto ${selectedCategory === 'logos' ? 'p-6 bg-white/5 flex items-center justify-center' : ''}`}>
-                        <LazyTVImage
-                          {...getGalleryImageProps(image)}
-                          alt={`${selectedCategory} ${index + 1}`}
-                          className="w-full h-auto object-contain"
-                          onLoad={handleImageLoad}
-                        />
-                      </div>
-
-                      <motion.button
-                        onClick={() => downloadImage(
-                          image.file_path,
-                          `tv-${tvId}-${selectedCategory}-${index + 1}.jpg`
-                        )}
-                        className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors shadow-lg md:hidden"
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <Download className="w-4 h-4" />
-                      </motion.button>
-
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2">
-                        <p className="text-white text-xs">
-                          {image.width} × {image.height}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-
-                {/* Desktop: grille d'images (grid) */}
-                <motion.div
-                  ref={desktopLogoGridRef}
-                  key={selectedCategory + '-desktop'}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-                >
-                  {getImagesByCategory().map((image, index) => (
-                    <motion.div
-                      key={`desktop-${selectedCategory}-${index}`}
-                      className="relative group rounded-lg overflow-hidden"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.04, duration: 0.3 }}
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      <div className={`w-full h-auto ${selectedCategory === 'logos' ? 'p-8 bg-white/5' : ''}`}>
-                        <LazyTVImage
-                          {...getGalleryImageProps(image)}
-                          alt={`${selectedCategory} ${index + 1}`}
-                          className="w-full h-auto object-contain"
-                          onLoad={handleImageLoad}
-                        />
-                      </div>
-
-                      <motion.div
-                        className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex"
-                        initial={{ opacity: 0 }}
-                        whileHover={{ opacity: 1 }}
-                      >
-                        <motion.button
-                          onClick={() => downloadImage(
-                            image.file_path,
-                            `tv-${tvId}-${selectedCategory}-${index + 1}.jpg`
-                          )}
-                          className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full transition-colors shadow-lg"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <Download className="w-5 h-5" />
-                        </motion.button>
-                      </motion.div>
-
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2">
-                        <p className="text-white text-xs">
-                          {image.width} × {image.height}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-
-                {getImagesByCategory().length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    {t('details.noImageInCategory')}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-400">
-                {t('details.imageLoadError')}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
 
 // Episode progress functionality removed
 
@@ -1039,7 +342,7 @@ const TVDetails: React.FC = () => {
   const { effectiveImageQuality } = useImageQuality();
   const { width: viewportWidth, height: viewportHeight, dpr } = useImageViewport();
   const imageDpr = Math.min(dpr, effectiveImageQuality === 'high' ? 3 : 2);
-  const [show, setShow] = useState<any>(null);
+  const [, setShow] = useState<any>(null);
   const [, setIsLoading] = useState(true);
   const { id: encodedId } = useParams<{ id: string }>();
   const id = encodedId ? getTmdbId(encodedId) : null;
@@ -1056,7 +359,7 @@ const TVDetails: React.FC = () => {
   const { schedule: airingSchedule, now: airingNow } = useTvAiringSchedule(
     id, String(tvShow?.id) === id ? tvShow?.external_ids : undefined,
   );
-  const [movixVoteStats, setMovixVoteStats] = useState<LikeDislikeStats>({ likes: 0, dislikes: 0 });
+  const [, setMovixVoteStats] = useState<LikeDislikeStats>({ likes: 0, dislikes: 0 });
   const [showMovixRatingInfo, setShowMovixRatingInfo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1069,7 +372,6 @@ const TVDetails: React.FC = () => {
     setMovixVoteStats({ likes: 0, dislikes: 0 });
   }, [id]);
 
-  const movixRating = calculateLikeDislikeRating(movixVoteStats);
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
   const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
   // const [_trailerVideoId, _setTrailerVideoId] = useState<string | null>(null);
@@ -1095,7 +397,7 @@ const TVDetails: React.FC = () => {
     }, 300);
   };
   const [cast, setCast] = useState<CastMember[]>([]);
-  const [crew, setCrew] = useState<GroupedCrewMember[]>([]);
+  const [, setCrew] = useState<GroupedCrewMember[]>([]);
   const [, setShowCast] = useState(false);
   const [, setShowCrew] = useState(false);
   const [watchStatus, setWatchStatus] = useState<WatchStatus>({
@@ -1155,15 +457,15 @@ const TVDetails: React.FC = () => {
   const [loadingAnimeData, setLoadingAnimeData] = useState<boolean>(false);
   const [tmdbKeywords, setTmdbKeywords] = useState<TmdbKeywordsResponse | null>(null);
   const [characters, setCharacters] = useState<DetailCharacters | null>(null);
-  const [charactersLoading, setCharactersLoading] = useState(false);
+  const [, setCharactersLoading] = useState(false);
   const [fullCast, setFullCast] = useState<Array<{ id: number; name: string; character?: string; profile_path?: string | null }>>([]);
   const [tmdbEnglishName, setTmdbEnglishName] = useState<string | null>(null);
   const [tmdbAlternativeTitles, setTmdbAlternativeTitles] = useState<
     Array<{ iso_3166_1?: string; title?: string }>
   >([]);
-  const [selectedAnimeEpisode, setSelectedAnimeEpisode] = useState<any>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [, setSelectedAnimeEpisode] = useState<any>(null);
+  const [, setSelectedLanguage] = useState<string | null>(null);
+  const [, setSelectedPlayer] = useState<string | null>(null);
   // Ajout de l'état pour stocker les détails complets des saisons et épisodes
   const [tmdbSeasonsDetails, setSeasonsDetails] = useState<Record<number, any>>({});
   // Liste TVmaze (ex. 21 chapitres au lieu de 10 épisodes) ou découpage
@@ -1252,41 +554,33 @@ const TVDetails: React.FC = () => {
   // Radix garde le contenu monté pendant la fermeture : conserver l'épisode affiché.
   const [isEpisodeWarningOpen, setEpisodeWarningOpen] = useState(false);
   // Ajoute les états pour les tabs et le scroll des tabs comme dans MovieDetails
-  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'videos' | 'images' | 'cast' | 'characters' | 'crew'>('overview');
+  const [activeTab] = useState<'overview' | 'details' | 'videos' | 'images' | 'cast' | 'characters' | 'crew'>('overview');
   const detailsMediaSlot = useImageSlot(
     seasonsSectionRef,
     !loading && Boolean(tvShow) && activeTab === 'overview',
   );
-  const [isTabsScrollable, setIsTabsScrollable] = useState(false);
+  const [, setIsTabsScrollable] = useState(false);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   // Dans les états, ajoute un état pour le chargement des vidéos
-  const [videos, setVideos] = useState<any[]>([]);
-  const [loadingVideos, setLoadingVideos] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<any | null>(null);
+  const [, setVideos] = useState<any[]>([]);
+  const [, setLoadingVideos] = useState(false);
+  const [selectedVideo] = useState<any | null>(null);
   const [showVideoPopup, setShowVideoPopup] = useState<boolean>(false);
   const [isClosingVideo, setIsClosingVideo] = useState(false);
 
   // États pour les vidéos multi-langues
-  const [multiLangVideos, setMultiLangVideos] = useState<any[]>([]);
-  const [loadingMultiLangVideos, setLoadingMultiLangVideos] = useState(false);
-  const [showMultiLangView, setShowMultiLangView] = useState(false);
-
   // États pour les vidéos multi-langues par saison
-  const [seasonMultiLangVideos, setSeasonMultiLangVideos] = useState<{ [key: number]: any[] }>({});
-  const [loadingSeasonMultiLangVideos, setLoadingSeasonMultiLangVideos] = useState<{ [key: number]: boolean }>({});
-  const [showSeasonMultiLangView, setShowSeasonMultiLangView] = useState<{ [key: number]: boolean }>({});
+  const [, setSeasonMultiLangVideos] = useState<{ [key: number]: any[] }>({});  const [, setShowSeasonMultiLangView] = useState<{ [key: number]: boolean }>({});
   const [, setSeasonAutoMultiLang] = useState<{ [key: number]: boolean }>({});
   const [, setShowAnimeNotFoundMessage] = useState(false);
   // Ajoute ce state en haut du composant TVDetails, avec les autres useState :
   const [dropdownMode, setDropdownMode] = useState<boolean | null>(null); // null = utiliser le mode par défaut basé sur le nombre d'épisodes
   const [certifications, setCertifications] = useState<{ [key: string]: string }>({});
   // Ajout d'un état pour les vidéos par saison
-  const [seasonVideos, setSeasonVideos] = useState<Record<number, any[]>>({});
+  const [, setSeasonVideos] = useState<Record<number, any[]>>({});
   // Nouvel état pour suivre les images échouées
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
-  // Ajout de l'état pour le mode des statistiques financières
-  const [financialStatsMode, setFinancialStatsMode] = useState<'simple' | 'advanced'>('simple');
-  // Ajout de l'état pour gérer le survol des cartes de séries similaires
+  // Ajout de l'état pour le mode des statistiques financières  // Ajout de l'état pour gérer le survol des cartes de séries similaires
   const [isSimilarCardHovered] = useState(false);
   // Ajout d'une référence pour stocker le timeout d'unhover
   const hoverTimeoutRef = useRef<number | null>(null);
@@ -2128,9 +1422,8 @@ const TVDetails: React.FC = () => {
   };
   const WatchButtons = () => {
     return (
-      <div className="mt-5 flex w-fit max-w-full flex-col gap-3 bg-transparent p-0">
-        {/* Première ligne avec Regarder et Bande-annonce */}
-        <div className="flex w-fit max-w-full flex-wrap gap-2.5">
+      <div className="mt-5 flex w-full max-w-full flex-col gap-3 bg-transparent p-0">
+        <div className="flex w-fit max-w-full flex-wrap items-center gap-2.5">
           <motion.button
             whileHover={{ y: -2, scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
@@ -2138,7 +1431,7 @@ const TVDetails: React.FC = () => {
             onClick={handleContinueWatching}
             className="group relative inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-white bg-white px-5 py-2.5 text-sm font-bold text-[#151515] shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/90"
           >
-            <Play className="h-5 w-5 flex-shrink-0 text-[#151515] transition-transform duration-300 group-hover:scale-110" />
+            <img src="/icons/play-button-icon.png" alt="" aria-hidden="true" className="h-5 w-5 flex-shrink-0 object-contain transition-transform duration-300 group-hover:scale-110" />
             <div className="text-left">
               {resumeData.hasProgress ? (
                 <div className="flex min-w-0 flex-col items-start text-left">
@@ -2161,7 +1454,16 @@ const TVDetails: React.FC = () => {
               )}
             </div>
           </motion.button>
-
+          <motion.button
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            onClick={() => setShowAddToList(true)}
+            className="inline-flex min-h-11 items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
+          >
+            <FolderPlus className="h-5 w-5 flex-shrink-0" />
+            {t('lists.addToList', 'Ajouter à ma liste')}
+          </motion.button>
           {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
             <motion.button
               whileHover={{ y: -2, scale: 1.015 }}
@@ -2175,69 +1477,6 @@ const TVDetails: React.FC = () => {
             </motion.button>
           )}
         </div>
-
-        {/* Deuxième ligne avec les autres boutons */}
-        <div className="flex flex-wrap gap-2.5">
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => setShowTrailerPopup(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-sm font-semibold text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!trailerVideo}
-          >
-            <Video className="w-4 h-4" />
-            {t('details.bandeAnnonce')}
-          </motion.button>
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <List className="w-4 h-4" />
-            {t('details.watchlistBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <Star className="w-4 h-4" />
-            {t('details.favoritesBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watched
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <Check className="w-4 h-4" />
-            {t('details.watchedBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => setShowAddToList(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 py-2.5 text-sm font-medium text-slate-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
-          >
-            <FolderPlus className="w-4 h-4" />
-            {t('details.addToAList')}
-          </motion.button>
-
           {showAddToList && (
             <AddToListMenu
               mediaId={Number(id)}
@@ -2247,23 +1486,14 @@ const TVDetails: React.FC = () => {
               onClose={() => setShowAddToList(false)}
             />
           )}
-
-          {showAntiSpoilerModal && (
-            <AntiSpoilerSettingsModal
-              isOpen={showAntiSpoilerModal}
-              onClose={() => setShowAntiSpoilerModal(false)}
-              onSettingsChange={updateAntiSpoilerSettings}
-              currentSettings={antiSpoilerSettings}
-            />
-          )}
-
-          <ShareButtons
-            title={tvShow?.name || ''}
-            description={tvShow?.overview || ''}
-            imageUrl={tvShow?.poster_path ? `https://image.tmdb.org/t/p/original${tvShow.poster_path}` : undefined}
-            url={buildSiteUrl(`/tv/${encodedId || id}`)}
+        {showAntiSpoilerModal && (
+          <AntiSpoilerSettingsModal
+            isOpen={showAntiSpoilerModal}
+            onClose={() => setShowAntiSpoilerModal(false)}
+            onSettingsChange={updateAntiSpoilerSettings}
+            currentSettings={antiSpoilerSettings}
           />
-        </div>
+        )}
       </div>
     );
   };
@@ -2343,12 +1573,6 @@ const TVDetails: React.FC = () => {
     }
   }, [id, tvShow, recommendationsLoaded]);
 
-  const handleEpisodeSelect = async (seasonNumber: number, episodeNumber: number) => {
-    setSelectedSeason(seasonNumber);
-    setSelectedEpisode(episodeNumber);
-
-    // Watch history functionality removed
-  };
 
   useEffect(() => {
     if (tvShow) {
@@ -2436,16 +1660,6 @@ const TVDetails: React.FC = () => {
     });
   }, [tvShow, id, tmdbEnglishName, extraAlternateTitles, extraKeywords, characters]);
 
-  /** L'onglet n'a de raison d'être que s'il a quelque chose dedans. */
-  /**
-   * L'onglet n'existe que pour ce qu'AniList apporte. Sur une œuvre qu'elle ne
-   * connaît pas — un film, une série qui n'est pas un anime — les personnages
-   * ne viennent que du générique TMDB, et l'onglet Distribution dit déjà la
-   * même chose dans l'autre sens. Les cartes restent construites : elles
-   * nourrissent le catalogue de recherche, qui lui gagne à connaître les noms
-   * de rôles (voir `utils/mediaSearchIndex.ts`).
-   */
-  const hasCharactersTab = characters?.source === 'anilist' && characters.total > 0;
 
   /**
    * Enrichit les épisodes anime avec la vignette TMDB du même épisode.
@@ -2591,7 +1805,7 @@ const TVDetails: React.FC = () => {
       return {
         season,
         seasonNumber,
-        seasonTitle: getSeasonDisplayName(seasonNumber, t, season.name),
+        seasonTitle: getSeasonDisplayName(seasonNumber, t, season.name ?? undefined),
         posterPath,
       };
     });
@@ -2603,7 +1817,9 @@ const TVDetails: React.FC = () => {
 
   useEffect(() => {
     if (!useAnimeSeasonLayout || animeSeasonCards.length === 0) return;
-    const validSeasonNumbers = animeSeasonCards.map((card) => card.seasonNumber);
+    const validSeasonNumbers = animeSeasonCards
+      .map((card) => Number(card.seasonNumber))
+      .filter((value) => Number.isFinite(value));
     if (selectedSeason === null || !validSeasonNumbers.includes(Number(selectedSeason))) {
       setSelectedSeason(validSeasonNumbers[0]);
       setSelectedEpisode(null);
@@ -2845,53 +2061,8 @@ const TVDetails: React.FC = () => {
   };
 
   // Function to fetch multi-language videos for TV shows
-  const fetchMultiLangVideos = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoadingMultiLangVideos(true);
-      // Fetch videos without language parameter to get all languages
-      const response = await axios.get(
-        `https://api.themoviedb.org/3/tv/${id}/videos`,
-        {
-          params: {
-            api_key: TMDB_API_KEY
-          }
-        }
-      );
-
-      setMultiLangVideos(response.data.results || []);
-    } catch (error) {
-      console.error('Error fetching multi-language videos:', error);
-      setMultiLangVideos([]);
-    } finally {
-      setLoadingMultiLangVideos(false);
-    }
-  }, [id]);
 
   // Function to fetch multi-language videos for a specific season
-  const fetchSeasonMultiLangVideos = useCallback(async (seasonNumber: number) => {
-    if (!id) return;
-    try {
-      setLoadingSeasonMultiLangVideos(prev => ({ ...prev, [seasonNumber]: true }));
-      // Always fetch videos without language parameter to get all languages for multi-lang view
-      const response = await axios.get(
-        `https://api.themoviedb.org/3/tv/${id}/season/${seasonNumber}/videos`,
-        {
-          params: {
-            api_key: TMDB_API_KEY
-            // No language parameter = all languages
-          }
-        }
-      );
-
-      setSeasonMultiLangVideos(prev => ({ ...prev, [seasonNumber]: response.data.results || [] }));
-    } catch (error) {
-      console.error(`Error fetching multi-language videos for season ${seasonNumber}:`, error);
-      setSeasonMultiLangVideos(prev => ({ ...prev, [seasonNumber]: [] }));
-    } finally {
-      setLoadingSeasonMultiLangVideos(prev => ({ ...prev, [seasonNumber]: false }));
-    }
-  }, [id]);
 
   useEffect(() => {
     setBestBackdrop(null);
@@ -3204,8 +2375,8 @@ const TVDetails: React.FC = () => {
                   const isSelected = selectedEpisode === ep.index;
                   const episodeKey = `s${selectedSeason}e${ep.index}`;
                   const episodeNumber = Number(ep.index);
-                  const availableLanguages = Array.isArray(ep.streaming_links)
-                    ? [...new Set(ep.streaming_links.map((link: any) => link?.language).filter(Boolean))]
+                  const availableLanguages: string[] = Array.isArray(ep.streaming_links)
+                    ? Array.from(new Set(ep.streaming_links.map((link: any) => String(link?.language ?? '')).filter(Boolean)))
                     : [];
                   const episodeStillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
                   const imageSource = isAnime ? episodeStillSource : (episodeStillSource || episodeFallbackPoster);
@@ -3696,9 +2867,7 @@ const TVDetails: React.FC = () => {
   );
   if (tvShow.last_episode_to_air) timelineEpisodes.push(tvShow.last_episode_to_air);
   if (tvShow.next_episode_to_air) timelineEpisodes.push(tvShow.next_episode_to_air);
-  const { last: lastBroadcastEpisode, next: nextBroadcastEpisode } = getEpisodeTimeline(timelineEpisodes, airingSchedule, airingNow);
-  const lastBroadcastAiring = lastBroadcastEpisode ? resolveEpisodeAiring(lastBroadcastEpisode, airingSchedule, airingNow) : null;
-  const nextBroadcastAiring = nextBroadcastEpisode ? resolveEpisodeAiring(nextBroadcastEpisode, airingSchedule, airingNow) : null;
+  getEpisodeTimeline(timelineEpisodes,airingSchedule,airingNow);
   const tvTitle = tvYear ? `${tvShow.name} (${tvYear}) - Movix` : `${tvShow.name} - Movix`;
   const tvCanonicalUrl = buildSiteUrl(`/tv/${encodedId || id}`);
   const tvSocialImage = tvShow.backdrop_path || tvShow.poster_path
@@ -3740,21 +2909,12 @@ const TVDetails: React.FC = () => {
         ogImage={tvSocialImage}
         canonical={tvCanonicalUrl}
       />
-      {/* Page backdrop — own compositing layer (position:fixed) instead of
-          backgroundAttachment:fixed, which forces full-page re-rasterization
-          on every scroll frame and tanks FPS on heavy details pages. */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none bg-black"
-        style={backdropImage ? {
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.9)), url(${backdropImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          willChange: 'transform',
-          transform: 'translateZ(0)',
-        } : undefined}
-      />
-      <div className="relative z-10 min-h-screen">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="detail-page relative z-10 min-h-screen bg-black text-white px-4 md:px-8 lg:px-16 py-6"
+      >
         <style>{`
         /* Netflix-style poster hover effects - COPIED FROM MovieDetails.tsx */
         .content-row-container {
@@ -3942,403 +3102,96 @@ const TVDetails: React.FC = () => {
         </motion.div>
         {/* Hero Série / Anime pleine largeur, puis synopsis, saisons et épisodes en dessous. */}
         <div className="grid grid-cols-1 gap-8">
-          {/* Hero Série / Anime */}
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55 }}
-            aria-label={tvShow.name}
-            className="relative isolate -mx-4 -mt-6 mb-0 flex min-h-[76vh] w-[calc(100%+2rem)] items-end overflow-hidden border-0 bg-[#101014] bg-cover bg-center md:-mx-8 md:min-h-[80vh] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[82vh] lg:w-[calc(100%+8rem)]"
-            style={{
-              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.64) 0%, rgba(0,0,0,0.38) 42%, rgba(0,0,0,0.045) 100%), linear-gradient(0deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.06) 72%), url(' + (backdropImage || mainPosterUrl) + ')',
-              backgroundPosition: 'center 38%',
-            }}
-          >
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(255,255,255,0.10),transparent_34%)]" />
-            <div className="relative z-10 w-full max-w-2xl px-6 pb-8 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
-              {animeMode && (
-                <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-rose-300/40 bg-rose-600/25 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-rose-100 backdrop-blur-sm">
-                  <Sparkles className="h-3.5 w-3.5" />{t('details.animeModeActiveBadge')}
-                </span>
-              )}
-              <h1 className="mb-4 text-3xl font-black leading-[1.06] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-[2.75rem] lg:text-5xl">
-                {tvShow.name} {tvYear && <span className="text-white/75">({tvYear})</span>}
-              </h1>
-              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-white/85">
-                {tvShow.vote_average > 0 && (
-                  <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />{tvShow.vote_average.toFixed(1)}/10</span>
+          <DetailHero
+            title={tvShow.name}
+            year={tvYear}
+            rating={tvShow.vote_average}
+            seasons={tvShow.number_of_seasons}
+            episodes={tvShow.number_of_episodes}
+            runtime={tvShow.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} ${t('details.minutesLabel')}` : null}
+            seasonLabel={t('details.seasonsLabel')}
+            episodeLabel={t('details.episodesLabel')}
+            genres={(tvShow.genres || []).map((genre) => ({
+              id: genre.id,
+              name: t('genres.id_' + genre.id, { defaultValue: String(genre.id) }),
+            }))}
+            synopsis={shouldHide('episodeOverviews')
+              ? getMaskedContent(tvShow.overview || '', 'episodeOverviews')
+              : tvShow.overview}
+            imageUrl={backdropImage}
+            fallbackImageUrl={mainPosterUrl}
+            genreHref={(genreId) => `/genre/tv/${genreId}`}
+            badges={
+              <>
+                {animeMode && (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-rose-300/40 bg-rose-600/25 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-rose-100 backdrop-blur-sm">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    {t('details.animeModeActiveBadge')}
+                  </span>
                 )}
-                {tvYear && <span>{tvYear}</span>}
-                {tvShow.number_of_seasons ? <span>{tvShow.number_of_seasons} {t('details.seasonsLabel').toLowerCase()}</span> : null}
-                {tvShow.number_of_episodes ? <span>{tvShow.number_of_episodes} {t('details.episodes').toLowerCase()}</span> : null}
-                {tvShow.episode_run_time?.[0] ? <span>{tvShow.episode_run_time[0]} min/épisode</span> : null}
-              </div>
-              {(showAiring.kind !== 'unconfirmed' || showAiring.date) && (
-                <div className="mb-4">
-                  <span className={showAiring.kind === 'unconfirmed' ? "inline-flex max-w-full rounded-md bg-black/40 px-2.5 py-1 text-xs font-semibold text-white/80" : showAiring.kind === 'aired' ? "inline-flex max-w-full rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-semibold text-white" : "inline-flex max-w-full rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-semibold text-black"}>
+                {(showAiring.kind !== 'unconfirmed' || showAiring.date) && (
+                  <span className={showAiring.kind === 'unconfirmed'
+                    ? 'inline-flex max-w-full rounded-md bg-black/40 px-2.5 py-1 text-xs font-semibold text-white/80'
+                    : showAiring.kind === 'aired'
+                      ? 'inline-flex max-w-full rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white'
+                      : 'inline-flex max-w-full rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-black'}>
                     {getAiringLabel(showAiring, t, i18n.language, airingNow)}
                   </span>
-                </div>
-              )}
-              {tvShow.genres?.length > 0 && (
-                <div className="mb-5 flex flex-wrap gap-2">
-                  {tvShow.genres.slice(0, 5).map((genre) => (
-                    <span key={genre.id} className="rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">{t('genres.id_' + genre.id, { defaultValue: String(genre.id) })}</span>
-                  ))}
-                </div>
-              )}
-              {tvShow.overview && (
-                <p className="mb-6 max-w-xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-3">
-                  {shouldHide('episodeOverviews') ? getMaskedContent(tvShow.overview, 'episodeOverviews') : tvShow.overview}
-                </p>
-              )}
-              <div className="flex flex-wrap items-center gap-3">
-                <WatchButtons />
-                <motion.button
-                  whileHover={{ y: -2, scale: 1.015 }}
-                  whileTap={{ scale: 0.985 }}
-                  onClick={() => setShowAntiSpoilerModal(true)}
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-3 py-2.5 text-xs font-semibold text-white/90 backdrop-blur-md transition-colors hover:border-white/25 hover:bg-white/[0.2] sm:text-sm"
-                  title={t('details.antiSpoilConfig')}
-                >
-                  <Shield className="h-4 w-4" /><span>{t('details.antiSpoil')}</span>
-                </motion.button>
-                {isAnime() && (
-                  <motion.button
-                    whileHover={{ y: -2, scale: 1.015 }}
-                    whileTap={{ scale: 0.985 }}
-                    onClick={handleAnimeModeToggle}
-                    disabled={loadingAnimeData}
-                    aria-pressed={animeMode}
-                    className={"inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-xs font-bold transition-all sm:text-sm " + (animeMode ? 'border-rose-300/40 bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-lg' : 'border-white/15 bg-black/35 text-gray-100 hover:bg-white/10') + (loadingAnimeData ? ' cursor-wait opacity-70' : '')}
-                  >
-                    {animeMode ? <Video className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                    <span>{animeMode ? t('details.backToStandardMode') : t('details.animeModeLabel')}</span>
-                  </motion.button>
                 )}
-              </div>
-              {animeMode && (
-                <p className="mt-4 max-w-xl rounded-xl border border-amber-400/25 bg-black/45 px-4 py-3 text-xs font-medium leading-relaxed text-amber-100 backdrop-blur-sm">
-                  <AlertTriangle className="mr-2 inline h-4 w-4" />{t('details.standardModeAvailable')}
-                </p>
-              )}
-              {airingSchedule && (
-                <p className="mt-3 text-xs text-white/60">
-                  {t('details.airing.source')}{' '}
-                  <a href={airingSchedule.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white">TVmaze</a>
-                </p>
-              )}
-            </div>
-            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/28 to-transparent" />
-          </motion.section>
+              </>
+            }
+            note={airingSchedule ? (
+              <p>
+                {t('details.airing.source')}{' '}
+                <a href={airingSchedule.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white">TVmaze</a>
+              </p>
+            ) : undefined}
+            actions={<WatchButtons />}
+          />
 
-          {/* Colonne droite - Informations */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="w-full min-w-0"
-          >
-            {/* Tabs */}
-            <div className="relative">
-              <div
-                ref={tabsContainerRef}
-                className="flex overflow-x-auto scrollbar-hide touch-pan-x border-b border-gray-700 mb-6"
-                style={{
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                  WebkitOverflowScrolling: 'touch'
-                }}
-                id="tabs-container"
+
+        <div className="mx-auto w-full max-w-5xl">
+          <div className="detail-section flex flex-wrap items-center gap-3 border-b border-white/[0.08] pb-4">
+            <LikeDislikeButton
+              contentType="tv"
+              contentId={id || ''}
+              onStatsChange={setMovixVoteStats}
+            />
+            <motion.button
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.985 }}
+              onClick={() => setShowAntiSpoilerModal(true)}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.06] px-4 py-2.5 text-xs font-semibold text-white/90 transition-colors hover:bg-white/[0.12] sm:text-sm"
+              title={t('details.antiSpoilConfig')}
+            >
+              <Shield className="h-4 w-4" aria-hidden="true" />
+              <span>{t('details.antiSpoil')}</span>
+            </motion.button>
+            {isAnime() && (
+              <motion.button
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.985 }}
+                onClick={handleAnimeModeToggle}
+                disabled={loadingAnimeData}
+                aria-pressed={animeMode}
+                className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-bold transition-all sm:text-sm ${animeMode
+                  ? 'border-rose-300/40 bg-gradient-to-r from-rose-600 to-red-600 text-white'
+                  : 'border-white/15 bg-white/[0.06] text-white/90 hover:bg-white/[0.12]'}${loadingAnimeData ? ' cursor-wait opacity-70' : ''}`}
               >
-                <motion.button
-                  onClick={() => setActiveTab('overview')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'overview' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.overviewTab')}
-                  {activeTab === 'overview' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-                <motion.button
-                  onClick={() => setActiveTab('details')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'details' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.detailsTab')}
-                  {activeTab === 'details' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-                <motion.button
-                  onClick={() => setActiveTab('videos')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'videos' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.videosTab')}
-                  {activeTab === 'videos' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={() => setActiveTab('images')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'images' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.imagesTab')}
-                  {activeTab === 'images' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={() => setActiveTab('cast')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'cast' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.castTab')}
-                  {activeTab === 'cast' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={() => setActiveTab('crew')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'crew' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.crewTab')}
-                  {activeTab === 'crew' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                {/* Réservé à ce qu'AniList apporte : sur du live-action,
-                    l'onglet Équipe et celui de Distribution disent déjà tout,
-                    et un onglet de plus ne ferait que répéter. */}
-                {hasCharactersTab && (
-                  <motion.button
-                    onClick={() => setActiveTab('characters')}
-                    className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'characters' ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                    whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                  >
-                    {t('details.charactersTab')}
-                    {activeTab === 'characters' && (
-                      <motion.div
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                        layoutId="activeTab"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                  </motion.button>
-                )}
-
-                {/* Bouton Commentaires (scroll vers la section) */}
-                <motion.button
-                  onClick={() => {
-                    // Scroll vers les commentaires
-                    commentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className="px-6 py-3 font-medium text-sm flex-shrink-0 text-gray-400 hover:text-white"
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    {t('details.commentsTab')}
-                  </div>
-                </motion.button>
-              </div>
-              {isTabsScrollable && (
-                <div className="absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-black to-transparent pointer-events-none flex items-center justify-end pr-2">
-                  <motion.div
-                    animate={{ opacity: [0.7, 1, 0.7] }}
-                    transition={{ repeat: Infinity, duration: 1.5, repeatType: "reverse" }}
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-300 opacity-70" />
-                  </motion.div>
-                </div>
-              )}
-            </div>
-            {/* Contenu des tabs */}
-            <AnimatePresence>
-              {activeTab === 'overview' ? (
-                <motion.div
-                  key="overview"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {/* Synopsis */}
-                  <motion.div
-                    className="mb-6 rounded-2xl border border-white/[0.08] bg-slate-950/35 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <div className="mb-4">
-                      <LikeDislikeButton
-                        contentType="tv"
-                        contentId={id || ''}
-                        onStatsChange={setMovixVoteStats}
-                      />
-                    </div>
-
-                    {/* TMDB Info Box */}
-                    <div data-halloween-parchment className="mb-6 flex items-start gap-3 rounded-xl border border-rose-400/25 bg-gradient-to-r from-rose-500/[0.11] via-red-500/[0.07] to-transparent p-4 shadow-[0_8px_24px_rgba(0,0,0,0.14)] backdrop-blur-md">
-                      <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-gray-300">
-                        <p>
-                          {t('details.tmdbInfoNote')}{' '}
-                          <a
-                            href={`https://www.themoviedb.org/tv/${id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-red-400 hover:text-red-300 underline"
-                          >
-                            TMDB
-                          </a>
-                          . {t('details.tmdbInfoDiffNote')}
-                        </p>
-                      </div>
-                    </div>
-
-                    <h2 className="mb-3 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.synopsisTitle')}</h2>
-                    <p className="max-w-5xl text-sm leading-7 text-slate-200/85 sm:text-[15px]">
-                      {shouldHide('episodeOverviews')
-                        ? getMaskedContent(tvShow.overview || t('details.noSynopsis'), 'episodeOverviews')
-                        : (tvShow.overview || t('details.noSynopsis'))
-                      }
-                    </p>
-                  </motion.div>
-                  {/* Infos basiques */}
-                  <motion.div
-                    className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    {/* Nombre de saisons */}
-                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.seasonsLabel')}</h3>
-                      <p className="text-gray-300">{tvShow.number_of_seasons || 0}</p>
-                    </div>
-                    {/* Nombre d'épisodes */}
-                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.episodesLabel')}</h3>
-                      <p className="text-gray-300">{tvShow.number_of_episodes || 0}</p>
-                    </div>
-                    {/* Notes */}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
-                      <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.ratingLabel')}</h3>
-                        <div className="flex items-center gap-2">
-                          <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                          <p className="text-gray-300 text-lg font-bold">{tvShow.vote_average?.toFixed(1) || 'N/A'}<span className="text-sm font-normal text-gray-400">/10</span></p>
-                        </div>
-                      </div>
-
-                      {movixRating != null && (
-                        <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                          <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            {t('details.movixRatingLabel')}
-                            <button
-                              type="button"
-                              onClick={() => setShowMovixRatingInfo(true)}
-                              aria-label={t('details.movixRatingInfoButtonLabel')}
-                              title={t('details.movixRatingInfoButtonLabel')}
-                              className="rounded-full text-gray-400 transition-colors hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
-                            >
-                              <Info className="h-4 w-4" />
-                            </button>
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <Star className="w-5 h-5 text-red-500 fill-red-500" />
-                            <p className="text-gray-300 text-lg font-bold">{movixRating.toFixed(1)}<span className="text-sm font-normal text-gray-400">/10</span></p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    {/* Genres */}
-                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                      <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.genresLabel')}</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {tvShow.genres?.map((genre, index) => (
-                          <motion.div
-                            key={genre.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.1 + index * 0.05 }}
-                          >
-                            <Link
-                              to={`/genre/tv/${genre.id}`}
-                              className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.06] px-3 py-2 text-sm font-medium text-slate-200 transition-all hover:border-rose-300/30 hover:bg-rose-500/10 hover:text-white"
-                            >
-                              <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                              {genre.name}
-                            </Link>
-                          </motion.div>
-                        ))}
-                      </div>
-
-
-                    </div>
-                    {/* Classification par âge */}
-                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.classificationLabel')}</h3>
-                      <div className="flex items-center gap-2">
-                        {certifications['FR'] ? (
-                          <span className="inline-flex rounded-lg border border-rose-300/20 bg-rose-500/15 px-3 py-1.5 text-sm font-semibold text-rose-100">
-                            {getClassificationLabel(certifications['FR'], t)}
-                          </span>
-                        ) : certifications['US'] ? (
-                          <span className="inline-flex rounded-lg border border-rose-300/20 bg-rose-500/15 px-3 py-1.5 text-sm font-semibold text-rose-100">
-                            {getClassificationLabel(certifications['US'], t)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">{t('details.notClassified')}</span>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-
+                {animeMode ? <Video className="h-4 w-4" aria-hidden="true" /> : <Sparkles className="h-4 w-4" aria-hidden="true" />}
+                <span>{animeMode ? t('details.backToStandardMode') : t('details.animeModeLabel')}</span>
+              </motion.button>
+            )}
+          </div>
+          {animeMode && (
+            <p className="mt-4 flex items-start gap-2 rounded-xl border border-amber-400/25 bg-amber-500/[0.07] px-4 py-3 text-xs leading-relaxed text-amber-100">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              {t('details.standardModeAvailable')}
+            </p>
+          )}
 
                   {/* Saisons et épisodes */}
-                  <motion.div
+                <motion.div
                     ref={seasonsSectionRef}
                     className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${useAnimeSeasonLayout ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
                     initial={{ opacity: 0 }}
@@ -4637,1533 +3490,20 @@ const TVDetails: React.FC = () => {
                           </AnimatePresence>
                         </motion.div>
                       )}
-                    </AnimatePresence>
-                  </motion.div>
+                </AnimatePresence>
                 </motion.div>
-              ) : activeTab === 'cast' ? (
-                <motion.div
-                  key="cast"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.castTab')}</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {cast.map((actor, index) => (
-                      <motion.div
-                        key={actor.id}
-                        className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
-                        onClick={() => navigate(`/person/${actor.id}`)}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 + index * 0.05 }}
-                        whileHover={{
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                          scale: 1.02,
-                          transition: { duration: 0.2 }
-                        }}
-                      >
-                        {actor.profile_path ? (
-                          <motion.img
-                            src={getTmdbImageUrl(actor.profile_path, {
-                              kind: 'profile',
-                              quality: effectiveImageQuality,
-                              width: Math.ceil(48 * imageDpr),
-                              role: 'card',
-                            })}
-                            alt={actor.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                            whileHover={{ scale: 1.1 }}
-                          />
-                        ) : (
-                          <motion.div
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
-                            style={{ backgroundColor: `hsl(${actor.name.charCodeAt(0) * 7 % 360}, 50%, 40%)` }}
-                            whileHover={{ scale: 1.1 }}
-                          >
-                            {actor.name.charAt(0).toUpperCase()}
-                          </motion.div>
-                        )}
-                        <div>
-                          <p className="font-medium">{actor.name}</p>
-                          <p className="text-sm text-gray-400">{actor.character || t('details.actorRole')}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : activeTab === 'characters' ? (
-                <motion.div
-                  key="characters"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <CharactersSection data={characters} loading={charactersLoading} />
-                </motion.div>
-              ) : activeTab === 'crew' ? (
-                <motion.div
-                  key="crew"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.crewTab')}</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {crew.map((member, index) => (
-                      <motion.div
-                        key={member.id}
-                        className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 + index * 0.05 }}
-                        whileHover={{
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                          scale: 1.02,
-                          transition: { duration: 0.2 }
-                        }}
-                        onClick={() => navigate(`/person/${member.id}`)}
-                      >
-                        {member.profile_path ? (
-                          <motion.img
-                            src={getTmdbImageUrl(member.profile_path, {
-                              kind: 'profile',
-                              quality: effectiveImageQuality,
-                              width: Math.ceil(48 * imageDpr),
-                              role: 'card',
-                            })}
-                            alt={member.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                            whileHover={{ scale: 1.1 }}
-                          />
-                        ) : (
-                          <motion.div
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
-                            style={{ backgroundColor: `hsl(${member.name.charCodeAt(0) * 7 % 360}, 50%, 40%)` }}
-                            whileHover={{ scale: 1.1 }}
-                          >
-                            {member.name.charAt(0).toUpperCase()}
-                          </motion.div>
-                        )}
-                        <div>
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-sm text-gray-400">{member.jobs.join(', ')}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : activeTab === 'details' ? (
-                <motion.div
-                  key="details"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  {/* Sociétés de production */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Building className="w-5 h-5" />
-                      {t('details.productionCompanies')}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {((tvShow as any).production_companies || []).length > 0 ? (
-                        ((tvShow as any).production_companies || []).map((company: any, index: number) => (
-                          <motion.div
-                            key={company.id}
-                            className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.045] p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.07]"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 + index * 0.1 }}
-                            whileHover={{
-                              backgroundColor: "rgba(75,85,99, 0.8)",
-                              y: -3,
-                              transition: { duration: 0.2 }
-                            }}
-                          >
-                            <motion.div
-                              className="w-12 h-12 flex items-center justify-center bg-gray-700 rounded overflow-hidden"
-                              whileHover={{ scale: 1.1 }}
-                            >
-                              {company.logo_path ? (
-                                <img
-                                  src={getTmdbImageUrl(company.logo_path, {
-                                    kind: 'logo',
-                                    quality: effectiveImageQuality,
-                                    width: Math.ceil(40 * imageDpr),
-                                    role: 'card',
-                                  })}
-                                  alt={company.name}
-                                  className="max-h-10 max-w-10"
-                                />
-                              ) : (
-                                <Building className="w-6 h-6 text-gray-400" />
-                              )}
-                            </motion.div>
-                            <span className="text-gray-200">{company.name}</span>
-                          </motion.div>
-                        ))
-                      ) : (
-                        <div className="col-span-2 text-gray-400 italic">{t('details.noProductionCompany')}</div>
-                      )}
-                    </div>
-                  </motion.div>
-
-                  {/* Pays d'origine */}
-                  {((tvShow as any).origin_country || []).length > 0 && (
-                    <motion.div
-                      className="mb-6"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                        <MapPin className="w-5 h-5" />
-                        {t('details.originCountry')}
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {((tvShow as any).origin_country || []).map((country: string, index: number) => (
-                          <motion.div
-                            key={country}
-                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 + index * 0.05 }}
-                            whileHover={{
-                              backgroundColor: "rgba(75,85,99, 0.8)",
-                              y: -2,
-                              borderColor: "rgba(107,114,128, 0.8)",
-                              transition: { duration: 0.2 }
-                            }}
-                          >
-                            {country}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Langues */}
-                  {((tvShow as any).spoken_languages || []).length > 0 && (
-                    <motion.div
-                      className="mb-6"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.6 }}
-                    >
-                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                        <Languages className="w-5 h-5" />
-                        {t('details.languagesLabel')}
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {((tvShow as any).spoken_languages || []).map((lang: any, index: number) => (
-                          <motion.div
-                            key={lang.iso_639_1}
-                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 + index * 0.05 }}
-                            whileHover={{
-                              backgroundColor: "rgba(75,85,99, 0.8)",
-                              y: -2,
-                              borderColor: "rgba(107,114,128, 0.8)",
-                              transition: { duration: 0.2 }
-                            }}
-                          >
-                            {lang.name}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Date de diffusion */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.7 }}
-                  >
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      {t('details.firstAirDateLabel')}
-                    </h3>
-                    <motion.div
-                      className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm"
-                      whileHover={{
-                        backgroundColor: "rgba(75,85,99, 0.8)",
-                        y: -2,
-                        borderColor: "rgba(107,114,128, 0.8)",
-                        transition: { duration: 0.2 }
-                      }}
-                    >
-                      {formatAiringDate(showAiring, i18n.language) ?? t('details.dateNotAvailable')}
-                    </motion.div>
-                  </motion.div>
-
-                  {/* Statistiques de production */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                  >
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                        <path d="M3 3v18h18" />
-                        <path d="M18 9l-6-6-6 6" />
-                        <path d="M6 10l6-6 2 2" />
-                      </svg>
-                      {t('details.statisticsTitle')}
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Nombre de saisons */}
-                      <motion.div
-                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                        whileHover={{
-                          backgroundColor: "rgba(75,85,99, 0.8)",
-                          y: -2,
-                          borderColor: "rgba(107,114,128, 0.8)",
-                          transition: { duration: 0.2 }
-                        }}
-                      >
-                        <h4 className="text-gray-400 text-sm mb-1">{t('details.numberOfSeasons')}</h4>
-                        <p className="text-gray-200 font-semibold">
-                          {tvShow.number_of_seasons || t('details.notAvailableData')}
-                        </p>
-                      </motion.div>
-
-                      {/* Nombre d'épisodes */}
-                      <motion.div
-                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                        whileHover={{
-                          backgroundColor: "rgba(75,85,99, 0.8)",
-                          y: -2,
-                          borderColor: "rgba(107,114,128, 0.8)",
-                          transition: { duration: 0.2 }
-                        }}
-                      >
-                        <h4 className="text-gray-400 text-sm mb-1">{t('details.numberOfEpisodes')}</h4>
-                        <p className="text-gray-200 font-semibold">
-                          {tvShow.number_of_episodes || t('details.notAvailableData')}
-                        </p>
-                      </motion.div>
-
-                      {/* Popularité */}
-                      {tvShow.popularity && (
-                        <motion.div
-                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.popularityLabel')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {tvShow.popularity.toFixed(0)}
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Durée moyenne des épisodes */}
-                      {tvShow.episode_run_time && tvShow.episode_run_time.length > 0 && (
-                        <motion.div
-                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.averageDuration')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {tvShow.episode_run_time[0]} minutes
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Statut */}
-                      {tvShow.status && (
-                        <motion.div
-                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.statusLabel')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {tvShow.status === 'Returning Series' ? t('details.seriesOngoing') :
-                              tvShow.status === 'Ended' ? t('details.ended') :
-                                tvShow.status === 'Canceled' ? t('details.cancelled') :
-                                  tvShow.status === 'In Production' ? t('details.inProductionStatus') :
-                                    tvShow.status}
-                            {tvShow.in_production === true && ` (${t('details.inProductionNote')})`}
-                            {tvShow.in_production === false && tvShow.status !== 'Ended' && tvShow.status !== 'Canceled' && ` (${t('details.productionEndedNote')})`}
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Dernière diffusion */}
-                      {lastBroadcastEpisode && lastBroadcastAiring && (
-                        <motion.div
-                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t(lastBroadcastAiring.kind === 'aired' ? 'details.lastEpisodeAired' : 'details.airing.lastAnnouncedEpisode')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {shouldHide('episodeNames') ? (
-                              getMaskedContent(t('details.maskedInfo'), 'episodeNames')
-                            ) : (
-                              <>
-                                S{lastBroadcastEpisode.season_number} E{lastBroadcastEpisode.episode_number} - {lastBroadcastEpisode.name}
-                                <span className="ml-2 text-gray-400 text-sm">
-                                  ({formatAiringDate(lastBroadcastAiring, i18n.language)})
-                                </span>
-                              </>
-                            )}
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Prochain épisode */}
-                      {nextBroadcastEpisode && nextBroadcastAiring && (
-                        <motion.div
-                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.nextEpisodeLabel')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {shouldHide('episodeNames') ? (
-                              getMaskedContent(t('details.maskedInfo'), 'episodeNames')
-                            ) : (
-                              <>
-                                S{nextBroadcastEpisode.season_number} E{nextBroadcastEpisode.episode_number} - {nextBroadcastEpisode.name}
-                                <span className="ml-2 text-gray-400 text-sm">
-                                  ({getAiringLabel(nextBroadcastAiring, t, i18n.language, airingNow)})
-                                </span>
-                              </>
-                            )}
-                          </p>
-                        </motion.div>
-                      )}
-                    </div>
-                  </motion.div>
-
-                  {/* Statistiques financières */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.85 }}
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-                          <path d="M12 18V6" />
-                        </svg>
-                        {t('details.financialStatsTitle')}
-                      </h3>
-                      <motion.div
-                        className="flex overflow-hidden rounded-xl border border-white/[0.09] bg-black/25 p-1 shadow-inner"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <button
-                          className={`px-3 py-1 text-sm ${financialStatsMode === 'simple' ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                          onClick={() => setFinancialStatsMode('simple')}
-                        >
-                          {t('details.simpleMode')}
-                        </button>
-                        <button
-                          className={`px-3 py-1 text-sm ${financialStatsMode === 'advanced' ? 'bg-blue-600 text-white' : 'bg-transparent text-gray-400 hover:text-white'}`}
-                          onClick={() => setFinancialStatsMode('advanced')}
-                        >
-                          {t('details.advancedMode')}
-                        </button>
-                      </motion.div>
-                    </div>
-
-                    {/* Informations globales - toujours visibles en mode simple */}
-                    <div className="mb-4">
-                      <h4 className="text-md font-medium mb-2 text-gray-300 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                        {t('details.globalLabel')}
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Coût estimé par épisode */}
-                        <motion.div
-                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.estimatedCostPerEpisode')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {tvShow.type === 'Scripted' ? (
-                              tvShow.networks?.some(n => ['HBO', 'Netflix', 'Amazon', 'Apple TV+', 'Disney+'].includes(n.name))
-                                ? t('details.costRange5to15M')
-                                : t('details.costRange1to5M')
-                            ) : tvShow.type === 'Reality' ?
-                              t('details.costRange100Kto500K') :
-                              t('details.notAvailableData')
-                            }
-                          </p>
-                        </motion.div>
-
-                        {/* Budget total estimé */}
-                        <motion.div
-                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.estimatedTotalBudget')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {tvShow.number_of_episodes && tvShow.type === 'Scripted' ? (
-                              tvShow.networks?.some(n => ['HBO', 'Netflix', 'Amazon', 'Apple TV+', 'Disney+'].includes(n.name))
-                                ? `~ ${(10 * tvShow.number_of_episodes).toLocaleString(i18n.language)} millions USD`
-                                : `~ ${(3 * tvShow.number_of_episodes).toLocaleString(i18n.language)} millions USD`
-                            ) : tvShow.type === 'Reality' && tvShow.number_of_episodes ?
-                              `~ ${(0.3 * tvShow.number_of_episodes).toLocaleString(i18n.language)} millions USD` :
-                              t('details.notAvailableData')
-                            }
-                          </p>
-                        </motion.div>
-
-                        {/* Section des revenus - affichée différemment selon le mode */}
-                        <motion.div
-                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.revenueAndProfits')}</h4>
-
-                          {financialStatsMode === 'simple' ? (
-                            <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                              <div className="flex justify-between items-center">
-                                <span className="text-sm text-gray-300">{t('details.profitabilityStatus')}</span>
-                                <span className={`text-sm font-semibold ${tvShow.number_of_seasons && tvShow.vote_average &&
-                                  (
-                                    (tvShow.vote_average >= 7.5 && tvShow.number_of_seasons >= 1) ||
-                                    (tvShow.vote_average >= 6.5 && tvShow.number_of_seasons >= 2) ||
-                                    (tvShow.number_of_seasons >= 3)
-                                  ) ? 'text-green-400' : 'text-yellow-400'
-                                  }`}>
-                                  {tvShow.number_of_seasons && tvShow.vote_average &&
-                                    (
-                                      (tvShow.vote_average >= 7.5 && tvShow.number_of_seasons >= 1) ||
-                                      (tvShow.vote_average >= 6.5 && tvShow.number_of_seasons >= 2) ||
-                                      (tvShow.number_of_seasons >= 3)
-                                    ) ? t('details.probablyProfitable') : t('details.uncertainProfitability')}
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              {/* Sources de revenus - mode avancé seulement */}
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="mb-3"
-                              >
-                                <p className="text-sm text-gray-300 mb-2">
-                                  <span className="font-semibold">{t('details.revenueSources')}</span> {t('details.byImportanceOrder')}
-                                </p>
-                                <ul className="list-disc pl-5 text-sm text-gray-300 space-y-1">
-                                  <li>{t('details.broadcastingRightsInitial')} <span className="text-gray-400">{tvShow.networks?.some(n => ['HBO', 'Netflix', 'Amazon', 'Disney+'].includes(n.name)) ? t('details.tv.finance.budgetHigh') : t('details.tv.finance.budgetLow')}</span></li>
-                                  <li>{t('details.advertisingRevenue')} <span className="text-gray-400">{tvShow.networks?.some(n => ['NBC', 'CBS', 'ABC', 'FOX'].includes(n.name)) ? t('details.tv.finance.adRevenueHigh') : t('details.tv.finance.adRevenueVariable')}</span></li>
-                                  <li>{t('details.internationalSales')} <span className="text-gray-400">{t('details.tv.finance.marketing')}</span></li>
-                                  <li>{t('details.tv.finance.streamingLabel')} <span className="text-gray-400">{t('details.tv.finance.streaming')}</span></li>
-                                  <li>{t('details.merchandisingLabel')} <span className="text-gray-400">{tvShow.popularity && tvShow.popularity > 100 ? t('details.potentiallyVeryHigh') : t('details.limited')}</span></li>
-                                </ul>
-                              </motion.div>
-
-                              {/* Estimations de bénéfices - mode avancé seulement */}
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                                transition={{ duration: 0.3 }}
-                                className="mb-3"
-                              >
-                                <p className="text-sm text-gray-300 mb-2">
-                                  <span className="font-semibold">{t('details.profitabilityEstimate')}</span> {t('details.tv.finance.forShow', { name: tvShow.name })}
-                                </p>
-
-                                <div className="mb-2 rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs text-gray-400">{t('details.breakEvenEstimate')}</span>
-                                    <span className="text-xs font-semibold text-gray-300">
-                                      {tvShow.vote_average >= 7.5 ? t('details.breakEven1to2') :
-                                        tvShow.vote_average >= 6.5 ? t('details.breakEven2to3') :
-                                          t('details.breakEven3plus')}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex justify-between items-center mb-1">
-                                    <span className="text-xs text-gray-400">{t('details.potentialROI')}</span>
-                                    <span className="text-xs font-semibold text-gray-300">
-                                      {tvShow.vote_average >= 8 ? '200-400%' :
-                                        tvShow.vote_average >= 7 ? '100-200%' :
-                                          tvShow.vote_average >= 6 ? '30-100%' :
-                                            'Incertain'}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-xs text-gray-400">{t('details.currentProfitabilityStatus')}</span>
-                                    <span className={`text-xs font-semibold ${tvShow.number_of_seasons && tvShow.vote_average &&
-                                      (
-                                        (tvShow.vote_average >= 7.5 && tvShow.number_of_seasons >= 1) ||
-                                        (tvShow.vote_average >= 6.5 && tvShow.number_of_seasons >= 2) ||
-                                        (tvShow.number_of_seasons >= 3)
-                                      ) ? 'text-green-400' : 'text-yellow-400'
-                                      }`}>
-                                      {tvShow.number_of_seasons && tvShow.vote_average &&
-                                        (
-                                          (tvShow.vote_average >= 7.5 && tvShow.number_of_seasons >= 1) ||
-                                          (tvShow.vote_average >= 6.5 && tvShow.number_of_seasons >= 2) ||
-                                          (tvShow.number_of_seasons >= 3)
-                                        ) ? t('details.probablyProfitable') : t('details.uncertainProfitability')}
-                                    </span>
-                                  </div>
-                                </div>
-                              </motion.div>
-
-                              {/* Facteurs de succès - mode avancé seulement */}
-                              <motion.div
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: "auto" }}
-                                exit={{ opacity: 0, height: 0 }}
-                              >
-                                <p className="text-sm text-gray-300 mb-2">
-                                  <span className="font-semibold">{t('details.factorsImpacting')}</span>
-                                </p>
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                                    <h5 className="text-xs font-medium text-green-400 mb-1">{t('details.positiveFactors')}</h5>
-                                    <ul className="list-disc pl-4 text-xs text-gray-300 space-y-0.5">
-                                      <li>{t('details.highRating')} ({tvShow.vote_average}/10)</li>
-                                      <li>{t('details.popularityFactor')} ({tvShow.popularity?.toFixed(0)})</li>
-                                      {tvShow.networks?.some(n => ['HBO', 'Netflix', 'Amazon', 'Apple TV+', 'Disney+'].includes(n.name)) &&
-                                        <li>{t('details.premiumBroadcaster')}</li>
-                                      }
-                                      {tvShow.in_production &&
-                                        <li>{t('details.stillInProduction')}</li>
-                                      }
-                                    </ul>
-                                  </div>
-                                  <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                                    <h5 className="text-xs font-medium text-red-400 mb-1">{t('details.negativeFactors')}</h5>
-                                    <ul className="list-disc pl-4 text-xs text-gray-300 space-y-0.5">
-                                      {!tvShow.in_production &&
-                                        <li>{t('details.productionEndedFactor')}</li>
-                                      }
-                                      {tvShow.status === 'Canceled' &&
-                                        <li>{t('details.seriesCancelledFactor')}</li>
-                                      }
-                                      {tvShow.vote_average < 6.5 &&
-                                        <li>{t('details.lowAverageRating')}</li>
-                                      }
-                                      {tvShow.popularity && tvShow.popularity < 50 &&
-                                        <li>{t('details.limitedPopularity')}</li>
-                                      }
-                                    </ul>
-                                  </div>
-                                </div>
-
-                                <p className="text-xs text-gray-400 italic mt-3">
-                                  {t('details.financialNote')}
-                                </p>
-                              </motion.div>
-                            </>
-                          )}
-                        </motion.div>
-                      </div>
-                    </div>
-
-                    {/* Informations par saison - seulement visible en mode avancé */}
-                    {financialStatsMode === 'advanced' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="mb-4"
-                      >
-                        <h4 className="text-md font-medium mb-2 text-gray-300 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                          {t('details.perSeasonLabel')}
-                        </h4>
-
-                        <motion.div
-                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <div className="grid grid-cols-3 gap-2 text-xs text-gray-400 border-b border-gray-700 pb-2 mb-2">
-                            <div>{t('details.seasonsLabel')}</div>
-                            <div>{t('details.episodesLabel')}</div>
-                            <div>{t('details.estimatedBudgetLabel')}</div>
-                          </div>
-                          <div className="space-y-2 max-h-60 overflow-y-auto">
-                            {Array.from({ length: tvShow.number_of_seasons || 0 }, (_, i) => i + 1).map(season => (
-                              <div key={season} className="grid grid-cols-3 gap-2 text-sm">
-                                <div className="text-gray-200">{getSeasonDisplayName(season, t, `${t('details.season')} ${season}`)}</div>
-                                <div className="text-gray-200">
-                                  {seasonsDetails[season]
-                                    ? seasonsDetails[season].episodes.length
-                                    : "N/A"}
-                                </div>
-                                <div className="text-gray-200">
-                                  {tvShow.type === 'Scripted' ? (
-                                    tvShow.networks?.some(n => ['HBO', 'Netflix', 'Amazon', 'Apple TV+', 'Disney+'].includes(n.name))
-                                      ? `~${(10 * (seasonsDetails[season] ? seasonsDetails[season].episodes.length : 10)).toLocaleString(i18n.language)}M USD`
-                                      : `~${(3 * (seasonsDetails[season] ? seasonsDetails[season].episodes.length : 10)).toLocaleString(i18n.language)}M USD`
-                                  ) : tvShow.type === 'Reality' ?
-                                    `~${(0.3 * (seasonsDetails[season] ? seasonsDetails[season].episodes.length : 10)).toLocaleString(i18n.language)}M USD` :
-                                    'N/A'
-                                  }
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          <div className="mt-2 text-xs text-gray-400 italic">
-                            {t('details.seasonBudgetNote')}
-                          </div>
-                        </motion.div>
-                      </motion.div>
-                    )}
-
-                    {/* Informations par épisode - seulement visible en mode avancé */}
-                    {financialStatsMode === 'advanced' && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="mb-4"
-                      >
-                        <h4 className="text-md font-medium mb-2 text-gray-300 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                          {t('details.perEpisodeLabel')}
-                        </h4>
-
-                        <motion.div
-                          className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.budgetBreakdownPerEpisode')}</h4>
-                          <div className="mt-3 space-y-3">
-                            <div className="relative pt-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    {t('details.productionAndFilming')}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    50-60%
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="overflow-hidden h-2 mt-1 text-xs flex rounded bg-gray-700">
-                                <div style={{ width: "55%" }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-red-500"></div>
-                              </div>
-                            </div>
-
-                            <div className="relative pt-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    {t('details.actors')}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    20-30%
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="overflow-hidden h-2 mt-1 text-xs flex rounded bg-gray-700">
-                                <div style={{ width: "25%" }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
-                              </div>
-                            </div>
-
-                            <div className="relative pt-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    {t('details.specialEffects')}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    5-15%
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="overflow-hidden h-2 mt-1 text-xs flex rounded bg-gray-700">
-                                <div style={{ width: "10%" }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"></div>
-                              </div>
-                            </div>
-
-                            <div className="relative pt-1">
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    {t('details.postProduction')}
-                                  </span>
-                                </div>
-                                <div>
-                                  <span className="text-xs font-semibold inline-block text-gray-300">
-                                    10-15%
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="overflow-hidden h-2 mt-1 text-xs flex rounded bg-gray-700">
-                                <div style={{ width: "12%" }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-yellow-500"></div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-3 text-xs text-gray-400 italic">
-                            {t('details.vfxNote')}
-                          </div>
-                        </motion.div>
-                      </motion.div>
-                    )}
-
-                  </motion.div>
-
-                  {/* Networks/Diffuseurs */}
-                  {tvShow.networks && tvShow.networks.length > 0 && (
-                    <motion.div
-                      className="mb-6"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.9 }}
-                    >
-                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                          <rect x="2" y="7" width="20" height="15" rx="2" ry="2" />
-                          <polyline points="17 2 12 7 7 2" />
-                        </svg>
-                        {t('details.broadcastNetworks')}
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {tvShow.networks.map((network, index) => (
-                          <motion.div
-                            key={network.id}
-                            className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.045] p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.07]"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 + index * 0.1 }}
-                            whileHover={{
-                              backgroundColor: "rgba(75,85,99, 0.8)",
-                              y: -3,
-                              transition: { duration: 0.2 }
-                            }}
-                          >
-                            <motion.div
-                              className="w-12 h-12 flex items-center justify-center bg-gray-700 rounded overflow-hidden"
-                              whileHover={{ scale: 1.1 }}
-                            >
-                              {network.logo_path ? (
-                                <img
-                                  src={getTmdbImageUrl(network.logo_path, {
-                                    kind: 'logo',
-                                    quality: effectiveImageQuality,
-                                    width: Math.ceil(40 * imageDpr),
-                                    role: 'card',
-                                  })}
-                                  alt={network.name}
-                                  className="max-h-10 max-w-10"
-                                />
-                              ) : (
-                                <Building className="w-6 h-6 text-gray-400" />
-                              )}
-                            </motion.div>
-                            <span className="text-gray-200">{network.name}</span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-                  {/* En fin d'onglet Détails : thèmes, titres alternatifs et
-                      mots-clés relèvent de la fiche technique, pas de la
-                      galerie de personnages. */}
-                  <DetailExtraMetadata
-                    themes={characters?.themes ?? []}
-                    alternateTitles={extraAlternateTitles}
-                    keywords={extraKeywords}
-                  />
-                </motion.div>
-              ) : activeTab === 'videos' ? (
-                <motion.div
-                  key="videos"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Video className="w-5 h-5" />
-                        {t('details.videosAndTrailers')}
-                    </h3>
-
-                    <motion.button
-                      whileHover={{
-                        scale: 1.05,
-                        boxShadow: "0 10px 25px rgba(147, 51, 234, 0.3)"
-                      }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                      onClick={() => {
-                        if (!showMultiLangView) {
-                          fetchMultiLangVideos();
-                        }
-                        setShowMultiLangView(!showMultiLangView);
-                      }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-lg border transition-all duration-300 ${showMultiLangView
-                        ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 border-red-500/20'
-                        : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border-purple-500/20'
-                        }`}
-                    >
-                      {showMultiLangView ? <ArrowLeft className="w-4 h-4" /> : <Languages className="w-4 h-4" />}
-                      {showMultiLangView ? t('details.back') : t('details.multiLanguages')}
-                    </motion.button>
-                  </div>
-
-                  {/* Section Vidéos Générales */}
-                  {(loadingVideos || loadingMultiLangVideos) ? (
-                    <div className="flex items-center justify-center h-40 w-full">
-                      <Loader className="w-8 h-8 animate-spin text-red-600" />
-                    </div>
-                  ) : showMultiLangView ? (
-                    // Vue multi-langues
-                    multiLangVideos.length > 0 ? (
-                      (() => {
-                        // Grouper les vidéos par langue
-                        const videosByLanguage = multiLangVideos.reduce((acc: any, video: any) => {
-                          const lang = video.iso_639_1 || 'unknown';
-                          if (!acc[lang]) acc[lang] = [];
-                          acc[lang].push(video);
-                          return acc;
-                        }, {});
-
-                        // Noms des langues
-                        const languageNames: { [key: string]: string } = {
-                          'fr': t('details.langFrench'),
-                          'en': t('details.langEnglish'),
-                          'es': t('details.langSpanish'),
-                          'de': t('details.langGerman'),
-                          'it': t('details.langItalian'),
-                          'pt': t('details.langPortuguese'),
-                          'ja': t('details.langJapanese'),
-                          'ko': t('details.langKorean'),
-                          'zh': t('details.langChinese'),
-                          'ru': t('details.langRussian'),
-                          'unknown': t('details.langUnknown')
-                        };
-
-                        return Object.entries(videosByLanguage).map(([langCode, videos]: [string, any]) => (
-                          <div key={langCode} className="mb-8">
-                            <h4 className="text-lg font-medium mb-4 text-purple-400 border-b border-gray-700 pb-2">
-                              {languageNames[langCode] || langCode.toUpperCase()}
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {videos.map((video: any, videoIndex: number) => (
-                                <motion.div
-                                  key={video.id}
-                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-violet-400/30"
-                                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{
-                                    delay: videoIndex * 0.05,
-                                    duration: 0.4,
-                                    type: "spring",
-                                    stiffness: 100
-                                  }}
-                                  whileHover={{
-                                    y: -8,
-                                    scale: 1.02,
-                                    boxShadow: "0 20px 40px rgba(147, 51, 234, 0.15)",
-                                    transition: { duration: 0.3 }
-                                  }}
-                                  whileTap={{ scale: 0.98 }}
-                                >
-                                  <div
-                                    className="relative cursor-pointer aspect-video overflow-hidden"
-                                    onClick={() => {
-                                      setSelectedVideo(video);
-                                      setShowVideoPopup(true);
-                                    }}
-                                  >
-                                    <motion.img
-                                      src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
-                                      alt={video.name}
-                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                                      whileHover={{ y: -2, scale: 1.015 }}
-                                      transition={{ duration: 0.3 }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                    <motion.div
-                                      className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors"
-                                      whileHover={{ backgroundColor: "rgba(0,0,0,0.1)" }}
-                                    >
-                                      <motion.div
-                                        className="w-14 h-14 rounded-full bg-purple-600/90 flex items-center justify-center shadow-lg"
-                                        whileHover={{
-                                          scale: 1.1,
-                                          backgroundColor: "rgba(147, 51, 234, 1)",
-                                          boxShadow: "0 0 20px rgba(147, 51, 234, 0.5)"
-                                        }}
-                                        whileTap={{ scale: 0.9 }}
-                                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                                      >
-                                        <Play className="w-6 h-6 text-white ml-1" />
-                                      </motion.div>
-                                    </motion.div>
-                                  </div>
-                                  <motion.div
-                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: videoIndex * 0.05 + 0.2 }}
-                                  >
-                                    <h4 className="font-semibold mb-2 line-clamp-1 text-white group-hover:text-purple-400 transition-colors">{video.name}</h4>
-                                    <div className="flex items-center text-sm text-gray-400">
-                                      <motion.span
-                                        className="bg-gray-700/70 px-2 py-1 rounded-md mr-2 text-xs font-medium"
-                                        whileHover={{ backgroundColor: "rgba(55, 65, 81, 1)" }}
-                                      >
-                                        {video.type}
-                                      </motion.span>
-                                      {video.size && <span className="text-xs">{video.size}p</span>}
-                                    </div>
-                                  </motion.div>
-                                </motion.div>
-                              ))}
-                            </div>
-                          </div>
-                        ));
-                      })()
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                        <Video className="w-8 h-8 mb-2" />
-                        <p>{t('details.noMultiLangVideo')}</p>
-                      </div>
-                    )
-                  ) : videos.length > 0 ? (
-                    <div className="space-y-8 mb-10">
-                      {/* Group general videos by type */}
-                      {['Trailer', 'Teaser', 'Clip', 'Behind the Scenes', 'Featurette'].map(videoType => {
-                        const filteredVideos = videos.filter((video: any) => video.type === videoType);
-                        if (filteredVideos.length === 0) return null;
-
-                        return (
-                          <div key={videoType} className="mb-6">
-                            {/* ... Rendu existant pour les types de vidéos générales ... */}
-                            <h4 className="text-lg font-medium mb-4 border-b border-gray-700 pb-2">
-                              {videoType === 'Trailer' ? t('details.videoTrailers') :
-                                videoType === 'Teaser' ? 'Teasers' :
-                                  videoType === 'Clip' ? t('details.videoClips') :
-                                    videoType === 'Behind the Scenes' ? t('details.videoBehindScenes') :
-                                      videoType === 'Featurette' ? t('details.videoMakingOf') : videoType}
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {filteredVideos.map((video: any, index: number) => (
-                                <motion.div
-                                  key={video.id || video.key}
-                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
-                                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{
-                                    delay: index * 0.1,
-                                    duration: 0.4,
-                                    type: "spring",
-                                    stiffness: 100
-                                  }}
-                                  whileHover={{
-                                    y: -8,
-                                    scale: 1.02,
-                                    boxShadow: "0 20px 40px rgba(239, 68, 68, 0.15)",
-                                    transition: { duration: 0.3 }
-                                  }}
-                                  whileTap={{ scale: 0.98 }}
-                                >
-                                  <div
-                                    className="relative cursor-pointer aspect-video overflow-hidden"
-                                    onClick={() => {
-                                      setSelectedVideo(video);
-                                      setShowVideoPopup(true);
-                                    }}
-                                  >
-                                    <motion.img
-                                      src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
-                                      alt={video.name}
-                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                                      whileHover={{ y: -2, scale: 1.015 }}
-                                      transition={{ duration: 0.3 }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                    <motion.div
-                                      className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors"
-                                      whileHover={{ backgroundColor: "rgba(0,0,0,0.1)" }}
-                                    >
-                                      <motion.div
-                                        className="w-14 h-14 rounded-full bg-red-600/90 flex items-center justify-center shadow-lg"
-                                        whileHover={{
-                                          scale: 1.1,
-                                          backgroundColor: "rgba(239, 68, 68, 1)",
-                                          boxShadow: "0 0 20px rgba(239, 68, 68, 0.5)"
-                                        }}
-                                        whileTap={{ scale: 0.9 }}
-                                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                                      >
-                                        <Play className="w-6 h-6 text-white ml-1" />
-                                      </motion.div>
-                                    </motion.div>
-                                  </div>
-                                  <motion.div
-                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: index * 0.1 + 0.2 }}
-                                  >
-                                    <h4 className="font-semibold mb-2 line-clamp-1 text-white group-hover:text-red-400 transition-colors">{video.name}</h4>
-                                    <div className="flex items-center text-sm text-gray-400">
-                                      <motion.span
-                                        className={`text-xs px-2 py-1 rounded-md mr-2 font-medium ${video.type === 'Trailer'
-                                          ? 'bg-red-600/70 text-white'
-                                          : video.type === 'Teaser'
-                                            ? 'bg-blue-600/70 text-white'
-                                            : video.type === 'Clip'
-                                              ? 'bg-green-600/70 text-white'
-                                              : 'bg-gray-700/70 text-gray-300'
-                                          }`}
-                                        whileHover={{ backgroundColor: video.type === 'Trailer' ? 'rgba(239, 68, 68, 0.9)' : undefined }}
-                                      >
-                                        {video.type === 'Trailer' ? t('details.videoTrailer') :
-                                          video.type === 'Teaser' ? 'Teaser' :
-                                            video.type === 'Clip' ? t('details.videoClip') :
-                                              video.type === 'Behind the Scenes' ? t('details.videoBehindScenes') :
-                                                video.type === 'Featurette' ? t('details.videoMakingOf') : video.type}
-                                      </motion.span>
-                                      {video.published_at && (
-                                        <span className="text-xs">
-                                          {new Date(video.published_at).toLocaleDateString(i18n.language)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </motion.div>
-                                </motion.div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {/* ... Rendu pour les autres types de vidéos générales ... */}
-                      {videos.filter((video: any) =>
-                        !['Trailer', 'Teaser', 'Clip', 'Behind the Scenes', 'Featurette'].includes(video.type)
-                      ).length > 0 && (
-                          <div className="mb-6">
-                            <h4 className="text-lg font-medium mb-4 border-b border-gray-700 pb-2">
-                              {t('details.otherVideos')}
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              {videos
-                                .filter((video: any) => !['Trailer', 'Teaser', 'Clip', 'Behind the Scenes', 'Featurette'].includes(video.type))
-                                .map((video: any, index: number) => (
-                                  <motion.div
-                                    key={video.id || video.key}
-                                    className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1 * index, duration: 0.3 }}
-                                    whileHover={{
-                                      y: -5,
-                                      transition: { duration: 0.2 }
-                                    }}
-                                    onClick={() => {
-                                      setSelectedVideo(video);
-                                      setShowVideoPopup(true);
-                                    }}
-                                  >
-                                    {/* ... Rendu carte vidéo ... */}
-                                    <div className="aspect-w-16 aspect-h-9 relative">
-                                      <img
-                                        src={`https://img.youtube.com/vi/${video.key}/hqdefault.jpg`}
-                                        alt={video.name}
-                                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                                      />
-                                      <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="w-16 h-16 rounded-full bg-red-600/80 flex items-center justify-center">
-                                          <Play className="w-8 h-8 text-white ml-1" />
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4">
-                                      <h4 className="font-medium mb-1">{video.name}</h4>
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs px-2 py-1 rounded bg-gray-700 text-gray-300">
-                                          {video.type}
-                                        </span>
-                                        {video.published_at && (
-                                          <span className="text-xs text-gray-400">
-                                            {new Date(video.published_at).toLocaleDateString(i18n.language)}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </motion.div>
-                                ))}
-                            </div>
-                          </div>
-                        )}
-                    </div>
-                  ) : loadingVideos ? (
-                    <div className="flex items-center justify-center h-40 w-full">
-                      <Loader className="w-8 h-8 animate-spin text-red-600" />
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                      <Video className="w-8 h-8 mb-2" />
-                      <p>{t('details.noGeneralVideoFound')}</p>
-                    </div>
-                  )}
-
-                  {/* Section Vidéos par Saison */}
-                  <h3 className="text-xl font-semibold mt-10 mb-6 border-t border-gray-700 pt-6">
-                    {t('details.videosBySeason')}
-                  </h3>
-                  {loadingVideos ? (
-                    <div className="flex items-center justify-center h-40 w-full">
-                      <Loader className="w-8 h-8 animate-spin text-red-600" />
-                    </div>
-                  ) : availableSeasons.length > 0 ? (
-                    availableSeasons.map(seasonNum => (
-                      <div key={`season-videos-${seasonNum}`} className="mb-8">
-                        <div className="flex items-center justify-between mb-6">
-                        <h4 className="text-lg font-semibold">{getSeasonDisplayName(seasonNum, t,`${t('details.season')} ${seasonNum}`)}</h4>
-
-                          <motion.button
-                            whileHover={{
-                              scale: 1.05,
-                              boxShadow: "0 10px 25px rgba(147, 51, 234, 0.3)"
-                            }}
-                            whileTap={{ scale: 0.985 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                            onClick={() => {
-                              if (!showSeasonMultiLangView[seasonNum]) {
-                                fetchSeasonMultiLangVideos(seasonNum);
-                              }
-                              setShowSeasonMultiLangView(prev => ({
-                                ...prev,
-                                [seasonNum]: !prev[seasonNum]
-                              }));
-                            }}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-lg border transition-all duration-300 ${showSeasonMultiLangView[seasonNum]
-                              ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 border-red-500/20'
-                              : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border-purple-500/20'
-                              }`}
-                          >
-                            {showSeasonMultiLangView[seasonNum] ? <ArrowLeft className="w-4 h-4" /> : <Languages className="w-4 h-4" />}
-                            {showSeasonMultiLangView[seasonNum] ? t('details.back') : t('details.multiLanguages')}
-                          </motion.button>
-                        </div>
-
-                        {(loadingVideos || loadingSeasonMultiLangVideos[seasonNum]) ? (
-                          <div className="flex items-center justify-center h-40">
-                            <Loader className="w-8 h-8 animate-spin text-red-600" />
-                          </div>
-                        ) : showSeasonMultiLangView[seasonNum] ? (
-                          // Vue multi-langues pour cette saison
-                          seasonMultiLangVideos[seasonNum] && seasonMultiLangVideos[seasonNum].length > 0 ? (
-                            (() => {
-                              // Grouper les vidéos par langue
-                              const videosByLanguage = seasonMultiLangVideos[seasonNum].reduce((acc: any, video: any) => {
-                                const lang = video.iso_639_1 || 'unknown';
-                                if (!acc[lang]) acc[lang] = [];
-                                acc[lang].push(video);
-                                return acc;
-                              }, {});
-
-                              // Noms des langues
-                              const languageNames: { [key: string]: string } = {
-                                'fr': t('details.langFrench'),
-                                'en': t('details.langEnglish'),
-                                'es': t('details.langSpanish'),
-                                'de': t('details.langGerman'),
-                                'it': t('details.langItalian'),
-                                'pt': t('details.langPortuguese'),
-                                'ja': t('details.langJapanese'),
-                                'ko': t('details.langKorean'),
-                                'zh': t('details.langChinese'),
-                                'ru': t('details.langRussian'),
-                                'unknown': t('details.langUnknown')
-                              };
-
-                              return Object.entries(videosByLanguage).map(([langCode, videos]: [string, any]) => (
-                                <div key={`${seasonNum}-${langCode}`} className="mb-8">
-                                  <h5 className="text-md font-medium mb-4 text-purple-400 border-b border-gray-700 pb-2">
-                                    {languageNames[langCode] || langCode.toUpperCase()}
-                                  </h5>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {videos.map((video: any, videoIndex: number) => (
-                                      <motion.div
-                                        key={video.id}
-                                        className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-violet-400/30"
-                                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        transition={{
-                                          delay: videoIndex * 0.05,
-                                          duration: 0.4,
-                                          type: "spring",
-                                          stiffness: 100
-                                        }}
-                                        whileHover={{
-                                          y: -8,
-                                          scale: 1.02,
-                                          boxShadow: "0 20px 40px rgba(147, 51, 234, 0.15)",
-                                          transition: { duration: 0.3 }
-                                        }}
-                                        whileTap={{ scale: 0.98 }}
-                                      >
-                                        <div
-                                          className="relative cursor-pointer aspect-video overflow-hidden"
-                                          onClick={() => {
-                                            setSelectedVideo(video);
-                                            setShowVideoPopup(true);
-                                          }}
-                                        >
-                                          <motion.img
-                                            src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
-                                            alt={video.name}
-                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                                            whileHover={{ y: -2, scale: 1.015 }}
-                                            transition={{ duration: 0.3 }}
-                                          />
-                                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                          <motion.div
-                                            className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors"
-                                            whileHover={{ backgroundColor: "rgba(0,0,0,0.1)" }}
-                                          >
-                                            <motion.div
-                                              className="w-14 h-14 rounded-full bg-purple-600/90 flex items-center justify-center shadow-lg"
-                                              whileHover={{
-                                                scale: 1.1,
-                                                backgroundColor: "rgba(147, 51, 234, 1)",
-                                                boxShadow: "0 0 20px rgba(147, 51, 234, 0.5)"
-                                              }}
-                                              whileTap={{ scale: 0.9 }}
-                                              transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                                            >
-                                              <Play className="w-6 h-6 text-white ml-1" />
-                                            </motion.div>
-                                          </motion.div>
-                                        </div>
-                                        <motion.div
-                                          className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
-                                          initial={{ opacity: 0 }}
-                                          animate={{ opacity: 1 }}
-                                          transition={{ delay: videoIndex * 0.05 + 0.2 }}
-                                        >
-                                          <h4 className="font-semibold mb-2 line-clamp-1 text-white group-hover:text-purple-400 transition-colors">{video.name}</h4>
-                                          <div className="flex items-center text-sm text-gray-400">
-                                            <motion.span
-                                              className="bg-gray-700/70 px-2 py-1 rounded-md mr-2 text-xs font-medium"
-                                              whileHover={{ backgroundColor: "rgba(55, 65, 81, 1)" }}
-                                            >
-                                              {video.type}
-                                            </motion.span>
-                                            {video.size && <span className="text-xs">{video.size}p</span>}
-                                          </div>
-                                        </motion.div>
-                                      </motion.div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ));
-                            })()
-                          ) : (
-                            <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                              <Video className="w-8 h-8 mb-2" />
-                              <p>{t('details.noMultiLangVideoForSeason', { season: seasonNum })}</p>
-                            </div>
-                          )
-                        ) : (
-                          // Vue normale pour cette saison
-                          seasonVideos[seasonNum] && seasonVideos[seasonNum].length > 0 ? (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {seasonVideos[seasonNum].map((video: any, index: number) => (
-                                <motion.div
-                                  key={video.id || video.key}
-                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
-                                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{
-                                    delay: index * 0.1,
-                                    duration: 0.4,
-                                    type: "spring",
-                                    stiffness: 100
-                                  }}
-                                  whileHover={{
-                                    y: -8,
-                                    scale: 1.02,
-                                    boxShadow: "0 20px 40px rgba(239, 68, 68, 0.15)",
-                                    transition: { duration: 0.3 }
-                                  }}
-                                  whileTap={{ scale: 0.98 }}
-                                >
-                                  <div
-                                    className="relative cursor-pointer aspect-video overflow-hidden"
-                                    onClick={() => {
-                                      setSelectedVideo(video);
-                                      setShowVideoPopup(true);
-                                    }}
-                                  >
-                                    <motion.img
-                                      src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
-                                      alt={video.name}
-                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                                      whileHover={{ y: -2, scale: 1.015 }}
-                                      transition={{ duration: 0.3 }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                    <motion.div
-                                      className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors"
-                                      whileHover={{ backgroundColor: "rgba(0,0,0,0.1)" }}
-                                    >
-                                      <motion.div
-                                        className="w-14 h-14 rounded-full bg-red-600/90 flex items-center justify-center shadow-lg"
-                                        whileHover={{
-                                          scale: 1.1,
-                                          backgroundColor: "rgba(239, 68, 68, 1)",
-                                          boxShadow: "0 0 20px rgba(239, 68, 68, 0.5)"
-                                        }}
-                                        whileTap={{ scale: 0.9 }}
-                                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                                      >
-                                        <Play className="w-6 h-6 text-white ml-1" />
-                                      </motion.div>
-                                    </motion.div>
-                                  </div>
-                                  <motion.div
-                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: index * 0.1 + 0.2 }}
-                                  >
-                                    <h4 className="font-semibold mb-2 line-clamp-1 text-white group-hover:text-red-400 transition-colors">{video.name}</h4>
-                                    <div className="flex items-center text-sm text-gray-400">
-                                      <motion.span
-                                        className={`text-xs px-2 py-1 rounded-md mr-2 font-medium ${video.type === 'Trailer' ? 'bg-red-600/70 text-white' :
-                                          video.type === 'Teaser' ? 'bg-blue-600/70 text-white' :
-                                            video.type === 'Clip' ? 'bg-green-600/70 text-white' :
-                                              'bg-gray-700/70 text-gray-300'
-                                          }`}
-                                        whileHover={{ backgroundColor: video.type === 'Trailer' ? 'rgba(239, 68, 68, 0.9)' : undefined }}
-                                      >
-                                        {video.type === 'Trailer' ? t('details.videoTrailer') :
-                                          video.type === 'Teaser' ? 'Teaser' :
-                                            video.type === 'Clip' ? t('details.videoClip') :
-                                              video.type === 'Behind the Scenes' ? t('details.videoBehindScenes') :
-                                                video.type === 'Featurette' ? t('details.videoMakingOf') : video.type}
-                                      </motion.span>
-                                      {video.published_at && (
-                                        <span className="text-xs">
-                                          {new Date(video.published_at).toLocaleDateString(i18n.language)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </motion.div>
-                                </motion.div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-gray-500 italic ml-4">{t('details.noVideoForSeason', { season: seasonNum })}</p>
-                          )
-                        )}
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                      <Video className="w-8 h-8 mb-2" />
-                      <p>{t('details.noSeasonForVideos')}</p>
-                    </div>
-                  )}
-                </motion.div>
-              ) : activeTab === 'images' ? (
-                <motion.div
-                  key="images"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <TVImagesSection tvId={id!} />
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-          </motion.div>
+          </div>
+          <DetailCastRail
+            items={cast}
+            imageUrl={(posterPath, width) => getTmdbImageUrl(posterPath, {
+              kind: 'profile',
+              quality: effectiveImageQuality,
+              width,
+              role: 'card',
+            })}
+          />
         </div>
+      </motion.div>
       </motion.div>
 
       {/* Modal pour les vidéos */}
@@ -6212,84 +3552,23 @@ const TVDetails: React.FC = () => {
         </AnimatePresence>
       )}
 
-      <LazySection
-        index={0}
-        immediateLoadCount={0}
-        rootMargin="300px"
-        minHeight="320px"
-        className="px-4 md:px-8 lg:px-16 mt-20 mb-20"
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          {loadingSimilar ? (
-            <motion.div
-              className="flex items-center justify-center h-64 space-y-4 bg-black/50"
-              animate={{
-                backgroundColor: ["rgba(0,0,0,0.5)", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.5)"]
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <motion.div
-                animate={{
-                  rotate: 360,
-                  transition: { duration: 1, repeat: Infinity, ease: "linear" }
-                }}
-              >
-                <Loader className="h-8 w-8" />
-              </motion.div>
-            </motion.div>
-          ) : recommendations.length > 0 ? (
-            <EmblaCarousel
-              title={<span><span className="text-red-600 mr-2">🔥</span>{t('details.similarSeries')}</span>}
-              items={recommendations.map(show => ({
-                id: Number(show.id),
-                title: show.name,
-                name: show.name,
-                poster_path: show.poster_path,
-                backdrop_path: show.backdrop_path || '',
-                overview: show.overview,
-                vote_average: show.vote_average,
-                first_air_date: show.first_air_date,
-                media_type: 'tv',
-              }))}
-              mediaType="tv-similar"
-            />
-          ) : (
-            <motion.p
-              className="text-center text-gray-400"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
-              {t('details.noSimilarSeriesAvailable')}
-            </motion.p>
-          )}
-        </motion.div>
-      </LazySection>
+      <DetailRecommendations
+        items={recommendations.map((show) => ({
+          id: Number(show.id),
+          title: show.name,
+          name: show.name,
+          poster_path: show.poster_path || '',
+          backdrop_path: show.backdrop_path || '',
+          overview: show.overview || '',
+          vote_average: show.vote_average || 0,
+          first_air_date: show.first_air_date,
+          media_type: 'tv' as const,
+        })) as Media[]}
+        mediaType="tv-similar"
+        loading={loadingSimilar}
+      />
 
-      {/* Section Commentaires - Lazy loaded when approaching viewport.
-          Le ref est ancré sur le wrapper (toujours rendu) pour que le bouton
-          "Commentaires" puisse scroller même avant le chargement lazy. */}
-      <div ref={commentsRef} id="comments-section">
-        <LazySection
-          index={1}
-          immediateLoadCount={0}
-          rootMargin="200px"
-          minHeight="400px"
-          className="mt-20 mb-20"
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <CommentsSection contentType="tv" contentId={id!} />
-          </motion.div>
-        </LazySection>
-      </div>
+      <DetailComments contentType="tv" contentId={id!} anchorRef={commentsRef} />
 
       {showSimilarModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -6457,9 +3736,6 @@ const TVDetails: React.FC = () => {
         isOpen={showMovixRatingInfo}
         onClose={() => setShowMovixRatingInfo(false)}
       />
-
-
-      </div>
     </MotionConfig>
   );
 };
