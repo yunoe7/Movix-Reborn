@@ -9,7 +9,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Eye, Film, Heart, LogIn } from 'lucide-react';
+import { Eye, Film, Heart, LogIn } from '../components/icons/Icons8';
 import { toast } from 'sonner';
 import { useProfile } from '@/context/ProfileContext';
 import { getResolvedAccountProvider } from '@/utils/accountAuth';
