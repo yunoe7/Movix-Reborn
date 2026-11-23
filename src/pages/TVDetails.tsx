@@ -456,6 +456,17 @@ const TVDetails: React.FC = () => {
   const [animeEpisodeSortDescending, setAnimeEpisodeSortDescending] = useState(false);
   const [animeEpisodeView, setAnimeEpisodeView] = useState<'list' | 'grid'>('list');
   const [seasonPickerOpen, setSeasonPickerOpen] = useState(false);
+  const seasonPickerMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!seasonPickerOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (seasonPickerMenuRef.current && !seasonPickerMenuRef.current.contains(event.target as Node)) {
+        setSeasonPickerOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [seasonPickerOpen]);
   const [animeData, setAnimeData] = useState<any>(null);
   const [loadingAnimeData, setLoadingAnimeData] = useState<boolean>(false);
   const [tmdbKeywords, setTmdbKeywords] = useState<TmdbKeywordsResponse | null>(null);
@@ -2250,7 +2261,7 @@ const TVDetails: React.FC = () => {
         {(
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="relative inline-flex" onBlur={(event) => {
+              <div ref={seasonPickerMenuRef} className="relative inline-flex" onBlur={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSeasonPickerOpen(false);
               }}>
                 <button
