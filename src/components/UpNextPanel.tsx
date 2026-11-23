@@ -262,7 +262,7 @@ const UpNextPanel: React.FC<UpNextPanelProps> = ({
   // ---------------------------------------------------------------------
   // Blocs partagés entre les trois formes
   // ---------------------------------------------------------------------
-  const imageBlock = (className: string) => {
+  const imageBlock = (className: string, fit: 'cover' | 'contain' = 'cover') => {
     // Anti-spoil global : plus d'emplacement d'image du tout, la carte se
     // réduit au strict nécessaire pour enchaîner.
     if (hideEverything) return null;
@@ -282,7 +282,7 @@ const UpNextPanel: React.FC<UpNextPanelProps> = ({
       );
     }
     if (!imageUrl) return null;
-    return <img src={imageUrl} alt={shownTitle} className={`${className} object-cover`} />;
+    return <img src={imageUrl} alt={shownTitle} className={`${className} ${fit === 'contain' ? 'object-contain' : 'object-cover'}`} />;
   };
 
   /**
@@ -550,7 +550,7 @@ const UpNextPanel: React.FC<UpNextPanelProps> = ({
           className={`absolute ${cardPosition} ${cardHeight} z-[60] overflow-hidden rounded-lg bg-black/80`}
         >
           <div className="flex h-full">
-            {imageBlock(`h-full ${cardImageWidth} shrink-0`)}
+            {imageBlock(`h-full ${cardImageWidth} shrink-0 bg-black/60`, 'contain')}
 
             <div className="flex flex-1 flex-col justify-between overflow-hidden p-3">
               <div className="min-h-0">

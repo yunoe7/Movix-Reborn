@@ -342,7 +342,8 @@ try {
 
       const heroCount = await page.locator('.detail-hero').count();
       const fixedBackdrops = await page.locator('div.fixed.inset-0[aria-hidden="true"]').count();
-      const backdropStyle = await page.locator('.detail-hero__image').getAttribute('style');
+      const backdropStyle = await page.locator('.detail-hero__ambient').getAttribute('style');
+      const heroImageSrc = await page.locator('.detail-hero__picture img').getAttribute('src');
       const actionCount = await page.locator('.detail-hero__actions button').count();
       const tabCount = await page.getByRole('tab').count();
       const castCount = await page.locator('.detail-cast-rail .detail-cast-card').count();
@@ -353,6 +354,7 @@ try {
       assert.equal(heroCount, 1, `${kind}/${mode}: un seul bandeau`);
       assert.equal(fixedBackdrops, 0, `${kind}/${mode}: aucun fond fixe dupliqué`);
       assert.ok(backdropStyle?.includes(expected[mode].backdrop), `${kind}/${mode}: largeur du fond ${backdropStyle}`);
+      assert.ok(heroImageSrc?.includes(expected[mode].backdrop), `${kind}/${mode}: image nette complète ${heroImageSrc}`);
       assert.equal(actionCount, 3, `${kind}/${mode}: exactement trois actions principales`);
       assert.equal(tabCount, 0, `${kind}/${mode}: aucun onglet`);
       assert.ok(castCount >= 1, `${kind}/${mode}: distribution affichée`);
@@ -367,7 +369,7 @@ try {
       const screenshot = path.join(artifactDir, `${kind}-${mode}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
       observations.push({
-        kind, mode, heroCount, fixedBackdrops, backdropStyle, actionCount,
+        kind, mode, heroCount, fixedBackdrops, backdropStyle, heroImageSrc, actionCount,
         tabCount, castCount, recommendations, commentsCount, screenshot: path.basename(screenshot),
         errors,
       });

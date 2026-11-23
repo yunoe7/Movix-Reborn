@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
+import CompleteImage from '@/components/media/CompleteImage';
 import './details.css';
 
 export type DetailCastItem = {
@@ -42,13 +43,15 @@ const DetailCastRail: React.FC<DetailCastRailProps> = ({ items, imageUrl, title,
                 aria-label={`${actor.name}${actor.character ? ` — ${actor.character}` : ''}`}
               >
                 {portrait ? (
-                  <img
-                    src={portrait}
-                    alt={actor.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="detail-cast-card__image"
-                  />
+                  <span className="detail-cast-card__image" aria-hidden="false">
+                    <CompleteImage
+                      src={portrait}
+                      alt={actor.name}
+                      fit="contain"
+                      position="center top"
+                      ambient
+                    />
+                  </span>
                 ) : (
                   <span
                     aria-hidden="true"

@@ -1129,6 +1129,7 @@ const MovieDetails = (): JSX.Element => {
             year={movieYear}
             rating={movie.vote_average}
             runtime={movie.runtime > 0 ? `${Math.floor(movie.runtime / 60)}h ${String(movie.runtime % 60).padStart(2, '0')}min` : null}
+            classification={contentCert ? getClassificationLabel(contentCert, t) : null}
             genres={movie.genres || []}
             synopsis={movie.overview}
             imageUrl={backdropImage}

@@ -9935,9 +9935,9 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       case 'contain':
         return 'object-contain';
       case '16:9':
-        return 'object-cover aspect-video';
+        return 'object-contain aspect-video';
       case '4:3':
-        return 'object-cover aspect-4/3';
+        return 'object-contain aspect-4/3';
       case 'original':
         return 'object-contain';
       default:
@@ -11296,7 +11296,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
           className="absolute inset-0 z-[15000] flex flex-col bg-gray-900 overflow-hidden pb-[env(safe-area-inset-bottom)]"
           data-lenis-prevent
           style={{
-            backgroundImage: backdrop ? `url(${getImageUrl(backdrop, 'original')})` : poster ? `url(${getImageUrl(poster, 'original')})` : undefined,
+            backgroundImage: backdrop ? `url(${getImageUrl(backdrop, 'w1280')})` : poster ? `url(${getImageUrl(poster, 'w780')})` : undefined,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
