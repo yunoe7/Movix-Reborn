@@ -11,7 +11,7 @@ import {
   Send,
   ShieldCheck,
   type LucideIcon
-} from 'lucide-react';
+} from '../icons/Icons8';
 import { toast } from 'sonner';
 
 import { VIP_GIFT_CARD_IDS, type VipDonationSettings } from '@/services/vipDonationsService';
