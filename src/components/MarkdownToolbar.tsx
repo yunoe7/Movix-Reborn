@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bold, Italic, Code, Link, List, ListOrdered, Quote, Strikethrough, Eye, EyeOff, Info, X } from 'lucide-react';
+import { Bold, Italic, Code, Link, List, ListOrdered, Quote, Strikethrough, Eye, EyeOff, Info, X } from './icons/Icons8';
 import ReactMarkdown from 'react-markdown';
 import { useSafeRemarkGfm } from '../utils/markdownPlugins';
 import remarkEmoji from 'remark-emoji';

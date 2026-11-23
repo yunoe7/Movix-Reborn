@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Loader2, ShoppingBag } from '../components/icons/Icons8';
 
 import AnimatedBorderCard from '../components/ui/animated-border-card';
 import BlurText from '../components/ui/blur-text';

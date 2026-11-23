@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { ArrowLeft, Crown, Sparkles, Heart, Rocket, Globe, Tv, Film, Users, Star } from 'lucide-react';
+import { ArrowLeft, Crown, Sparkles, Heart, Rocket, Globe, Tv, Film, Users, Star } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { SquareBackground } from '../components/ui/square-background';
 import ShinyText from '../components/ui/shiny-text';

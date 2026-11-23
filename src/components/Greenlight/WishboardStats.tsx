@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { BarChart3, Film, Tv, Clock, CheckCircle } from 'lucide-react';
+import { BarChart3, Film, Tv, Clock, CheckCircle } from '../icons/Icons8';
 import Counter from '../ui/counter';
 
 // Helper function to calculate places array based on value

@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
     Calendar, Film, Tv, ExternalLink, ArrowBigUp,
     Clock
-} from 'lucide-react';
+} from '../icons/Icons8';
 import ReusableModal from '../ui/reusable-modal';
 import Counter from '../ui/counter';
 import { getTmdbLanguage } from '../../i18n';

@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from '../icons/Icons8';
 import { Skeleton } from '@/components/ui/Skeleton';
 import MediaCardSkeleton from './MediaCardSkeleton';
 import '../EmblaCarousel.css';

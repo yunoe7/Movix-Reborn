@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Check } from 'lucide-react';
+import { Check } from '../icons/Icons8';
 import { cn } from '@/lib/utils';
 
 export interface CheckboxProps {

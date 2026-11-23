@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from '../../icons/Icons8';
 import type { WrappedData } from '@/services/wrappedService';
 import { formatWrappedDuration, wrappedGenre, wrappedImageUrl, wrappedMediaKey } from '@/utils/wrappedPresentation';
 import ChartFrame from './ChartFrame';

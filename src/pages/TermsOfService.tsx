@@ -9,7 +9,7 @@ import {
   Shield,
   Tv,
   Wrench,
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import LegalDocumentPage, { LegalSection } from '../components/legal/LegalDocumentPage';
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pause, Play, Volume2, VolumeX } from 'lucide-react';
+import { Pause, Play, Volume2, VolumeX } from '../icons/Icons8';
 
 const VIDEO_WEBM = '/videos/tv-app/movix-tv-demo.webm';
 const VIDEO_MP4 = '/videos/tv-app/movix-tv-demo.mp4';

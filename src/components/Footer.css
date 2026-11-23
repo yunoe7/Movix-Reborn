@@ -12,19 +12,6 @@
   opacity: 1;
 }
 
-.footer-mask-icon {
-  display: block;
-  width: 1.25rem;
-  height: 1.25rem;
-  flex-shrink: 0;
-  mask-position: center;
-  mask-repeat: no-repeat;
-  mask-size: contain;
-  -webkit-mask-position: center;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: contain;
-}
-
 .footer-technology-logo {
   display: block;
   width: 1.5rem;

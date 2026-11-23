@@ -12,7 +12,7 @@
 
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useDragControls } from 'framer-motion';
-import { Check, Copy, ExternalLink, GripHorizontal, Loader2, PauseCircle, Play, Target, Trash2, X } from 'lucide-react';
+import { Check, Copy, ExternalLink, GripHorizontal, Loader2, PauseCircle, Play, Target, Trash2, X } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 
 import { Switch } from '@/components/ui/switch';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Search, Film, Tv, Filter, TrendingUp, Clock } from 'lucide-react';
+import { Search, Film, Tv, Filter, TrendingUp, Clock } from '../icons/Icons8';
 import {
     Select,
     SelectContent,

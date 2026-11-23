@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
 import { DEFAULT_PUBLIC_DOMAIN } from '@/i18n/currentDomain';
-import { ChevronLeft, ChevronRight, Share2, X, Sparkles, Calendar, Trophy, BarChart3, Clock, Flame, Music, ImageIcon, Download, Copy, FileText, Loader2, TrendingUp, Repeat, Hourglass, MousePointerClick, HelpCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2, X, Sparkles, Calendar, Trophy, BarChart3, Clock, Flame, Music, ImageIcon, Download, Copy, FileText, Loader2, TrendingUp, Repeat, Hourglass, MousePointerClick, HelpCircle } from '../../icons/Icons8';
 import { WrappedData, WrappedProgress, WrappedSlide, WrappedTopContent, WrappedResponse } from '@/services/wrappedService';
 import { drawRoundedRectPath, wrapCanvasText, loadCanvasImage, ensureShareFonts, drawSeededStickers } from './wrappedCanvas';
 import { generatePosterShareImage, generateTicketShareImage, WrappedShareCardData } from './wrappedShareCards';

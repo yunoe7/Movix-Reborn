@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ArrowBigUp, Film, Tv, Calendar, Check, Clock, Search, X, AlertCircle, MessageSquare } from 'lucide-react';
+import { ArrowBigUp, Film, Tv, Calendar, Check, Clock, Search, X, AlertCircle, MessageSquare } from '../icons/Icons8';
 import { Badge } from '../ui/badge';
 import Counter from '../ui/counter';
 import { WishboardNote } from './WishboardDetailsModal';

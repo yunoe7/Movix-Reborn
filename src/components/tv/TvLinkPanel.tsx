@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, Check, CheckCircle2, KeyRound, Loader2, Tv } from 'lucide-react';
+import { AlertCircle, Check, CheckCircle2, KeyRound, Loader2, Tv } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { useProfile } from '@/context/ProfileContext';

@@ -14,7 +14,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Search, X } from 'lucide-react';
+import { Loader2, Search, X } from '../icons/Icons8';
 import axios from 'axios';
 import { getTmdbLanguage } from '../../i18n';
 import { encodeId } from '../../utils/idEncoder';

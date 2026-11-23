@@ -1,10 +1,8 @@
-import { Euro, Globe, Info, Scale, Shield } from './icons/Icons8';
+import { Discord, Euro, Globe, Github, Info, Scale, Shield, type LucideIcon } from './icons/Icons8';
 import { Trans, useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useLightMode } from '@/context/LightModeContext';
-import discordLogo from 'bootstrap-icons/icons/discord.svg';
 import { DISCORD_INVITE_URL } from '@/config/community';
-import githubLogo from 'bootstrap-icons/icons/github.svg';
 import reactLogo from '@/assets/technology-logos/react.svg';
 import typescriptLogo from '@/assets/technology-logos/typescript.svg';
 import tailwindLogo from '@/assets/technology-logos/tailwindcss.svg';
@@ -22,20 +20,10 @@ import { MovixWordmark } from './brand/MovixWordmark';
 import './Footer.css';
 
 // Développé avec ❤️ par @mysticsaba, projet commencé à 14 ans.
-const createFooterMaskIcon = (logo: string) => ({ className, size = 20 }: LucideProps) => (
-  <span
-    className={`footer-mask-icon ${className ?? ''}`}
-    aria-hidden="true"
-    style={{ width: size, height: size, backgroundColor: 'currentColor', maskImage: `url("${logo}")`, WebkitMaskImage: `url("${logo}")` }}
-  />
-);
-
-const DiscordIcon = createFooterMaskIcon(discordLogo);
-const GithubIcon = createFooterMaskIcon(githubLogo);
 
 type FooterLink = {
   label: string;
-  icon: LucideIcon | typeof DiscordIcon;
+  icon: LucideIcon;
 } & ({ to: string; href?: never } | { href: string; to?: never });
 
 const linkGroups: { title: string; links: FooterLink[] }[] = [
@@ -48,8 +36,8 @@ const linkGroups: { title: string; links: FooterLink[] }[] = [
   {
     title: 'footer.community',
     links: [
-      { label: 'footer.discord', href: DISCORD_INVITE_URL, icon: DiscordIcon },
-      { label: 'footer.sourceCode', href: 'https://github.com/movixstream/MovixOpenSource', icon: GithubIcon },
+      { label: 'footer.discord', href: DISCORD_INVITE_URL, icon: Discord },
+      { label: 'footer.sourceCode', href: 'https://github.com/movixstream/MovixOpenSource', icon: Github },
       { label: 'costs.navLabel', to: '/frais', icon: Euro },
     ],
   },
@@ -146,6 +134,9 @@ const Footer = () => {
 
         <div className="mt-7 border-t border-gray-800 pt-6 text-sm leading-relaxed text-gray-400">
           <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Icons by <a href="https://icons8.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 underline-offset-4 hover:text-white hover:underline">Icons8</a>
+          </p>
           <p className="mt-2">
             <Trans
               t={t}

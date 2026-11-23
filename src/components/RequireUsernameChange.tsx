@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios, { AxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, User } from 'lucide-react';
+import { AlertTriangle, User } from './icons/Icons8';
 import { toast } from 'sonner';
 
 import { Button } from './ui/button';
