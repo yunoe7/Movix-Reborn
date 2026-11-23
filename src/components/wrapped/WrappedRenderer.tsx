@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { WrappedData } from '@/services/wrappedService';
 import type { WrappedVersion } from '@/types/wrapped';
