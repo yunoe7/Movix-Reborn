@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  RefreshCw, Users, Film, Tv, Loader2
+  RefreshCw, Users, Film, Tv, Loader2,
 } from '../components/icons/Icons8';
 import WatchPartyTutorialModal from '../components/WatchPartyTutorialModal';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,23 @@ interface PublicWatchParty {
   seasonNumber?: number;
   episodeNumber?: number;
 }
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { type: 'spring', stiffness: 100 },
+  },
+};
 
 const WatchPartyList: React.FC = () => {
   const navigate = useNavigate();
@@ -55,15 +72,44 @@ const WatchPartyList: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchPublicParties();
+    void fetchPublicParties();
 
-    // Refresh every 30 seconds
-    const intervalId = setInterval(fetchPublicParties, 30000);
+    // Refresh the public room list every 30 seconds.
+    const intervalId = window.setInterval(() => {
+      void fetchPublicParties();
+    }, 30000);
 
-    return (
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const handleJoinParty = (code: string) => {
+    navigate(`/watchparty/join/${code}`);
+  };
+
+  const handleRefresh = () => {
+    void fetchPublicParties();
+  };
+
+  const formatCreationTime = (timestamp: number) => {
+    const diffMs = Math.max(0, Date.now() - timestamp);
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+
+    if (diffMins < 60) {
+      return t('watchParty.timeAgoMinutes', { count: diffMins });
+    }
+
+    return t('watchParty.timeAgoHours', { count: diffHours });
+  };
+
+  return (
     <main className="min-h-screen bg-[#0b0b0b] pb-20 pt-28 text-white md:pt-32">
       <div className="mx-auto w-full max-w-[1760px] px-6 md:px-10">
-        <motion.header initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-10">
+        <motion.header
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
           <h1 className="text-4xl font-bold tracking-tight text-white md:text-5xl">Watch Party</h1>
           <p className="mt-3 text-base text-white/65 md:text-lg">
             {t('watchParty.publicPartiesDesc', 'Regardez films et séries entre amis, en synchro')}
@@ -77,11 +123,19 @@ const WatchPartyList: React.FC = () => {
               <span className="ml-2 font-normal tabular-nums text-white/45">{publicParties.length}</span>
             </h2>
             <div className="flex items-center gap-3">
-              <Button onClick={handleRefresh} disabled={isRefreshing} variant="secondary" className="h-9 rounded-lg bg-[#4a4a4a] px-4 text-white hover:bg-[#5a5a5a]">
+              <Button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                variant="secondary"
+                className="h-9 rounded-lg bg-[#4a4a4a] px-4 text-white hover:bg-[#5a5a5a]"
+              >
                 <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 {t('common.refresh', 'Rafraîchir')}
               </Button>
-              <Button onClick={() => setShowTutorial(true)} className="h-9 rounded-lg bg-white px-4 font-semibold text-[#151515] hover:bg-white/90">
+              <Button
+                onClick={() => setShowTutorial(true)}
+                className="h-9 rounded-lg bg-white px-4 font-semibold text-[#151515] hover:bg-white/90"
+              >
                 <span className="mr-2 text-lg leading-none">+</span>
                 {t('watchParty.createRoom', 'Créer une salle')}
               </Button>
@@ -89,45 +143,93 @@ const WatchPartyList: React.FC = () => {
           </div>
 
           {isLoading ? (
-            <div className="flex min-h-48 items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-white/60" /></div>
+            <div className="flex min-h-48 items-center justify-center">
+              <Loader2 size={28} className="h-7 w-7 text-white/60" />
+            </div>
           ) : error ? (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300" role="alert">{error}</div>
+            <div
+              className="rounded-lg border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300"
+              role="alert"
+            >
+              {error}
+            </div>
           ) : publicParties.length === 0 ? (
             <div className="flex min-h-52 flex-col items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.025] px-6 text-center">
-              <Users className="mb-4 h-10 w-10 text-white/25" />
+              <Users size={40} className="mb-4 text-white/25" />
               <p className="text-base font-semibold text-white">{t('watchParty.noPublicParties')}</p>
               <p className="mt-1 max-w-md text-sm text-white/45">{t('watchParty.beFirstToLaunch')}</p>
-              <Button onClick={() => setShowTutorial(true)} className="mt-5 h-9 bg-white px-4 text-sm font-semibold text-black hover:bg-white/90">
+              <Button
+                onClick={() => setShowTutorial(true)}
+                className="mt-5 h-9 bg-white px-4 text-sm font-semibold text-black hover:bg-white/90"
+              >
                 + {t('watchParty.createRoom', 'Créer une salle')}
               </Button>
             </div>
           ) : (
-            <motion.div variants={staggerContainer} initial="hidden" animate="show" className="grid grid-cols-1 gap-x-7 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-1 gap-x-7 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            >
               <AnimatePresence>
                 {publicParties.map((party) => (
-                  <motion.article key={party.id} variants={fadeInUp} layout className="group min-w-0 cursor-pointer" onClick={() => handleJoinParty(party.code)}>
+                  <motion.article
+                    key={party.id}
+                    variants={fadeInUp}
+                    layout
+                    className="group min-w-0 cursor-pointer"
+                    onClick={() => handleJoinParty(party.code)}
+                  >
                     <div className="relative aspect-video overflow-hidden rounded-xl border border-white/[0.12] bg-[#171717] transition-colors group-hover:border-white/30">
                       {party.poster ? (
-                        <img src={party.poster.startsWith('http') ? party.poster : `https://image.tmdb.org/t/p/w500${party.poster}`} alt={party.title} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]" loading="lazy" />
+                        <img
+                          src={party.poster.startsWith('http')
+                            ? party.poster
+                            : `https://image.tmdb.org/t/p/w500${party.poster}`}
+                          alt={party.title}
+                          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.025]"
+                          loading="lazy"
+                        />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-[#171717]">
-                          {party.mediaType === 'movie' ? <Film className="h-10 w-10 text-white/25" /> : <Tv className="h-10 w-10 text-white/25" />}
+                          {party.mediaType === 'movie'
+                            ? <Film size={40} className="text-white/25" />
+                            : <Tv size={40} className="text-white/25" />}
                         </div>
                       )}
                       <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-md bg-black/75 px-2 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" /><Users className="h-3 w-3" />{party.participantCount}
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                        <Users size={12} />
+                        {party.participantCount}
                       </div>
-                      <div className="absolute right-2 top-2 rounded-md bg-black/75 p-1.5 text-white/90 backdrop-blur-sm" aria-label={t('watchParty.publicRoom', 'Salle publique')}>
-                        <Users className="h-3.5 w-3.5" />
+                      <div
+                        className="absolute right-2 top-2 rounded-md bg-black/75 p-1.5 text-white/90 backdrop-blur-sm"
+                        aria-label={t('watchParty.publicRoom', 'Salle publique')}
+                      >
+                        <Users size={14} />
                       </div>
                       <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/85 to-transparent px-3 pb-3 pt-8">
-                        <span className="text-xs font-medium text-white/85">{party.mediaType === 'movie' ? t('watchParty.movieLabel') : t('watchParty.seriesLabel')}{party.seasonNumber && party.episodeNumber ? ` · S${party.seasonNumber} E${party.episodeNumber}` : ''}</span>
-                        <span className="text-xs text-white/75">{party.participantCount}/{party.maxParticipants}</span>
+                        <span className="text-xs font-medium text-white/85">
+                          {party.mediaType === 'movie'
+                            ? t('watchParty.movieLabel')
+                            : t('watchParty.seriesLabel')}
+                          {party.seasonNumber && party.episodeNumber
+                            ? ` · S${party.seasonNumber} E${party.episodeNumber}`
+                            : ''}
+                        </span>
+                        <span className="text-xs text-white/75">
+                          {party.participantCount}/{party.maxParticipants}
+                        </span>
                       </div>
                     </div>
                     <div className="mt-2 px-0.5">
-                      <h3 className="truncate text-sm font-semibold text-white transition-colors group-hover:text-white/75">{party.title}</h3>
-                      <p className="mt-0.5 truncate text-xs text-white/45">{formatCreationTime(party.createdAt)}</p>
+                      <h3 className="truncate text-sm font-semibold text-white transition-colors group-hover:text-white/75">
+                        {party.title}
+                      </h3>
+                      <p className="mt-0.5 truncate text-xs text-white/45">
+                        {formatCreationTime(party.createdAt)}
+                      </p>
                     </div>
                   </motion.article>
                 ))}
