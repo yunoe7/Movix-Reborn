@@ -255,7 +255,7 @@ const AddToListMenu: React.FC<AddToListMenuProps> = ({
       role="dialog"
       aria-label={t('lists.addToList')}
       data-testid="add-to-list-popover"
-      className="absolute left-0 top-full z-[100002] mt-2 w-[236px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-white/[0.10] bg-[#181818] text-white shadow-[0_18px_48px_rgba(0,0,0,0.55)]"
+      className="relative w-[236px] max-w-[calc(100vw-1rem)] overflow-hidden rounded-xl border border-white/[0.10] bg-[#181818] text-white shadow-[0_18px_48px_rgba(0,0,0,0.55)]"
     >
       <div className="border-b border-white/[0.09] px-3.5 py-2.5">
         <h2 className="text-[13px] font-semibold leading-5 text-white/90">{t('lists.addToList')}</h2>
