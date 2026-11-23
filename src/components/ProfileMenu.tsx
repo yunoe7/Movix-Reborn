@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
+import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -83,7 +83,7 @@ const ProfileMenu: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isDesktopNav = useIsDesktopNav();
-  const { host: panelHost, onProfileOpenChange } = useContext(HeaderPanelsContext);
+  const { host: panelHost, onProfileOpenChange, notificationsTriggerRef, onNotificationsToggle, notificationsOpen, notificationsUnreadCount = 0, notificationsDisabled } = useContext(HeaderPanelsContext);
   const menuId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -346,12 +346,33 @@ const ProfileMenu: React.FC = () => {
           className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/15"
           onError={onAvatarError}
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold leading-5 text-white">{username}</p>
           {isVip
             ? vipLine('mt-0.5')
             : <p className="mt-0.5 truncate text-[11px] text-[#929292]">{providerStatus()}</p>}
         </div>
+        {!notificationsDisabled && notificationsTriggerRef && (
+          <button
+            ref={notificationsTriggerRef}
+            type="button"
+            data-notification-button
+            aria-label={t('notifications.title')}
+            aria-expanded={Boolean(notificationsOpen)}
+            onClick={onNotificationsToggle}
+            className={cn(
+              'relative ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
+              notificationsOpen ? 'text-white' : 'text-[#929292] hover:bg-white/[0.06] hover:text-white',
+            )}
+          >
+            <Bell className="h-[17px] w-[17px]" aria-hidden="true" />
+            {notificationsUnreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                {notificationsUnreadCount > 9 ? '9+' : notificationsUnreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       <MenuList variant={variant}>
