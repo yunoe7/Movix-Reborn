@@ -78,9 +78,9 @@ const DetailHero: React.FC<DetailHeroProps> = ({
         <CompleteImage
           src={background}
           alt=""
-          fit="cover"
+          fit="contain"
           position="center top"
-          ambient={false}
+          ambient
           loading="eager"
           className="detail-hero__picture"
           imageClassName="detail-hero__picture-img"
