@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, Gauge, RotateCcw } from 'lucide-react';
+import { Check, Gauge, RotateCcw } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { useLightMode } from '@/context/LightModeContext';
 import { setImageQuality, useImageQuality } from '@/hooks/useImageQuality';
