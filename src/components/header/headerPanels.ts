@@ -1,4 +1,4 @@
-import { createContext } from 'react';
+import { createContext, type RefObject } from 'react';
 
 /** Ce que l'en-tête prête aux menus qui coulent de ses boutons. */
 export interface HeaderPanels {
@@ -10,6 +10,12 @@ export interface HeaderPanels {
   onProfileOpenChange?: (open: boolean) => void;
   /** Même chose pour le menu des canaux officiels (Matrix). */
   onCommunityOpenChange?: (open: boolean) => void;
+  /** Déclencheur partagé de la cloche intégrée à l'en-tête du profil. */
+  notificationsTriggerRef?: RefObject<HTMLButtonElement>;
+  onNotificationsToggle?: () => void;
+  notificationsOpen?: boolean;
+  notificationsUnreadCount?: number;
+  notificationsDisabled?: boolean;
 }
 
 export const HeaderPanelsContext = createContext<HeaderPanels>({ host: null });
