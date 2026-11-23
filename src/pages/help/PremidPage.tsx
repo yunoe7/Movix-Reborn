@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Gamepad2, AlertTriangle } from 'lucide-react';
+import { Gamepad2, AlertTriangle } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 
 const PREMID_HOME = 'https://premid.app/fr';
