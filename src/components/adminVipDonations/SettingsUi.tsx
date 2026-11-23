@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, ExternalLink, Info, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, ExternalLink, Info, type LucideIcon } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import { Input, type InputProps } from '../ui/input';
