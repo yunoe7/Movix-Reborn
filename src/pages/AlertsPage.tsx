@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Bell, BellRing, Calendar, Clock, Trash2, Edit3, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Bell, BellRing, Calendar, Clock, Trash2, Edit3, ExternalLink, ArrowLeft } from '../components/icons/Icons8';
 import { AlertService } from '../services/alertService';
 import { EpisodeAlert, NotifyBeforeDays } from '../types/alerts';
 import SEO from '../components/SEO';
