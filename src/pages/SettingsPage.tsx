@@ -10,7 +10,7 @@ import {
   Database, Key, Lock, Palette, Eye, Download, Upload, Globe, AlertTriangle, History, CalendarClock, Clapperboard, TreePine, Link2, MessageCircle, BellOff, Sparkles,
   Zap, RefreshCw, ChevronDown, ListOrdered, Gauge, Megaphone, Square, Captions, Ghost, Leaf, CloudRain, Flower2, Popcorn,
   type LucideIcon,
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
