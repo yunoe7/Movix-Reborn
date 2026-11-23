@@ -46,7 +46,7 @@ const DetailHero: React.FC<DetailHeroProps> = ({
   genres = [],
   synopsis,
   imageUrl,
-  imagePosition = 'center top',
+  imagePosition = 'center center',
   fallbackImageUrl,
   badges,
   actions,
