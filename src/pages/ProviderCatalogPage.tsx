@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, SlidersHorizontal, LayoutGrid, List, Loader2, Film, Tv, ChevronDown, X } from 'lucide-react';
+import { ArrowLeft, SlidersHorizontal, LayoutGrid, List, Loader2, Film, Tv, ChevronDown, X } from '../components/icons/Icons8';
 import SEO from '../components/SEO';
 import { SquareBackground } from '../components/ui/square-background';
 import { SearchGridCard, SearchListCard } from '../components/SearchCard';
