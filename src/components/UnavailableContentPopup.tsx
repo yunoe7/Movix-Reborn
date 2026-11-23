@@ -2,7 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X } from './icons/Icons8';
 
 interface UnavailableContentPopupProps {
   mediaType: 'film' | 'série';
