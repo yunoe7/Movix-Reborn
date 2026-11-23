@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ThumbsUp, ThumbsDown, CheckCircle2, Loader2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, CheckCircle2, Loader2 } from './icons/Icons8';
 import TurnstileWidget from './TurnstileWidget';
 import { submitHelpFeedback } from '../services/helpFeedbackService';
 
