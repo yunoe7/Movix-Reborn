@@ -811,7 +811,7 @@ const WatchTv: React.FC = () => {
     setCoflixData(null);
     setOmegaData(null);
     setSibnetUrl(null);
-    setAdFreeM3u8Url(null);
+    // adFreeM3u8Url is intentionally read-only for now; no setter is defined.
     setEmbedUrl(null);
   }, [id, seasonNumber, episodeNumber, currentProfile?.ageRestriction]);
 
