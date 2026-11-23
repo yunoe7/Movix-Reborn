@@ -37,6 +37,7 @@ import ReferralCodeField from './referral/ReferralCodeField';
 const DEFAULT_AVATAR = 'https://as2.ftcdn.net/v2/jpg/05/89/93/27/1000_F_589932782_vQAEAZhHnq1QCGu5ikwrYaQD0Mmurm0N.webp';
 const DISCORD_LOGO = 'https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png';
 const GOOGLE_LOGO = 'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png';
+const VIP_CROWN_IMAGE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAYAAABw4pVUAAAPf0lEQVR42u2deZAdxX3HP7/umff2vV3tIa3uC4EAE0CAENjgg8KOy0W5XnFiTEGwiUOcwiEQMA4uJ3EVRWwndpyCVEKlEHbsuOy4XPYfqUCCjR3AMkgc5YhDYAHm0LFaHehgr/feHN2//DHv7a6A1e5K762QNN+qrdcz0z0z/ftM93T/uqcXcuXKlStXrly5cuXKlStXrly5cuU6NiTH8s3rtrtWYjs/gwmXglPcyKvEg9+Tk2/dmgOZSRBb1l5Mxyl307bkVNQJpB6fKJooGntq2zcS9/25LP/S8zmQVsPY8b0b6brw62AsfsSTDnl81eMTjzoQAyaEdKRK5YW/kJO//JMcSMuqqG9/nDnv/yHqDcl+h694fFwvHbHHR4rGilcl6DDgIgZe+KS86yvrcyDNhqG3GQYu6yPonk2y12Wl4u1gxNl+gMK8ADfSx+Ltq0Vu98dCPs0xUzx2rLiFoGcO6aCfHEaqoIqrOILOJbxqrzxWsnnsACn2fhxSjxt0k8Ow2btEI48YJez+vRxI0++0vBBXU3w0NRhis+ypB1telgNp/kskwEc6dRiNsCiEbTmQZsuPHACdJgwLGEGT/TmQZivZtxGcop4pw5BQEAvp4NM5kGbL7b8TV0uxJZlaybBgygbUodVv5UCa3WFa9oVNxH0/AwEpyqQwbJvBhEKy535Z8TcvHCv5DA75Hu3//h/RtvRWwnkrkGIxa3YOVIh2biLZ/ley+IZHZ/Ru003Xouc8jC2dClj8sHt7GCWDaTO44ZfZ2X/DzLt31q4mnPd5gt7V2FInmijp0H6ivc+gu++WJZ9/bFo9dd36rz10nvM4pRUrUQ9uSElHAJc9lbYIPvIMv/AAi3778ZnsBevGyz5M9/v/neKSED/k3raU2HZL9aUK++6/Rs5/5Fcz1xD8sWVP8R7aV34M9YJPHRo7NPbgPd55SB3VbQ+SbL9JVtxemxSIPndXB8s/sJWgtwc34KntUHwl86Q2WjcIFBYabIcQbX1KFlz17hnJ8MOXtNHh70PTxbghT/cHyrSf0YYtC1jQVKm+WGXfQ4Mk+1PQLewsXy1X/CZu+b3ddpvhhot+SumkNWjs8HGKRvVObOogdrjEYwwoSrx3M4uTK0SuSw5dZS1etYGgt4dkjyfe7fERB8FwEfhYiV5PKS01FBadq/3fWiuL/vS6lhPpiG9CgyVUXolI9iQMPVdBUIJZghrwAymKooDtEAqzlzH/jWuBu1t+b9ef9Q+jMFwtheRNMGKHJp4kdiAQ9pzOjt3fAG6Z8KWuO7//UdpOOZN0QA8Jo7FdfTXFjXiKK67Srd9Y1NIn8JELzoTgU6T7UpI9CYoiKKCkQ+4gGKD4YUdacXh3lT4495SW3tvuuxZQOu0P0eTQMHycVWE+cuCUwqKP6Gv/+K6JW1nh/L8GhXjn5DBEFLEQ9TtMsYDpvLl11QGGQvi3aGKovBIdBIN6eDyMxna6P0GcRdyXVFvYotTZn0VMmBl6EhgKGAs+SSGwFOd8emIgwZzTcRVwwzolGJh6XA9B9/taluHL3v1ZhDOobonxkZ8SDFDwWenBncbDHb/fus7DrAtR59AonRIMsZmPzQCm/byJgdhCG746dRhZqyaLb4qzW/LwbVqzFGOvIx10RLuSKcNohH2UtXLU/bE+wLzWAAm7RzurU4IhglgBFFPunhiIRgno1GEYq3XMgEYtyWwluB1ckcqr0bRhNMK+5tC0jUBuao2fLapC6qYFw1iQQBBNJgaSDO4DK2gydRi2CKYAvtrX9NLx+PmXI7ybal+CVtxhwQBFVdHU43WNPmA/2Hy3zsgW1GWOz6nCwAoSGjTZfQgg/T9HUExZpgRDLAQ9BgQqOx9qKoxfn9+LCW7BDTvi/vjwYTTCqqgRrFyn99PZVCDx9ofwqQf1U4dRtGAFN7BuYiCD+75EOlChsMBkntVJYIjJ7JTsddReuUGfvfyTzXvqzJfxfhbVLRHoEcKoHxH1IF2Ehab1mXT9GefR//3LqG0ZxCduSjCMhaAjQJNBkv3fmRCInHbTIEObvoIYpXyqRQocGkYA8T7HK7cfwA+WsD3/os9e8U19+JLgyDJ53odQPkSyK8ENu+bAqFddXhVjPqgPlc8/0qa4bnjXNYj9Mj7tYPsdL+HeiCYvGYFgZhURC9VtX5dlX6hO7svqW3sn5dM/h6oQ93vSQYcmb4WhsdJ3zxBDT0WYELovKVJcYvGVZwkHPiO/88DOaWf0gVXtdIb3InEvw89XUd8kGOPimJKA3YMZ/pxcSm36ndRlPZjyX2LsGaTDKbW+GuI8HRfMYvG1J2HL9q0v8IJgixYphYhRqlvulkWfvmNKzkUA3XLH1ZRP/XvC7kZTMfNhpQOeaJej8mLCzh8OE/WlB9Xv5TNDZq0KEX+AeOBmOf9nD07vRb76NkQ+wcjLEW4gbToMUAggKAuOe+V3B9dO6/5+ddoqAnszSBfx6zHx6zFm3D2WTiqy8JollE/vIugMsSULjWauATfST3Xn38myax+Ysrf3oBvY/s9/gHRcjikugOR0ktfLbP2nIWo7xkC82TjFeYau9xSRgscNr+W8n31DpG7SQ11rw9mrsYXvEO/z1LZELYGh40qJKSnIF+XSfZOOlygI61d+AilciToh2l4jraQHwRh/vfaTisy9YhGlJQnB3G2Q7qY2/KCs+LNfHnLcZ3qdtE/fQdB1Df3fHcKN+LeF0ci4FKHrgiJhr8FXH8fXbpQ16/YewpMb0D74Y9LkZEY2Z1VAq2CAoqIUeiyYrezZe5NcgZu4xbewTNxxExpegFYcUV8Nl/oJYQiKaRO63tMJ7r9kzSP/0ZoRQ19Zh3dK2yJzSBiKopHnjUcrDD9XA3Mhpvjf+ujFF0147tIbN6D+ZKIdcethoEh9Ip2YZSyYP2HrUB87+VTiWXei4QWk+xOqW6qTwgDFdlvEQCC/ad0Q7lDyEPiEwnwzJeOAUn05YeDJKi6aTVvx2/rkRde/JdOPnnkKytUkgw53IG09jHrY1xw+8WA/qesXLH/ry3vlh/HhV/Eyl2hbjXhX5ticDIaiFLoDsCkHZHPLgMj77h3CV14mnG+nBIP63mRfysDjFdIBgeBGffLCe/TX53eNenIDezvqAqId8YzBaGynAw4kIA1vVM2qcN2wpKSPrvwiYq/HJ5botQpuOJ0yDEEJ5wSgW+XSddNqxU2/v6DRr7GzTsW0gatNDmPUnxQpg09VKS8LKCx8L6n7kT525i0oF6B6JvHOGB/7GYUBoN6TDqaEs1fyyIqP6iPyLBrcCrKEdCDB7Y7wqtOCIQXBthu8m/bkiukDcbVHCNquJJxv8FvdlGCMhlWpbo1JBlPKyxchwXfx3uOHHcm+dMZhNLbdUErQKZjS1Rj5FN4XiHfXcEPpaPypwgClMDtADWi6ebrmnf6gjXW/RF1KsddMD8b4auJAysjmGkmlAGmRqD8+ajAa6eO9CdCGT0Jq26qHDQMU2xtixBPa51sORFb9zwF89BphrzksGI2wizy1l2tUt8ekkR5VGKBo5Ih2RdS2VrNZIocJQ1GKPQGYPjn3FyOtLyGj75EOwYYcFozROKqkw/6owxh9SIZTVPWIYNgQTFeA8y8d1ljXYQ7IbACvBHPM4cOY4dbUZDDenP5wYAhKMDcEA8Y9P3NANFqHekc4x+Qw3rQd9oZYo3g/c0Bkzbq9+HgbQbfJYYzvaALhnBDVflnzvwMzV0IANP4/bHs2YzCHkcEIQgi6AtS9eNjzJQ4fSPoEqkrYLTmMepqwN8gG8szmmQeS1H4FzhN0Sg6jHg7mFQgDZaT23IwDkYue2I2mfdhOk8Oo72+bF+L863Lxz/fPfAkB8PFGgrJkk+VOcBjGQjA7BP/ikZj0COe7Jk+CKrZdTmwYKIV5YfZJhN989IC4dAPeeYJZckLDUJTighAjYNLnjxoQufiZHeB2ISU5oWFk8wgKeNkvq+7bfRSrLEDjjZiSIHLiwrCiBHMLaPrbIzVncMRAui7aSmlpD/H+DnySTdkUUbySzTisO+vQbDxE605FqR/LfsbiMLr/4H2iClKfp+vHxdHx11TM+LRks/OReljGMI7fr2Rzzkx98gMCiCL1X4XRMGg2L62eRlCCzoDyad1U+3cefSCzztpIz0d60VhR51FfB9EwmmfUgKiibizsHRmkevw3/x58njoMN7bdOOZ9A5rP9tcn1IgZC2PGJtkYo2MTbmTsuIzCACPg68fNuLSN41KHgQFTLhC0F7FtR7yCXVPWy9I3ntiFLZVHS8iJBAOBoLsEVKX7PauP1JbN+cwr3lWvO09AGCJgQks6/FIzTNkcIMnex8YMeYLBILTZAjcjG985QNKB++ovWE4oGAqYokUEkuEHm2HKoClAlg2sp/+ZPeBL+MRlRveMGZqGgbNvNFTHVW/1Y41facCof7R5cPoMQiNtY9KQabSWRDPDmoaRx7W06sZtxGEcDBF9K4zxaWXs+W1AacAsLJiFKw+w9qWnmmHKpi2Cqet6vopz78cNpsddP2PC2SWizP+T5ahukrP+7evvnCoLwPunwft6u/34hyEodl4BUxTEbW6WGZsHRPwzWX0vnBAwPNC2tIgYqKXPv/OAXDL0Mj4doN4zPO5hKEpxURsiVVaf8uo7DogIik03ZS2iEwBGIEphUQmfvNrM5amau/6H0ydQM+ZoPF5hGJRweRumZDDu6WaasNkLsjwKJgLLcQ1DUbou7AZJqETr37FA5MMMIPKfiBnziB6PMNpXdVBaWkZrD8t533vjnVxC4EDyA8S8gi1l/c7jDUb5tBJzLp0HaT9tIz9qtvla8t8RdH37PCLzNUQW4WOPi7Le+7EMw5SErvf20HF2N0Zfp7L3a3LuD/YcE0AA9Bc9XYTuBjS4KDNg6rM/P+aSaBhB664KUx8A8mbMgGLGxWkYtp7WmrrLox6v8S29SmZEMeNcIo0OayNe4xqNwahx5zUm82sZowRlQ7CwjfLyMqZoSKNniYbubnZV1XIgo2A29JxNaj+GmnPAlOorHGRARLJVTjFgpQ7CZr4mMdm2rcdptN4ay3xYo3jJjCaNtbtEUVP3wtbPe9C5LNlxU/dn2YaTMTuPt4I1ihMZPa+x4Inw8Yu46k/l7O8+00p7zdg/dNEfY5m7eCFIN8YUxt5ioWBRknFhAMKxxIXCOM9yIAQytgiB1LfTIMvL+DBAAoTjzpVaITAKdixOaPSg6zXiJ5og5gCbR/rlip84cuXKlStXrly5cuXKlStXrly5cuXKlStXrly5cuXKlaul+n/tPBTF2HB3PAAAAABJRU5ErkJggg==';
 
 type Provider = 'discord' | 'google' | 'bip39' | null;
 type MenuVariant = 'panel' | 'sheet';
@@ -75,7 +76,7 @@ const MenuItem: React.FC<{ variant: MenuVariant; value: string; children: React.
 );
 
 const MenuDivider: React.FC = () => (
-  <li aria-hidden="true" data-sheet-item className="mx-2 my-1.5 h-px bg-[#303030]" />
+  <li aria-hidden="true" data-sheet-item className="mx-2.5 my-2.5 h-px bg-[#303030]" />
 );
 
 const ProfileMenu: React.FC = () => {
@@ -323,8 +324,12 @@ const ProfileMenu: React.FC = () => {
   );
 
   const becomeVipButton = (
-    <LiquidButton tone="gold" onClick={handleOpenVipModal}>
-      <Crown className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+    <LiquidButton
+      tone="gold"
+      onClick={handleOpenVipModal}
+      className="h-12 w-full gap-3 rounded-xl border-[#80611f] bg-[#171717] px-5 text-sm font-semibold tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.045)]"
+    >
+      <img src={VIP_CROWN_IMAGE} alt="" aria-hidden="true" className="h-6 w-6 shrink-0 object-contain" />
       <span>{t('vip.becomeVip')}</span>
     </LiquidButton>
   );
@@ -338,19 +343,19 @@ const ProfileMenu: React.FC = () => {
   ];
 
   const renderConnected = (variant: MenuVariant) => (
-    <div className={variant === 'panel' ? 'px-2.5 py-2' : 'px-2'}>
-      <div data-sheet-item className="group relative mb-1.5 flex items-center gap-2.5 rounded-lg px-1.5 py-1.5">
+    <div className={variant === 'panel' ? 'px-3 py-2.5' : 'px-2'}>
+      <div data-sheet-item className="group relative mb-2 flex items-center gap-2.5 rounded-lg px-1.5 py-2">
         <img
           src={profileImage}
           alt=""
-          className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/15"
+          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/15"
           onError={onAvatarError}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-5 text-white">{username}</p>
+          <p className="truncate text-sm font-semibold leading-5 text-white">{username}</p>
           {isVip
             ? vipLine('mt-0.5')
-            : <p className="mt-0.5 truncate text-[11px] text-[#929292]">{providerStatus()}</p>}
+            : <p className="mt-0.5 truncate text-xs text-[#929292]">{providerStatus()}</p>}
         </div>
         {!notificationsDisabled && notificationsTriggerRef && (
           <button
@@ -413,12 +418,12 @@ const ProfileMenu: React.FC = () => {
       {/* L'invitation « Devenir VIP » mène à /vip, hors périmètre V1 sur TV ;
           le statut VIP, lui, reste affiché. */}
       {!isVip && showVipButton && (
-        <div data-sheet-item className="px-1 pt-2">
+        <div data-sheet-item className="px-2 pb-1 pt-3">
           {becomeVipButton}
         </div>
       )}
 
-      <div data-sheet-item className="px-1 pb-1 pt-2">
+      <div data-sheet-item className="px-2 pb-1 pt-2.5">
           {/* Déconnexion à maintenir (HoldButton de React Bits) : le rouge
               du site monte en vague dans le bouton, un clic de travers ne
               déconnecte plus. */}
@@ -436,8 +441,8 @@ const ProfileMenu: React.FC = () => {
             holdTime={1200}
             glow={false}
             resetAfter={0}
-            size={variant === 'sheet' ? 'lg' : 'md'}
-            className="w-full text-sm"
+            size="sm"
+            className="w-full min-w-0 rounded-xl px-3 text-xs"
           >
             {t('auth.holdToLogout')}
           </HoldButton>
@@ -542,7 +547,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="relative isolate w-[240px] overflow-hidden rounded-xl border border-[#303030] bg-[#171717] shadow-[0_18px_48px_rgba(0,0,0,0.55)]"
+              panelClassName="relative isolate w-[272px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-[#303030] bg-[#171717] shadow-[0_20px_54px_rgba(0,0,0,0.6)]"
             >
               {renderContent('panel')}
             </LiquidDropdown>
