@@ -22,7 +22,7 @@ const DetailCastRail: React.FC<DetailCastRailProps> = ({ items, imageUrl, title,
   const { t } = useTranslation();
 
   return (
-    <section className="detail-section" aria-labelledby="detail-cast-heading">
+    <section className="detail-section detail-cast-section" aria-labelledby="detail-cast-heading">
       <div className="detail-section__heading">
         <h2 id="detail-cast-heading">{title ?? t('details.castTab')}</h2>
       </div>
@@ -30,7 +30,7 @@ const DetailCastRail: React.FC<DetailCastRailProps> = ({ items, imageUrl, title,
       {items.length === 0 ? (
         <p className="text-sm text-white/50">{emptyLabel ?? t('details.noCast')}</p>
       ) : (
-        <div className="detail-cast-rail">
+        <div className="detail-cast-rail" aria-label={title ?? t('details.castTab')}>
           {items.map((actor) => {
             const portrait = actor.profile_path && imageUrl
               ? imageUrl(actor.profile_path, 185)
@@ -39,7 +39,7 @@ const DetailCastRail: React.FC<DetailCastRailProps> = ({ items, imageUrl, title,
               <Link
                 key={actor.id}
                 to={`/person/${actor.id}`}
-                className="detail-cast-card flex items-center gap-3 p-3"
+                className="detail-cast-card"
                 aria-label={`${actor.name}${actor.character ? ` — ${actor.character}` : ''}`}
               >
                 {portrait ? (
@@ -47,9 +47,9 @@ const DetailCastRail: React.FC<DetailCastRailProps> = ({ items, imageUrl, title,
                     <CompleteImage
                       src={portrait}
                       alt={actor.name}
-                      fit="contain"
+                      fit="cover"
                       position="center top"
-                      ambient
+                      ambient={false}
                     />
                   </span>
                 ) : (
@@ -61,9 +61,9 @@ const DetailCastRail: React.FC<DetailCastRailProps> = ({ items, imageUrl, title,
                     {actor.name.charAt(0).toUpperCase()}
                   </span>
                 )}
-                <span className="min-w-0">
-                  <span className="block line-clamp-2 text-sm font-semibold text-white">{actor.name}</span>
-                  {actor.character && <span className="mt-1 block line-clamp-2 text-xs text-white/50">{actor.character}</span>}
+                <span className="detail-cast-card__meta">
+                  <span className="detail-cast-card__name" title={actor.name}>{actor.name}</span>
+                  {actor.character && <span className="detail-cast-card__character" title={actor.character}>{actor.character}</span>}
                 </span>
               </Link>
             );

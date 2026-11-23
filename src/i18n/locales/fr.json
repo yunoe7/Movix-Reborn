@@ -2991,7 +2991,7 @@
     }
   },
   "lists": {
-    "addToList": "Ajouter à une liste",
+    "addToList": "Ajouter à la liste",
     "removeFromList": "Retirer de la liste",
     "createNewList": "Créer une nouvelle liste",
     "listName": "Nom de la liste",
@@ -3017,6 +3017,7 @@
     "movies": "films",
     "myCustomLists": "Mes Listes Personnalisées",
     "noLists": "Vous n'avez pas encore de listes",
+    "noListsPopover": "Aucune liste pour le moment.\nCréez-en une ci-dessous !",
     "sharedLists": "Listes partagées",
     "myLists": "Mes listes",
     "browseSharedLists": "Parcourir les listes partagées",

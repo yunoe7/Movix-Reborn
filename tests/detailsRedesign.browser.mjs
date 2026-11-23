@@ -348,6 +348,15 @@ try {
       const actionCount = await page.locator('.detail-hero__actions button').count();
       const tabCount = await page.getByRole('tab').count();
       const castCount = await page.locator('.detail-cast-rail .detail-cast-card').count();
+      const firstCastCard = page.locator('.detail-cast-rail .detail-cast-card').first();
+      const castCardDirection = castCount ? await firstCastCard.evaluate(node => getComputedStyle(node).flexDirection) : null;
+      const castPortrait = firstCastCard.locator('.detail-cast-card__image');
+      const castPortraitRatio = castCount ? await castPortrait.evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        return Number((rect.width / rect.height).toFixed(2));
+      }) : null;
+      const castImageFit = castCount ? await castPortrait.locator('img').evaluate(node => getComputedStyle(node).objectFit) : null;
+      const castNameVisible = castCount ? await firstCastCard.locator('.detail-cast-card__name').isVisible() : false;
       const recommendations = await page.locator('[data-testid="recommendations"]').innerText();
       const commentsCount = await page.locator('[data-testid="comments"]').count();
       const heading = await page.locator('.detail-section__heading h2').allInnerTexts();
@@ -360,20 +369,49 @@ try {
       assert.equal(actionCount, 3, `${kind}/${mode}: exactement trois actions principales`);
       assert.equal(tabCount, 0, `${kind}/${mode}: aucun onglet`);
       assert.ok(castCount >= 1, `${kind}/${mode}: distribution affichée`);
+      assert.equal(castCardDirection, 'column', `${kind}/${mode}: portraits verticaux avec métadonnées dessous`);
+      assert.ok(castPortraitRatio >= 0.72 && castPortraitRatio <= 0.78, `${kind}/${mode}: portrait au ratio 3:4 (${castPortraitRatio})`);
+      assert.equal(castImageFit, 'cover', `${kind}/${mode}: portrait remplit son cadre sans déformation`);
+      assert.equal(castNameVisible, true, `${kind}/${mode}: nom de l'acteur visible`);
       assert.ok(recommendations.includes(kind === 'movie' ? 'Reco Film' : 'Reco Série'), `${kind}/${mode}: recommandations réelles`);
       assert.equal(commentsCount, 1, `${kind}/${mode}: commentaires conservés`);
       assert.ok(heading.some(value => value.includes('details.youMightAlsoLike')), `${kind}/${mode}: titre recommandations`);
       assert.ok(heading.some(value => value.includes('details.castTab')), `${kind}/${mode}: titre distribution`);
       if (kind === 'tv') {
-        assert.ok(await page.locator('.seasons-section').isVisible(), `${kind}/${mode}: saisons et épisodes conservés`);
+        assert.ok(await page.locator('.seasons-section').isVisible(), `${kind}/${mode}: section des épisodes visible`);
+        const seasonPicker = page.locator('[data-testid="season-picker-trigger"]');
+        await seasonPicker.waitFor();
+        await seasonPicker.click();
+        await page.locator('[data-testid="season-option-1"]').waitFor();
+        assert.equal(await page.locator('.anime-season-card').count(), 0, `${kind}/${mode}: aucune grille de posters de saisons`);
+        await page.locator('[data-testid="season-option-1"]').click();
         await page.locator('[data-testid="episode-download-1-1"]').waitFor();
       }
+      
+      const addToListTrigger = page.locator('[data-testid="add-to-list-trigger"]');
+      await addToListTrigger.waitFor();
+      await addToListTrigger.click();
+      const addToListPopover = page.locator('[data-testid="add-to-list-popover"]');
+      await addToListPopover.waitFor();
+      assert.ok(await page.locator('[data-testid="add-to-list-empty"]').isVisible(), `${kind}/${mode}: état vide du menu de listes`);
+      const popoverBox = await addToListPopover.boundingBox();
+      assert.ok(popoverBox && popoverBox.width >= 230 && popoverBox.width <= 242, `${kind}/${mode}: menu compact d'environ 236px`);
+      await page.locator('[data-testid="add-to-list-create-trigger"]').click();
+      await page.locator('[data-testid="add-to-list-create-form"]').waitFor();
+      const newListInput = page.locator('[data-testid="add-to-list-name"]');
+      await newListInput.fill('E2E Watchlist');
+      await page.locator('[data-testid="add-to-list-confirm"]').click();
+      const savedList = await page.evaluate(() => JSON.parse(localStorage.getItem('custom_lists') || '[]').find(list => list.name === 'E2E Watchlist'));
+      assert.ok(savedList, `${kind}/${mode}: création de liste enregistrée`);
+      assert.ok(savedList.items?.some(item => item.type === (kind === 'movie' ? 'movie' : 'tv')), `${kind}/${mode}: contenu ajouté à la nouvelle liste`);
+      await addToListPopover.waitFor({ state: 'hidden' });
 
       const screenshot = path.join(artifactDir, `${kind}-${mode}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
       observations.push({
         kind, mode, heroCount, fixedBackdrops, ambientCount, heroObjectFit, heroImageSrc, actionCount,
-        tabCount, castCount, recommendations, commentsCount, screenshot: path.basename(screenshot),
+        tabCount, castCount, castCardDirection, castPortraitRatio, castImageFit, castNameVisible,
+        recommendations, commentsCount, screenshot: path.basename(screenshot),
         errors,
       });
       assert.deepEqual(errors, [], `${kind}/${mode}: erreurs navigateur`);
@@ -391,7 +429,15 @@ try {
     await page.locator('.detail-hero').waitFor();
     const animeToggle = page.locator('button[aria-pressed]').filter({ hasText: 'details.backToStandardMode' });
     await animeToggle.waitFor();
+    const animeSeasonPicker = page.locator('[data-testid="season-picker-trigger"]');
+    await animeSeasonPicker.waitFor();
+    await animeSeasonPicker.click();
+    await page.locator('[data-testid="season-option-1"]').waitFor();
+    await page.locator('[data-testid="season-option-1"]').click();
     await page.locator('[data-testid="episode-download-1-1"]').waitFor();
+    await page.locator('[data-testid="add-to-list-trigger"]').click();
+    await page.locator('[data-testid="add-to-list-popover"]').waitFor();
+    await page.locator('[data-testid="add-to-list-empty"]').waitFor();
 
     const heroCount = await page.locator('.detail-hero').count();
     const fixedBackdrops = await page.locator('div.fixed.inset-0[aria-hidden="true"]').count();

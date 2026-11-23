@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
-import AddToListMenu from '../components/AddToListMenu';
+import AddToListButton from '../components/AddToListButton';
 import DetailsSkeleton from '../components/skeletons/DetailsSkeleton';
 
 import CustomDropdown from '../components/CustomDropdown';
@@ -443,7 +443,6 @@ const TVDetails: React.FC = () => {
     }
   }, [id]);
 
-  const [showAddToList, setShowAddToList] = useState(false);
   const [, setIsAvailable] = useState<boolean>(true);
   const [recommendations, setRecommendations] = useState<(TVShow & { isAvailable?: boolean })[]>([]);
   const [showSimilarModal, setShowSimilarModal] = useState(false);
@@ -455,6 +454,18 @@ const TVDetails: React.FC = () => {
   const [animeEpisodeSearch, setAnimeEpisodeSearch] = useState('');
   const [animeEpisodeSortDescending, setAnimeEpisodeSortDescending] = useState(false);
   const [animeEpisodeView, setAnimeEpisodeView] = useState<'list' | 'grid'>('list');
+  const [seasonPickerOpen, setSeasonPickerOpen] = useState(false);
+  const seasonPickerMenuRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!seasonPickerOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (seasonPickerMenuRef.current && !seasonPickerMenuRef.current.contains(event.target as Node)) {
+        setSeasonPickerOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [seasonPickerOpen]);
   const [animeData, setAnimeData] = useState<any>(null);
   const [loadingAnimeData, setLoadingAnimeData] = useState<boolean>(false);
   const [tmdbKeywords, setTmdbKeywords] = useState<TmdbKeywordsResponse | null>(null);
@@ -994,6 +1005,7 @@ const TVDetails: React.FC = () => {
     setDropdownMode(null);
     setAnimeEpisodeSearch('');
     setAnimeEpisodeSearchOpen(false);
+    setSeasonPickerOpen(false);
 
     // Scroll vers le bouton de menu déroulant pour qu'il soit au centre de l'écran
     setTimeout(() => {
@@ -1456,16 +1468,12 @@ const TVDetails: React.FC = () => {
               )}
             </div>
           </motion.button>
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => setShowAddToList(true)}
-            className="inline-flex min-h-11 items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
-          >
-            <FolderPlus className="h-5 w-5 flex-shrink-0" />
-            {t('lists.addToList', 'Ajouter à ma liste')}
-          </motion.button>
+          <AddToListButton
+            mediaId={Number(id)}
+            mediaType="tv"
+            title={tvShow?.name || ''}
+            posterPath={tvShow?.poster_path || ''}
+          />
           {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
             <motion.button
               whileHover={{ y: -2, scale: 1.015 }}
@@ -1479,15 +1487,6 @@ const TVDetails: React.FC = () => {
             </motion.button>
           )}
         </div>
-          {showAddToList && (
-            <AddToListMenu
-              mediaId={Number(id)}
-              mediaType="tv"
-              title={tvShow?.name || ''}
-              posterPath={tvShow?.poster_path || ''}
-              onClose={() => setShowAddToList(false)}
-            />
-          )}
         {showAntiSpoilerModal && (
           <AntiSpoilerSettingsModal
             isOpen={showAntiSpoilerModal}
@@ -2248,12 +2247,97 @@ const TVDetails: React.FC = () => {
         {(
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
-              <h4 className="text-lg font-semibold tracking-tight text-white">{t('details.episodes')}</h4>
+              <div ref={seasonPickerMenuRef} className="relative inline-flex" onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSeasonPickerOpen(false);
+              }}>
+                <button
+                  ref={dropdownToggleButtonRef}
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={seasonPickerOpen}
+                  aria-label={t('details.season')}
+                  data-testid="season-picker-trigger"
+                  onClick={() => setSeasonPickerOpen((open) => !open)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') setSeasonPickerOpen(false);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-md text-left text-xl font-bold tracking-tight text-white transition-colors hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                >
+                  <span>{t('details.season')} {selectedSeason ?? 1}</span>
+                  <ChevronRight className={`h-4 w-4 rotate-90 text-white/55 transition-transform ${seasonPickerOpen ? 'rotate-[270deg]' : ''}`} aria-hidden="true" />
+                </button>
+                {seasonPickerOpen && (
+                  <div
+                    role="listbox"
+                    aria-label={t('details.seasonsLabel')}
+                    data-testid="season-picker-options"
+                    className="absolute left-0 top-full z-40 mt-2 max-h-64 min-w-40 overflow-y-auto rounded-xl border border-white/[0.09] bg-[#181818] p-1 shadow-2xl"
+                  >
+                    {(isAnime
+                      ? animeSeasonCards.map(({ seasonNumber }) => Number(seasonNumber))
+                      : Object.keys(seasonsDetails).map((season) => Number(season))
+                    ).sort((a, b) => a - b).filter((seasonNumber, index, seasons) => seasons.indexOf(seasonNumber) === index).map((seasonNumber) => (
+                      <button
+                        key={seasonNumber}
+                        type="button"
+                        role="option"
+                        aria-selected={Number(selectedSeason) === seasonNumber}
+                        data-testid={`season-option-${seasonNumber}`}
+                        onClick={() => {
+                          handleSeasonChange(seasonNumber);
+                          setSeasonPickerOpen(false);
+                        }}
+                        className={`flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors ${Number(selectedSeason) === seasonNumber ? 'bg-[#303033] text-white font-semibold' : 'text-white/70 hover:bg-white/[0.07] hover:text-white'}`}
+                      >
+                        <span>{t('details.season')} {seasonNumber}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <p className="mt-0.5 text-xs font-medium text-white/45">
-                {visibleEpisodes.length} {t('details.episodes').toLocaleLowerCase()}
+                {nonEmptyEpisodes.length} {t('details.episodes').toLocaleLowerCase()}
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {episodeListOptions.length > 0 && id && !isAnime && (
+                <div
+                  className="flex items-center rounded-full bg-white/[0.07] p-0.5"
+                  role="group"
+                  aria-label={t('details.episodeListSource')}
+                  title={episodeListKind === 'tvmaze' && tvmazeSeasons ? t('details.episodeListTvmazeHint', {
+                    count: tvmazeSeasons[selectedSeason as number]?.length ?? 0,
+                    tmdb: tmdbSeasonsDetails[selectedSeason as number]?.episodes?.length ?? 0,
+                  }) : undefined}
+                >
+                  {episodeListOptions.map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={episodeListKind === kind}
+                      onClick={() => chooseEpisodeList(kind)}
+                      className={`h-8 rounded-full px-3 text-xs font-semibold transition-colors ${episodeListKind === kind ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                    >
+                      {t(kind === 'tvmaze' ? 'details.episodeListTvmaze' : 'details.episodeListTmdb')}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {hasNetflixLayout && !isAnime && id && (
+                <div className="hidden items-center rounded-full bg-white/[0.07] p-0.5 sm:flex" role="group" aria-label={t('details.seasonLayout')}>
+                  {([false, true] as const).map((netflix) => (
+                    <button
+                      key={netflix ? 'netflix' : 'tmdb'}
+                      type="button"
+                      aria-pressed={usesNetflixLayout === netflix}
+                      onClick={() => chooseSeasonLayout(netflix)}
+                      className={`h-8 rounded-full px-3 text-xs font-semibold transition-colors ${usesNetflixLayout === netflix ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                    >
+                      {t(netflix ? 'details.episodeListNetflix' : 'details.episodeListTmdb')}
+                    </button>
+                  ))}
+                </div>
+              )}
               {animeEpisodeSearchOpen ? (
                 <div className="flex h-9 w-52 items-center gap-2 rounded-lg border border-white/10 bg-[#19191b] px-2.5 focus-within:border-white/25 sm:w-64">
                   <Search className="h-4 w-4 shrink-0 text-white/45" />
@@ -2364,7 +2448,7 @@ const TVDetails: React.FC = () => {
           >
             <div className={animeEpisodeView === 'grid'
               ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
-              : "mb-6 grid grid-cols-1 gap-3"}>
+              : "mb-6 flex flex-col gap-2"}>
               {visibleEpisodes.map((ep: any, index: number) => {
                 // ... grid item rendering ...
                 if (isAnime) {
@@ -2433,7 +2517,7 @@ const TVDetails: React.FC = () => {
                       key={`anime-${selectedSeason}-${ep.index}`}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: Math.min(index * 0.025, 0.2), duration: 0.22 } }}
-                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-red-500/70 ring-1 ring-red-500/25' : ''}`}
+                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-white/25 ring-1 ring-white/10' : ''}`}
                       whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
@@ -2656,8 +2740,8 @@ const TVDetails: React.FC = () => {
                         // TVmaze attendait plus d'une seconde avant d'apparaître.
                         transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 }
                       }}
-                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-all duration-300 hover:border-red-500/70 hover:bg-white/[0.075] md:min-h-[132px] ${isSelected ? 'ring-2 ring-red-500' : ''}`}
-                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] transition-[background,border-color] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[132px] ${isSelected ? 'border-white/25 ring-1 ring-white/10' : ''}`}
+                      whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
                       <div
@@ -2785,19 +2869,19 @@ const TVDetails: React.FC = () => {
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 {/* Hauteur fixe de deux lignes : la date reste au même niveau sur toutes les cartes. */}
-                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-red-500 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
+                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-white/85 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {shouldHide('episodeNames') ? getMaskedContent(ep.name, 'episodeNames', undefined, ep.episode_number) : `${ep.episode_number}. ${ep.name}`}
                                 </h4>
                                 <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
                                   {(airing.date || airing.timestamp !== null) && (
                                     <div className="flex items-start gap-1.5">
-                                      <Calendar className="h-3.5 w-3.5 shrink-0 mt-1 text-red-400 opacity-70" />
+                                      <Calendar className="h-3.5 w-3.5 shrink-0 mt-1 text-white/35" />
                                       <span>{airing.kind === 'aired' ? formatAiringDate(airing, i18n.language) : getAiringLabel(airing, t, i18n.language, airingNow)}</span>
                                     </div>
                                   )}
                                   {ep.runtime && (
                                     <div className="flex items-center gap-1.5">
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock h-3.5 w-3.5 text-red-400 opacity-70"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock h-3.5 w-3.5 text-white/35"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                       <span>{Math.floor(ep.runtime / 60)}h {ep.runtime % 60}m</span>
                                     </div>
                                   )}
@@ -2812,7 +2896,7 @@ const TVDetails: React.FC = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="flex gap-2 mt-auto pt-3 justify-end">
+                            <div className="flex gap-2 mt-auto pt-3 justify-end opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -2877,7 +2961,7 @@ const TVDetails: React.FC = () => {
                         data-testid={`episode-download-${selectedSeason}-${ep.episode_number}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${ep.episode_number}`);
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${ep.episode_number}`, { state: { backgroundLocation: location } });
                         }}
                         className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
                       >
@@ -2933,7 +3017,6 @@ const TVDetails: React.FC = () => {
   const measuredDetailsWidth = Math.max(1, detailsMediaSlot.width);
   const gridCardWidth = (columns: number) => Math.max(1, (measuredDetailsWidth - 16 * (columns - 1)) / columns);
   const episodeCardCssWidth = gridCardWidth(viewportWidth < 768 ? 1 : viewportWidth < 1024 ? 3 : 4);
-  const seasonCardCssWidth = gridCardWidth(viewportWidth < 640 ? 2 : viewportWidth < 768 ? 3 : viewportWidth < 1024 ? 4 : 5);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -3187,7 +3270,7 @@ const TVDetails: React.FC = () => {
           />
 
 
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="detail-content-shell mx-auto w-full max-w-[1720px] px-0 sm:px-2">
           <div className="detail-section flex flex-wrap items-center gap-3 border-b border-white/[0.08] pb-4">
             <LikeDislikeButton
               contentType="tv"
@@ -3227,218 +3310,14 @@ const TVDetails: React.FC = () => {
             </p>
           )}
 
-                  {/* Saisons et épisodes */}
-                <motion.div
+                  {/* Saisons et épisodes : choix direct dans l'en-tête, sans galerie de posters. */}
+                  <motion.div
                     ref={seasonsSectionRef}
-                    className={`mb-7 rounded-2xl border p-4 shadow-[0_14px_36px_rgba(0,0,0,0.16)] seasons-section sm:p-5 ${useAnimeSeasonLayout ? 'anime-seasons-section font-sans border-white/[0.08] bg-[#101012]' : 'border-white/[0.08] bg-slate-950/25 backdrop-blur-sm'}`}
+                    className="seasons-section mb-7 w-full border-0 bg-transparent p-0 shadow-none"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
+                    transition={{ delay: 0.25 }}
                   >
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.seasonsLabel')}</h3>
-                        {animeMode && (
-                          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-rose-300/40 bg-rose-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-rose-100 shadow-[0_0_0_1px_rgba(255,255,255,0.04)] sm:text-xs">
-                            <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
-                            <span className="truncate">{t('details.animeModeActiveBadge')}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex min-w-0 flex-wrap items-center gap-2">
-                        {animeMode && (
-                          <button
-                            type="button"
-                            onClick={handleAnimeModeToggle}
-                            disabled={loadingAnimeData}
-                            className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-lg border border-rose-300/30 bg-rose-500/10 px-3 py-1.5 text-xs font-bold text-rose-100 transition-colors hover:border-rose-300/50 hover:bg-rose-500/20 disabled:cursor-wait disabled:opacity-60 sm:text-sm"
-                          >
-                            <Video className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{t('details.backToStandardMode')}</span>
-                          </button>
-                        )}
-                        {hasNetflixLayout && !useAnimeSeasonLayout && id && (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm text-gray-400">{t('details.seasonLayout')}</span>
-                            <div className="flex rounded-xl border border-white/[0.08] bg-black/25 p-1" role="group">
-                              {([false, true] as const).map((netflix) => (
-                                <button
-                                  key={netflix ? 'netflix' : 'tmdb'}
-                                  type="button"
-                                  aria-pressed={usesNetflixLayout === netflix}
-                                  onClick={() => chooseSeasonLayout(netflix)}
-                                  className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${usesNetflixLayout === netflix ? 'rounded-lg bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-[0_6px_18px_rgba(225,29,72,0.22)]' : 'rounded-lg text-slate-300 hover:bg-white/[0.07]'}`}
-                                >
-                                  {t(netflix ? 'details.episodeListNetflix' : 'details.episodeListTmdb')}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Compact season picker for Anime; poster grid stays for standard series. */}
-                    <div className={useAnimeSeasonLayout ? "mb-8 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3" : "mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"}>
-                      <AnimatePresence>
-                        {useAnimeSeasonLayout ? (
-                          /* Affichage des saisons pour les animes */
-                          animeSeasonCards.map(({ season, seasonNumber, seasonTitle, posterPath }, index) => {
-                            const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${seasonNumber}`);
-                            const imageUrl = posterPath && detailsMediaSlot.width > 0
-                              ? getTmdbImageUrl(posterPath, {
-                                kind: 'poster',
-                                quality: effectiveImageQuality,
-                                width: Math.ceil(seasonCardCssWidth * imageDpr),
-                                role: 'card',
-                                fallback: fallbackSvg,
-                              })
-                              : fallbackSvg;
-                            const imageKey = `anime-season-${seasonNumber}-poster`;
-                            const hasFailed = failedImages[imageKey];
-                            const retryUrl = hasFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
-                            return (
-                              <motion.div
-                                key={`anime-season-${seasonNumber}`}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 8 }}
-                                transition={{ duration: 0.22, delay: Math.min(index * 0.025, 0.18) }}
-                                className={`anime-season-card group flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border bg-[#151517] p-2.5 text-left transition-[background,border-color,transform] duration-200 hover:-translate-y-0.5 hover:bg-[#1b1b1e] ${selectedSeason === seasonNumber ? 'border-red-500/70 ring-1 ring-red-500/20' : 'border-white/[0.08] hover:border-white/20'}`}
-                                role="button"
-                                tabIndex={0}
-                                aria-pressed={selectedSeason === seasonNumber}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter' || event.key === ' ') {
-                                    event.preventDefault();
-                                    handleSeasonChange(seasonNumber);
-                                  }
-                                }}
-                                onClick={() => handleSeasonChange(seasonNumber)}
-                              >
-                                <div className="relative h-24 w-[68px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:h-28 sm:w-[76px]">
-                                  {!shouldHide('seasonImages') && posterPath ? (
-                                    <img
-                                      src={hasFailed ? fallbackSvg : retryUrl}
-                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : seasonTitle}
-                                      className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
-                                      onError={(event) => {
-                                        if (!hasFailed) {
-                                          setFailedImages((previous) => ({ ...previous, [imageKey]: true }));
-                                        } else {
-                                          event.currentTarget.src = fallbackSvg;
-                                        }
-                                      }}
-                                      loading="lazy"
-                                      decoding="async"
-                                      width={2}
-                                      height={3}
-                                      key={retryUrl}
-                                    />
-                                  ) : (
-                                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#242429] to-[#111114] text-white/35">
-                                      {shouldHide('seasonImages') ? <EyeOff className="h-6 w-6" /> : <Tv className="h-6 w-6" />}
-                                      <span className="text-[10px] font-semibold uppercase tracking-wider">{t('details.season')} {seasonNumber}</span>
-                                    </div>
-                                  )}
-                                  {selectedSeason === seasonNumber && (
-                                    <div className="absolute right-1.5 top-1.5 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                                      {t('details.currentSeasonBadge')}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="min-w-0 flex-1 py-1 pr-1">
-                                  <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-snug text-white transition-colors group-hover:text-rose-200 sm:text-[15px]">
-                                    {shouldHide('episodeNames') ? getMaskedContent(seasonTitle, 'episodeNames') : seasonTitle}
-                                  </h3>
-                                  <span className="mt-2 block text-xs font-medium text-white/50">
-                                    {season.episodes?.length ?? 0} {t('details.episodes')}
-                                  </span>
-                                </div>
-                                <ChevronRight className="mr-1 h-4 w-4 shrink-0 text-white/35 transition-transform group-hover:translate-x-0.5 group-hover:text-white/70" aria-hidden="true" />
-                              </motion.div>
-                            );
-                          })
-                        ) : (
-                          /* Affichage standard des saisons pour les séries non-anime */
-                          [...seasonCards]
-                            .sort((a, b) => a.season_number - b.season_number)
-                            .map((seasonMeta) => {
-                            const season = seasonMeta.season_number;
-                            const details = seasonsDetails[season] || seasonMeta;
-                            const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${season}`);
-                            const seasonImageSource = firstNonEmptyImage(
-                              details?.poster_path,
-                              seasonMeta?.poster_path,
-                              tvShow?.poster_path,
-                            );
-                            const imageUrl = detailsMediaSlot.width > 0
-                              ? getTmdbImageUrl(seasonImageSource, {
-                                kind: 'poster',
-                                quality: effectiveImageQuality,
-                                width: Math.ceil(seasonCardCssWidth * imageDpr),
-                                role: 'card',
-                                fallback: fallbackSvg,
-                              })
-                              : fallbackSvg;
-                            const imageKey = `season-${season}-poster`;
-                            const hasFailed = failedImages[imageKey];
-                            const retryUrl = hasFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
-
-                            return (
-                              <motion.div
-                                key={season}
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 0.3 }}
-                                className={`group cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200 ${selectedSeason === season ? 'border-red-600' : 'border-gray-800 hover:border-red-500'}`}
-                                onClick={() => handleSeasonChange(season)}
-                                whileHover={{ y: -5 }}
-                              >
-                                <div className="relative pb-[150%] bg-gray-900">
-                                  {!shouldHide('seasonImages') ? (
-                                    <img
-                                      src={hasFailed ? fallbackSvg : retryUrl}
-                                      alt={shouldHide('episodeNames') ? `${t('details.season')} ${season}` : (details?.name || `${t('details.season')} ${season}`)}
-                                      className="absolute inset-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
-                                      onError={(e) => {
-                                        if (!hasFailed) {
-                                          setFailedImages(prev => ({ ...prev, [imageKey]: true }));
-                                        } else {
-                                          e.currentTarget.src = fallbackSvg;
-                                        }
-                                      }}
-                                      key={retryUrl}
-                                    />
-                                  ) : (
-                                    <div className="absolute inset-0 w-full h-full bg-gray-800 flex items-center justify-center">
-                                      <div className="flex flex-col items-center gap-2 text-gray-400">
-                                        <EyeOff className="w-12 h-12" />
-                                        <span className="text-sm">{t('details.imageMasked')}</span>
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-3">
-                                    <h3 className="text-base font-bold text-white line-clamp-2">
-                          {shouldHide('episodeNames') ? getMaskedContent(getSeasonDisplayName(season, t, details?.name), 'episodeNames') : getSeasonDisplayName(season, t, details?.name)}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-xs text-gray-300">{details?.air_date ? new Date(details.air_date).getFullYear() : ''}</span>
-                                      <span className="text-xs text-gray-400 ml-auto">{details?.episodes?.length ?? details?.episode_count ?? 0} {t('details.episodes')}</span>
-                                    </div>
-                                  </div>
-                                  {selectedSeason === season && (
-                                    <div className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2 py-1 rounded-full">{t('details.currentSeasonBadge')}</div>
-                                  )}
-                                </div>
-                              </motion.div>
-                            );
-                          })
-                        )}
-                      </AnimatePresence>
-                    </div>
-
                     {/* Compact episode list for Anime and standard series. */}
                     <AnimatePresence mode="wait">
                       {selectedSeason !== null && (
@@ -3474,39 +3353,7 @@ const TVDetails: React.FC = () => {
                                 exit={{ opacity: 0, y: 10 }}    // Sortie légèrement vers le bas
                                 transition={{ duration: 0.3 }}
                               >
-                                {/* Toggle Button (toujours affiché) */}
-                                {(seasonsDetails[selectedSeason]?.episodes?.length > 0) && (
-                                  <div className="flex flex-wrap items-center justify-start gap-3 mb-4"> {/* Alignement à gauche */}
-                                    {episodeListOptions.length > 0 && id && (
-                                      <div
-                                        className="flex items-center gap-2"
-                                        title={episodeListKind === 'tvmaze' && tvmazeSeasons ? t('details.episodeListTvmazeHint', {
-                                          count: tvmazeSeasons[selectedSeason]?.length ?? 0,
-                                          tmdb: tmdbSeasonsDetails[selectedSeason]?.episodes?.length ?? 0,
-                                        }) : undefined}
-                                      >
-                                        <span className="text-sm text-gray-400">{t('details.episodeListSource')}</span>
-                                        <div className="flex rounded-lg bg-gray-800 p-1" role="group">
-                                          {episodeListOptions.map((kind) => (
-                                            <button
-                                              key={kind}
-                                              type="button"
-                                              aria-pressed={episodeListKind === kind}
-                                              onClick={() => chooseEpisodeList(kind)}
-                                              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${episodeListKind === kind ? 'bg-red-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
-                                            >
-                                              {t(kind === 'netflix' ? 'details.episodeListNetflix' : kind === 'tvmaze' ? 'details.episodeListTvmaze' : 'details.episodeListTmdb')}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                {episodeListOptions.length > 0 && (
-                                  <p className="text-sm text-gray-400 mb-4">{t('details.episodeListSwitchHint')}</p>
-                                )}
-                                {/* Render Dropdown or Grid */}
+                                {/* Render the same episode rows for every season source. */}
                                 {renderEpisodes(seasonsDetails[selectedSeason]?.episodes || [], 'standard')}
                               </motion.div>
                             )}
