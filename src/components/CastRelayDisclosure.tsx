@@ -1,5 +1,5 @@
 import * as DialogPrimitive from '@radix-ui/react-dialog';
-import { BatteryCharging, Wifi } from 'lucide-react';
+import { BatteryCharging, Wifi } from './icons/Icons8';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
