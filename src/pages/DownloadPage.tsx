@@ -151,8 +151,8 @@ const DownloadPage: React.FC = () => {
 
   const seasonParam = Number(searchParams.get('season'));
   const episodeParam = Number(searchParams.get('episode'));
-  const [season, setSeason] = useState(Number.isFinite(seasonParam) && seasonParam > 0 ? seasonParam : 1);
-  const [episode, setEpisode] = useState(Number.isFinite(episodeParam) && episodeParam > 0 ? episodeParam : 1);
+  const [season] = useState(Number.isFinite(seasonParam) && seasonParam > 0 ? seasonParam : 1);
+  const [episode] = useState(Number.isFinite(episodeParam) && episodeParam > 0 ? episodeParam : 1);
   const [fullSeason] = useState(searchParams.get('fullSeason') === 'true');
 
   const [videoSources, setVideoSources] = useState<VideoSource[]>([]);
@@ -239,11 +239,10 @@ const DownloadPage: React.FC = () => {
   const visibleSubtitles = useMemo(() => {
     const query = subtitleSearch.trim().toLowerCase();
     return tracks.filter((track) => {
-      if (languageFilter !== 'all' && track.lang !== languageFilter) return false;
       if (!query) return true;
       return `${track.label} ${track.lang} ${track.provider} ${track.source}`.toLowerCase().includes(query);
     });
-  }, [tracks, subtitleSearch, languageFilter]);
+  }, [tracks, subtitleSearch]);
 
   const selectedVideo = useMemo(
     () => (selection?.kind === 'video' ? videoSources.find((source) => source.id === selection.id) : undefined),
@@ -284,6 +283,7 @@ const DownloadPage: React.FC = () => {
   };
 
   const title = details?.title || (type === 'tv' ? t('details.tvShow') : t('details.movie'));
+  const year = (details?.release_date || details?.first_air_date || '').slice(0, 4);
   return (
     <main
       className="fixed inset-0 z-[120] flex min-h-0 items-center justify-center bg-black/80 p-3 text-white sm:p-5"
