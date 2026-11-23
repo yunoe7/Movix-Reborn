@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Gauge } from 'lucide-react';
+import { Gauge } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 
 const QualiteVideoPage: React.FC = () => {
