@@ -2465,8 +2465,8 @@ const TVDetails: React.FC = () => {
                               <CompleteImage
                                 src={episodeImageFailed ? fallbackSvg : retryUrl}
                                 alt={episodeLabel}
-                                fit="contain"
-                                ambient={Boolean(episodeStillSource)}
+                                fit="cover"
+                                ambient={false}
                                 className="absolute inset-0"
                                 onError={() => {
                                   if (!episodeImageFailed) {
@@ -2483,6 +2483,12 @@ const TVDetails: React.FC = () => {
                                   {t('details.episode')} {episodeNumber}
                                 </span>
                               </div>
+                            )}
+                            {Number(ep.vote_average) > 0 && (
+                              <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                {Number(ep.vote_average).toFixed(1)}
+                              </span>
                             )}
 
                             {((isEpisodeWatched) || (hasProgress && displayProgress >= 95)) ? (
@@ -2526,9 +2532,13 @@ const TVDetails: React.FC = () => {
                                 <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {episodeTitle}
                                 </h4>
-                                <div className="mt-1 text-sm text-white/55">
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/55">
                                   {tvShow?.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} min` : ''}
+                                  {(ep.air_date || ep.airDate) && <span>· {ep.air_date || ep.airDate}</span>}
                                 </div>
+                                {ep.overview && (
+                                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-white/65">{shouldHide('episodeOverviews') ? getMaskedContent(ep.overview, 'episodeOverviews') : ep.overview}</p>
+                                )}
 
                               </div>
                             </div>
@@ -2715,8 +2725,8 @@ const TVDetails: React.FC = () => {
                                 <CompleteImage
                                   src={hasFailed ? fallbackSvg : retryUrl}
                                   alt={episodeLabel}
-                                  fit="contain"
-                                  ambient={Boolean(stillSource)}
+                                  fit="cover"
+                                  ambient={false}
                                   className="absolute inset-0"
                                   onError={() => {
                                     if (!hasFailed) {
@@ -2726,6 +2736,12 @@ const TVDetails: React.FC = () => {
                                 />
                               );
                             })()}
+                            {Number(ep.vote_average) > 0 && (
+                              <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                {Number(ep.vote_average).toFixed(1)}
+                              </span>
+                            )}
                             {airing.kind !== 'unconfirmed' && (
                               <div className={`absolute top-2 left-2 max-w-[calc(100%-1rem)] text-xs px-2 py-1 rounded-full ${airing.kind === 'aired' ? 'bg-green-700 text-white' : 'bg-yellow-800 text-yellow-50'}`}>
                                 {t(`details.airing.${airing.kind}`)}
