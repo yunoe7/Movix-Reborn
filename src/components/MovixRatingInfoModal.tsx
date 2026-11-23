@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Info, ThumbsDown, ThumbsUp } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import ReusableModal from './ui/reusable-modal';
 
