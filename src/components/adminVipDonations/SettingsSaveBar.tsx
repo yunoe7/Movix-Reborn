@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Loader2, RotateCcw, Save, Undo2 } from 'lucide-react';
+import { CheckCircle2, Loader2, RotateCcw, Save, Undo2 } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import { formatVipDateTime } from '../../utils/vipDonationsUi';
