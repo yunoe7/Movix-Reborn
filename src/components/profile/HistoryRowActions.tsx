@@ -5,7 +5,7 @@
 
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Trash2 } from '../icons/Icons8';
 import {
   DropdownMenu,
   DropdownMenuContent,
