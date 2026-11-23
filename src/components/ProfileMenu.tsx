@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from './icons/Icons8';
+import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Shield, Star, User } from './icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -337,7 +337,6 @@ const ProfileMenu: React.FC = () => {
   const navLinks = [
     { to: '/profile?tab=watched', label: t('profile.watched', 'Historique'), Icon: History },
     { to: '/profile?tab=watchlist', label: t('profile.watchlist', 'Ma liste'), Icon: List },
-    { to: '/watchparty/list', label: t('nav.watchParty', 'Watch Party'), Icon: Users },
     { to: '/profile?tab=favorites', label: t('common.favorites'), Icon: Star },
     { to: '/profile', label: t('profile.title'), Icon: User },
   ];
@@ -402,12 +401,6 @@ const ProfileMenu: React.FC = () => {
           </MenuItem>
         ))}
         <MenuDivider />
-        <MenuItem variant={variant} value="/settings">
-          <Link to="/settings" onClick={close} className={rowClass(variant)}>
-            <Settings className={ICON_CLASS} aria-hidden="true" />
-            <span>{t('settings.title')}</span>
-          </Link>
-        </MenuItem>
         {canAccessAdminPanel && !isHiddenOnTv('/admin') && (
           <MenuItem variant={variant} value="/admin">
             <Link to="/admin" onClick={close} className={rowClass(variant)}>
@@ -476,12 +469,6 @@ const ProfileMenu: React.FC = () => {
       <ReferralCodeField variant="menu" className="pt-2" />
       <div data-sheet-item aria-hidden="true" className="mx-2 mb-1.5 mt-3 h-px bg-white/[0.07]" />
       <MenuList variant={variant}>
-        <MenuItem variant={variant} value="/settings">
-          <Link to="/settings" onClick={close} className={rowClass(variant)}>
-            <Settings className={ICON_CLASS} aria-hidden="true" />
-            <span>{t('settings.title')}</span>
-          </Link>
-        </MenuItem>
       </MenuList>
       {showVipButton && (
         <div data-sheet-item className="pt-2">
