@@ -2107,10 +2107,6 @@ const TVDetails: React.FC = () => {
     );
   }
 
-  // Helper function to determine default dropdown mode based on episode count
-  const getDefaultDropdownMode = (episodeCount: number, isAnime = false) => {
-    return !isAnime && episodeCount > 15;
-  };
   // Function to render episodes (either dropdown or grid)
   const renderEpisodes = (episodes: any[], type: 'anime' | 'standard') => {
     // Filter out empty episodes first to avoid issues
@@ -3481,20 +3477,6 @@ const TVDetails: React.FC = () => {
                                 {/* Toggle Button (toujours affiché) */}
                                 {(seasonsDetails[selectedSeason]?.episodes?.length > 0) && (
                                   <div className="flex flex-wrap items-center justify-start gap-3 mb-4"> {/* Alignement à gauche */}
-                                    <button
-                                      ref={dropdownToggleButtonRef}
-                                      className="px-4 py-2 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 text-white dropdown-toggle-button"
-                                      onClick={() => {
-                                        const currentDefault = getDefaultDropdownMode(seasonsDetails[selectedSeason]?.episodes?.length || 0);
-                                        setDropdownMode((prev) => prev !== null ? !prev : !currentDefault);
-                                      }}
-                                    >
-                                      {(() => {
-                                        const currentDefault = getDefaultDropdownMode(seasonsDetails[selectedSeason]?.episodes?.length || 0);
-                                        const currentMode = dropdownMode !== null ? dropdownMode : currentDefault;
-                                        return currentMode ? t('details.showEpisodeGrid') : t('details.showDropdown');
-                                      })()}
-                                    </button>
                                     {episodeListOptions.length > 0 && id && (
                                       <div
                                         className="flex items-center gap-2"
