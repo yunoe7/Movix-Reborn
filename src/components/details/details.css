@@ -41,7 +41,6 @@
   border-color: rgba(255, 255, 255, 0.35);
 }
 
-.detail-hero__ambient,
 .detail-hero__image {
   position: absolute;
   inset: 0;
