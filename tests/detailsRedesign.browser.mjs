@@ -434,6 +434,9 @@ try {
     await page.locator('[data-testid="season-option-1"]').waitFor();
     await page.locator('[data-testid="season-option-1"]').click();
     await page.locator('[data-testid="episode-download-1-1"]').waitFor();
+    await page.locator('[data-testid="add-to-list-trigger"]').click();
+    await page.locator('[data-testid="add-to-list-popover"]').waitFor();
+    await page.locator('[data-testid="add-to-list-empty"]').waitFor();
 
     const heroCount = await page.locator('.detail-hero').count();
     const fixedBackdrops = await page.locator('div.fixed.inset-0[aria-hidden="true"]').count();
