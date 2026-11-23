@@ -407,7 +407,6 @@ export const Minus = (p: Omit<Props, "name">) => <Icons8Icon name="minus" {...p}
 
 export const ArrowUpLeft = (p: Omit<Props, "name">) => <Icons8Icon name="arrowupleft" {...p} />;
 export const ArrowUp = (p: Omit<Props, "name">) => <Icons8Icon name="arrowup" {...p} />;
-export const ArrowUpRight = (p: Omit<Props, "name">) => <Icons8Icon name="arrowupright" {...p} />;
 export const Circle = (p: Omit<Props, "name">) => <Icons8Icon name="circle" {...p} />;
 export const ArrowDownLeft = (p: Omit<Props, "name">) => <Icons8Icon name="arrowdownleft" {...p} />;
 export const ArrowDown = (p: Omit<Props, "name">) => <Icons8Icon name="arrowdown" {...p} />;
