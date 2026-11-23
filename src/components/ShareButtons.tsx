@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Facebook, Twitter } from 'lucide-react';
-import { Share2, Link as LinkIcon, Check, X } from './icons/Icons8';
+import { Facebook, Twitter, Share2, Link as LinkIcon, Check, X } from './icons/Icons8';
 import { useLightMode } from '../context/LightModeContext';
 import { copyText } from '../utils/clipboard';
 

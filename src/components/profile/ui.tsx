@@ -3,7 +3,7 @@
 // (sauf le voile sombre posé sur une photo pour lire le texte).
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light';

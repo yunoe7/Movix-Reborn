@@ -55,20 +55,20 @@ const onAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
 
 // Couleur pleine et opacité sur l'icône seule : une couleur translucide
 // éclaircirait les croisements de ses tracés.
-const ICON_CLASS = 'h-[17px] w-[17px] shrink-0 text-[#929292] transition-colors duration-150 group-hover:text-white';
+const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/45 transition-colors duration-200 group-hover:text-white';
 // Fond de survol simple du panneau mobile, seulement avec une souris
 // (fenêtre étroite sur ordinateur) : au toucher, il resterait accroché.
 const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.045]';
 
 const rowClass = (variant: MenuVariant, extra?: string) => cn(
-  'group relative flex w-full items-center gap-3 rounded-lg px-2.5 text-left outline-none transition-colors duration-150 active:bg-white/[0.07] focus-visible:ring-1 focus-visible:ring-white/40',
-  variant === 'sheet' ? cn('py-3 text-sm', SHEET_HOVER) : 'py-2.5 text-sm hover:bg-white/[0.055]',
+  'group relative flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[background,color,transform] duration-200 active:scale-[0.99] active:bg-white/[0.08] focus-visible:ring-1 focus-visible:ring-white/40',
+  variant === 'sheet' ? cn('py-3 text-[13px] font-medium tracking-[0.005em]', SHEET_HOVER) : 'py-[11px] text-[13px] font-medium tracking-[0.005em] hover:bg-white/[0.055]',
   extra ?? 'text-white/85',
 );
 
 /** Liste du menu : sur ordinateur, un même fond glisse de ligne en ligne. */
 const MenuList: React.FC<{ variant: MenuVariant; className?: string; children: React.ReactNode }> = ({ variant, className, children }) => (
-  <ul className={cn('space-y-0.5', variant === 'panel' ? 'py-0' : 'py-1', className)}>{children}</ul>
+  <ul className={cn('space-y-1', variant === 'panel' ? 'py-0' : 'py-1', className)}>{children}</ul>
 );
 
 const MenuItem: React.FC<{ variant: MenuVariant; value: string; children: React.ReactNode }> = ({ variant, value, children }) => (
@@ -76,7 +76,7 @@ const MenuItem: React.FC<{ variant: MenuVariant; value: string; children: React.
 );
 
 const MenuDivider: React.FC = () => (
-  <li aria-hidden="true" data-sheet-item className="mx-2.5 my-2.5 h-px bg-[#303030]" />
+  <li aria-hidden="true" data-sheet-item className="mx-3 my-3 h-px bg-gradient-to-r from-transparent via-white/[0.11] to-transparent" />
 );
 
 const ProfileMenu: React.FC = () => {
@@ -327,9 +327,9 @@ const ProfileMenu: React.FC = () => {
     <LiquidButton
       tone="gold"
       onClick={handleOpenVipModal}
-      className="h-12 w-full gap-3 rounded-xl border-[#80611f] bg-[#171717] px-5 text-sm font-semibold tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.045)]"
+      className="h-12 w-full gap-3 rounded-xl border border-[#8b6b27]/55 bg-gradient-to-r from-[#1a160d] via-[#141109] to-[#0d0c09] px-5 text-[13px] font-bold tracking-[0.01em] text-[#e8bd5a] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-[#d0a744]/70 hover:shadow-[0_0_26px_rgba(226,177,60,0.10)]"
     >
-      <Crown className="h-6 w-6 shrink-0 text-amber-400" aria-hidden="true" />
+      <Crown className="h-[19px] w-[19px] shrink-0 text-amber-300" aria-hidden="true" />
       <span>{t('vip.becomeVip')}</span>
     </LiquidButton>
   );
@@ -342,16 +342,17 @@ const ProfileMenu: React.FC = () => {
   ];
 
   const renderConnected = (variant: MenuVariant) => (
-    <div className={variant === 'panel' ? 'px-3 py-2.5' : 'px-2'}>
-      <div data-sheet-item className="group relative mb-2 flex items-center gap-2.5 rounded-lg px-1.5 py-2">
+    <div className={variant === 'panel' ? 'px-3 py-3' : 'px-2 py-1'}>
+      <div data-sheet-item className="group relative mb-3 flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-gradient-to-br from-white/[0.045] to-white/[0.012] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
         <img
           src={profileImage}
           alt=""
-          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/15"
+          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-white/20 ring-offset-2 ring-offset-[#101010] shadow-[0_0_22px_rgba(255,255,255,0.07)]"
           onError={onAvatarError}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold leading-5 text-white">{username}</p>
+          <p className="mb-0.5 text-[9px] font-extrabold uppercase tracking-[0.2em] text-white/35">MOVIX ACCOUNT</p>
+          <p className="truncate text-[14px] font-bold leading-5 tracking-[-0.02em] text-white">{username}</p>
           {isVip
             ? vipLine('mt-0.5')
             : <p className="mt-0.5 truncate text-xs text-[#929292]">{providerStatus()}</p>}
@@ -438,7 +439,7 @@ const ProfileMenu: React.FC = () => {
             glow={false}
             resetAfter={0}
             size="sm"
-            className="w-full min-w-0 rounded-xl px-3 text-xs"
+            className="w-full min-w-0 rounded-xl border border-white/[0.055] px-3 text-[11px] font-semibold tracking-[0.015em]"
           >
             {t('auth.holdToLogout')}
           </HoldButton>
@@ -504,7 +505,7 @@ const ProfileMenu: React.FC = () => {
           <img
             src={isAuthenticated ? profileImage : DEFAULT_AVATAR}
             alt=""
-            className="h-7 w-7 rounded-full object-cover ring-1 ring-white/30 ring-offset-1 ring-offset-black shadow-[0_0_12px_rgba(120,145,255,0.16)]"
+            className="h-7 w-7 rounded-full object-cover ring-1 ring-white/25 ring-offset-1 ring-offset-black shadow-[0_0_14px_rgba(255,255,255,0.10)]"
             onError={onAvatarError}
             key={profileImage}
           />
@@ -537,7 +538,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="relative isolate w-[272px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-[#303030] bg-[#171717] shadow-[0_20px_54px_rgba(0,0,0,0.6)]"
+              panelClassName="relative isolate w-[284px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[22px] border border-white/[0.10] bg-[#090a0c] shadow-[0_28px_80px_rgba(0,0,0,0.82),0_1px_0_rgba(255,255,255,0.035)_inset]"
             >
               {renderContent('panel')}
             </LiquidDropdown>
