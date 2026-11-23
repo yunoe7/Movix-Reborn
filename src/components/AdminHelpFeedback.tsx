@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { ThumbsUp, ThumbsDown, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Loader2, RefreshCw, AlertTriangle } from './icons/Icons8';
 
 interface StatRow {
   slug: string;
