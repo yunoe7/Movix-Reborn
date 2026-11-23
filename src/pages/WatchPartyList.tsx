@@ -4,7 +4,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   RefreshCw, Users, Film, Tv, Loader2
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 import WatchPartyTutorialModal from '../components/WatchPartyTutorialModal';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
