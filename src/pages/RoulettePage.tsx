@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Dices, Star, Calendar, RotateCcw, Info, ChevronDown, ChevronUp, Sparkles, X } from 'lucide-react';
+import { Dices, Star, Calendar, RotateCcw, Info, ChevronDown, ChevronUp, Sparkles, X } from '../components/icons/Icons8';
 import { motion, AnimatePresence } from 'framer-motion';
 import type confettiType from 'canvas-confetti';
 import { toast } from 'sonner';
