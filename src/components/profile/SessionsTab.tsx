@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { LogOut, Monitor, Smartphone, Tablet, Tv } from 'lucide-react';
+import { LogOut, Monitor, Smartphone, Tablet, Tv } from '../icons/Icons8';
 import ConfirmDialog from '@/components/ui/confirm-dialog';
 import { broadcastAuthChange, clearStoredAuthSession, getResolvedAccountContext } from '@/utils/accountAuth';
 import {
