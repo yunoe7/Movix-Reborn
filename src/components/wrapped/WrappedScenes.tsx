@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, ArrowRight } from 'lucide-react';
+import { ArrowUpRight, ArrowRight } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { WrappedData } from '@/services/wrappedService';
 import type { WrappedScene } from '@/types/wrapped';
