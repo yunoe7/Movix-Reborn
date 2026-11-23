@@ -54,7 +54,6 @@ const DetailHero: React.FC<DetailHeroProps> = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const background = imageUrl || fallbackImageUrl || undefined;
-  const backgroundStyle = background ? { backgroundImage: `url("${background.replace(/["\\]/g, '\\$&')}")` } : undefined;
   const hasMeta = Boolean(
     (typeof rating === 'number' && rating > 0) || year || runtime || classification
     || (seasons && seasons > 0) || (episodes && episodes > 0),
@@ -75,12 +74,11 @@ const DetailHero: React.FC<DetailHeroProps> = ({
         <span className="hidden sm:inline">{t('details.goBack')}</span>
       </button>
 
-      <div className="detail-hero__ambient" style={backgroundStyle} aria-hidden="true" />
       <div className="detail-hero__image">
         <CompleteImage
           src={background}
           alt=""
-          fit="contain"
+          fit="cover"
           position="center top"
           ambient={false}
           loading="eager"
@@ -118,7 +116,7 @@ const DetailHero: React.FC<DetailHeroProps> = ({
             <div className="mb-5 flex flex-wrap gap-2">
               {genres.map((genre) => {
                 const href = typeof genre.id === 'number' ? genreHref?.(genre.id) : undefined;
-                const className = 'rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm transition-colors hover:bg-white/15';
+                const className = 'rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-semibold text-white/90 transition-colors hover:bg-white/15';
                 return href ? (
                   <Link key={genre.id ?? genre.name} to={href} className={className}>{genre.name}</Link>
                 ) : (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
 import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
@@ -348,6 +348,7 @@ const TVDetails: React.FC = () => {
   const { id: encodedId } = useParams<{ id: string }>();
   const id = encodedId ? getTmdbId(encodedId) : null;
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentProfile } = useProfile();
 
   // Track page visit for Movix Wrapped
@@ -1470,7 +1471,7 @@ const TVDetails: React.FC = () => {
               whileHover={{ y: -2, scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              onClick={() => navigate(`/download/tv/${tvShow?.id}?season=${resumeData.seasonNumber || defaultStartSeason}&episode=${resumeData.episodeNumber || 1}`)}
+              onClick={() => navigate(`/download/tv/${tvShow?.id}?season=${resumeData.seasonNumber || defaultStartSeason}&episode=${resumeData.episodeNumber || 1}`, { state: { backgroundLocation: location } })}
               className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
               <Download className="h-5 w-5 flex-shrink-0 text-white" />
@@ -2106,29 +2107,23 @@ const TVDetails: React.FC = () => {
     );
   }
 
-  // Helper function to determine default dropdown mode based on episode count
-  const getDefaultDropdownMode = (episodeCount: number, isAnime = false) => {
-    return !isAnime && episodeCount > 15;
-  };
   // Function to render episodes (either dropdown or grid)
   const renderEpisodes = (episodes: any[], type: 'anime' | 'standard') => {
     // Filter out empty episodes first to avoid issues
     const isAnime = type === 'anime';
     const nonEmptyEpisodes = episodes.filter((episode) => Boolean(episode));
-    const visibleEpisodes = isAnime
-      ? [...nonEmptyEpisodes]
-          .filter((episode: any) => {
-            const query = animeEpisodeSearch.trim().toLocaleLowerCase();
-            if (!query) return true;
-            return [episode.name, episode.index, episode.episode_number]
-              .some((value) => String(value ?? '').toLocaleLowerCase().includes(query));
-          })
-          .sort((left: any, right: any) => {
-            const leftNumber = Number(left.index ?? left.episode_number ?? 0);
-            const rightNumber = Number(right.index ?? right.episode_number ?? 0);
-            return animeEpisodeSortDescending ? rightNumber - leftNumber : leftNumber - rightNumber;
-          })
-      : nonEmptyEpisodes;
+    const episodeQuery = animeEpisodeSearch.trim().toLocaleLowerCase();
+    const visibleEpisodes = [...nonEmptyEpisodes]
+      .filter((episode: any) => {
+        if (!episodeQuery) return true;
+        return [episode.name, episode.index, episode.episode_number]
+          .some((value) => String(value ?? '').toLocaleLowerCase().includes(episodeQuery));
+      })
+      .sort((left: any, right: any) => {
+        const leftNumber = Number(left.index ?? left.episode_number ?? 0);
+        const rightNumber = Number(right.index ?? right.episode_number ?? 0);
+        return animeEpisodeSortDescending ? rightNumber - leftNumber : leftNumber - rightNumber;
+      });
 
     if (nonEmptyEpisodes.length === 0) {
       return (
@@ -2166,7 +2161,7 @@ const TVDetails: React.FC = () => {
       : null;
 
     // Déterminer le mode par défaut basé sur le nombre d'épisodes
-    const defaultDropdownMode = type === 'anime' ? false : nonEmptyEpisodes.length > 15;
+    const defaultDropdownMode = false;
 
     const dropdownOptions = nonEmptyEpisodes.map((ep: any) => {
       if (type === 'anime') {
@@ -2250,7 +2245,7 @@ const TVDetails: React.FC = () => {
     // un instant vide (sortie puis entrée) qui faisait clignoter la section.
     return (
       <>
-        {isAnime && (
+        {(
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <h4 className="text-lg font-semibold tracking-tight text-white">{t('details.episodes')}</h4>
@@ -2331,7 +2326,7 @@ const TVDetails: React.FC = () => {
             </div>
           </div>
         )}
-        {isAnime && visibleEpisodes.length === 0 && animeEpisodeSearch.trim() ? (
+        {visibleEpisodes.length === 0 && animeEpisodeSearch.trim() ? (
           <p className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-8 text-center text-sm text-white/50">
             {t('details.noEpisodesForSeason')}
           </p>
@@ -2367,7 +2362,7 @@ const TVDetails: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
           >
-            <div className={isAnime && animeEpisodeView === 'grid'
+            <div className={animeEpisodeView === 'grid'
               ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
               : "mb-6 grid grid-cols-1 gap-3"}>
               {visibleEpisodes.map((ep: any, index: number) => {
@@ -2467,8 +2462,8 @@ const TVDetails: React.FC = () => {
                               <CompleteImage
                                 src={episodeImageFailed ? fallbackSvg : retryUrl}
                                 alt={episodeLabel}
-                                fit="contain"
-                                ambient={Boolean(episodeStillSource)}
+                                fit="cover"
+                                ambient={false}
                                 className="absolute inset-0"
                                 onError={() => {
                                   if (!episodeImageFailed) {
@@ -2485,6 +2480,12 @@ const TVDetails: React.FC = () => {
                                   {t('details.episode')} {episodeNumber}
                                 </span>
                               </div>
+                            )}
+                            {Number(ep.vote_average) > 0 && (
+                              <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                {Number(ep.vote_average).toFixed(1)}
+                              </span>
                             )}
 
                             {((isEpisodeWatched) || (hasProgress && displayProgress >= 95)) ? (
@@ -2528,9 +2529,13 @@ const TVDetails: React.FC = () => {
                                 <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {episodeTitle}
                                 </h4>
-                                <div className="mt-1 text-sm text-white/55">
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/55">
                                   {tvShow?.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} min` : ''}
+                                  {(ep.air_date || ep.airDate) && <span>· {ep.air_date || ep.airDate}</span>}
                                 </div>
+                                {ep.overview && (
+                                  <p className="mt-1 line-clamp-2 text-sm leading-5 text-white/65">{shouldHide('episodeOverviews') ? getMaskedContent(ep.overview, 'episodeOverviews') : ep.overview}</p>
+                                )}
 
                               </div>
                             </div>
@@ -2585,6 +2590,19 @@ const TVDetails: React.FC = () => {
                           </div>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        aria-label={`${t('download.episode')} ${episodeNumber}`}
+                        title={`${t('download.episode')} ${episodeNumber}`}
+                        data-testid={`episode-download-${selectedSeason}-${episodeNumber}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${episodeNumber}`, { state: { backgroundLocation: location } });
+                        }}
+                        className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </motion.div>
                   );
                 } else {
@@ -2704,8 +2722,8 @@ const TVDetails: React.FC = () => {
                                 <CompleteImage
                                   src={hasFailed ? fallbackSvg : retryUrl}
                                   alt={episodeLabel}
-                                  fit="contain"
-                                  ambient={Boolean(stillSource)}
+                                  fit="cover"
+                                  ambient={false}
                                   className="absolute inset-0"
                                   onError={() => {
                                     if (!hasFailed) {
@@ -2715,6 +2733,12 @@ const TVDetails: React.FC = () => {
                                 />
                               );
                             })()}
+                            {Number(ep.vote_average) > 0 && (
+                              <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                {Number(ep.vote_average).toFixed(1)}
+                              </span>
+                            )}
                             {airing.kind !== 'unconfirmed' && (
                               <div className={`absolute top-2 left-2 max-w-[calc(100%-1rem)] text-xs px-2 py-1 rounded-full ${airing.kind === 'aired' ? 'bg-green-700 text-white' : 'bg-yellow-800 text-yellow-50'}`}>
                                 {t(`details.airing.${airing.kind}`)}
@@ -2846,6 +2870,19 @@ const TVDetails: React.FC = () => {
                           </div>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        aria-label={`${t('download.episode')} ${ep.episode_number}`}
+                        title={`${t('download.episode')} ${ep.episode_number}`}
+                        data-testid={`episode-download-${selectedSeason}-${ep.episode_number}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${ep.episode_number}`);
+                        }}
+                        className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </motion.div>
                   );
                 }
@@ -3440,20 +3477,6 @@ const TVDetails: React.FC = () => {
                                 {/* Toggle Button (toujours affiché) */}
                                 {(seasonsDetails[selectedSeason]?.episodes?.length > 0) && (
                                   <div className="flex flex-wrap items-center justify-start gap-3 mb-4"> {/* Alignement à gauche */}
-                                    <button
-                                      ref={dropdownToggleButtonRef}
-                                      className="px-4 py-2 rounded-lg font-medium bg-gray-800 hover:bg-gray-700 text-white dropdown-toggle-button"
-                                      onClick={() => {
-                                        const currentDefault = getDefaultDropdownMode(seasonsDetails[selectedSeason]?.episodes?.length || 0);
-                                        setDropdownMode((prev) => prev !== null ? !prev : !currentDefault);
-                                      }}
-                                    >
-                                      {(() => {
-                                        const currentDefault = getDefaultDropdownMode(seasonsDetails[selectedSeason]?.episodes?.length || 0);
-                                        const currentMode = dropdownMode !== null ? dropdownMode : currentDefault;
-                                        return currentMode ? t('details.showEpisodeGrid') : t('details.showDropdown');
-                                      })()}
-                                    </button>
                                     {episodeListOptions.length > 0 && id && (
                                       <div
                                         className="flex items-center gap-2"

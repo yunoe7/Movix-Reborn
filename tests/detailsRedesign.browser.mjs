@@ -342,7 +342,8 @@ try {
 
       const heroCount = await page.locator('.detail-hero').count();
       const fixedBackdrops = await page.locator('div.fixed.inset-0[aria-hidden="true"]').count();
-      const backdropStyle = await page.locator('.detail-hero__ambient').getAttribute('style');
+      const ambientCount = await page.locator('.detail-hero__ambient').count();
+      const heroObjectFit = await page.locator('.detail-hero__picture-img').evaluate(node => getComputedStyle(node).objectFit);
       const heroImageSrc = await page.locator('.detail-hero__picture img').getAttribute('src');
       const actionCount = await page.locator('.detail-hero__actions button').count();
       const tabCount = await page.getByRole('tab').count();
@@ -353,7 +354,8 @@ try {
 
       assert.equal(heroCount, 1, `${kind}/${mode}: un seul bandeau`);
       assert.equal(fixedBackdrops, 0, `${kind}/${mode}: aucun fond fixe dupliqué`);
-      assert.ok(backdropStyle?.includes(expected[mode].backdrop), `${kind}/${mode}: largeur du fond ${backdropStyle}`);
+      assert.equal(ambientCount, 0, `${kind}/${mode}: aucun calque flouté ajouté`);
+      assert.equal(heroObjectFit, 'cover', `${kind}/${mode}: le backdrop remplit le bandeau`);
       assert.ok(heroImageSrc?.includes(expected[mode].backdrop), `${kind}/${mode}: image nette complète ${heroImageSrc}`);
       assert.equal(actionCount, 3, `${kind}/${mode}: exactement trois actions principales`);
       assert.equal(tabCount, 0, `${kind}/${mode}: aucun onglet`);
@@ -364,12 +366,13 @@ try {
       assert.ok(heading.some(value => value.includes('details.castTab')), `${kind}/${mode}: titre distribution`);
       if (kind === 'tv') {
         assert.ok(await page.locator('.seasons-section').isVisible(), `${kind}/${mode}: saisons et épisodes conservés`);
+        await page.locator('[data-testid="episode-download-1-1"]').waitFor();
       }
 
       const screenshot = path.join(artifactDir, `${kind}-${mode}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
       observations.push({
-        kind, mode, heroCount, fixedBackdrops, backdropStyle, heroImageSrc, actionCount,
+        kind, mode, heroCount, fixedBackdrops, ambientCount, heroObjectFit, heroImageSrc, actionCount,
         tabCount, castCount, recommendations, commentsCount, screenshot: path.basename(screenshot),
         errors,
       });
@@ -388,6 +391,7 @@ try {
     await page.locator('.detail-hero').waitFor();
     const animeToggle = page.locator('button[aria-pressed]').filter({ hasText: 'details.backToStandardMode' });
     await animeToggle.waitFor();
+    await page.locator('[data-testid="episode-download-1-1"]').waitFor();
 
     const heroCount = await page.locator('.detail-hero').count();
     const fixedBackdrops = await page.locator('div.fixed.inset-0[aria-hidden="true"]').count();
