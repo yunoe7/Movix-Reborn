@@ -7,7 +7,7 @@ import {
   ArrowLeft, Trophy, Film, Tv, Sparkles, Users, Clock, Eye,
   BarChart3, ChevronDown, TrendingUp, Timer, Star, Hash,
   Activity, Flame, CalendarDays
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 import { SquareBackground } from '../components/ui/square-background';
 import BlurText from '../components/ui/blur-text';
 import ShinyText from '../components/ui/shiny-text';
