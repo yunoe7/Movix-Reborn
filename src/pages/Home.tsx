@@ -1252,7 +1252,7 @@ const Home: React.FC = () => {
                     <h2 className="text-lg md:text-xl font-bold text-white">{t('home.streamingPlatforms')}</h2>
                     <span className="hidden sm:block text-xs text-white/40">Choisis une plateforme</span>
                   </div>
-                  <div className="flex items-center gap-2.5 sm:gap-3 overflow-x-auto overflow-y-hidden pt-2 pb-3 scrollbar-hide">
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-2 pb-3">
                     {platformsItems.map((platform) => (
                       <button
                         key={platform.id}
@@ -1261,7 +1261,7 @@ const Home: React.FC = () => {
                         aria-label={`Afficher les contenus ${platform.alt}`}
                         aria-pressed={selectedStreamingProvider === platform.id}
                         title={platform.alt}
-                        className={`group flex-none w-12 h-12 sm:w-14 sm:h-14 rounded-2xl border transition-all duration-200 flex items-center justify-center p-1.5
+                        className={`group flex-none w-[52px] h-[52px] sm:w-14 sm:h-14 rounded-[1.1rem] border transition-all duration-200 flex items-center justify-center p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black
                           ${selectedStreamingProvider === platform.id
                             ? 'border-white/90 border-2 bg-white/[0.09] shadow-[inset_0_0_0_1px_rgba(255,255,255,.12),0_8px_24px_rgba(0,0,0,.32)]'
                             : 'border-white/[0.12] bg-white/[0.035] hover:border-white/30 hover:bg-white/[0.07] hover:-translate-y-0.5'}`}
@@ -1269,11 +1269,12 @@ const Home: React.FC = () => {
                         <span
                           role="img"
                           aria-label={platform.alt}
-                          className="block w-full h-full rounded-xl bg-no-repeat"
+                          className="block w-full h-full rounded-[0.85rem] bg-no-repeat"
                           style={{
                             backgroundImage: "url('/platforms/platform-logos-sprite-v2.webp')",
                             backgroundSize: '300% 300%',
                             backgroundPosition: `${(platform.spriteIndex % 3) * 50}% ${Math.floor(platform.spriteIndex / 3) * 50}%`,
+                            filter: 'saturate(1.08) contrast(1.04)',
                           }}
                         />
                       </button>
