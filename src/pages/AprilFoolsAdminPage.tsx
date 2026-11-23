@@ -13,7 +13,7 @@ import {
   Sprout,
   Wrench,
   X,
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 import CustomDropdown from '../components/CustomDropdown';
 import AnimatedBorderCard from '../components/ui/animated-border-card';
 import ShinyText from '../components/ui/shiny-text';
