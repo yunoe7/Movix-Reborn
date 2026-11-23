@@ -161,7 +161,6 @@ const Header: React.FC = () => {
       // Tout ce qui implique d'autres utilisateurs — Watch Party compris.
       title: t('nav.groupCommunity'),
       items: [
-        { name: t('nav.watchParty'), path: '/watchparty/list', icon: <Users size={18} />, desc: t('nav.watchPartyDesc') },
         { name: t('nav.sharedLists'), path: '/list-catalog', icon: <List size={18} />, desc: t('nav.sharedListsDesc') },
         { name: t('nav.greenlight'), path: '/wishboard', icon: <Lightbulb size={18} />, desc: t('nav.greenlightDesc') },
       ]
