@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X } from './icons/Icons8';
 import { avatarCategories } from '../data/avatars';
 import { platformAvatars, platforms } from '../data/new_avatars';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
