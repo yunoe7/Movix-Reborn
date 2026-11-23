@@ -1271,10 +1271,10 @@ const Home: React.FC = () => {
                           aria-label={platform.alt}
                           className="block w-full h-full rounded-[0.85rem] bg-no-repeat"
                           style={{
-                            backgroundImage: "url('/platforms/platform-logos-sprite-v2.webp')",
+                            backgroundImage: "url('/platforms/platform-logos-sprite-v4.webp')",
                             backgroundSize: '300% 300%',
                             backgroundPosition: `${(platform.spriteIndex % 3) * 50}% ${Math.floor(platform.spriteIndex / 3) * 50}%`,
-                            filter: 'saturate(1.08) contrast(1.04)',
+                            backgroundRepeat: 'no-repeat',
                           }}
                         />
                       </button>
