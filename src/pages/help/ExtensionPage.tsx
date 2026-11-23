@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Puzzle, AlertTriangle } from 'lucide-react';
+import { Puzzle, AlertTriangle } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 import TutoLink from '../../components/TutoLink';
 
