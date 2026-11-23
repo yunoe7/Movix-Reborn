@@ -3017,6 +3017,7 @@
     "movies": "movies",
     "myCustomLists": "My Custom Lists",
     "noLists": "You don't have any lists yet",
+    "noListsPopover": "No lists yet.\nCreate one below!",
     "sharedLists": "Shared Lists",
     "myLists": "My Lists",
     "browseSharedLists": "Browse shared lists",
