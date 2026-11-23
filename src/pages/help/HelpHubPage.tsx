@@ -4,7 +4,7 @@ import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import i18n from 'i18next';
-import { ExternalLink, ArrowRight, Search, X } from 'lucide-react';
+import { ExternalLink, ArrowRight, Search, X } from '../../components/icons/Icons8';
 import { SquareBackground } from '../../components/ui/square-background';
 import ShinyText from '../../components/ui/shiny-text';
 import { TUTO_REGISTRY, TutoAccent } from './tutoRegistry';
