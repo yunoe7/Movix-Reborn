@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import AvatarSelector from '../components/AvatarSelector';
-import { Edit, Crown, Plus, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Edit, Crown, Plus, ShieldCheck, ChevronDown } from '../components/icons/Icons8';
 
 const ProfileManagement: React.FC = () => {
   const { t } = useTranslation();
