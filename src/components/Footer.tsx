@@ -1,4 +1,4 @@
-import { Euro, Globe, Info, Puzzle, Scale, Shield, Smartphone, Tv, type LucideIcon, type LucideProps } from 'lucide-react';
+import { Euro, Globe, Info, Puzzle, Scale, Shield, Smartphone, Tv, type LucideIcon, type LucideProps } from './icons/Icons8';
 import { Trans, useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useLightMode } from '@/context/LightModeContext';
