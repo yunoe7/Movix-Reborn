@@ -54,7 +54,6 @@ const DetailHero: React.FC<DetailHeroProps> = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const background = imageUrl || fallbackImageUrl || undefined;
-  const backgroundStyle = background ? { backgroundImage: `url("${background.replace(/["\\]/g, '\\$&')}")` } : undefined;
   const hasMeta = Boolean(
     (typeof rating === 'number' && rating > 0) || year || runtime || classification
     || (seasons && seasons > 0) || (episodes && episodes > 0),
@@ -75,12 +74,11 @@ const DetailHero: React.FC<DetailHeroProps> = ({
         <span className="hidden sm:inline">{t('details.goBack')}</span>
       </button>
 
-      <div className="detail-hero__ambient" style={backgroundStyle} aria-hidden="true" />
       <div className="detail-hero__image">
         <CompleteImage
           src={background}
           alt=""
-          fit="contain"
+          fit="cover"
           position="center top"
           ambient={false}
           loading="eager"
