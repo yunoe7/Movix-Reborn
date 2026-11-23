@@ -2,7 +2,7 @@ import { IX_MATRIX_URL } from '@/config/community';
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart } from 'lucide-react';
+import { X, Heart } from './icons/Icons8';
 import { useVipModal } from '../context/VipModalContext';
 import { useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
