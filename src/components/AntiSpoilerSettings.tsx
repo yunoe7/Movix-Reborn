@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Eye, Shield, Image, FileText, Play, RotateCcw } from 'lucide-react';
+import { X, Eye, Shield, Image, FileText, Play, RotateCcw } from './icons/Icons8';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
 
 export interface AntiSpoilerSettings {
