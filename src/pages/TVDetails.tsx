@@ -3263,7 +3263,8 @@ const TVDetails: React.FC = () => {
             synopsis={shouldHide('episodeOverviews')
               ? getMaskedContent(tvShow.overview || '', 'episodeOverviews')
               : tvShow.overview}
-            imageUrl={backdropImage}
+            imageUrl={location.state?.heroImageUrl || backdropImage}
+            imagePosition={location.state?.heroImagePosition || 'center top'}
             fallbackImageUrl={mainPosterUrl}
             genreHref={(genreId) => `/genre/tv/${genreId}`}
             badges={
