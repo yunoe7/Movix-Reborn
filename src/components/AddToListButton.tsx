@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { List } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import AddToListMenu from './AddToListMenu';
 
 interface AddToListButtonProps {
@@ -15,20 +15,42 @@ const AddToListButton: React.FC<AddToListButtonProps> = ({
   mediaId,
   mediaType,
   title,
-  posterPath
+  posterPath,
 }) => {
   const { t } = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleOutsidePointer = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowMenu(false);
+    };
+    document.addEventListener('pointerdown', handleOutsidePointer);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsidePointer);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showMenu]);
 
   return (
-    <>
+    <div ref={rootRef} className="relative inline-flex">
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setShowMenu(true)}
-        className="inline-flex min-h-11 items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={showMenu}
+        onClick={() => setShowMenu((open) => !open)}
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.985 }}
+        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#505050] px-5 py-2.5 text-sm font-semibold text-white shadow-none transition-colors hover:bg-[#5b5b5b]"
       >
-        <List className="w-4 h-4" />
+        <Plus className="h-4 w-4" aria-hidden="true" />
         {t('lists.addToList')}
       </motion.button>
 
@@ -41,8 +63,8 @@ const AddToListButton: React.FC<AddToListButtonProps> = ({
           onClose={() => setShowMenu(false)}
         />
       )}
-    </>
+    </div>
   );
 };
 
-export default AddToListButton; 
+export default AddToListButton;
