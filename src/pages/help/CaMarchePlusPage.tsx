@@ -1,7 +1,7 @@
 import { IX_MATRIX_URL } from '@/config/community';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertCircle, ShieldAlert, Shield, Globe, Bug } from 'lucide-react';
+import { AlertCircle, ShieldAlert, Shield, Globe, Bug } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 import TermTooltip from '../../components/TermTooltip';
 
