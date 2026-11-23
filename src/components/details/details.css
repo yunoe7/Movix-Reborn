@@ -31,7 +31,6 @@
   color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
-  backdrop-filter: blur(12px);
   transition: background-color 180ms ease, border-color 180ms ease;
 }
 
