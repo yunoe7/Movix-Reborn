@@ -334,7 +334,7 @@ export const CalendarClock = (p: Omit<Props, 'name'>) => <Icons8Icon name="calen
 export const TreePine = (p: Omit<Props, 'name'>) => <Icons8Icon name="tree" {...p} />;
 export const ChevronUp = (p: Omit<Props, 'name'>) => <Icons8Icon name="chevronup" {...p} />;
 export const Loader = (p: Omit<Props, 'name'>) => <Icons8Icon name="loader" {...p} />;
-export type LucideIcon = React.ComponentType<any>;
+export type LucideIcon = React.ComponentType<{ className?: string; size?: number | string; style?: React.CSSProperties }>;
 
 export const Plus = (p: Omit<Props, 'name'>) => <Icons8Icon name="plus" {...p} />;
 export const ArrowRight = (p: Omit<Props, 'name'>) => <Icons8Icon name="arrowright" {...p} />;
