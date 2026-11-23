@@ -2285,7 +2285,7 @@ const TVDetails: React.FC = () => {
                     role="listbox"
                     aria-label={t('details.seasonsLabel')}
                     data-testid="season-picker-options"
-                    className="absolute left-0 top-full z-40 mt-2 max-h-64 min-w-48 overflow-y-auto rounded-xl border border-white/10 bg-[#19191b] p-1.5 shadow-2xl"
+                    className="absolute left-0 top-full z-40 mt-2 max-h-64 min-w-40 overflow-y-auto rounded-xl border border-white/[0.09] bg-[#181818] p-1 shadow-2xl"
                   >
                     {(isAnime
                       ? animeSeasonCards.map(({ seasonNumber }) => Number(seasonNumber))
@@ -2301,10 +2301,9 @@ const TVDetails: React.FC = () => {
                           handleSeasonChange(seasonNumber);
                           setSeasonPickerOpen(false);
                         }}
-                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${Number(selectedSeason) === seasonNumber ? 'bg-white text-[#151515] font-semibold' : 'text-white/75 hover:bg-white/[0.08] hover:text-white'}`}
+                        className={`flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors ${Number(selectedSeason) === seasonNumber ? 'bg-[#303033] text-white font-semibold' : 'text-white/70 hover:bg-white/[0.07] hover:text-white'}`}
                       >
                         <span>{t('details.season')} {seasonNumber}</span>
-                        {Number(selectedSeason) === seasonNumber && <Check className="h-4 w-4" aria-hidden="true" />}
                       </button>
                     ))}
                   </div>
