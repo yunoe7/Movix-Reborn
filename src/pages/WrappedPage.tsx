@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { X } from '../components/icons/Icons8';
 import { useProfile } from '@/context/ProfileContext';
 import { fetchWrappedData, type WrappedResponse } from '@/services/wrappedService';
 import type { WrappedSession, WrappedVersion } from '@/types/wrapped';
