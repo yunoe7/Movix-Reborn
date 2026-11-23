@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Crown, Heart } from 'lucide-react';
+import { ArrowLeft, Crown, Heart } from '../components/icons/Icons8';
 
 import AnimatedBorderCard from '@/components/ui/animated-border-card';
 import { SquareBackground } from '@/components/ui/square-background';
