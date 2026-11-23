@@ -391,6 +391,7 @@ try {
     await page.locator('.detail-hero').waitFor();
     const animeToggle = page.locator('button[aria-pressed]').filter({ hasText: 'details.backToStandardMode' });
     await animeToggle.waitFor();
+    await page.locator('[data-testid="episode-download-1-1"]').waitFor();
 
     const heroCount = await page.locator('.detail-hero').count();
     const fixedBackdrops = await page.locator('div.fixed.inset-0[aria-hidden="true"]').count();
