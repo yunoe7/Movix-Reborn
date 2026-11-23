@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { Loader, ChevronRight, Film, Tv, Flame } from 'lucide-react';
+import { Loader, ChevronRight, Film, Tv, Flame } from '../components/icons/Icons8';
 
 import HeroSlider from '../components/HeroSlider';
 import CarouselTitle from '../components/CarouselTitle';
