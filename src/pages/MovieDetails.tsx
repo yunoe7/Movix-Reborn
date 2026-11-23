@@ -1,31 +1,24 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
-import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, ChevronRight, Play, Film, X, Building, MapPin, Languages, Library, Info, ArrowLeft, Image, Download, MessageSquare, AlertTriangle, Archive, CheckCircle } from 'lucide-react';
+import { Film, X, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import AddToListButton from '../components/AddToListButton';
 import DetailsSkeleton from '../components/skeletons/DetailsSkeleton';
 
-import ShareButtons from '../components/ShareButtons';
 import { useAdFreePopup } from '../context/AdFreePopupContext';
-import EmblaCarousel from '../components/EmblaCarousel';
 import { encodeId, getTmdbId } from '../utils/idEncoder';
-import { buildWatchMoviePath, getMovieVersions, getVersionForRetiredId } from '../config/movieVersions';
-import CommentsSection from '../components/CommentsSection';
-import LikeDislikeButton, { calculateLikeDislikeRating, type LikeDislikeStats } from '../components/LikeDislikeButton';
+import { buildWatchMoviePath, getVersionForRetiredId } from '../config/movieVersions';
+import LikeDislikeButton, { type LikeDislikeStats } from '../components/LikeDislikeButton';
 import MovixRatingInfoModal from '../components/MovixRatingInfoModal';
 import { useWrappedTracker } from '../hooks/useWrappedTracker';
 import { buildSiteUrl } from '../config/runtime';
-import LazySection from '../components/LazySection';
 import SEO from '../components/SEO';
 import { getTmdbLanguage } from '../i18n';
 import i18n from '../i18n';
 import { useProfile } from '../context/ProfileContext';
 import { getClassificationLabel as getClassificationLabelUtil, isContentAllowed } from '../utils/certificationUtils';
-import CharactersSection from '../components/CharactersSection';
-import DetailExtraMetadata from '../components/DetailExtraMetadata';
 import { isLikelyAnime } from '../utils/animeSignals';
 import { loadDetailCharacters, type DetailCharacters } from '../services/detailCharacters';
 import { normalizeAlternateTitles, normalizeKeywords, type AlternateTitle } from '../utils/tmdbMetadata';
@@ -33,12 +26,16 @@ import { rememberMedia } from '../utils/mediaSearchIndex';
 import { formatMovieReleaseDate, getMovieReleaseLabel, isMovieReleaseDatePending, needsMovieReleaseWarning, parseMovieReleases } from '@/utils/movieRelease';
 import { useMovieReleaseWarnings } from '@/hooks/useMovieReleaseWarnings';
 import { useImageQuality, useImageViewport } from '../hooks/useImageQuality';
-import { useImageSlot } from '../hooks/useImageSlot';
-import { getCoverImageWidth, getTmdbImageProps, getTmdbImageUrl } from '../utils/tmdbImages';
+import { getCoverImageWidth, getTmdbImageUrl } from '../utils/tmdbImages';
 import { readLocalStorage, writeLocalStorage } from '../utils/browserStorage';
 import { useTitleHistory } from '../hooks/useTitleHistory';
-import { localProgressFinished, movieResume, movieWatchedState, seedProgress } from '../utils/titleHistoryMerge';
+import { movieResume, seedProgress } from '../utils/titleHistoryMerge';
 import { EstimateInfoDialog } from '../components/profile/EstimateInfo';
+import DetailHero from '../components/details/DetailHero';
+import DetailCastRail from '../components/details/DetailCastRail';
+import DetailRecommendations from '../components/details/DetailRecommendations';
+import DetailComments from '../components/details/DetailComments';
+import type { Media } from '../components/EmblaCarousel';
 
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
@@ -61,15 +58,6 @@ const readStoredMediaList = (key: string): any[] | null => {
   }
 };
 
-const updateStoredMediaList = (key: string, update: (items: any[]) => any[]): boolean => {
-  try {
-    const items = parseStoredMediaList(window.localStorage.getItem(key));
-    if (items === null) return false;
-    return writeLocalStorage(key, JSON.stringify(update(items)));
-  } catch {
-    return false;
-  }
-};
 
 interface Movie {
   title: string;
@@ -139,12 +127,6 @@ interface TMDBImage {
   width: number;
 }
 
-interface MovieImages {
-  backdrops: TMDBImage[];
-  logos: TMDBImage[];
-  posters: TMDBImage[];
-}
-
 // Use shared certification utility
 const getClassificationLabel = getClassificationLabelUtil;
 
@@ -189,691 +171,10 @@ const groupCrewMembers = (crew: CrewMember[]): GroupedCrewMember[] => {
 };
 
 const DEFAULT_IMAGE = 'https://via.placeholder.com/185x278/1F2937/FFFFFF?text=Aucune+image';
-const PENDING_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
 
 // Composant pour une image avec lazy loading
-const LazyImage = ({ src, srcSet, sizes, alt, className, onLoad }: {
-  src: string;
-  srcSet?: string;
-  sizes?: string;
-  alt: string;
-  className: string;
-  onLoad?: () => void;
-}) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1, rootMargin: '50px' }
-    );
-
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  const handleLoad = () => {
-    setIsLoaded(true);
-    onLoad?.();
-  };
-
-  return (
-    <div ref={imgRef} className={className}>
-      {!isInView ? (
-        <div className="w-full h-full bg-gray-800 animate-pulse flex items-center justify-center">
-          <Image className="w-8 h-8 text-gray-600" />
-        </div>
-      ) : (
-        <>
-          {!isLoaded && (
-            <div className="absolute inset-0 bg-gray-800 animate-pulse flex items-center justify-center">
-              <Image className="w-8 h-8 text-gray-600" />
-            </div>
-          )}
-          <img
-            src={src}
-            srcSet={srcSet}
-            sizes={sizes}
-            alt={alt}
-            className={`w-full h-auto object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
-            onLoad={handleLoad}
-            loading="lazy"
-          />
-        </>
-      )}
-    </div>
-  );
-};
 
 // Composant pour la section Images
-const ImagesSection = ({ movieId, images, loading }: { movieId: string; images: MovieImages | null; loading: boolean }) => {
-  const { t } = useTranslation();
-  const { effectiveImageQuality } = useImageQuality();
-  const { width: viewportWidth, dpr } = useImageViewport();
-  const imageDpr = Math.min(dpr, effectiveImageQuality === 'high' ? 3 : 2);
-  const [selectedCategory, setSelectedCategory] = useState<'backdrops' | 'posters' | 'logos'>('backdrops');
-  const [showImages, setShowImages] = useState(true);
-  const [loadedImagesCount, setLoadedImagesCount] = useState(0);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('all');
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
-  const mobileLogoGridRef = useRef<HTMLDivElement | null>(null);
-  const desktopLogoGridRef = useRef<HTMLDivElement | null>(null);
-  const logoSlotEnabled = !loading && Boolean(images) && showImages && selectedCategory === 'logos';
-  const mobileLogoGridSlot = useImageSlot(mobileLogoGridRef, logoSlotEnabled && viewportWidth < 768);
-  const desktopLogoGridSlot = useImageSlot(desktopLogoGridRef, logoSlotEnabled && viewportWidth >= 768);
-
-  // États pour le téléchargement ZIP
-  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
-  const [zipProgress, setZipProgress] = useState(0);
-  const [zipStatus, setZipStatus] = useState<'idle' | 'downloading' | 'zipping' | 'complete' | 'error'>('idle');
-  const [downloadedCount, setDownloadedCount] = useState(0);
-
-  const getGalleryImageProps = (image: TMDBImage) => {
-    if (selectedCategory === 'logos') {
-      const gridSlot = viewportWidth < 768 ? mobileLogoGridSlot : desktopLogoGridSlot;
-      if (gridSlot.width <= 0) return { src: PENDING_IMAGE };
-      const columns = viewportWidth < 768 ? 1 : viewportWidth < 1024 ? 3 : 4;
-      const cardWidth = viewportWidth < 768
-        ? (viewportWidth < 640 ? 256 : 288)
-        : (gridSlot.width - 16 * (columns - 1)) / columns;
-      const horizontalPadding = viewportWidth < 768 ? 48 : 64;
-      const imageWidth = Math.max(1, cardWidth - horizontalPadding);
-      return {
-        src: getTmdbImageUrl(image.file_path, {
-          kind: 'logo',
-          quality: effectiveImageQuality,
-          width: Math.ceil(imageWidth * imageDpr),
-          role: 'card',
-        }),
-      };
-    }
-
-    return getTmdbImageProps(image.file_path, {
-      kind: selectedCategory === 'posters' ? 'poster' : 'backdrop',
-      quality: effectiveImageQuality,
-      sizes: '(max-width: 639px) 16rem, (max-width: 767px) 18rem, (max-width: 1023px) calc(22.222vw - 1.778rem), calc(16.667vw - 2.25rem)',
-      role: 'card',
-      originalWidth: image.width,
-    });
-  };
-
-  // Cap initial render to ~24 images, reveal the rest on idle (Audit #15)
-  const [showAllImages, setShowAllImages] = useState(false);
-  useEffect(() => {
-    if (showAllImages) return;
-    const w = window as Window & {
-      requestIdleCallback?: (cb: () => void) => number;
-      cancelIdleCallback?: (id: number) => void;
-    };
-    const ric = w.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 200) as unknown as number);
-    const cic = w.cancelIdleCallback ?? ((id: number) => clearTimeout(id as unknown as ReturnType<typeof setTimeout>));
-    const id = ric(() => setShowAllImages(true));
-    return () => cic(id);
-  }, [showAllImages]);
-
-  const handleToggleImages = () => {
-    setShowImages(!showImages);
-  };
-
-  const downloadImage = async (imagePath: string, filename: string) => {
-    try {
-      const imageUrl = `https://image.tmdb.org/t/p/original${imagePath}`;
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Error downloading image:', error);
-    }
-  };
-
-  // Télécharger toutes les images de la catégorie en ZIP
-  const downloadAllAsZip = async () => {
-    const imagesToDownload = getImagesByCategory();
-    if (imagesToDownload.length === 0) return;
-
-    setIsDownloadingZip(true);
-    setZipProgress(0);
-    setZipStatus('downloading');
-    setDownloadedCount(0);
-
-    try {
-      // Lazy-load jszip + file-saver only when the user triggers the bulk download.
-      const [jszipMod, fileSaverMod] = await Promise.all([
-        import('jszip'),
-        import('file-saver'),
-      ]);
-      const JSZip = jszipMod.default;
-      const { saveAs } = fileSaverMod;
-      const zip = new JSZip();
-      const folder = zip.folder(`movie-${movieId}-${selectedCategory}`);
-
-      // Télécharger chaque image
-      for (let i = 0; i < imagesToDownload.length; i++) {
-        const image = imagesToDownload[i];
-        const imageUrl = `https://image.tmdb.org/t/p/original${image.file_path}`;
-
-        try {
-          const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          const extension = image.file_path.split('.').pop() || 'jpg';
-          const langSuffix = image.iso_639_1 ? `_${image.iso_639_1}` : '';
-          const filename = `${selectedCategory}_${i + 1}${langSuffix}_${image.width}x${image.height}.${extension}`;
-
-          folder?.file(filename, blob);
-          setDownloadedCount(i + 1);
-          setZipProgress(Math.round(((i + 1) / imagesToDownload.length) * 80)); // 80% for downloading
-        } catch (err) {
-          console.error(`Error downloading image ${i + 1}:`, err);
-        }
-      }
-
-      setZipStatus('zipping');
-      setZipProgress(90);
-
-      // Générer le ZIP
-      const content = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 }
-      }, (metadata) => {
-        setZipProgress(90 + Math.round(metadata.percent * 0.1)); // 10% for zipping
-      });
-
-      // Télécharger le fichier
-      const categoryName = selectedCategory === 'backdrops' ? 'arriere-plans' :
-        selectedCategory === 'posters' ? 'affiches' : 'logos';
-      saveAs(content, `movie-${movieId}-${categoryName}.zip`);
-
-      setZipProgress(100);
-      setZipStatus('complete');
-
-      // Reset après 3 secondes
-      setTimeout(() => {
-        setIsDownloadingZip(false);
-        setZipProgress(0);
-        setZipStatus('idle');
-        setDownloadedCount(0);
-      }, 3000);
-
-    } catch (error) {
-      console.error('Error creating ZIP:', error);
-      setZipStatus('error');
-      setTimeout(() => {
-        setIsDownloadingZip(false);
-        setZipProgress(0);
-        setZipStatus('idle');
-      }, 3000);
-    }
-  };
-
-  const getImagesByCategory = () => {
-    if (!images) return [];
-    const categoryImages = images[selectedCategory] || [];
-
-    if (selectedLanguage === 'all') {
-      return categoryImages;
-    }
-
-    return categoryImages.filter(image => {
-      if (selectedLanguage === 'no-text') {
-        return image.iso_639_1 === null;
-      }
-      return image.iso_639_1 === selectedLanguage;
-    });
-  };
-
-  const getCategoryCount = (category: 'backdrops' | 'posters' | 'logos') => {
-    if (!images) return 0;
-    return images[category]?.length || 0;
-  };
-
-  const getAvailableLanguages = () => {
-    if (!images) return [];
-    const categoryImages = images[selectedCategory] || [];
-    const languages = new Set<string>();
-
-    categoryImages.forEach(image => {
-      if (image.iso_639_1 === null) {
-        languages.add('no-text');
-      } else {
-        languages.add(image.iso_639_1);
-      }
-    });
-
-    return Array.from(languages).sort();
-  };
-
-  const getLanguageDisplayName = (langCode: string) => {
-    const languageNames: { [key: string]: string } = {
-      'en': t('details.langEnglish'),
-      'fr': t('details.langFrench'),
-      'es': t('details.langSpanish'),
-      'de': t('details.langGerman'),
-      'it': t('details.langItalian'),
-      'pt': t('details.langPortuguese'),
-      'ja': t('details.langJapanese'),
-      'ko': t('details.langKorean'),
-      'zh': t('details.langChinese'),
-      'ru': t('details.langRussian'),
-      'ar': t('details.langArabic'),
-      'hi': t('details.langHindi'),
-      'no-text': t('details.langNoText')
-    };
-
-    return languageNames[langCode] || langCode.toUpperCase();
-  };
-
-  const handleImageLoad = () => {
-    setLoadedImagesCount(prev => prev + 1);
-  };
-
-  // Reset loaded images count and language when category changes
-  useEffect(() => {
-    setLoadedImagesCount(0);
-    setSelectedLanguage('all');
-    setShowLanguageDropdown(false);
-  }, [selectedCategory]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (showLanguageDropdown && !target.closest('.language-dropdown')) {
-        setShowLanguageDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showLanguageDropdown]);
-
-  // Ensure images panel is visible by default when movieId changes
-  useEffect(() => {
-    setShowImages(true);
-  }, [movieId]);
-
-  return (
-    <div className="mb-8">
-      <motion.button
-        onClick={handleToggleImages}
-        className="flex items-center gap-3 text-xl font-bold text-white hover:text-blue-400 transition-colors"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <Image className="w-6 h-6" />
-        {t('details.imagesTab')}
-        <motion.div
-          animate={{ rotate: showImages ? 180 : 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </motion.div>
-      </motion.button>
-
-      <AnimatePresence>
-        {showImages && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.3 }}
-            className="mt-6"
-            style={{ overflow: 'visible' }}
-          >
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader className="w-8 h-8 animate-spin text-blue-400" />
-              </div>
-            ) : images ? (
-              <div>
-                {/* Tabs catégories — pattern shadcn (pastille rouge animée via layoutId).
-                    Même structure que SourcePriorityPanel / sidebar Settings. */}
-                <div role="tablist" className="mb-6 flex items-center gap-1 overflow-x-auto rounded-xl border border-white/[0.07] bg-black/20 p-1.5 shadow-inner">
-                  {(['backdrops', 'posters', 'logos'] as const).map((category) => {
-                    const isActive = selectedCategory === category;
-                    const labelKey = category === 'backdrops' ? 'details.backgrounds' : `details.${category}`;
-                    return (
-                      <button
-                        key={category}
-                        type="button"
-                        role="tab"
-                        aria-selected={isActive}
-                        onClick={() => setSelectedCategory(category)}
-                        className={`relative flex-1 min-w-0 flex items-center justify-center gap-2 px-3 sm:px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60 ${
-                          isActive ? 'text-white' : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {isActive && (
-                          <motion.div
-                            layoutId="movie-images-tabs-indicator"
-                            className="absolute inset-0 rounded-lg bg-gradient-to-r from-rose-600 to-red-500 shadow-[0_6px_18px_rgba(225,29,72,0.22)]"
-                            transition={{ type: 'spring', bounce: 0.15, duration: 0.45 }}
-                          />
-                        )}
-                        <span className="relative z-10 flex items-center gap-2">
-                          {category === 'backdrops' && (
-                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          {category === 'posters' && (
-                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          {category === 'logos' && (
-                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                            </svg>
-                          )}
-                          <span>{t(labelKey)}</span>
-                          <span className={`text-[11px] leading-none px-1.5 py-0.5 rounded-full font-semibold ${
-                            isActive ? 'bg-white/25 text-white' : 'bg-gray-800/70 text-gray-400'
-                          }`}>
-                            {getCategoryCount(category)}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Menu déroulant pour les langues */}
-                {getAvailableLanguages().length > 1 && (
-                  <div className="relative mb-6 language-dropdown">
-                    <motion.button
-                      onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                      className="flex w-full items-center justify-between rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 py-3 text-white shadow-sm backdrop-blur-sm transition-all duration-200 hover:border-white/20 hover:bg-white/[0.08] md:w-64"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733 18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98a1 1 0 11-1.79.895L15.383 16h-4.764l-.724 1.447a1 1 0 11-1.788-.894l.99-1.98.019-.038 2.99-5.982A1 1 0 0113 8zm-1.382 6h2.764L13 11.236 11.618 14z" clipRule="evenodd" />
-                        </svg>
-                        <span className="font-medium">
-                          {selectedLanguage === 'all'
-                            ? `${t('details.allLanguages')} (${images?.[selectedCategory]?.length || 0})`
-                            : `${getLanguageDisplayName(selectedLanguage)} (${images?.[selectedCategory]?.filter(img =>
-                              selectedLanguage === 'no-text' ? img.iso_639_1 === null : img.iso_639_1 === selectedLanguage
-                            ).length || 0})`
-                          }
-                        </span>
-                      </div>
-                      <motion.svg
-                        className="w-5 h-5 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        animate={{ rotate: showLanguageDropdown ? 180 : 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </motion.svg>
-                    </motion.button>
-
-                    <AnimatePresence>
-                      {showLanguageDropdown && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                          transition={{ duration: 0.2 }}
-                          className="absolute left-0 z-[9999] mt-2 max-h-64 w-full overflow-y-auto overflow-hidden rounded-xl border border-white/[0.1] bg-[#111b2b]/95 shadow-2xl backdrop-blur-xl md:left-0 md:w-64"
-                        >
-                          <div className="py-2">
-                            <motion.button
-                              onClick={() => {
-                                setSelectedLanguage('all');
-                                setShowLanguageDropdown(false);
-                              }}
-                              className={`w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors flex items-center justify-between ${selectedLanguage === 'all' ? 'bg-blue-600/20 text-blue-400' : 'text-gray-300'
-                                }`}
-                              whileHover={{ x: 4 }}
-                            >
-                              <span>{t('details.allLanguages')}</span>
-                              <span className="text-xs bg-gray-600/50 px-2 py-1 rounded-full">
-                                {images?.[selectedCategory]?.length || 0}
-                              </span>
-                            </motion.button>
-                            {getAvailableLanguages().map((langCode) => (
-                              <motion.button
-                                key={langCode}
-                                onClick={() => {
-                                  setSelectedLanguage(langCode);
-                                  setShowLanguageDropdown(false);
-                                }}
-                                className={`w-full px-4 py-3 text-left hover:bg-gray-700/50 transition-colors flex items-center justify-between ${selectedLanguage === langCode ? 'bg-blue-600/20 text-blue-400' : 'text-gray-300'
-                                  }`}
-                                whileHover={{ x: 4 }}
-                              >
-                                <span>{getLanguageDisplayName(langCode)}</span>
-                                <span className="text-xs bg-gray-600/50 px-2 py-1 rounded-full">
-                                  {images?.[selectedCategory]?.filter(img =>
-                                    langCode === 'no-text' ? img.iso_639_1 === null : img.iso_639_1 === langCode
-                                  ).length || 0}
-                                </span>
-                              </motion.button>
-                            ))}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
-                )}
-
-                {/* Bouton Télécharger tout en ZIP */}
-                {getImagesByCategory().length > 0 && (
-                  <div className="mb-6">
-                    <motion.button
-                      onClick={downloadAllAsZip}
-                      disabled={isDownloadingZip}
-                      className={`relative overflow-hidden flex items-center gap-3 px-5 py-3 rounded-xl font-semibold transition-all duration-300 ${isDownloadingZip
-                        ? 'bg-gray-700 cursor-not-allowed'
-                        : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg hover:shadow-emerald-500/25'
-                        }`}
-                      whileHover={!isDownloadingZip ? { scale: 1.02, y: -2 } : {}}
-                      whileTap={!isDownloadingZip ? { scale: 0.98 } : {}}
-                    >
-                      {/* Barre de progression en arrière-plan */}
-                      {isDownloadingZip && (
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600"
-                          initial={{ width: '0%' }}
-                          animate={{ width: `${zipProgress}%` }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      )}
-
-                      <span className="relative z-10 flex items-center gap-3">
-                        {zipStatus === 'idle' && (
-                          <>
-                            <Archive className="w-5 h-5" />
-                            <span>{t('details.downloadZip')}</span>
-                            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                              {getImagesByCategory().length} images
-                            </span>
-                          </>
-                        )}
-                        {zipStatus === 'downloading' && (
-                          <>
-                            <Loader className="w-5 h-5 animate-spin" />
-                            <span>{t('details.downloading')} {downloadedCount}/{getImagesByCategory().length}</span>
-                            <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                              {zipProgress}%
-                            </span>
-                          </>
-                        )}
-                        {zipStatus === 'zipping' && (
-                          <>
-                            <Loader className="w-5 h-5 animate-spin" />
-                            <span>{t('details.compressing')}</span>
-                          </>
-                        )}
-                        {zipStatus === 'complete' && (
-                          <>
-                            <CheckCircle className="w-5 h-5 text-green-300" />
-                            <span>{t('details.downloadComplete')}</span>
-                          </>
-                        )}
-                        {zipStatus === 'error' && (
-                          <>
-                            <AlertTriangle className="w-5 h-5 text-red-300" />
-                            <span>{t('details.downloadError')}</span>
-                          </>
-                        )}
-                      </span>
-                    </motion.button>
-
-                    {/* Barre de progression visible */}
-                    {isDownloadingZip && zipStatus !== 'complete' && (
-                      <div className="mt-3 bg-gray-800 rounded-full h-2 overflow-hidden">
-                        <motion.div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400"
-                          initial={{ width: '0%' }}
-                          animate={{ width: `${zipProgress}%` }}
-                          transition={{ duration: 0.3 }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Mobile: Ligne défilante d'images (horizontal scroll) */}
-                <motion.div
-                  ref={mobileLogoGridRef}
-                  key={selectedCategory + '-mobile'}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex gap-4 overflow-x-auto py-4 snap-x snap-mandatory md:hidden"
-                >
-                  {(showAllImages ? getImagesByCategory() : getImagesByCategory().slice(0, 24)).map((image, index) => (
-                    <motion.div
-                      key={`mobile-${selectedCategory}-${index}`}
-                      className="relative group rounded-lg overflow-hidden flex-shrink-0 w-64 sm:w-72 snap-center"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.02, duration: 0.25 }}
-                    >
-                      <div className={`w-full h-auto ${selectedCategory === 'logos' ? 'p-6 bg-white/5 flex items-center justify-center' : ''}`}>
-                        <LazyImage
-                          {...getGalleryImageProps(image)}
-                          alt={`${selectedCategory} ${index + 1}`}
-                          className="w-full h-auto object-contain"
-                          onLoad={handleImageLoad}
-                        />
-                      </div>
-
-                      <motion.button
-                        onClick={() => downloadImage(
-                          image.file_path,
-                          `movie-${movieId}-${selectedCategory}-${index + 1}.jpg`
-                        )}
-                        className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors shadow-lg md:hidden"
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <Download className="w-4 h-4" />
-                      </motion.button>
-
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2">
-                        <p className="text-white text-xs">
-                          {image.width} × {image.height}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-
-                {/* Desktop: grille d'images (grid) */}
-                <motion.div
-                  ref={desktopLogoGridRef}
-                  key={selectedCategory + '-desktop'}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="hidden md:grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
-                >
-                  {(showAllImages ? getImagesByCategory() : getImagesByCategory().slice(0, 24)).map((image, index) => (
-                    <motion.div
-                      key={`desktop-${selectedCategory}-${index}`}
-                      className="relative group rounded-lg overflow-hidden"
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.04, duration: 0.3 }}
-                      whileHover={{ scale: 1.02 }}
-                    >
-                      <div className={`w-full h-auto ${selectedCategory === 'logos' ? 'p-8 bg-white/5' : ''}`}>
-                        <LazyImage
-                          {...getGalleryImageProps(image)}
-                          alt={`${selectedCategory} ${index + 1}`}
-                          className="w-full h-auto object-contain"
-                          onLoad={handleImageLoad}
-                        />
-                      </div>
-
-                      <motion.div
-                        className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex"
-                        initial={{ opacity: 0 }}
-                        whileHover={{ opacity: 1 }}
-                      >
-                        <motion.button
-                          onClick={() => downloadImage(
-                            image.file_path,
-                            `movie-${movieId}-${selectedCategory}-${index + 1}.jpg`
-                          )}
-                          className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full transition-colors shadow-lg"
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                        >
-                          <Download className="w-5 h-5" />
-                        </motion.button>
-                      </motion.div>
-
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2">
-                        <p className="text-white text-xs">
-                          {image.width} × {image.height}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-
-                {getImagesByCategory().length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    {t('details.noImageInCategory')}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-400">
-                {t('details.imageLoadError')}
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
 
 // Définir une interface NextMovieType pour le film suivant
 interface NextMovieType {
@@ -911,7 +212,6 @@ const MovieDetails = (): JSX.Element => {
   const movieReleases = useMemo(() => parseMovieReleases(
     releaseDates?.id === id ? releaseDates.data : null, movie?.release_date,
   ), [id, movie?.release_date, releaseDates]);
-  const hasReleaseWarning = movieReleaseWarningsEnabled && needsMovieReleaseWarning(movieReleases, releaseNow);
 
   useEffect(() => {
     const update = () => setReleaseNow(Date.now());
@@ -925,7 +225,7 @@ const MovieDetails = (): JSX.Element => {
       document.removeEventListener('visibilitychange', update);
     };
   }, []);
-  const [movixVoteStats, setMovixVoteStats] = useState<LikeDislikeStats>({ likes: 0, dislikes: 0 });
+  const [, setMovixVoteStats] = useState<LikeDislikeStats>({ likes: 0, dislikes: 0 });
   const [showMovixRatingInfo, setShowMovixRatingInfo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -934,9 +234,9 @@ const MovieDetails = (): JSX.Element => {
   // Le générique complet, pour la galerie de personnages : `cast` reste tronqué
   // à vingt pour l'onglet Distribution, qui n'a pas la même vocation.
   const [fullCast, setFullCast] = useState<CastMember[]>([]);
-  const [crew, setCrew] = useState<GroupedCrewMember[]>([]);
+  const [, setCrew] = useState<GroupedCrewMember[]>([]);
   const [characters, setCharacters] = useState<DetailCharacters | null>(null);
-  const [charactersLoading, setCharactersLoading] = useState(false);
+  const [, setCharactersLoading] = useState(false);
   const [alternateTitles, setAlternateTitles] = useState<AlternateTitle[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
   const [bestBackdrop, setBestBackdrop] = useState<TMDBImage | null>(null);
@@ -947,7 +247,6 @@ const MovieDetails = (): JSX.Element => {
     setMovixVoteStats({ likes: 0, dislikes: 0 });
   }, [id]);
 
-  const movixRating = calculateLikeDislikeRating(movixVoteStats);
 
   const handleCloseTrailer = () => {
     setIsClosingTrailer(true);
@@ -965,28 +264,14 @@ const MovieDetails = (): JSX.Element => {
     }, 300);
   };
 
-  // Mode cinéma toujours activé
-
-  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'collection' | 'videos' | 'images' | 'cast' | 'characters' | 'crew'>('overview');
-  // Add new state for financial stats mode
-  const [financialStatsMode, setFinancialStatsMode] = useState<'simple' | 'advanced'>('simple');
-
+  // Mode cinéma toujours activé  // Add new state for financial stats mode
   const [watchProgress, setWatchProgress] = useState(0);
   const [videoDuration, setVideoDuration] = useState(0);
-  const [hasProgress, setHasProgress] = useState(false);
-
-  const [showVideo, setShowVideo] = useState(false);
-  const [videos, setVideos] = useState<any[]>([]);
-  const [loadingVideos, setLoadingVideos] = useState(false);
+  const [hasProgress, setHasProgress] = useState(false);  const [, setVideos] = useState<any[]>([]);
+  const [, setLoadingVideos] = useState(false);
 
   // États pour les vidéos multi-langues
-  const [multiLangVideos, setMultiLangVideos] = useState<any[]>([]);
-  const [loadingMultiLangVideos, setLoadingMultiLangVideos] = useState(false);
-  const [showMultiLangView, setShowMultiLangView] = useState(false);
-
-  const [customUrl, setCustomUrl] = useState<string | null>(null);
-
-  const [watchStatus, setWatchStatus] = useState<WatchStatus>({
+  const [, setWatchStatus] = useState<WatchStatus>({
     watchlist: false,
     favorite: false,
     watched: false
@@ -995,39 +280,26 @@ const MovieDetails = (): JSX.Element => {
   // le stockage local gagne toujours, le serveur comble ce qui manque.
   const titleHistory = useTitleHistory('movie', id);
   const [estimateInfoOpen, setEstimateInfoOpen] = useState(false);
-
-  const [showAddToList, setShowAddToList] = useState(false);
-
-  const [isAvailable, setIsAvailable] = useState<boolean>(true);
-
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [loadingSimilar, setLoadingSimilar] = useState(false);
-  const [showSimilarModal, setShowSimilarModal] = useState(false);
-
+  const [, setLoadingSimilar] = useState(false);
   // Nouvel état pour le film suivant recommandé (film disponible)
-  const [nextRecommendedMovie, setNextRecommendedMovie] = useState<NextMovieType | null>(null);
-  const [releaseYear, setReleaseYear] = useState<number | null>(null);
-
-  const [collection, setCollection] = useState<Collection | null>(null);
-  const [loadingCollection, setLoadingCollection] = useState(false);
-  const [images, setImages] = useState<MovieImages | null>(null);
-  const [loadingImages, setLoadingImages] = useState(false);
-  const [certifications, setCertifications] = useState<{ [key: string]: string }>({});
+  const [, setNextRecommendedMovie] = useState<NextMovieType | null>(null);
+  const [collection] = useState<Collection | null>(null);  const [certifications, setCertifications] = useState<{ [key: string]: string }>({});
 
   // État pour la popup vidéo
   const [showVideoPopup, setShowVideoPopup] = useState(false);
-  const [selectedVideo, setSelectedVideo] = useState<any>(null);
+  const [selectedVideo] = useState<any>(null);
   const [isClosingVideo, setIsClosingVideo] = useState(false);
 
-  const [isTabsScrollable, setIsTabsScrollable] = useState(false);
+  const [, setIsTabsScrollable] = useState(false);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
 
 
   // Ajouter un state pour le hover des cartes de la collection (juste après la déclaration des autres states)
-  const [isCollectionCardHovered, setIsCollectionCardHovered] = useState(false);
-  const [showCollectionLeftButton, setShowCollectionLeftButton] = useState(false);
-  const [showCollectionRightButton, setShowCollectionRightButton] = useState(true);
+  const [isCollectionCardHovered] = useState(false);
+  const [, setShowCollectionLeftButton] = useState(false);
+  const [, setShowCollectionRightButton] = useState(true);
   const collectionRowRef = useRef<HTMLDivElement>(null);
   // Référence pour la section commentaires
   const commentsRef = useRef<HTMLDivElement>(null);
@@ -1111,16 +383,6 @@ const MovieDetails = (): JSX.Element => {
     });
   }, [movie, id, alternateTitles, keywords, characters]);
 
-  /** L'onglet n'a de raison d'être que s'il a quelque chose dedans. */
-  /**
-   * L'onglet n'existe que pour ce qu'AniList apporte. Sur une œuvre qu'elle ne
-   * connaît pas — un film, une série qui n'est pas un anime — les personnages
-   * ne viennent que du générique TMDB, et l'onglet Distribution dit déjà la
-   * même chose dans l'autre sens. Les cartes restent construites : elles
-   * nourrissent le catalogue de recherche, qui lui gagne à connaître les noms
-   * de rôles (voir `utils/mediaSearchIndex.ts`).
-   */
-  const hasCharactersTab = characters?.source === 'anilist' && characters.total > 0;
 
   const fetchMovieDetails = useCallback(async (): Promise<MovieExtended | undefined> => {
     if (!id) return undefined;
@@ -1197,48 +459,8 @@ const MovieDetails = (): JSX.Element => {
   }, [id]);
 
   // Use fetchData to call fetchMovieDetails
-  const fetchData = async () => {
-    const movieData = await fetchMovieDetails();
-    if (movieData && movieData.release_date) {
-      const releaseYear = new Date(movieData.release_date).getFullYear();
-      setReleaseYear(releaseYear);
-    }
-  };
 
   // Ajouter une fonction pour récupérer les détails de la collection
-  const fetchCollection = async (collectionId: number) => {
-    setLoadingCollection(true);
-    try {
-      const response = await axios.get<Collection>(`https://api.themoviedb.org/3/collection/${collectionId}`, {
-        params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() },
-      });
-
-      // For each part in the collection, fetch the full movie details to get the overview
-      const collectionWithDetails = { ...response.data };
-      if (collectionWithDetails.parts && collectionWithDetails.parts.length > 0) {
-        const updatedParts = await Promise.all(
-          collectionWithDetails.parts.map(async (part) => {
-            try {
-              const movieDetails = await axios.get(`https://api.themoviedb.org/3/movie/${part.id}`, {
-                params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() },
-              });
-              return { ...part, overview: movieDetails.data.overview };
-            } catch (err) {
-              console.error(`Error fetching details for movie ${part.id}:`, err);
-              return part;
-            }
-          })
-        );
-        collectionWithDetails.parts = updatedParts;
-      }
-
-      setCollection(collectionWithDetails);
-    } catch (error) {
-      console.error('Error fetching collection:', error);
-    } finally {
-      setLoadingCollection(false);
-    }
-  };
 
   // Function to fetch movie videos
   const fetchMovieVideos = useCallback(async () => {
@@ -1296,28 +518,6 @@ const MovieDetails = (): JSX.Element => {
   }, [id]);
 
   // Function to fetch multi-language videos
-  const fetchMultiLangVideos = useCallback(async () => {
-    if (!id) return;
-    try {
-      setLoadingMultiLangVideos(true);
-      // Fetch videos without language parameter to get all languages
-      const response = await axios.get(
-        `https://api.themoviedb.org/3/movie/${id}/videos`,
-        {
-          params: {
-            api_key: TMDB_API_KEY
-          }
-        }
-      );
-
-      setMultiLangVideos(response.data.results || []);
-    } catch (error) {
-      console.error('Error fetching multi-language videos:', error);
-      setMultiLangVideos([]);
-    } finally {
-      setLoadingMultiLangVideos(false);
-    }
-  }, [id]);
 
   // Fetch trailer on page load so the Bande-annonce button is enabled
   useEffect(() => {
@@ -1325,48 +525,15 @@ const MovieDetails = (): JSX.Element => {
   }, [fetchMovieVideos]);
 
   // State to track if videos have been loaded (for click-to-load behavior)
-  const [videosLoaded, setVideosLoaded] = useState(false);
+  const [, setVideosLoaded] = useState(false);
 
   // Handler for when Videos tab is clicked - loads videos on demand
-  const handleVideosTabClick = useCallback(() => {
-    setActiveTab('videos');
-    if (!videosLoaded && !loadingVideos) {
-      fetchMovieVideos().then(() => setVideosLoaded(true));
-    }
-  }, [videosLoaded, loadingVideos, fetchMovieVideos]);
 
   // Function to fetch images
-  const fetchImages = useCallback(async () => {
-    if (!id || images) return;
-    setLoadingImages(true);
-    try {
-      const response = await axios.get(`https://api.themoviedb.org/3/movie/${id}/images`, {
-        params: { api_key: TMDB_API_KEY },
-      });
-      setImages(response.data);
-    } catch (error) {
-      console.error('Error fetching movie images:', error);
-    } finally {
-      setLoadingImages(false);
-    }
-  }, [id, images]);
 
   // Handler for when Images tab is clicked
-  const handleImagesTabClick = useCallback(() => {
-    setActiveTab('images');
-    if (!images && !loadingImages) {
-      fetchImages();
-    }
-  }, [images, loadingImages, fetchImages]);
 
   // Handler for when Collection tab is clicked
-  const handleCollectionTabClick = useCallback(() => {
-    setActiveTab('collection');
-    if (movie?.belongs_to_collection && !collection && !loadingCollection) {
-      fetchCollection(movie.belongs_to_collection.id);
-    }
-     
-  }, [movie, collection, loadingCollection]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1401,36 +568,9 @@ const MovieDetails = (): JSX.Element => {
     loadWatchStatus();
   }, [id]);
 
-  const updateWatchStatus = (type: keyof WatchStatus, value: boolean) => {
-    setWatchStatus(prev => {
-      const newStatus = { ...prev, [type]: value };
-
-      const itemToSave = {
-        id: Number(id),
-        type: 'movie',
-        title: movie?.title || '',
-        poster_path: movie?.poster_path || '',
-        addedAt: new Date().toISOString()
-      };
-
-      const key = `${type}_movie`;
-      const persisted = updateStoredMediaList(key, existingItems => (
-        value
-          ? [itemToSave, ...existingItems.filter((item: any) => item?.id !== Number(id))]
-          : existingItems.filter((item: any) => item?.id !== Number(id))
-      ));
-
-      return persisted ? newStatus : prev;
-    });
-  };
 
   // Vu et reprise fusionnés avec le serveur. Une clé progress_ locale, même
   // finie, gagne : le serveur ne sert que s'il n'y en a pas.
-  const watchedView = movieWatchedState(
-    watchStatus.watched,
-    id ? localProgressFinished(readLocalStorage(`progress_${id}`)) : false,
-    titleHistory,
-  );
   const serverResume = id && !hasProgress && !readLocalStorage(`progress_${id}`) ? movieResume(null, titleHistory) : null;
 
   // Convert WatchButtons to a regular function to access parent scope variables
@@ -1507,27 +647,6 @@ const MovieDetails = (): JSX.Element => {
             </motion.button>
           )}
         </div>
-        {/* Versions alternatives (ex. Encore) : TMDB n'a qu'une fiche par film */}
-        {getMovieVersions(id).length > 0 && (
-          <div className="flex flex-wrap gap-3 w-full min-w-0">
-            {getMovieVersions(id).map((version) => (
-              <motion.button
-                key={version.key}
-                whileHover={{ y: -2, scale: 1.015 }}
-                whileTap={{ scale: 0.985 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                onClick={() => startWatching(version.key)}
-                className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-xs font-medium text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] sm:text-sm"
-              >
-                <Film className="w-4 h-4 flex-shrink-0" />
-                <span className="text-left">
-                  {t('movieVersions.watchVersion', { version: t(version.labelKey) })}
-                  {version.runtime ? ` · ${t('movieVersions.runtime', { minutes: version.runtime })}` : ''}
-                </span>
-              </motion.button>
-            ))}
-          </div>
-        )}
       </div>
     );
   }
@@ -1538,8 +657,7 @@ const MovieDetails = (): JSX.Element => {
 
   const handleWatchClick = () => startWatching();
 
-  // `versionKey` : version alternative (ex. Encore), voir config/movieVersions.
-  const startWatching = (versionKey?: string) => {
+  const startWatching = () => {
     if (!id) return;
     if (movieReleaseWarningsEnabled && needsMovieReleaseWarning(movieReleases, Date.now())) {
       scrollToPlayer();
@@ -1554,7 +672,7 @@ const MovieDetails = (): JSX.Element => {
       : null;
     if (seed) writeLocalStorage(`progress_${id}`, seed);
     // Mode cinéma toujours actif - naviguer vers la page de visionnage
-    navigate(buildWatchMoviePath(encodeId(id), versionKey));
+    navigate(buildWatchMoviePath(encodeId(id)));
   };
 
   const fetchRecommendations = async () => {
@@ -1582,11 +700,6 @@ const MovieDetails = (): JSX.Element => {
     }
   };
 
-  const handleShowSimilar = async () => {
-    if (recommendations.length === 0) {
-      await fetchRecommendations();
-    }
-  };
 
   useEffect(() => {
     if (id && movie && recommendations.length === 0) {
@@ -1597,9 +710,6 @@ const MovieDetails = (): JSX.Element => {
   useEffect(() => {
     // Setup SEO and movie data
     if (movie) {
-      const year = movie.release_date ? new Date(movie.release_date).getFullYear() : '';
-      const rating = movie.vote_average?.toFixed(1);
-      const genres = movie.genres?.map(g => g.name).join(', ') || '';
 
       // Simple movie title
       document.title = `${movie.title} - Movix`;
@@ -1651,13 +761,6 @@ const MovieDetails = (): JSX.Element => {
     }
   };
 
-  const scrollCollectionRow = (direction: 'left' | 'right') => {
-    if (collectionRowRef.current) {
-      const { clientWidth } = collectionRowRef.current;
-      const scrollAmount = direction === 'left' ? -clientWidth : clientWidth;
-      collectionRowRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-    }
-  };
 
   // Ajouter un useEffect pour gérer le scroll sur hover de la collection
   useEffect(() => {
@@ -1776,7 +879,6 @@ const MovieDetails = (): JSX.Element => {
   }
 
   // Trouver le réalisateur, s'il existe
-  const director = crew.find(member => member.jobs.includes('Director'));
   const movieYear = movie.release_date && !isNaN(new Date(movie.release_date).getTime())
     ? Number(movie.release_date.slice(0, 4))
     : null;
@@ -1806,14 +908,6 @@ const MovieDetails = (): JSX.Element => {
       quality: effectiveImageQuality,
       width: getCoverImageWidth(viewportWidth, viewportHeight, bestBackdrop.aspect_ratio, imageDpr),
       role: 'background',
-    })
-    : null;
-  const playerBackdropImage = movie.backdrop_path
-    ? getTmdbImageUrl(movie.backdrop_path, {
-      kind: 'backdrop',
-      quality: effectiveImageQuality,
-      width: getCoverImageWidth(viewportWidth, 500, 16 / 9, imageDpr),
-      role: 'hero',
     })
     : null;
 
@@ -1986,25 +1080,11 @@ const MovieDetails = (): JSX.Element => {
       </style>
 
 
-      {/* Page backdrop — own compositing layer (position:fixed) instead of
-          backgroundAttachment:fixed, which forces full-page re-rasterization
-          on every scroll frame and tanks FPS on heavy details pages. */}
-      <div
-        aria-hidden="true"
-        className="fixed inset-0 z-0 pointer-events-none bg-black"
-        style={backdropImage ? {
-          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.9)), url(${backdropImage})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          willChange: 'transform',
-          transform: 'translateZ(0)',
-        } : undefined}
-      />
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5 }}
-        className="relative z-10 min-h-screen text-white px-4 md:px-8 lg:px-16 py-6"
+        className="detail-page relative z-10 min-h-screen bg-black text-white px-4 md:px-8 lg:px-16 py-6"
       >
         {/* Titre sémantique conservé pour l'accessibilité ; le titre visible est dans le hero. */}
         <motion.div
@@ -2044,23 +1124,22 @@ const MovieDetails = (): JSX.Element => {
 
         {/* Hero cinématique pleine largeur ; synopsis et détails restent en dessous. */}
         <div className="grid grid-cols-1 gap-8">
-          {/* Hero Film */}
-          <motion.section
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55 }}
-            aria-label={movie.title}
-            className="relative isolate -mx-4 -mt-6 mb-0 flex min-h-[76vh] w-[calc(100%+2rem)] items-end overflow-hidden border-0 bg-[#101014] bg-cover bg-center md:-mx-8 md:min-h-[80vh] md:w-[calc(100%+4rem)] lg:-mx-16 lg:min-h-[82vh] lg:w-[calc(100%+8rem)]"
-            style={{
-              backgroundImage: 'linear-gradient(90deg, rgba(0,0,0,0.64) 0%, rgba(0,0,0,0.38) 42%, rgba(0,0,0,0.045) 100%), linear-gradient(0deg, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.06) 72%), url(' + (backdropImage || playerBackdropImage || mainPosterUrl) + ')',
-              backgroundPosition: 'center 38%',
-            }}
-          >
-            <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(255,255,255,0.10),transparent_34%)]" />
-            <div className="relative z-10 w-full max-w-2xl px-6 pb-8 pt-24 sm:px-9 md:px-12 md:pb-14 lg:px-16">
-              <div className="mb-4 flex flex-wrap items-center gap-2">
+          <DetailHero
+            title={movie.title}
+            year={movieYear}
+            rating={movie.vote_average}
+            runtime={movie.runtime > 0 ? `${Math.floor(movie.runtime / 60)}h ${String(movie.runtime % 60).padStart(2, '0')}min` : null}
+            genres={movie.genres || []}
+            synopsis={movie.overview}
+            imageUrl={backdropImage}
+            fallbackImageUrl={mainPosterUrl}
+            genreHref={(genreId) => `/genre/movie/${genreId}`}
+            seasonLabel={t('details.seasonsLabel')}
+            episodeLabel={t('details.episodesLabel')}
+            badges={
+              <>
                 {!movieReleaseWarningsEnabled && (
-                  <span className={movieIsReleased ? "rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white" : "rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-black"}>
+                  <span className={movieIsReleased ? 'rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white' : 'rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-black'}>
                     {t(movieIsReleased ? 'details.releasedBadge' : 'details.notReleasedBadge')}
                   </span>
                 )}
@@ -2080,1591 +1159,53 @@ const MovieDetails = (): JSX.Element => {
                     )}
                   </>
                 )}
-              </div>
-              <h1 className="mb-4 text-3xl font-black leading-[1.06] tracking-tight text-white drop-shadow-[0_3px_18px_rgba(0,0,0,0.8)] sm:text-4xl md:text-[2.75rem] lg:text-5xl">
-                {movie.title} {movieYear && <span className="text-white/75">({movieYear})</span>}
-              </h1>
-              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-semibold text-white/85">
-                {movie.vote_average > 0 && (
-                  <span className="inline-flex items-center gap-1.5"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />{movie.vote_average.toFixed(1)}/10</span>
-                )}
-                {movie.runtime > 0 && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}min</span>}
-                {movieYear && <span>{movieYear}</span>}
-              </div>
-              <div className="mb-5 flex flex-wrap gap-2">
-                {movie.genres?.map((genre) => (
-                  <span key={genre.id} className="rounded-full border border-white/20 bg-black/35 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm">{genre.name}</span>
-                ))}
-              </div>
-              {movie.overview && (
-                <p className="mb-6 max-w-xl text-sm leading-6 text-white/85 drop-shadow-md sm:text-base sm:leading-7 line-clamp-3">{movie.overview}</p>
-              )}
-              {movieReleaseWarningsEnabled && (
-                <p className="mb-4 text-xs text-white/65">{t('details.movieRelease.availabilityNote')}</p>
-              )}
-              <div className="flex flex-wrap items-center gap-3">
+              </>
+            }
+            note={movieReleaseWarningsEnabled ? <p>{t('details.movieRelease.availabilityNote')}</p> : undefined}
+            actions={
+              <>
                 <WatchButtons />
                 <EstimateInfoDialog open={estimateInfoOpen} onOpenChange={setEstimateInfoOpen} />
-              </div>
-            </div>
-            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/28 to-transparent" />
-          </motion.section>
+              </>
+            }
+          />
 
-          {/* Colonne droite - Informations */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="w-full min-w-0"
-          >
-            {/* Tabs */}
-            <div className="relative">
-              <div
-                ref={tabsContainerRef}
-                className="flex overflow-x-auto scrollbar-hide touch-pan-x border-b border-gray-700 mb-6"
-                style={{
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                  WebkitOverflowScrolling: 'touch'
-                }}
-                id="tabs-container"
-              >
-                <motion.button
-                  onClick={() => setActiveTab('overview')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'overview'
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
-                    }`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.overviewTab')}
-                  {activeTab === 'overview' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-                <motion.button
-                  onClick={() => setActiveTab('details')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'details'
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
-                    }`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.detailsTab')}
-                  {activeTab === 'details' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
 
-                <motion.button
-                  onClick={handleVideosTabClick}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'videos'
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
-                    }`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.videosTab')}
-                  {activeTab === 'videos' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={handleImagesTabClick}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'images'
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
-                    }`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.imagesTab')}
-                  {activeTab === 'images' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={() => setActiveTab('cast')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'cast'
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
-                    }`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.castTab')}
-                  {activeTab === 'cast' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  onClick={() => setActiveTab('crew')}
-                  className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'crew'
-                    ? 'text-white'
-                    : 'text-gray-400 hover:text-white'
-                    }`}
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  {t('details.crewTab')}
-                  {activeTab === 'crew' && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                      layoutId="activeTab"
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
-
-                {/* Réservé à ce qu'AniList apporte : sur du live-action,
-                    l'onglet Équipe et celui de Distribution disent déjà tout,
-                    et un onglet de plus ne ferait que répéter. */}
-                {hasCharactersTab && (
-                  <motion.button
-                    onClick={() => setActiveTab('characters')}
-                    className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'characters'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
-                      }`}
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                    whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                  >
-                    {t('details.charactersTab')}
-                    {activeTab === 'characters' && (
-                      <motion.div
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                        layoutId="activeTab"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                  </motion.button>
-                )}
-
-                {/* N'afficher l'onglet Collection que si le film appartient à une collection */}
-                {movie?.belongs_to_collection && (
-                  <motion.button
-                    onClick={handleCollectionTabClick}
-                    className={`px-6 py-3 font-medium text-sm flex-shrink-0 relative ${activeTab === 'collection'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
-                      }`}
-                    whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                    whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                  >
-                    {t('details.sagaTab')}
-                    {activeTab === 'collection' && (
-                      <motion.div
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600"
-                        layoutId="activeTab"
-                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                  </motion.button>
-                )}
-
-                {/* Bouton Commentaires (scroll vers la section) */}
-                <motion.button
-                  onClick={() => {
-                    // Scroll vers les commentaires
-                    commentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }}
-                  className="px-6 py-3 font-medium text-sm flex-shrink-0 text-gray-400 hover:text-white"
-                  whileHover={{ backgroundColor: "rgba(255,255,255,0.05)" }}
-                  whileTap={{ backgroundColor: "rgba(255,255,255,0.1)" }}
-                >
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4" />
-                    {t('details.commentsTab')}
-                  </div>
-                </motion.button>
-              </div>
-
-              {/* Indicateur de défilement à droite */}
-              {isTabsScrollable && (
-                <div className="absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-black to-transparent pointer-events-none flex items-center justify-end pr-2">
-                  <motion.div
-                    animate={{
-                      opacity: [0.7, 1, 0.7],
-                    }}
-                    transition={{
-                      repeat: Infinity,
-                      duration: 1.5,
-                      repeatType: "reverse"
-                    }}
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-300 opacity-70" />
-                  </motion.div>
-                </div>
-              )}
-            </div>
-
-            {/* Contenu des tabs */}
-            <AnimatePresence mode="wait">
-              {activeTab === 'overview' ? (
-                <motion.div
-                  key="overview"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {/* Synopsis */}
-                  <motion.div
-                    className="mb-6 rounded-2xl border border-white/[0.08] bg-slate-950/35 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <div className="mb-4">
-                      <LikeDislikeButton
-                        contentType="movie"
-                        contentId={id || ''}
-                        onStatsChange={setMovixVoteStats}
-                      />
-                    </div>
-
-                    {/* TMDB Info Box */}
-                    <div data-halloween-parchment className="mb-6 flex items-start gap-3 rounded-xl border border-rose-400/25 bg-gradient-to-r from-rose-500/[0.11] via-red-500/[0.07] to-transparent p-4 shadow-[0_8px_24px_rgba(0,0,0,0.14)] backdrop-blur-md">
-                      <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-gray-300">
-                        <p>
-                          {t('details.tmdbInfoNote')}{' '}
-                          <a
-                            href={`https://www.themoviedb.org/movie/${id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-red-400 hover:text-red-300 underline"
-                          >
-                            TMDB
-                          </a>
-                          . {t('details.tmdbInfoDiffNote')}
-                        </p>
-                      </div>
-                    </div>
-
-                    <h2 className="mb-3 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.synopsisTitle')}</h2>
-                    <p className="max-w-5xl text-sm leading-7 text-slate-200/85 sm:text-[15px]">{movie.overview || t('details.noSynopsis')}</p>
-                  </motion.div>
-
-                  {/* Info basiques */}
-                  <motion.div
-                    className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    {/* Durée */}
-                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.durationLabel')}</h3>
-                      <p className="text-gray-300">{movie.runtime} {t('details.minutesLabel')}</p>
-                    </div>
-
-                    {/* Notes */}
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:col-span-2">
-                      <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.ratingLabel')}</h3>
-                        <div className="flex items-center gap-2">
-                          <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                          <p className="text-gray-300 text-lg font-bold">{movie.vote_average != null ? movie.vote_average.toFixed(1) : 'N/A'}<span className="text-sm font-normal text-gray-400">/10</span></p>
-                        </div>
-                      </div>
-
-                      {movixRating != null && (
-                        <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                          <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            {t('details.movixRatingLabel')}
-                            <button
-                              type="button"
-                              onClick={() => setShowMovixRatingInfo(true)}
-                              aria-label={t('details.movixRatingInfoButtonLabel')}
-                              title={t('details.movixRatingInfoButtonLabel')}
-                              className="rounded-full text-gray-400 transition-colors hover:text-white focus:outline-none focus:ring-2 focus:ring-red-500/70"
-                            >
-                              <Info className="h-4 w-4" />
-                            </button>
-                          </h3>
-                          <div className="flex items-center gap-2">
-                            <Star className="w-5 h-5 text-red-500 fill-red-500" />
-                            <p className="text-gray-300 text-lg font-bold">{movixRating.toFixed(1)}<span className="text-sm font-normal text-gray-400">/10</span></p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Classification par âge */}
-                    <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.classificationLabel')}</h3>
-                      <div className="flex items-center gap-2">
-                        {certifications['FR'] ? (
-                          <span className="inline-flex rounded-lg border border-rose-300/20 bg-rose-500/15 px-3 py-1.5 text-sm font-semibold text-rose-100">
-                            {getClassificationLabel(certifications['FR'], t)}
-                          </span>
-                        ) : certifications['US'] ? (
-                          <span className="inline-flex rounded-lg border border-rose-300/20 bg-rose-500/15 px-3 py-1.5 text-sm font-semibold text-rose-100">
-                            {getClassificationLabel(certifications['US'], t)}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">{t('details.notClassified')}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Réalisateur */}
-                    {director && (
-                      <div className="rounded-xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)] backdrop-blur-sm">
-                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.directorLabel')}</h3>
-                        <p className="text-gray-300">{director.name}</p>
-                      </div>
-                    )}
-                  </motion.div>
-
-                  {/* Genres */}
-                  <motion.div
-                    className="mb-6 rounded-2xl border border-white/[0.08] bg-slate-950/25 p-5 backdrop-blur-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    <h3 className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">{t('details.genresLabel')}</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {movie.genres.map((genre, index) => (
-                        <motion.div
-                          key={genre.id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 + index * 0.05 }}
-                        >
-                          <Link
-                            to={`/genre/movie/${genre.id}`}
-                            className="inline-flex items-center gap-2 rounded-lg border border-white/[0.1] bg-white/[0.06] px-3 py-2 text-sm font-medium text-slate-200 transition-all hover:border-rose-300/30 hover:bg-rose-500/10 hover:text-white"
-                          >
-                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                            {genre.name}
-                          </Link>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                  </motion.div>
-
-                </motion.div>
-              ) : activeTab === 'cast' ? (
-                <motion.div
-                  key="cast"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.castTab')}</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {cast.map((actor, index) => (
-                      <motion.div
-                        key={actor.id}
-                        className="group flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.025] p-3 transition-all hover:border-white/[0.12] hover:bg-white/[0.06]"
-                        onClick={() => navigate(`/person/${actor.id}`)}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 + index * 0.05 }}
-                        whileHover={{
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                          scale: 1.02,
-                          transition: { duration: 0.2 }
-                        }}
-                      >
-                        {actor.profile_path ? (
-                          <motion.img
-                            src={getTmdbImageUrl(actor.profile_path, {
-                              kind: 'profile',
-                              quality: effectiveImageQuality,
-                              width: Math.ceil(48 * imageDpr),
-                              role: 'card',
-                            })}
-                            alt={actor.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                            whileHover={{ scale: 1.1 }}
-                          />
-                        ) : (
-                          <motion.div
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
-                            style={{ backgroundColor: `hsl(${actor.name.charCodeAt(0) * 7 % 360}, 50%, 40%)` }}
-                            whileHover={{ scale: 1.1 }}
-                          >
-                            {actor.name.charAt(0).toUpperCase()}
-                          </motion.div>
-                        )}
-                        <div>
-                          <p className="font-medium">{actor.name}</p>
-                          <p className="text-sm text-gray-400">{actor.character || t('details.actorRole')}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : activeTab === 'characters' ? (
-                <motion.div
-                  key="characters"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <CharactersSection data={characters} loading={charactersLoading} />
-                </motion.div>
-              ) : activeTab === 'crew' ? (
-                <motion.div
-                  key="crew"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <h3 className="mb-4 text-lg font-bold tracking-tight text-white sm:text-xl">{t('details.crewTab')}</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {crew.map((member, index) => (
-                      <motion.div
-                        key={member.id}
-                        className="flex items-center gap-3 p-2 rounded-lg cursor-pointer"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 + index * 0.05 }}
-                        whileHover={{
-                          backgroundColor: "rgba(255,255,255,0.05)",
-                          scale: 1.02,
-                          transition: { duration: 0.2 }
-                        }}
-                        onClick={() => navigate(`/person/${member.id}`)}
-                      >
-                        {member.profile_path ? (
-                          <motion.img
-                            src={getTmdbImageUrl(member.profile_path, {
-                              kind: 'profile',
-                              quality: effectiveImageQuality,
-                              width: Math.ceil(48 * imageDpr),
-                              role: 'card',
-                            })}
-                            alt={member.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                            whileHover={{ scale: 1.1 }}
-                          />
-                        ) : (
-                          <motion.div
-                            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold text-lg"
-                            style={{ backgroundColor: `hsl(${member.name.charCodeAt(0) * 7 % 360}, 50%, 40%)` }}
-                            whileHover={{ scale: 1.1 }}
-                          >
-                            {member.name.charAt(0).toUpperCase()}
-                          </motion.div>
-                        )}
-                        <div>
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-sm text-gray-400">
-                            {member.jobs.map(job => {
-                              const translations: { [key: string]: string } = {
-                                'Director': t('details.jobDirector'),
-                                'Producer': t('details.jobProducer'),
-                                'Executive Producer': t('details.jobExecProducer'),
-                                'Writer': t('details.jobWriter'),
-                                'Director of Photography': t('details.jobDOP'),
-                                'Editor': t('details.jobEditor'),
-                                'Production Design': t('details.jobProdDesign'),
-                                'Costume Design': t('details.jobCostume'),
-                                'Music': t('details.jobMusic'),
-                                'Sound': t('details.jobSound'),
-                                'Screenplay': t('details.jobScreenplay'),
-                                'Story': t('details.jobStory'),
-                                'Characters': t('details.jobCharacters'),
-                                'Casting': t('details.jobCasting'),
-                                'Art Direction': t('details.jobArtDirection'),
-                                'Set Decoration': t('details.jobSetDecoration')
-                              };
-                              return translations[job] || job;
-                            }).join(', ')}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </motion.div>
-              ) : activeTab === 'details' ? (
-                <motion.div
-                  key="details"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  {/* Production Companies */}
-                  {movie.production_companies && movie.production_companies.length > 0 && (
-                    <motion.div
-                      className="mb-6"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.1 }}
-                    >
-                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                        <Building className="w-5 h-5" />
-                        {t('details.productionCompanies')}
-                      </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {movie.production_companies.map((company, index) => (
-                          <motion.div
-                            key={company.id}
-                            className="flex items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.045] p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.16] hover:bg-white/[0.07]"
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 + index * 0.1 }}
-                            whileHover={{
-                              backgroundColor: "rgba(75,85,99, 0.8)",
-                              y: -3,
-                              transition: { duration: 0.2 }
-                            }}
-                          >
-                            <motion.div
-                              className="w-12 h-12 flex items-center justify-center bg-gray-700 rounded"
-                              whileHover={{ scale: 1.1 }}
-                            >
-                              {company.logo_path ? (
-                                <img
-                                  src={getTmdbImageUrl(company.logo_path, {
-                                    kind: 'logo',
-                                    quality: effectiveImageQuality,
-                                    width: Math.ceil(40 * imageDpr),
-                                    role: 'card',
-                                  })}
-                                  alt={company.name}
-                                  className="max-h-10 max-w-10"
-                                />
-                              ) : (
-                                <Building className="w-6 h-6 text-gray-400" />
-                              )}
-                            </motion.div>
-                            <span className="text-gray-200">{company.name}</span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Production Countries */}
-                  {movie.production_countries && movie.production_countries.length > 0 && (
-                    <motion.div
-                      className="mb-6"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                        <MapPin className="w-5 h-5" />
-                        {t('details.productionCountries')}
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {movie.production_countries.map((country, index) => (
-                          <motion.div
-                            key={country.iso_3166_1}
-                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 + index * 0.05 }}
-                            whileHover={{
-                              backgroundColor: "rgba(75,85,99, 0.8)",
-                              y: -2,
-                              borderColor: "rgba(107,114,128, 0.8)",
-                              transition: { duration: 0.2 }
-                            }}
-                          >
-                            {country.name}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Languages */}
-                  {movie.spoken_languages && movie.spoken_languages.length > 0 && (
-                    <motion.div
-                      className="mb-6"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                        <Languages className="w-5 h-5" />
-                        {t('details.languagesLabel')}
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {movie.spoken_languages.map((language, index) => (
-                          <motion.div
-                            key={language.iso_639_1}
-                            className="rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: 0.1 + index * 0.05 }}
-                            whileHover={{
-                              backgroundColor: "rgba(75,85,99, 0.8)",
-                              y: -2,
-                              borderColor: "rgba(107,114,128, 0.8)",
-                              transition: { duration: 0.2 }
-                            }}
-                          >
-                            {language.name}
-                          </motion.div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* Date de sortie */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      {t(movieReleaseWarningsEnabled ? 'details.movieRelease.referenceDate' : 'details.releaseDateLabel')}
-                    </h3>
-                    <motion.div
-                      className="inline-flex rounded-xl border border-white/[0.08] bg-white/[0.045] px-4 py-2.5 text-sm text-slate-200 shadow-sm"
-                      whileHover={{
-                        backgroundColor: "rgba(75,85,99, 0.8)",
-                        y: -2,
-                        borderColor: "rgba(107,114,128, 0.8)",
-                        transition: { duration: 0.2 }
-                      }}
-                    >
-                      {formatMovieReleaseDate(movieReleases.referenceDate, i18n.language) ?? t('details.dateNotAvailable')}
-                    </motion.div>
-                  </motion.div>
-
-                  {/* Statistiques financières */}
-                  <motion.div
-                    className="mb-6"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    <div className="flex justify-between items-center mb-3">
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8" />
-                          <path d="M12 18V6" />
-                        </svg>
-                        {t('details.financialStatsTitle')}
-                      </h3>
-                      <motion.div
-                        className="flex overflow-hidden rounded-xl border border-white/[0.09] bg-black/25 p-1 shadow-inner"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <button
-                          className={`px-3 py-1 text-sm ${financialStatsMode === 'simple' ? 'rounded-lg bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'rounded-lg bg-transparent text-slate-400 hover:bg-white/[0.06] hover:text-white'}`}
-                          onClick={() => setFinancialStatsMode('simple')}
-                        >
-                          {t('details.simpleMode')}
-                        </button>
-                        <button
-                          className={`px-3 py-1 text-sm ${financialStatsMode === 'advanced' ? 'rounded-lg bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'rounded-lg bg-transparent text-slate-400 hover:bg-white/[0.06] hover:text-white'}`}
-                          onClick={() => setFinancialStatsMode('advanced')}
-                        >
-                          {t('details.advancedMode')}
-                        </button>
-                      </motion.div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Budget */}
-                      <motion.div
-                        className="rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065]"
-                        whileHover={{
-                          backgroundColor: "rgba(75,85,99, 0.8)",
-                          y: -2,
-                          borderColor: "rgba(107,114,128, 0.8)",
-                          transition: { duration: 0.2 }
-                        }}
-                      >
-                        <h4 className="text-gray-400 text-sm mb-1">{t('details.budgetLabel')}</h4>
-                        <p className="text-gray-200 font-semibold">
-                          {movie.budget && movie.budget > 0
-                            ? new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(movie.budget)
-                            : t('details.notDisclosed')
-                          }
-                        </p>
-                      </motion.div>
-
-                      {/* Revenus */}
-                      <motion.div
-                        className="bg-gray-800 p-3 rounded-lg border border-gray-700"
-                        whileHover={{
-                          backgroundColor: "rgba(75,85,99, 0.8)",
-                          y: -2,
-                          borderColor: "rgba(107,114,128, 0.8)",
-                          transition: { duration: 0.2 }
-                        }}
-                      >
-                        <h4 className="text-gray-400 text-sm mb-1">{t('details.revenueLabel')}</h4>
-                        <p className="text-gray-200 font-semibold">
-                          {movie.revenue && movie.revenue > 0
-                            ? new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(movie.revenue)
-                            : t('details.notDisclosed')
-                          }
-                        </p>
-                      </motion.div>
-
-                      {/* Bénéfice/Perte */}
-                      {movie.budget && movie.revenue && movie.budget > 0 && movie.revenue > 0 && (
-                        <motion.div
-                          className="col-span-1 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm transition-all hover:border-white/[0.14] hover:bg-white/[0.065] md:col-span-2"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.profitLossLabel')}</h4>
-                          <p className={`font-semibold ${movie.revenue - movie.budget > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(movie.revenue - movie.budget)}
-                            {movie.revenue > 0 && movie.budget > 0 && (
-                              <span className="ml-2 text-xs text-gray-400">
-                                ({Math.round((movie.revenue / movie.budget - 1) * 100)}% {movie.revenue > movie.budget ? t('details.profitPercent') : t('details.lossPercent')})
-                              </span>
-                            )}
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Statut */}
-                      {movie.status && (
-                        <motion.div
-                          className="bg-gray-800 p-3 rounded-lg border border-gray-700 col-span-1 md:col-span-2"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-400 text-sm mb-1">{t('details.statusLabel')}</h4>
-                          <p className="text-gray-200 font-semibold">
-                            {movie.status === 'Released' ? t('details.statusReleased') :
-                              movie.status === 'Post Production' ? t('details.statusPostProd') :
-                                movie.status === 'In Production' ? t('details.statusInProd') :
-                                  movie.status === 'Planned' ? t('details.statusPlanned') :
-                                    movie.status}
-                          </p>
-                        </motion.div>
-                      )}
-
-                      {/* Section détaillée sur les revenus et bénéfices - Only shown in advanced mode */}
-                      {financialStatsMode === 'advanced' && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.3 }}
-                          className="col-span-1 mt-4 rounded-xl border border-white/[0.08] bg-white/[0.045] p-4 shadow-sm md:col-span-2"
-                          whileHover={{
-                            backgroundColor: "rgba(75,85,99, 0.8)",
-                            y: -2,
-                            borderColor: "rgba(107,114,128, 0.8)",
-                            transition: { duration: 0.2 }
-                          }}
-                        >
-                          <h4 className="text-gray-300 text-sm font-medium mb-3">{t('details.financialDetailsAdvanced')}</h4>
-
-                          {/* Sources de revenus */}
-                          <div className="mb-4">
-                            <p className="text-sm text-gray-300 mb-2">
-                              <span className="font-semibold">{t('details.revenueSources')}</span> ({t('details.byImportanceOrder')}):
-                            </p>
-                            <ul className="list-disc pl-5 text-sm text-gray-300 space-y-1">
-                              <li>{t('details.boxOffice')}: <span className="text-gray-400">~40-60% {t('details.ofTotalRevenue')}</span></li>
-                              <li>{t('details.vodStreaming')}: <span className="text-gray-400">~15-30% {t('details.ofTotalRevenue')}</span></li>
-                              <li>{t('details.tvRights')}: <span className="text-gray-400">~10-20% {t('details.ofTotalRevenue')}</span></li>
-                              <li>{t('details.dvdBluRay')}: <span className="text-gray-400">~5-15% {t('details.ofTotalRevenue')}</span></li>
-                              <li>{t('details.merchandisingLabel')}: <span className="text-gray-400">{movie.belongs_to_collection ? t('details.potentiallyVeryHigh') : t('details.variableByMovie')}</span></li>
-                            </ul>
-                          </div>
-
-                          {/* Analyse de rentabilité */}
-                          <div className="mb-4">
-                            <p className="text-sm text-gray-300 mb-2">
-                              <span className="font-semibold">{t('details.profitabilityEstimate')}</span> {t('details.forMovie', { title: movie.title })}:
-                            </p>
-
-                            <div className="mb-2 rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-xs text-gray-400">{t('details.breakEvenEstimate')}:</span>
-                                <span className="text-xs font-semibold text-gray-300">
-                                  {movie.budget && movie.budget > 0
-                                    ? `~${new Intl.NumberFormat(i18n.language, { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(movie.budget * 2.5)}`
-                                    : t('details.notAvailableData')}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-xs text-gray-400">{t('details.roiLabel')}:</span>
-                                <span className="text-xs font-semibold text-gray-300">
-                                  {movie.budget && movie.revenue && movie.budget > 0
-                                    ? `${Math.round((movie.revenue / movie.budget - 1) * 100)}%`
-                                    : t('details.notAvailableData')}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-gray-400">{t('details.commercialClassification')}:</span>
-                                <span className={`text-xs font-semibold ${movie.budget && movie.revenue && movie.budget > 0 ? (
-                                  movie.revenue >= movie.budget * 2.5 ? 'text-green-400' :
-                                    movie.revenue >= movie.budget ? 'text-yellow-400' :
-                                      'text-red-400'
-                                ) : 'text-gray-300'
-                                  }`}>
-                                  {movie.budget && movie.revenue && movie.budget > 0 ? (
-                                    movie.revenue >= movie.budget * 3 ? t('details.blockbuster') :
-                                      movie.revenue >= movie.budget * 2.5 ? t('details.commercialSuccess') :
-                                        movie.revenue >= movie.budget * 1.5 ? t('details.profitableMovie') :
-                                          movie.revenue >= movie.budget ? t('details.breakEvenStatus') :
-                                            t('details.commercialFailure')
-                                  ) : t('details.notAvailableData')}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Facteurs de succès */}
-                          <div>
-                            <p className="text-sm text-gray-300 mb-2">
-                              <span className="font-semibold">{t('details.factorsImpacting')}:</span>
-                            </p>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
-                                <h5 className="text-xs font-medium text-green-400 mb-1">{t('details.positiveFactors')}</h5>
-                                <ul className="list-disc pl-4 text-xs text-gray-300 space-y-0.5">
-                                  {movie.vote_average >= 7 && <li>{t('details.highRating', { rating: movie.vote_average })}</li>}
-                                  {movie.belongs_to_collection && <li>{t('details.belongsToFranchise')}</li>}
-                                  {movie.genres?.some(g => ['Action', 'Adventure', 'Animation', 'Fantasy', 'Science Fiction'].includes(g.name)) &&
-                                    <li>{t('details.popularGenre')}</li>}
-                                  {movie.production_companies?.some(c =>
-                                    ['Walt Disney Pictures', 'Marvel Studios', 'Universal Pictures', 'Warner Bros.'].includes(c.name)) &&
-                                    <li>{t('details.majorStudio')}</li>}
-                                </ul>
-                              </div>
-                              <div className="bg-gray-900 p-2 rounded-lg">
-                                <h5 className="text-xs font-medium text-red-400 mb-1">{t('details.limitingFactors')}</h5>
-                                <ul className="list-disc pl-4 text-xs text-gray-300 space-y-0.5">
-                                  {movie.vote_average < 6 && <li>{t('details.lowRating', { rating: movie.vote_average })}</li>}
-                                  {movie.budget && movie.budget > 150000000 && <li>{t('details.veryHighBudget')}</li>}
-                                  {movie.production_countries?.every(c => c.iso_3166_1 !== 'US') &&
-                                    <li>{t('details.nonHollywood')}</li>}
-                                  {movie.genres?.some(g => ['Documentary', 'Foreign', 'History', 'War'].includes(g.name)) &&
-                                    <li>{t('details.nicheGenre')}</li>}
-                                  {movie.release_date && new Date(movie.release_date) > new Date(2020, 0, 1) && new Date(movie.release_date) < new Date(2022, 0, 1) &&
-                                    <li>{t('details.pandemicRelease')}</li>}
-                                </ul>
-                              </div>
-                            </div>
-                          </div>
-
-                          <p className="text-xs text-gray-400 italic mt-3">
-                            {t('details.financialNote')}
-                          </p>
-                        </motion.div>
-                      )}
-                    </div>
-                  </motion.div>
-                  {/* En fin d'onglet Détails : thèmes, titres alternatifs et
-                      mots-clés relèvent de la fiche technique, pas de la
-                      galerie de personnages. */}
-                  <DetailExtraMetadata
-                    themes={characters?.themes ?? []}
-                    alternateTitles={alternateTitles}
-                    keywords={keywords}
-                  />
-                </motion.div>
-              ) : activeTab === 'videos' ? (
-                <motion.div
-                  key="videos"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Video className="w-5 h-5" />
-                      {t('details.videosAndTrailers')}
-                    </h3>
-
-                    <motion.button
-                      whileHover={{
-                        scale: 1.05,
-                        boxShadow: "0 10px 25px rgba(147, 51, 234, 0.3)"
-                      }}
-                      whileTap={{ scale: 0.985 }}
-                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                      onClick={() => {
-                        if (!showMultiLangView) {
-                          fetchMultiLangVideos();
-                        }
-                        setShowMultiLangView(!showMultiLangView);
-                      }}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium shadow-lg border transition-all duration-300 ${showMultiLangView
-                        ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 border-red-500/20'
-                        : 'bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 border-purple-500/20'
-                        }`}
-                    >
-                      {showMultiLangView ? <ArrowLeft className="w-4 h-4" /> : <Languages className="w-4 h-4" />}
-                      {showMultiLangView ? t('details.back') : t('details.multiLanguages')}
-                    </motion.button>
-                  </div>
-
-                  {(loadingVideos || loadingMultiLangVideos) ? (
-                    <div className="flex items-center justify-center h-40">
-                      <Loader className="w-8 h-8 animate-spin text-red-600" />
-                    </div>
-                  ) : showMultiLangView ? (
-                    // Vue multi-langues
-                    multiLangVideos.length > 0 ? (
-                      (() => {
-                        // Grouper les vidéos par langue
-                        const videosByLanguage = multiLangVideos.reduce((acc: any, video: any) => {
-                          const lang = video.iso_639_1 || 'unknown';
-                          if (!acc[lang]) acc[lang] = [];
-                          acc[lang].push(video);
-                          return acc;
-                        }, {});
-
-                        // Noms des langues
-                        const languageNames: { [key: string]: string } = {
-                          'fr': t('details.langFrench'),
-                          'en': t('details.langEnglish'),
-                          'es': t('details.langSpanish'),
-                          'de': t('details.langGerman'),
-                          'it': t('details.langItalian'),
-                          'pt': t('details.langPortuguese'),
-                          'ja': t('details.langJapanese'),
-                          'ko': t('details.langKorean'),
-                          'zh': t('details.langChinese'),
-                          'ru': t('details.langRussian'),
-                          'unknown': t('details.langUnknown')
-                        };
-
-                        return Object.entries(videosByLanguage).map(([langCode, videos]: [string, any]) => (
-                          <div key={langCode} className="mb-8">
-                            <h4 className="text-lg font-medium mb-4 text-purple-400 border-b border-gray-700 pb-2">
-                              {languageNames[langCode] || langCode.toUpperCase()}
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                              {videos.map((video: any, videoIndex: number) => (
-                                <motion.div
-                                  key={video.id}
-                                  className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-violet-400/30"
-                                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                                  transition={{
-                                    delay: videoIndex * 0.05,
-                                    duration: 0.4,
-                                    type: "spring",
-                                    stiffness: 100
-                                  }}
-                                  whileHover={{
-                                    y: -8,
-                                    scale: 1.02,
-                                    boxShadow: "0 20px 40px rgba(147, 51, 234, 0.15)",
-                                    transition: { duration: 0.3 }
-                                  }}
-                                  whileTap={{ scale: 0.98 }}
-                                >
-                                  <div
-                                    className="relative cursor-pointer aspect-video overflow-hidden"
-                                    onClick={() => {
-                                      setSelectedVideo(video);
-                                      setShowVideoPopup(true);
-                                    }}
-                                  >
-                                    <motion.img
-                                      src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
-                                      alt={video.name}
-                                      className="w-full h-full object-cover"
-                                      whileHover={{ y: -2, scale: 1.015 }}
-                                      transition={{ duration: 0.3 }}
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                    <motion.div
-                                      className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors"
-                                      whileHover={{ backgroundColor: "rgba(0,0,0,0.1)" }}
-                                    >
-                                      <motion.div
-                                        className="w-14 h-14 rounded-full bg-purple-600/90 flex items-center justify-center shadow-lg"
-                                        whileHover={{
-                                          scale: 1.1,
-                                          backgroundColor: "rgba(147, 51, 234, 1)",
-                                          boxShadow: "0 0 20px rgba(147, 51, 234, 0.5)"
-                                        }}
-                                        whileTap={{ scale: 0.9 }}
-                                        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                                      >
-                                        <Play className="w-6 h-6 text-white ml-1" />
-                                      </motion.div>
-                                    </motion.div>
-                                  </div>
-                                  <motion.div
-                                    className="border-t border-white/[0.06] bg-gradient-to-b from-white/[0.025] to-transparent p-4"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: videoIndex * 0.05 + 0.2 }}
-                                  >
-                                    <h4 className="font-semibold mb-2 line-clamp-1 text-white group-hover:text-purple-400 transition-colors">{video.name}</h4>
-                                    <div className="flex items-center text-sm text-gray-400">
-                                      <motion.span
-                                        className="bg-gray-700/70 px-2 py-1 rounded-md mr-2 text-xs font-medium"
-                                        whileHover={{ backgroundColor: "rgba(55, 65, 81, 1)" }}
-                                      >
-                                        {video.type}
-                                      </motion.span>
-                                      {video.size && <span className="text-xs">{video.size}p</span>}
-                                    </div>
-                                  </motion.div>
-                                </motion.div>
-                              ))}
-                            </div>
-                          </div>
-                        ));
-                      })()
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                        <Video className="w-8 h-8 mb-2" />
-                        <p>{t('details.noMultiLangVideoForMovie')}</p>
-                      </div>
-                    )
-                  ) : (
-                    // Vue normale
-                    videos.length > 0 ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {videos.map((video: any, index: number) => (
-                          <motion.div
-                            key={video.id}
-                            className="group overflow-hidden rounded-2xl border border-white/[0.09] bg-[#111b2b]/90 shadow-[0_10px_28px_rgba(0,0,0,0.2)] transition-colors hover:border-rose-400/30"
-                            initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            transition={{
-                              delay: index * 0.1,
-                              duration: 0.4,
-                              type: "spring",
-                              stiffness: 100
-                            }}
-                            whileHover={{
-                              y: -8,
-                              scale: 1.02,
-                              boxShadow: "0 20px 40px rgba(239, 68, 68, 0.15)",
-                              transition: { duration: 0.3 }
-                            }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div
-                              className="relative cursor-pointer aspect-video overflow-hidden"
-                              onClick={() => {
-                                setSelectedVideo(video);
-                                setShowVideoPopup(true);
-                              }}
-                            >
-                              <motion.img
-                                src={`https://img.youtube.com/vi/${video.key}/mqdefault.jpg`}
-                                alt={video.name}
-                                className="w-full h-full object-cover"
-                                whileHover={{ y: -2, scale: 1.015 }}
-                                transition={{ duration: 0.3 }}
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                              <motion.div
-                                className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/20 transition-colors"
-                                whileHover={{ backgroundColor: "rgba(0,0,0,0.1)" }}
-                              >
-                                <motion.div
-                                  className="w-14 h-14 rounded-full bg-red-600/90 flex items-center justify-center shadow-lg"
-                                  whileHover={{
-                                    scale: 1.1,
-                                    backgroundColor: "rgba(239, 68, 68, 1)",
-                                    boxShadow: "0 0 20px rgba(239, 68, 68, 0.5)"
-                                  }}
-                                  whileTap={{ scale: 0.9 }}
-                                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                                >
-                                  <Play className="w-6 h-6 text-white ml-1" />
-                                </motion.div>
-                              </motion.div>
-                            </div>
-                            <motion.div
-                              className="p-4"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ delay: index * 0.1 + 0.2 }}
-                            >
-                              <h4 className="font-semibold mb-2 line-clamp-1 text-white group-hover:text-red-400 transition-colors">{video.name}</h4>
-                              <div className="flex items-center text-sm text-gray-400">
-                                <motion.span
-                                  className="bg-gray-700/70 px-2 py-1 rounded-md mr-2 text-xs font-medium"
-                                  whileHover={{ backgroundColor: "rgba(55, 65, 81, 1)" }}
-                                >
-                                  {video.type}
-                                </motion.span>
-                                {video.size && <span className="text-xs">{video.size}p</span>}
-                              </div>
-                            </motion.div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                        <Film className="w-8 h-8 mb-2" />
-                        <p>{t('details.noVideoAvailableForMovie')}</p>
-                      </div>
-                    )
-                  )}
-                </motion.div>
-              ) : activeTab === 'images' ? (
-                <motion.div
-                  key="images"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  <ImagesSection movieId={id!} images={images} loading={loadingImages} />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="collection"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3 }}
-                  className="rounded-2xl border border-white/[0.08] bg-slate-950/35 p-4 shadow-[0_12px_30px_rgba(0,0,0,0.16)] backdrop-blur-sm sm:p-6"
-                >
-                  {loadingCollection ? (
-                    <div className="flex items-center justify-center h-40 w-full">
-                      <Loader className="w-8 h-8 animate-spin text-red-600" />
-                    </div>
-                  ) : collection ? (
-                    <div>
-                      <div className="mb-6">
-                        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                          <Library className="w-5 h-5" />
-                          {collection.name}
-                        </h3>
-
-                        <motion.div
-                          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4 px-4 md:px-8"
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ duration: 0.4, ease: "easeOut" }}
-                        >
-                          {collection.parts
-                            .sort((a, b) => new Date(a.release_date).getTime() - new Date(b.release_date).getTime())
-                            .map((part, index) => (
-                              <motion.div
-                                key={part.id}
-                                className="poster-container cursor-pointer"
-                                onClick={() => navigate(`/movie/${encodeId(part.id)}`)}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.03 * index, duration: 0.3 }}
-                              >
-                                <div className="poster-card">
-                                  {/* Poster image */}
-                                  <img
-                                    {...getTmdbImageProps(part.poster_path, {
-                                      kind: 'poster',
-                                      quality: effectiveImageQuality,
-                                      sizes: '(max-width: 639px) calc(50vw - 2.5rem), (max-width: 767px) calc(33.333vw - 2rem), (max-width: 1023px) calc(16.667vw - 2.583rem), calc(13.333vw - 2.8rem)',
-                                      role: 'card',
-                                      fallback: DEFAULT_IMAGE,
-                                    })}
-                                    alt={part.title}
-                                    className="w-full h-auto object-cover rounded-lg poster"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.onerror = null;
-                                      target.removeAttribute('srcset');
-                                      target.src = 'data:image/svg+xml;utf8,<svg width="500" height="750" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 750" preserveAspectRatio="xMidYMid meet"><rect width="100%" height="100%" fill="%23333"/><text x="50%" y="50%" fill="%23ccc" font-size="50" font-family="Arial, sans-serif" text-anchor="middle" dy=".3em">MOVIX</text></svg>';
-                                    }}
-                                  />
-
-                                  {/* Hover content */}
-                                  <div className="hover-content">
-                                    {/* Top section: landscape image */}
-                                    <div className="w-full h-24 md:h-28 relative">
-                                      <img
-                                        {...getTmdbImageProps(part.poster_path, {
-                                          kind: 'poster',
-                                          quality: effectiveImageQuality,
-                                          sizes: '(max-width: 639px) calc(50vw - 2.5rem), (max-width: 767px) calc(33.333vw - 2rem), (max-width: 1023px) calc(16.667vw - 2.583rem), calc(13.333vw - 2.8rem)',
-                                          role: 'card',
-                                          fallback: DEFAULT_IMAGE,
-                                        })}
-                                        alt={part.title}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement;
-                                          target.onerror = null;
-                                          target.removeAttribute('srcset');
-                                          target.src = 'data:image/svg+xml;utf8,<svg width="500" height="281" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 281" preserveAspectRatio="xMidYMid meet"><rect width="100%" height="100%" fill="%23333"/><text x="50%" y="50%" fill="%23ccc" font-size="30" font-family="Arial, sans-serif" text-anchor="middle" dy=".3em">MOVIX</text></svg>';
-                                        }}
-                                      />
-
-                                      {/* Play and Info buttons overlay */}
-                                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-black/20 flex items-center justify-center">
-                                        {/* Watchlist button */}
-                                        <button
-                                          onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            // Watchlist logic
-                                            const storageKey = 'watchlist_movie';
-                                            let existed = false;
-                                            const persisted = updateStoredMediaList(storageKey, typeWatchlist => {
-                                              existed = typeWatchlist.some((media: any) => media?.id === part.id);
-                                              if (existed) {
-                                                return typeWatchlist.filter((media: any) => media?.id !== part.id);
-                                              }
-                                              return [...typeWatchlist, {
-                                                id: part.id,
-                                                type: 'movie',
-                                                title: part.title,
-                                                poster_path: part.poster_path,
-                                                addedAt: new Date().toISOString()
-                                              }];
-                                            });
-                                            if (!persisted) return;
-
-                                            if (!existed) {
-                                              // Notification
-                                              const notification = document.createElement('div');
-                                              notification.className = 'fixed top-16 right-4 bg-green-500 text-white py-2 px-4 rounded shadow-lg z-50 animate-fadeIn';
-                                              notification.textContent = t('search.addedToWatchlist');
-                                              document.body.appendChild(notification);
-                                              // Update button
-                                              const button = e.currentTarget;
-                                              button.querySelector('svg')?.classList.add('text-yellow-400');
-                                              button.querySelector('svg')?.setAttribute('fill', 'currentColor');
-                                              setTimeout(() => {
-                                                notification.classList.add('animate-fadeOut');
-                                                setTimeout(() => {
-                                                  document.body.removeChild(notification);
-                                                }, 500);
-                                              }, 1500);
-                                            } else {
-                                              // Update button
-                                              const button = e.currentTarget;
-                                              button.querySelector('svg')?.classList.remove('text-yellow-400');
-                                              button.querySelector('svg')?.setAttribute('fill', 'black');
-                                              // Notification
-                                              const notification = document.createElement('div');
-                                              notification.className = 'fixed top-16 right-4 bg-red-500 text-white py-2 px-4 rounded shadow-lg z-50 animate-fadeIn';
-                                              notification.textContent = t('search.removedFromWatchlist');
-                                              document.body.appendChild(notification);
-                                              setTimeout(() => {
-                                                notification.classList.add('animate-fadeOut');
-                                                setTimeout(() => {
-                                                  document.body.removeChild(notification);
-                                                }, 500);
-                                              }, 1500);
-                                            }
-                                          }}
-                                          className="bg-white rounded-full p-2 transform transition-transform hover:scale-110 mr-2 z-20 group/watchlist relative"
-                                        >
-                                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover/watchlist:opacity-100 transition-opacity whitespace-nowrap hidden md:block">
-                                            {(() => {
-                                              const storageKey = 'watchlist_movie';
-                                              const typeWatchlist = readStoredMediaList(storageKey) ?? [];
-                                              const exists = typeWatchlist.some((media: any) => media?.id === part.id);
-                                              return exists ? t('search.removeFromWatchlist') : t('search.addToWatchlist');
-                                            })()}
-                                          </div>
-                                          <Star
-                                            className={`w-4 h-4 ${(() => {
-                                              const storageKey = 'watchlist_movie';
-                                              const typeWatchlist = readStoredMediaList(storageKey) ?? [];
-                                              const exists = typeWatchlist.some((media: any) => media?.id === part.id);
-                                              return exists ? 'text-yellow-400' : 'text-black';
-                                            })()}`}
-                                            fill={(() => {
-                                              const storageKey = 'watchlist_movie';
-                                              const typeWatchlist = readStoredMediaList(storageKey) ?? [];
-                                              const exists = typeWatchlist.some((media: any) => media?.id === part.id);
-                                              return exists ? 'currentColor' : 'black';
-                                            })()}
-                                          />
-                                        </button>
-
-                                        {/* Info button */}
-                                        <Link to={`/movie/${encodeId(part.id)}`} className="bg-black/60 border border-white/40 rounded-full p-2 transform transition-transform hover:scale-110 z-20 group/info relative">
-                                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black text-white text-xs py-1 px-2 rounded opacity-0 group-hover/info:opacity-100 transition-opacity whitespace-nowrap hidden md:block">
-                                            {t('common.viewPoster')}
-                                          </div>
-                                          <Info className="w-4 h-4 text-white" />
-                                        </Link>
-                                      </div>
-                                    </div>
-
-                                    {/* Bottom section: information */}
-                                    <div className="p-3 flex flex-col flex-grow">
-                                      <h3 className="text-sm font-bold text-white line-clamp-1 mb-1">
-                                        {part.title}
-                                      </h3>
-                                      <div className="flex items-center gap-2 mt-1 mb-2">
-                                        <div className="flex items-center gap-1">
-                                          <Star className="w-3 h-3 text-yellow-400" />
-                                          <span className="text-xs text-gray-300">
-                                            {part.vote_average ? part.vote_average.toFixed(1) : 'N/A'}
-                                          </span>
-                                        </div>
-                                        {part.release_date && (
-                                          <div className="flex items-center gap-1">
-                                            <Calendar className="w-3 h-3 text-gray-400" />
-                                            <span className="text-xs text-gray-300">
-                                              {new Date(part.release_date).getFullYear()}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                      {part.id === Number(id) && (
-                                        <div className="bg-red-600 text-white text-xs px-2 py-1 rounded-full self-start">
-                                          {t('details.currentBadge')}
-                                        </div>
-                                      )}
-
-                                      {/* Ajout du résumé pour l'overview */}
-                                      {part.overview && (
-                                        <p className="text-xs text-gray-300 mt-2 line-clamp-3">
-                                          {part.overview}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              </motion.div>
-                            ))}
-                        </motion.div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 text-gray-400">
-                      <Film className="w-8 h-8 mb-2" />
-                      <p>{t('details.noSagaInfoAvailable')}</p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </div>
-
-        {/* Lecteur vidéo */}
-        <motion.div
-          id="video-player-section"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="mt-12 space-y-6"
-        >
-          <h2 className="text-2xl font-bold mb-4">{t('details.watchBtn')}</h2>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-            className="aspect-w-16 aspect-h-9 relative"
-          >
-            {!isAvailable ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center justify-center h-[500px] bg-black rounded-lg"
-              >
-                <motion.p
-                  className="text-gray-400"
-                  animate={{
-                    opacity: [0.5, 1, 0.5],
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity
-                  }}
-                >
-                  {t('details.movieNotYetAvailable')}
-                </motion.p>
-              </motion.div>
-            ) : hasReleaseWarning ? (
-              <motion.div
-                className="min-h-[350px] flex flex-col items-center justify-center bg-black/70 rounded-lg p-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <Film className="w-16 h-16 text-yellow-500 mb-4" />
-                <motion.h3
-                  ref={releaseWarningRef}
-                  tabIndex={-1}
-                  className="text-2xl font-bold text-white mb-2"
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  {t('details.movieRelease.warningTitle')}
-                </motion.h3>
-                <motion.p
-                  className="text-gray-300 text-center max-w-md mb-6"
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  {getMovieReleaseLabel(movieReleases.homeVideo, 'homeVideo', t, i18n.language, releaseNow)}
-                </motion.p>
-                <p className="text-gray-300 text-center max-w-md mb-6">
-                  {t('details.movieRelease.warningDescription')}
-                </p>
-                <motion.button
-                  className="px-6 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-                  whileHover={{ y: -2, scale: 1.015 }}
-                  whileTap={{ scale: 0.985 }}
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  onClick={() => { if (id) navigate(`/watch/movie/${encodeId(id)}`); }}
-                >
-                  {t('details.continueAnyway')}
-                </motion.button>
-              </motion.div>
-            ) : (
-              // Display cinema mode button in place of video player
-              <motion.div
-                className="h-[500px] flex flex-col items-center justify-center bg-gradient-to-b from-black/40 to-black/80 rounded-lg p-6"
-                style={{
-                  backgroundImage: playerBackdropImage
-                    ? `linear-gradient(to bottom, rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url(${playerBackdropImage})`
-                    : undefined,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5 }}
-              >
-                <motion.div
-                  className="w-24 h-24 rounded-full bg-red-600/80 hover:bg-red-600 flex items-center justify-center mb-6 cursor-pointer"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.9 }}
-                  onClick={handleWatchClick}
-                >
-                  <Play className="w-12 h-12 text-white ml-2" />
-                </motion.div>
-                <motion.h3
-                  className="text-2xl font-bold text-white mb-2"
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  {movie?.title || t('details.clickToPlayTitle')}
-                </motion.h3>
-                <motion.p
-                  className="text-gray-300 text-center max-w-md"
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  {t('details.clickToPlayDesc')}
-                </motion.p>
-              </motion.div>
-            )}
-          </motion.div>
-        </motion.div>
-
-        {/* Section Films Similaires — pas de break-out : on laisse le wrapper
-            page (px-4 md:px-8 lg:px-16) gérer le padding gauche/droit, comme
-            le reste du contenu de la page. Le pattern visuel reste celui d'une
-            content row Home (EmblaCarousel applique son propre -mx-3 md:-mx-4
-            interne). */}
-        {recommendations.length > 0 && (
-          <LazySection
-            index={0}
-            immediateLoadCount={0}
-            rootMargin="300px"
-            minHeight="320px"
-            className="mt-12"
-          >
-            <EmblaCarousel
-              title={<span><span className="text-red-600 mr-2">🔥</span>{t('details.similarMovies')}</span>}
-              items={recommendations.map(movie => ({
-                id: movie.id,
-                title: movie.title,
-                poster_path: movie.poster_path,
-                backdrop_path: movie.backdrop_path,
-                overview: movie.overview,
-                vote_average: movie.vote_average,
-                release_date: movie.release_date,
-                media_type: 'movie',
-              }))}
-              mediaType="movie-similar"
+        <div className="mx-auto w-full max-w-5xl">
+          <div className="detail-section flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
+            <LikeDislikeButton
+              contentType="movie"
+              contentId={id || ''}
+              onStatsChange={setMovixVoteStats}
             />
-          </LazySection>
-        )}
-
-        {/* Section Commentaires - Lazy loaded when approaching viewport.
-            Ref ancré sur le wrapper (toujours rendu) pour que le bouton
-            "Commentaires" puisse scroller avant le chargement lazy. */}
-        <div ref={commentsRef} id="comments-section">
-          <LazySection
-            index={1}
-            immediateLoadCount={0}
-            rootMargin="200px"
-            minHeight="400px"
-            className="mt-20 mb-20"
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <CommentsSection contentType="movie" contentId={id!} />
-            </motion.div>
-          </LazySection>
+          </div>
+          <DetailCastRail
+            items={cast}
+            imageUrl={(posterPath, width) => getTmdbImageUrl(posterPath, {
+              kind: 'profile',
+              quality: effectiveImageQuality,
+              width,
+              role: 'card',
+            })}
+          />
         </div>
+        </div>
+
+        <DetailRecommendations
+          items={recommendations.map((item) => ({
+            id: item.id,
+            title: item.title,
+            poster_path: item.poster_path || '',
+            backdrop_path: item.backdrop_path || '',
+            overview: item.overview || '',
+            vote_average: item.vote_average || 0,
+            release_date: item.release_date,
+            media_type: 'movie' as const,
+          })) as Media[]}
+          mediaType="movie-similar"
+        />
+
+        <DetailComments contentType="movie" contentId={id!} anchorRef={commentsRef} />
 
         {/* Modal Rapport */}
 
