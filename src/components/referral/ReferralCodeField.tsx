@@ -1,6 +1,6 @@
 import React, { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Gift } from 'lucide-react';
+import { Check, Gift } from '../icons/Icons8';
 import {
   getPendingReferralCode,
   getReferralConfig,
