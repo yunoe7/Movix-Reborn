@@ -100,24 +100,24 @@ const paths: Record<Icons8Name, string> = {
   "radio": "radio-tower",
   "network": "network",
   "unlock": "unlock",
-  "external": "external-link",
+
   "grid": "grid",
   "dice": "dice",
   "sparkles": "sparkles",
   "help": "help",
   "github": "github",
-  "calendar": "calendar",
+
   "puzzle": "puzzle",
   "phone": "smartphone",
-  "monitor": "monitor",
+
   "plus": "plus",
   "close": "delete-sign",
-  "info": "info",
+
   "play": "play",
   "loading": "loading",
   "arrow-up-right": "up-right",
   "check": "checkmark",
-  "trash": "trash",
+
   "chevron-left": "chevron-left",
   "chevron-right": "chevron-right"
 };
@@ -225,7 +225,6 @@ export const Monitor = (p: Omit<Props, 'name'>) => <Icons8Icon name="monitor" {.
 export const Tablet = (p: Omit<Props, 'name'>) => <Icons8Icon name="tablet" {...p} />;
 export const Snowflake = (p: Omit<Props, 'name'>) => <Icons8Icon name="snowflake" {...p} />;
 export const Activity = (p: Omit<Props, 'name'>) => <Icons8Icon name="activity" {...p} />;
-export const Trash2 = (p: Omit<Props, 'name'>) => <Icons8Icon name="trash" {...p} />;
 export const Volume2 = (p: Omit<Props, 'name'>) => <Icons8Icon name="volume" {...p} />;
 export const Database = (p: Omit<Props, 'name'>) => <Icons8Icon name="database" {...p} />;
 export const Key = (p: Omit<Props, 'name'>) => <Icons8Icon name="key" {...p} />;
