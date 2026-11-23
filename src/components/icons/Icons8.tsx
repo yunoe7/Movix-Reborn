@@ -549,7 +549,6 @@ export const Expand = (p: Omit<Props, "name">) => <Icons8Icon name="expand" {...
 export const LocateFixed = (p: Omit<Props, "name">) => <Icons8Icon name="locatefixed" {...p} />;
 export const ZoomIn = (p: Omit<Props, "name">) => <Icons8Icon name="zoomin" {...p} />;
 export const ZoomOut = (p: Omit<Props, "name">) => <Icons8Icon name="zoomout" {...p} />;
-export const Tv2 = (p: Omit<Props, "name">) => <Icons8Icon name="tv" {...p} />;
 
 export const Pin = (p: Omit<Props, "name">) => <Icons8Icon name="pin" {...p} />;
 export const PinOff = (p: Omit<Props, "name">) => <Icons8Icon name="pinoff" {...p} />;
