@@ -159,8 +159,8 @@ const AddToListMenu: React.FC<AddToListMenuProps> = ({
       </div>
 
       {lists.length === 0 ? (
-        <div className="px-3 py-[18px] text-center text-[13px] leading-[1.4] text-white/45" data-testid="add-to-list-empty">
-          {t('lists.noLists')}
+        <div className="whitespace-pre-line px-3 py-[18px] text-center text-[13px] leading-[1.4] text-white/45" data-testid="add-to-list-empty">
+          {t('lists.noListsPopover')}
         </div>
       ) : (
         <div className="max-h-48 overflow-y-auto py-1" data-testid="add-to-list-items">
@@ -209,7 +209,7 @@ const AddToListMenu: React.FC<AddToListMenuProps> = ({
                   setNewListName('');
                 }
               }}
-              placeholder={t('lists.listName')}
+              placeholder={t('lists.listNamePlaceholder')}
               aria-label={t('lists.listName')}
               maxLength={48}
               className="min-w-0 flex-1 bg-transparent text-[13px] text-white outline-none placeholder:text-white/40"
