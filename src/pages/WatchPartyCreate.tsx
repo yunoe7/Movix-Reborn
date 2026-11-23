@@ -6,7 +6,7 @@ import { SyncMode, storeRoomToken } from '../utils/watchparty';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Lock, Globe, Film, Tv, Play, Info } from 'lucide-react';
+import { Users, Lock, Globe, Film, Tv, Play, Info } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { WATCHPARTY_API } from '../config/runtime';
 import WatchPartySyncInfoModal from '../components/WatchPartySyncInfoModal';
