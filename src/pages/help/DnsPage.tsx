@@ -8,7 +8,7 @@ import {
   AppleIcon,
   TerminalSquare,
   ExternalLink,
-} from 'lucide-react';
+} from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 import FaiTooltip from '../../components/FaiTooltip';
 
