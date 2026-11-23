@@ -23,6 +23,7 @@ const paths: Record<Icons8Name, string> = {
   "refresh": "synchronize",
   "clapper": "clapperboard",
   "radio": "radio-tower",
+  "network": "network",
   "unlock": "unlock",
   "external": "external-link",
   "grid": "grid",
