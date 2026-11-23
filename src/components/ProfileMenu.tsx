@@ -364,7 +364,10 @@ const ProfileMenu: React.FC = () => {
             data-notification-button
             aria-label={t('notifications.title')}
             aria-expanded={Boolean(notificationsOpen)}
-            onClick={onNotificationsToggle}
+            onClick={() => {
+              close();
+              onNotificationsToggle?.();
+            }}
             className={cn(
               'relative ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
               notificationsOpen ? 'text-white' : 'text-[#929292] hover:bg-white/[0.06] hover:text-white',
