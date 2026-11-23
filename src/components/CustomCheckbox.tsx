@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { Check } from './icons/Icons8';
 
 interface CustomCheckboxProps {
     checked: boolean;
