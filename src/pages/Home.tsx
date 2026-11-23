@@ -1274,6 +1274,7 @@ const Home: React.FC = () => {
                             backgroundImage: "url('/platforms/platform-logos-sprite-v2.webp')",
                             backgroundSize: '300% 300%',
                             backgroundPosition: `${(platform.spriteIndex % 3) * 50}% ${Math.floor(platform.spriteIndex / 3) * 50}%`,
+                            filter: 'saturate(1.08) contrast(1.04)',
                           }}
                         />
                       </button>
