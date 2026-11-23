@@ -116,7 +116,7 @@ const DetailHero: React.FC<DetailHeroProps> = ({
             <div className="mb-5 flex flex-wrap gap-2">
               {genres.map((genre) => {
                 const href = typeof genre.id === 'number' ? genreHref?.(genre.id) : undefined;
-                const className = 'rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur-sm transition-colors hover:bg-white/15';
+                const className = 'rounded-full border border-white/20 bg-black/40 px-3 py-1 text-xs font-semibold text-white/90 transition-colors hover:bg-white/15';
                 return href ? (
                   <Link key={genre.id ?? genre.name} to={href} className={className}>{genre.name}</Link>
                 ) : (
