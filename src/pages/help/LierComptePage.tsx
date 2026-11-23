@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as LinkIcon } from 'lucide-react';
+import { Link as LinkIcon } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 
 const LierComptePage: React.FC = () => {
