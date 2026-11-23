@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Heart, MessageCircle } from 'lucide-react';
+import { Heart, MessageCircle } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { WrappedCommentHighlight } from '@/types/wrappedStory';
 import { wrappedImageUrl } from '@/utils/wrappedPresentation';
