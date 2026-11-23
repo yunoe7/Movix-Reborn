@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation, Trans } from 'react-i18next';
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, X } from "lucide-react";
+import { Heart, X } from './icons/Icons8';
 import { getOverlayPortalRoot } from "../utils/overlayPortal";
 
 const DonButton: React.FC = () => {
