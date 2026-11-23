@@ -287,3 +287,5 @@ export const Type = (p: Omit<Props, 'name'>) => <Icons8Icon name="type" {...p} /
 export const MessageSquare = (p: Omit<Props, 'name'>) => <Icons8Icon name="messageSquare" {...p} />;
 
 export const Server = (p: Omit<Props, "name">) => <Icons8Icon name="server" {...p} />;
+
+export const Play = (p: Omit<Props, "name">) => <Icons8Icon name="play" {...p} />;
