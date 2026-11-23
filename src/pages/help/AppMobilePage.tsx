@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Smartphone } from 'lucide-react';
+import { Smartphone } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 import TermTooltip from '../../components/TermTooltip';
 import TutoLink from '../../components/TutoLink';
