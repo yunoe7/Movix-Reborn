@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, FolderPlus, Plus, Shuffle, X } from 'lucide-react';
+import { Check, FolderPlus, Plus, Shuffle, X } from './icons/Icons8';
 
 interface AddToListMenuProps {
   mediaId: number;
