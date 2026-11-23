@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, ChevronDown, X } from 'lucide-react';
+import { Calendar, ChevronDown, X } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 
