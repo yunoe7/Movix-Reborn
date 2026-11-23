@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, AlertCircle, Crown, Settings, Volume2, VolumeX, Volume1, Play, Pause, Maximize, Minimize, Rewind, FastForward, PictureInPicture, X } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Crown, Settings, Volume2, VolumeX, Volume1, Play, Pause, Maximize, Minimize, Rewind, FastForward, PictureInPicture, X } from '../../components/icons/Icons8';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
