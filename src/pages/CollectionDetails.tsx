@@ -1284,6 +1284,7 @@ const CollectionDetails: React.FC = () => {
             collectionName: selectedCollection?.name || collection?.name 
           })}
           <AddToListMenu
+            presentation="modal"
             mediaId={selectedCollection?.id || collection?.id || 0}
             mediaType="collection"
             title={selectedCollection?.name || collection?.name || ''}
