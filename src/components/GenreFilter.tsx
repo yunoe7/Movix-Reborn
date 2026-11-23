@@ -1,6 +1,6 @@
 import React from 'react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Filter } from 'lucide-react';
+import { Filter } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 
 // Genre IDs from TMDB
