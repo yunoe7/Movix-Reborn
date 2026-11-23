@@ -18,7 +18,7 @@ import {
   Sprout,
   Users,
   Wrench
-} from 'lucide-react';
+} from './icons/Icons8';
 
 import AdminComments from './AdminComments';
 import AdminHelpFeedback from './AdminHelpFeedback';
