@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { Film, X, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -195,6 +195,7 @@ const MovieDetails = (): JSX.Element => {
   const { id: encodedId } = useParams<{ id: string }>();
   const id = encodedId ? getTmdbId(encodedId) : null;
   const navigate = useNavigate();
+  const location = useLocation();
   const { resetVipStatus } = useAdFreePopup(); // Récupérer la fonction reset
   const { currentProfile } = useProfile();
 
@@ -639,7 +640,7 @@ const MovieDetails = (): JSX.Element => {
               whileHover={{ y: -2, scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              onClick={() => navigate(`/download/movie/${id}`)}
+              onClick={() => navigate(`/download/movie/${id}`, { state: { backgroundLocation: location } })}
               className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
               <Download className="h-5 w-5 flex-shrink-0 text-white" />
