@@ -7,7 +7,7 @@ import { HalloweenBatIcon, HalloweenLantern, HalloweenPumpkinIcon, HalloweenThem
 import HalloweenDayBanner from './halloween/HalloweenDayBanner';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Film, Search, X, Star, Settings, ShieldCheck } from './icons/Icons8';
+import { Film, Search, X, Star, Settings, ShieldCheck, Home, Clapperboard, Tv2, Sparkles } from './icons/Icons8';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfileMenu from './ProfileMenu';
 import NotificationsPopup from './NotificationsPopup';
@@ -107,6 +107,16 @@ const Header: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const isAprilFoolsAdminVisible = isAprilFoolsAdminEnabled(location.search);
+
+  // Navigation principale conservée après la suppression du menu Explorer.
+  // Les quatre destinations de base restent disponibles, sans réintroduire
+  // les anciennes pages secondaires.
+  const mainNavItems = useMemo(() => [
+    { name: t('nav.home', 'Accueil'), path: '/', icon: <Home size={15} />, isActive: location.pathname === '/' },
+    { name: t('nav.movies'), path: '/movies', icon: <Clapperboard size={15} />, isActive: location.pathname === '/movies' },
+    { name: t('nav.tvShows'), path: '/tv-shows', icon: <Tv2 size={15} />, isActive: location.pathname === '/tv-shows' },
+    { name: t('nav.anime'), path: '/anime', icon: <Sparkles size={15} />, isActive: location.pathname === '/anime' },
+  ], [t, location.pathname]);
 
   const {
     autocompleteSuggestions,
