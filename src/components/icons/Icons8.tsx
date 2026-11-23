@@ -1,7 +1,7 @@
 import React from 'react';
 
-export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading';
-type Props = { name: Icons8Name; size?: number | string; className?: string; title?: string; style?: React.CSSProperties };
+export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'network' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading';
+type Props = { name: Icons8Name; size?: number | string; className?: string; title?: string; style?: React.CSSProperties; strokeWidth?: number };
 
 const paths: Record<Icons8Name, string> = {
   "home": "home--v1",
@@ -99,3 +99,5 @@ export const RefreshCw = (p: Omit<Props, 'name'>) => <Icons8Icon name="refresh" 
 export const Loader2 = (p: Omit<Props, 'name'>) => <span className={['inline-block animate-spin rounded-full border-2 border-current border-r-transparent', p.className].filter(Boolean).join(' ')} style={{ width: p.size ?? 20, height: p.size ?? 20 }} />;
 export const X = (p: Omit<Props, 'name'>) => <Icons8Icon name="close" {...p} />;
 export const Lightbulb = (p: Omit<Props, 'name'>) => <Icons8Icon name="info" {...p} />;
+
+export const Network = (p: Omit<Props, 'name'>) => <Icons8Icon name="network" {...p} />;
