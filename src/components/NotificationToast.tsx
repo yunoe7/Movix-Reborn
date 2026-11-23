@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ExternalLink, Bell, Calendar, Clock } from 'lucide-react';
+import { X, ExternalLink, Bell, Calendar, Clock } from './icons/Icons8';
 import { NotificationToastProps } from '../types/alerts';
 import { useTranslation } from 'react-i18next';
 
