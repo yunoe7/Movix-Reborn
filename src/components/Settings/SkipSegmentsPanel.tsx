@@ -14,7 +14,7 @@
 
 import React, { memo, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronUp, RotateCcw, Scissors } from 'lucide-react';
+import { ChevronDown, ChevronUp, RotateCcw, Scissors } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 
 import { Switch } from '@/components/ui/switch';
