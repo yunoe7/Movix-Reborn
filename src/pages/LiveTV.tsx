@@ -3,7 +3,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallba
 import ReactCountryFlag from 'react-country-flag';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useWindowVirtualizer } from '@tanstack/react-virtual';
-import { Tv, Loader2, Radio, Search, Crown, Puzzle, ChevronDown, Lock, Globe, Wifi, Star, Smartphone } from 'lucide-react';
+import { Tv, Loader2, Radio, Search, Crown, Puzzle, ChevronDown, Lock, Globe, Wifi, Star, Smartphone } from '../components/icons/Icons8';
 import { toast } from 'sonner';
 
 
