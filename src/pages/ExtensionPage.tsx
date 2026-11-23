@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { ArrowLeft, Puzzle, Shield, Zap, Globe, Download, CheckCircle, AlertTriangle, MonitorSmartphone, Server, Lock, Eye, ChevronDown, Github } from 'lucide-react';
+import { ArrowLeft, Puzzle, Shield, Zap, Globe, Download, CheckCircle, AlertTriangle, MonitorSmartphone, Server, Lock, Eye, ChevronDown, Github } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { SquareBackground } from '../components/ui/square-background';
 import BlurText from '../components/ui/blur-text';
