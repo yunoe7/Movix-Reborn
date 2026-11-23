@@ -387,6 +387,23 @@ try {
         await page.locator('[data-testid="season-option-1"]').click();
         await page.locator('[data-testid="episode-download-1-1"]').waitFor();
       }
+      
+      const addToListTrigger = page.locator('[data-testid="add-to-list-trigger"]');
+      await addToListTrigger.waitFor();
+      await addToListTrigger.click();
+      const addToListPopover = page.locator('[data-testid="add-to-list-popover"]');
+      await addToListPopover.waitFor();
+      assert.ok(await page.locator('[data-testid="add-to-list-empty"]').isVisible(), `${kind}/${mode}: état vide du menu de listes`);
+      const popoverBox = await addToListPopover.boundingBox();
+      assert.ok(popoverBox && popoverBox.width >= 230 && popoverBox.width <= 242, `${kind}/${mode}: menu compact d'environ 236px`);
+      await page.locator('[data-testid="add-to-list-create-trigger"]').click();
+      await page.locator('[data-testid="add-to-list-create-form"]').waitFor();
+      const newListInput = page.locator('[data-testid="add-to-list-name"]');
+      await newListInput.fill('E2E Watchlist');
+      await page.locator('[data-testid="add-to-list-confirm"]').click();
+      const savedList = await page.evaluate(() => JSON.parse(localStorage.getItem('custom_lists') || '[]').find(list => list.name === 'E2E Watchlist'));
+      assert.ok(savedList, `${kind}/${mode}: création de liste enregistrée`);
+      assert.ok(savedList.items?.some(item => item.type === (kind === 'movie' ? 'movie' : 'tv')), `${kind}/${mode}: contenu ajouté à la nouvelle liste`);
 
       const screenshot = path.join(artifactDir, `${kind}-${mode}.png`);
       await page.screenshot({ path: screenshot, fullPage: true });
