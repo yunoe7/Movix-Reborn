@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Loader2, Film, Tv2, Play, Crown, ArrowLeft, X } from 'lucide-react';
+import { Search, Loader2, Film, Tv2, Play, Crown, ArrowLeft, X } from '../../components/icons/Icons8';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { isUserVip } from '../../utils/authUtils';
