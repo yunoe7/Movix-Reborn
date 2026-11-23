@@ -437,3 +437,5 @@ export const MousePointerClick = (p: Omit<Props, "name">) => <Icons8Icon name="p
 export const ArrowDownWideNarrow = (p: Omit<Props, "name">) => <Icons8Icon name="arrowdownwide" {...p} />;
 export const ArrowUpWideNarrow = (p: Omit<Props, "name">) => <Icons8Icon name="arrowupwide" {...p} />;
 export const Link2 = (p: Omit<Props, "name">) => <Icons8Icon name="link" {...p} />;
+
+export const Shrink = (p: Omit<Props, "name">) => <Icons8Icon name="minimize" {...p} />;
