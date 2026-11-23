@@ -101,7 +101,7 @@ const AddToListButton: React.FC<AddToListButtonProps> = ({
           onClick={() => setShowMenu((open) => !open)}
           whileHover={{ y: -1 }}
           whileTap={{ scale: 0.985 }}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#505050] px-5 py-2.5 text-sm font-semibold text-white shadow-none transition-colors hover:bg-[#5b5b5b]"
+          className="inline-flex min-h-11 min-w-[190px] items-center justify-center gap-2 rounded-lg border border-white/10 bg-[#505050] px-5 py-2.5 text-sm font-semibold text-white shadow-none transition-colors hover:bg-[#5b5b5b]"
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
           {t('lists.addToList')}
