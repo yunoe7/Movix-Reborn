@@ -381,7 +381,7 @@ const Header: React.FC = () => {
   }, [location.pathname]);
 
   // Autocomplete dropdown position
-  const prevDropdownPosRef = useRef<{ top: number; left: number } | null>(null);
+  const prevDropdownPosRef = useRef<{ top: number; left: number; width: number } | null>(null);
   const dropdownRafIdRef = useRef<number | null>(null);
   useEffect(() => {
     if (!showAutocomplete) return;
@@ -389,18 +389,17 @@ const Header: React.FC = () => {
     if (!activeInput) return;
     const calcPos = () => {
       const inputRect = activeInput.getBoundingClientRect();
-      const dropdownWidth = Math.min(400, window.innerWidth * 0.92);
-      let left = inputRect.left + inputRect.width / 2 - dropdownWidth / 2;
       const margin = 8;
-      if (left + dropdownWidth > window.innerWidth - margin) left = window.innerWidth - margin - dropdownWidth;
-      if (left < margin) left = margin;
-      const top = inputRect.bottom + 8;
+      const dropdownWidth = Math.min(inputRect.width, window.innerWidth - margin * 2);
+      const left = Math.max(margin, Math.min(inputRect.left, window.innerWidth - margin - dropdownWidth));
+      // Garder un vrai petit espace visuel entre le champ et les suggestions.
+      const top = inputRect.bottom + 12;
       if (dropdownRafIdRef.current != null) cancelAnimationFrame(dropdownRafIdRef.current);
       dropdownRafIdRef.current = requestAnimationFrame(() => {
         dropdownRafIdRef.current = null;
         const prev = prevDropdownPosRef.current;
-        if (prev && prev.top === top && prev.left === left) return;
-        prevDropdownPosRef.current = { top, left };
+        if (prev && prev.top === top && prev.left === left && prev.width === dropdownWidth) return;
+        prevDropdownPosRef.current = { top, left, width: dropdownWidth };
         setDropdownStyle({ position: 'fixed', top, left, width: dropdownWidth });
       });
     };
