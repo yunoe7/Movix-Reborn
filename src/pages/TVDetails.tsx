@@ -2276,8 +2276,8 @@ const TVDetails: React.FC = () => {
                   >
                     {(isAnime
                       ? animeSeasonCards.map(({ seasonNumber }) => Number(seasonNumber))
-                      : [...seasonCards].map((season) => Number(season.season_number))
-                    ).sort((a, b) => a - b).map((seasonNumber) => (
+                      : Object.keys(seasonsDetails).map((season) => Number(season))
+                    ).sort((a, b) => a - b).filter((seasonNumber, index, seasons) => seasons.indexOf(seasonNumber) === index).map((seasonNumber) => (
                       <button
                         key={seasonNumber}
                         type="button"
@@ -2302,6 +2302,29 @@ const TVDetails: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
+              {episodeListOptions.length > 0 && id && !isAnime && (
+                <div
+                  className="flex items-center rounded-full bg-white/[0.07] p-0.5"
+                  role="group"
+                  aria-label={t('details.episodeListSource')}
+                  title={episodeListKind === 'tvmaze' && tvmazeSeasons ? t('details.episodeListTvmazeHint', {
+                    count: tvmazeSeasons[selectedSeason as number]?.length ?? 0,
+                    tmdb: tmdbSeasonsDetails[selectedSeason as number]?.episodes?.length ?? 0,
+                  }) : undefined}
+                >
+                  {episodeListOptions.map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={episodeListKind === kind}
+                      onClick={() => chooseEpisodeList(kind)}
+                      className={`h-8 rounded-full px-3 text-xs font-semibold transition-colors ${episodeListKind === kind ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                    >
+                      {t(kind === 'tvmaze' ? 'details.episodeListTvmaze' : 'details.episodeListTmdb')}
+                    </button>
+                  ))}
+                </div>
+              )}
               {hasNetflixLayout && !isAnime && id && (
                 <div className="hidden items-center rounded-full bg-white/[0.07] p-0.5 sm:flex" role="group" aria-label={t('details.seasonLayout')}>
                   {([false, true] as const).map((netflix) => (
