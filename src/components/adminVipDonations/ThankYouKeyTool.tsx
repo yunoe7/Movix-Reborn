@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowRight, CheckCircle2, Copy, HeartHandshake, KeyRound, Mail, Plus } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Copy, HeartHandshake, KeyRound, Mail, Plus } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import { SITE_URL } from '../../config/runtime';
