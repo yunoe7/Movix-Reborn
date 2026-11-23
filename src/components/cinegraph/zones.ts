@@ -1,4 +1,4 @@
-import { Clapperboard, Drama, Layers, Sparkles, Users, Video, type LucideIcon } from 'lucide-react';
+import { Clapperboard, Drama, Layers, Sparkles, Users, Video, type LucideIcon } from '../icons/Icons8';
 import type { TFunction } from 'i18next';
 import { isCrewDepartment } from '@/services/cineGraph/build';
 import type { CineMap, MapZone, ZoneKind } from '@/services/cineGraph/types';
