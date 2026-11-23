@@ -1,9 +1,26 @@
 import React from 'react';
 
-export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'network' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading' | 'arrow-up-right' | 'check' | 'trash' | 'chevron-left' | 'chevron-right' | 'info' | 'target' | 'flame' | 'compass' | 'download' | 'video' | 'calendar' | 'alert' | 'eye' | 'eyeoff' | 'arrowdownup' | 'filter' | 'award' | 'globe' | 'tag' | 'arrowupdown' | 'heart' | 'login' | 'copy' | 'share' | 'message' | 'send' | 'clipboard' | 'userx' | 'maximize' | 'minimize' | 'hand' | 'clock' | 'checkcircle' | 'xcircle' | 'arrowleft' | 'monitor' | 'tablet' | 'snowflake' | 'activity' | 'trash' | 'volume' | 'database' | 'key' | 'lock' | 'palette' | 'upload' | 'belloff' | 'zap' | 'listordered' | 'gauge' | 'megaphone' | 'square' | 'captions' | 'ghost' | 'leaf' | 'cloudrain' | 'flower' | 'popcorn' | 'link' | 'messagecircle' | 'calendarclock' | 'tree' | 'chevronup' | 'chevronright' | 'external' | 'arrowup' | 'arrowdown' | 'videoicon' | 'loader' | 'tabletdevice' | 'volume2' | 'share2' | 'messagesquare' | 'checkcircle2' | 'xcircle2' | 'arrowdownup2' | 'arrowupdown2' | 'eyeoff2' | 'userx2' | 'plus' | 'arrowright' | 'shieldalert' | 'bellring' | 'flag' | 'gallery' | 'gift' | 'handcoins' | 'plug' | 'sprout' | 'wrench' | 'folder' | 'sortasc' | 'sortdesc' | 'type' | 'messageSquare' | 'server' | 'pause' | 'volumex' | 'volume1' | 'rewind' | 'fastforward' | 'repeat' | 'cast' | 'airplay' | 'pip' | 'scissors' | 'edit' | 'calendarplus' | 'sliders' | 'wifi' | 'rotate' | 'unlock' | 'alertcircle' | 'drama' | 'ticket';
+export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'network' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading' | 'arrow-up-right' | 'check' | 'trash' | 'chevron-left' | 'chevron-right' | 'info' | 'target' | 'flame' | 'compass' | 'download' | 'video' | 'calendar' | 'alert' | 'eye' | 'eyeoff' | 'arrowdownup' | 'filter' | 'award' | 'globe' | 'tag' | 'arrowupdown' | 'heart' | 'login' | 'copy' | 'share' | 'message' | 'send' | 'clipboard' | 'userx' | 'maximize' | 'minimize' | 'hand' | 'clock' | 'checkcircle' | 'xcircle' | 'arrowleft' | 'monitor' | 'tablet' | 'snowflake' | 'activity' | 'trash' | 'volume' | 'database' | 'key' | 'lock' | 'palette' | 'upload' | 'belloff' | 'zap' | 'listordered' | 'gauge' | 'megaphone' | 'square' | 'captions' | 'ghost' | 'leaf' | 'cloudrain' | 'flower' | 'popcorn' | 'link' | 'messagecircle' | 'calendarclock' | 'tree' | 'chevronup' | 'chevronright' | 'external' | 'arrowup' | 'arrowdown' | 'videoicon' | 'loader' | 'tabletdevice' | 'volume2' | 'share2' | 'messagesquare' | 'checkcircle2' | 'xcircle2' | 'arrowdownup2' | 'arrowupdown2' | 'eyeoff2' | 'userx2' | 'plus' | 'arrowright' | 'shieldalert' | 'bellring' | 'flag' | 'gallery' | 'gift' | 'handcoins' | 'plug' | 'sprout' | 'wrench' | 'folder' | 'sortasc' | 'sortdesc' | 'type' | 'messageSquare' | 'server' | 'pause' | 'volumex' | 'volume1' | 'rewind' | 'fastforward' | 'repeat' | 'cast' | 'airplay' | 'pip' | 'scissors' | 'edit' | 'calendarplus' | 'sliders' | 'wifi' | 'rotate' | 'unlock' | 'alertcircle' | 'drama' | 'ticket' | 'gridicon' | 'building' | 'mappin' | 'languages' | 'dollar' | 'trending' | 'bookmark' | 'trophy' | 'barchart' | 'timer' | 'hash' | 'checkcircleplain' | 'monitorsmartphone' | 'shuffle' | 'clipboardlist' | 'library' | 'handshake';
 type Props = { name: Icons8Name; size?: number | string; className?: string; title?: string; style?: React.CSSProperties; strokeWidth?: number };
 
 const paths: Record<Icons8Name, string> = {
+  "gridicon": "grid",
+  "building": "building",
+  "mappin": "map-pin",
+  "languages": "translation",
+  "dollar": "usd",
+  "trending": "line-chart",
+  "bookmark": "bookmark",
+  "trophy": "trophy",
+  "barchart": "bar-chart",
+  "timer": "timer",
+  "hash": "hashtag",
+  "checkcircleplain": "checkmark",
+  "monitorsmartphone": "smartphone",
+  "shuffle": "shuffle",
+  "clipboardlist": "clipboard-list",
+  "library": "library",
+  "handshake": "handshake",
   "edit": "edit",
   "calendarplus": "calendar-plus",
   "sliders": "sliders",
@@ -331,3 +348,21 @@ export const LockKeyhole = (p: Omit<Props, "name">) => <Icons8Icon name="unlock"
 export const AlertCircle = (p: Omit<Props, "name">) => <Icons8Icon name="alertcircle" {...p} />;
 export const Drama = (p: Omit<Props, "name">) => <Icons8Icon name="drama" {...p} />;
 export const Ticket = (p: Omit<Props, "name">) => <Icons8Icon name="ticket" {...p} />;
+
+export const Grid = (p: Omit<Props, "name">) => <Icons8Icon name="gridicon" {...p} />;
+export const Building = (p: Omit<Props, "name">) => <Icons8Icon name="building" {...p} />;
+export const MapPin = (p: Omit<Props, "name">) => <Icons8Icon name="mappin" {...p} />;
+export const Languages = (p: Omit<Props, "name">) => <Icons8Icon name="languages" {...p} />;
+export const DollarSign = (p: Omit<Props, "name">) => <Icons8Icon name="dollar" {...p} />;
+export const TrendingUp = (p: Omit<Props, "name">) => <Icons8Icon name="trending" {...p} />;
+export const Bookmark = (p: Omit<Props, "name">) => <Icons8Icon name="bookmark" {...p} />;
+export const Trophy = (p: Omit<Props, "name">) => <Icons8Icon name="trophy" {...p} />;
+export const BarChart3 = (p: Omit<Props, "name">) => <Icons8Icon name="barchart" {...p} />;
+export const Timer = (p: Omit<Props, "name">) => <Icons8Icon name="timer" {...p} />;
+export const Hash = (p: Omit<Props, "name">) => <Icons8Icon name="hash" {...p} />;
+export const CheckCircle = (p: Omit<Props, "name">) => <Icons8Icon name="checkcircleplain" {...p} />;
+export const MonitorSmartphone = (p: Omit<Props, "name">) => <Icons8Icon name="monitorsmartphone" {...p} />;
+export const Shuffle = (p: Omit<Props, "name">) => <Icons8Icon name="shuffle" {...p} />;
+export const ClipboardList = (p: Omit<Props, "name">) => <Icons8Icon name="clipboardlist" {...p} />;
+export const Library = (p: Omit<Props, "name">) => <Icons8Icon name="library" {...p} />;
+export const HeartHandshake = (p: Omit<Props, "name">) => <Icons8Icon name="handshake" {...p} />;
