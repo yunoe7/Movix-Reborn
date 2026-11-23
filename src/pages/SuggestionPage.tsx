@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import axios from 'axios';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { encodeId } from '../utils/idEncoder';
-import { ArrowLeft, Shuffle, ClipboardList, Sparkles, RefreshCw, ArrowRight, Star, Users, Calendar, Film, Tv, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Shuffle, ClipboardList, Sparkles, RefreshCw, ArrowRight, Star, Users, Calendar, Film, Tv, ChevronLeft, ChevronRight } from '../components/icons/Icons8';
 import { getTmdbLanguage } from '../i18n';
 import { SquareBackground } from '../components/ui/square-background';
 import BlurText from '../components/ui/blur-text';
