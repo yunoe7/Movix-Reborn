@@ -291,12 +291,14 @@ async function openDetails(kind, mode) {
   });
   const heroImageUrl = await heroImage.getAttribute('src');
   const heroCssWidth = await heroImage.evaluate(node => node.getBoundingClientRect().width);
-  const backdropStyle = await page.locator('.detail-hero__ambient').first().getAttribute('style');
+  const ambientCount = await page.locator('.detail-hero__ambient').count();
+  const heroObjectFit = await heroImage.evaluate(node => getComputedStyle(node).objectFit);
   assert.ok(heroImageUrl?.includes(expected[mode].backdrop), `${kind}/${mode}: image nette ${heroImageUrl}`);
   assert.ok(heroImageUrl?.endsWith(backdropPath), `${kind}/${mode}: chemin du fond`);
-  assert.ok(backdropStyle?.includes(expected[mode].backdrop), `${kind}/${mode}: fond ${backdropStyle}`);
+  assert.equal(ambientCount, 0, `${kind}/${mode}: aucun fond flouté dupliqué`);
+  assert.equal(heroObjectFit, 'cover', `${kind}/${mode}: image plein cadre`);
 
-  const row = { kind, mode, heroImageUrl, heroCssWidth, backdropStyle, errors };
+  const row = { kind, mode, heroImageUrl, heroCssWidth, ambientCount, heroObjectFit, errors };
   if (kind === 'tv') {
     const seasonPoster = page.locator('img[alt="Saison 1 Fixture"]').first();
     await seasonPoster.waitFor();
@@ -348,7 +350,7 @@ async function writeAuditReport(status) {
       const geometry = kind === 'movie'
         ? `image à ${item.heroCssWidth.toFixed(2)} px CSS`
         : `image à ${item.heroCssWidth.toFixed(2)} px CSS, saison ${variant(item.seasonPosterUrl)} à ${item.seasonPosterCssWidth?.toFixed(2) ?? '?'} px CSS`;
-      return `${item.mode}: image nette ${variant(item.heroImageUrl)}, fond ${variant(item.backdropStyle)}, ${geometry}`;
+      return `${item.mode}: image nette ${variant(item.heroImageUrl)}, sans flou ajouté, ${geometry}`;
     })
     .join(' ; ');
   const report = {
