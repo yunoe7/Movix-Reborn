@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, CalendarDays, CalendarPlus, ChevronLeft, ChevronRight,
   Clock, Loader2, ListOrdered, LayoutGrid, Search, SlidersHorizontal, X,
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 import SEO from '../components/SEO';
 import { Button } from '../components/ui/button';
 import { SquareBackground } from '../components/ui/square-background';
