@@ -14,7 +14,7 @@ import {
   ArrowUpLeft, ArrowUp, ArrowUpRight,
   ArrowLeft, Circle, ArrowRight,
   ArrowDownLeft, ArrowDown, ArrowDownRight,
-} from 'lucide-react';
+} from '../icons/Icons8';
 import { HERO_GRADIENT_POSITIONS, type HeroGradientPosition } from '@/utils/mediaColors';
 
 const POSITION_ICONS: Record<HeroGradientPosition, React.ComponentType<{ className?: string }>> = {
