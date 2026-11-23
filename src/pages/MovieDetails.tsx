@@ -1449,9 +1449,8 @@ const MovieDetails = (): JSX.Element => {
     };
 
     return (
-      <div className="mt-5 flex w-fit max-w-full flex-col gap-3 bg-transparent p-0">
-        {/* Première ligne avec Regarder et Bande-annonce */}
-        <div className="flex w-fit max-w-full flex-wrap gap-2.5">
+      <div className="mt-5 flex w-full max-w-full flex-col gap-3 bg-transparent p-0">
+        <div className="flex w-fit max-w-full flex-wrap items-center gap-2.5">
           <motion.button
             whileHover={{ y: -2, scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
@@ -1489,7 +1488,12 @@ const MovieDetails = (): JSX.Element => {
               </>
             )}
           </motion.button>
-
+          <AddToListButton
+            mediaId={Number(id)}
+            mediaType="movie"
+            title={movie?.title || ''}
+            posterPath={movie?.poster_path || ''}
+          />
           {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
             <motion.button
               whileHover={{ y: -2, scale: 1.015 }}
@@ -1503,7 +1507,6 @@ const MovieDetails = (): JSX.Element => {
             </motion.button>
           )}
         </div>
-
         {/* Versions alternatives (ex. Encore) : TMDB n'a qu'une fiche par film */}
         {getMovieVersions(id).length > 0 && (
           <div className="flex flex-wrap gap-3 w-full min-w-0">
@@ -1525,118 +1528,6 @@ const MovieDetails = (): JSX.Element => {
             ))}
           </div>
         )}
-
-        {/* Deuxième ligne avec les autres boutons */}
-        <div className="flex flex-wrap gap-2.5">
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => setShowTrailerPopup(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-sm font-semibold text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!trailerVideoId}
-          >
-            <Video className="w-4 h-4" />
-            {t('details.bandeAnnonce')}
-          </motion.button>
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <motion.div
-              initial={{ rotate: 0 }}
-              animate={watchStatus.watchlist ? { rotate: [0, -15, 15, -5, 5, 0] } : {}}
-              transition={{ duration: 0.5 }}
-            >
-              <List className="w-4 h-4" />
-            </motion.div>
-            {t('details.toWatchBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <motion.div
-              animate={watchStatus.favorite ?
-                { scale: [1, 1.3, 1], color: ['#fff', '#fbbf24', '#fff'] } :
-                {}
-              }
-              transition={{ duration: 0.5 }}
-            >
-              <Star className="w-4 h-4" />
-            </motion.div>
-            {t('details.favoritesBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchedView.toggleOn
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <motion.div
-              animate={watchedView.toggleOn ?
-                { scale: [1, 1.3, 1], rotate: [0, 0, 360] } :
-                {}
-              }
-              transition={{ duration: 0.5 }}
-            >
-              <Check className="w-4 h-4" />
-            </motion.div>
-            {t('details.watchedBtn')}
-          </motion.button>
-          {/* « Vu » connu du serveur seulement : indication à côté, le bouton
-              ne pose et ne retire que la marque locale. */}
-          {watchedView.serverWatched === 'estimated' && (
-            <button
-              type="button"
-              onClick={() => setEstimateInfoOpen(true)}
-              aria-haspopup="dialog"
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-dashed border-white/25 px-3 text-sm text-white/75 underline decoration-dotted underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
-            >
-              {t('details.watchedEstimatedBtn', 'Vu (estimé)')}
-              <Info className="w-4 h-4 text-white opacity-60" aria-hidden="true" />
-            </button>
-          )}
-          {watchedView.serverWatched === 'otherDevice' && (
-            <span className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-dashed border-white/25 px-3 text-sm text-white/75">
-              <Check className="w-4 h-4 text-white opacity-60" aria-hidden="true" />
-              {t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
-            </span>
-          )}
-
-
-          <AddToListButton
-            mediaId={Number(id)}
-            mediaType="movie"
-            title={movie?.title || ''}
-            posterPath={movie?.poster_path || ''}
-          />
-
-          <ShareButtons
-            title={movie?.title || ''}
-            description={movie?.overview || ''}
-            imageUrl={movie?.poster_path ? `https://image.tmdb.org/t/p/original${movie.poster_path}` : undefined}
-            url={buildSiteUrl(`/movie/${encodedId || id}`)}
-          />
-        </div>
       </div>
     );
   }

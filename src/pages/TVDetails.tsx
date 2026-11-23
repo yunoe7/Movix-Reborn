@@ -2128,9 +2128,8 @@ const TVDetails: React.FC = () => {
   };
   const WatchButtons = () => {
     return (
-      <div className="mt-5 flex w-fit max-w-full flex-col gap-3 bg-transparent p-0">
-        {/* Première ligne avec Regarder et Bande-annonce */}
-        <div className="flex w-fit max-w-full flex-wrap gap-2.5">
+      <div className="mt-5 flex w-full max-w-full flex-col gap-3 bg-transparent p-0">
+        <div className="flex w-fit max-w-full flex-wrap items-center gap-2.5">
           <motion.button
             whileHover={{ y: -2, scale: 1.015 }}
             whileTap={{ scale: 0.985 }}
@@ -2161,7 +2160,16 @@ const TVDetails: React.FC = () => {
               )}
             </div>
           </motion.button>
-
+          <motion.button
+            whileHover={{ y: -2, scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+            onClick={() => setShowAddToList(true)}
+            className="inline-flex min-h-11 items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
+          >
+            <FolderPlus className="h-5 w-5 flex-shrink-0" />
+            {t('lists.addToList', 'Ajouter à ma liste')}
+          </motion.button>
           {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
             <motion.button
               whileHover={{ y: -2, scale: 1.015 }}
@@ -2175,69 +2183,6 @@ const TVDetails: React.FC = () => {
             </motion.button>
           )}
         </div>
-
-        {/* Deuxième ligne avec les autres boutons */}
-        <div className="flex flex-wrap gap-2.5">
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => setShowTrailerPopup(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-white/15 bg-white/[0.12] px-4 py-2.5 text-sm font-semibold text-white/90 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.2] disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={!trailerVideo}
-          >
-            <Video className="w-4 h-4" />
-            {t('details.bandeAnnonce')}
-          </motion.button>
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => updateWatchStatus('watchlist', !watchStatus.watchlist)}
-            className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/[0.08] px-4 py-2.5 text-sm font-medium shadow-[0_5px_16px_rgba(0,0,0,0.16)] transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watchlist
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <List className="w-4 h-4" />
-            {t('details.watchlistBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => updateWatchStatus('favorite', !watchStatus.favorite)}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.favorite
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <Star className="w-4 h-4" />
-            {t('details.favoritesBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => updateWatchStatus('watched', !watchStatus.watched)}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 ${watchStatus.watched
-              ? 'border-white/25 bg-white/[0.2] text-white shadow-[0_6px_18px_rgba(0,0,0,0.14)]'
-              : 'border-white/[0.09] bg-white/[0.045] text-slate-300 hover:border-white/20 hover:bg-white/[0.09] hover:text-white'
-              }`}
-          >
-            <Check className="w-4 h-4" />
-            {t('details.watchedBtn')}
-          </motion.button>
-
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            onClick={() => setShowAddToList(true)}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.045] px-4 py-2.5 text-sm font-medium text-slate-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
-          >
-            <FolderPlus className="w-4 h-4" />
-            {t('details.addToAList')}
-          </motion.button>
-
           {showAddToList && (
             <AddToListMenu
               mediaId={Number(id)}
@@ -2247,23 +2192,14 @@ const TVDetails: React.FC = () => {
               onClose={() => setShowAddToList(false)}
             />
           )}
-
-          {showAntiSpoilerModal && (
-            <AntiSpoilerSettingsModal
-              isOpen={showAntiSpoilerModal}
-              onClose={() => setShowAntiSpoilerModal(false)}
-              onSettingsChange={updateAntiSpoilerSettings}
-              currentSettings={antiSpoilerSettings}
-            />
-          )}
-
-          <ShareButtons
-            title={tvShow?.name || ''}
-            description={tvShow?.overview || ''}
-            imageUrl={tvShow?.poster_path ? `https://image.tmdb.org/t/p/original${tvShow.poster_path}` : undefined}
-            url={buildSiteUrl(`/tv/${encodedId || id}`)}
+        {showAntiSpoilerModal && (
+          <AntiSpoilerSettingsModal
+            isOpen={showAntiSpoilerModal}
+            onClose={() => setShowAntiSpoilerModal(false)}
+            onSettingsChange={updateAntiSpoilerSettings}
+            currentSettings={antiSpoilerSettings}
           />
-        </div>
+        )}
       </div>
     );
   };
