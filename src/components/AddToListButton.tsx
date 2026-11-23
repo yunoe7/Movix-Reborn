@@ -44,6 +44,7 @@ const AddToListButton: React.FC<AddToListButtonProps> = ({
       <motion.button
         type="button"
         aria-haspopup="dialog"
+        data-testid="add-to-list-trigger"
         aria-expanded={showMenu}
         onClick={() => setShowMenu((open) => !open)}
         whileHover={{ y: -1 }}
