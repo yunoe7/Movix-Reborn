@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { History, ToggleRight, ListOrdered } from 'lucide-react';
+import { History, ToggleRight, ListOrdered } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 
 const inlineIconClass =
