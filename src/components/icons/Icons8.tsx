@@ -566,3 +566,6 @@ export const TerminalSquare = (p: Omit<Props, "name">) => <Icons8Icon name="term
 export const Link = (p: Omit<Props, "name">) => <Icons8Icon name="link" {...p} />;
 export const Users2 = (p: Omit<Props, "name">) => <Icons8Icon name="users" {...p} />;
 export const Baby = (p: Omit<Props, "name">) => <Icons8Icon name="baby" {...p} />;
+
+// Alias compatible avec les anciens imports Lucide ; l'icône Ban représente le même état désactivé.
+export const CircleOff = Ban;
