@@ -1,6 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ImageOff } from 'lucide-react';
+import { ImageOff } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import { toHeroPromoDisplay } from '@/hooks/useHeroPromos';
