@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 import PlayerMockup from '../../components/PlayerMockup';
 import TermTooltip from '../../components/TermTooltip';
