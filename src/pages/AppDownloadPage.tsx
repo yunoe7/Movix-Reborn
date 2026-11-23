@@ -14,7 +14,7 @@ import {
   Puzzle,
   Plus,
   Minus,
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 import { SquareBackground } from '../components/ui/square-background';
 import BlurText from '../components/ui/blur-text';
 import ShinyText from '../components/ui/shiny-text';
