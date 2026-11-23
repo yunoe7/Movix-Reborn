@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import axios from 'axios';
-import { Candy, Ghost, Skull, type LucideIcon } from 'lucide-react';
+import { Candy, Ghost, Skull, type LucideIcon } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import EmblaCarousel from '../EmblaCarousel';
 import ContentRowSkeleton from '../skeletons/ContentRowSkeleton';
