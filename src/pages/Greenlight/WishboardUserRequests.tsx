@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import {
     ArrowLeft, Popcorn, Film, Tv, Calendar, Check, X, Clock,
     Search, AlertCircle, Loader2, MessageSquare, ArrowBigUp
-} from 'lucide-react';
+} from '../../components/icons/Icons8';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import Counter from '../../components/ui/counter';
