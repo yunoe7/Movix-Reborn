@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
-import AddToListMenu from '../components/AddToListMenu';
+import AddToListButton from '../components/AddToListButton';
 import DetailsSkeleton from '../components/skeletons/DetailsSkeleton';
 
 import CustomDropdown from '../components/CustomDropdown';
@@ -443,7 +443,6 @@ const TVDetails: React.FC = () => {
     }
   }, [id]);
 
-  const [showAddToList, setShowAddToList] = useState(false);
   const [, setIsAvailable] = useState<boolean>(true);
   const [recommendations, setRecommendations] = useState<(TVShow & { isAvailable?: boolean })[]>([]);
   const [showSimilarModal, setShowSimilarModal] = useState(false);
@@ -1469,16 +1468,12 @@ const TVDetails: React.FC = () => {
               )}
             </div>
           </motion.button>
-          <motion.button
-            whileHover={{ y: -2, scale: 1.015 }}
-            whileTap={{ scale: 0.985 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
-            onClick={() => setShowAddToList(true)}
-            className="inline-flex min-h-11 items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
-          >
-            <FolderPlus className="h-5 w-5 flex-shrink-0" />
-            {t('lists.addToList', 'Ajouter à ma liste')}
-          </motion.button>
+          <AddToListButton
+            mediaId={Number(id)}
+            mediaType="tv"
+            title={tvShow?.name || ''}
+            posterPath={tvShow?.poster_path || ''}
+          />
           {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
             <motion.button
               whileHover={{ y: -2, scale: 1.015 }}
@@ -1492,15 +1487,6 @@ const TVDetails: React.FC = () => {
             </motion.button>
           )}
         </div>
-          {showAddToList && (
-            <AddToListMenu
-              mediaId={Number(id)}
-              mediaType="tv"
-              title={tvShow?.name || ''}
-              posterPath={tvShow?.poster_path || ''}
-              onClose={() => setShowAddToList(false)}
-            />
-          )}
         {showAntiSpoilerModal && (
           <AntiSpoilerSettingsModal
             isOpen={showAntiSpoilerModal}
