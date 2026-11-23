@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download } from 'lucide-react';
+import { Download } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 import TermTooltip from '../../components/TermTooltip';
 
