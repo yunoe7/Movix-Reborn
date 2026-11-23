@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Plus, Shuffle } from 'lucide-react';
+import { Check, FolderPlus, Plus, Shuffle, X } from 'lucide-react';
 
 interface AddToListMenuProps {
   mediaId: number;
@@ -9,6 +9,7 @@ interface AddToListMenuProps {
   posterPath: string;
   onClose: () => void;
   movieCount?: number;
+  presentation?: 'popover' | 'modal';
 }
 
 type CustomList = {
@@ -38,6 +39,7 @@ const AddToListMenu: React.FC<AddToListMenuProps> = ({
   posterPath,
   onClose,
   movieCount,
+  presentation = 'popover',
 }) => {
   const { t } = useTranslation();
   const [lists, setLists] = useState<CustomList[]>([]);
@@ -146,6 +148,107 @@ const AddToListMenu: React.FC<AddToListMenuProps> = ({
     const choices = available.length ? available : suggestions;
     setNewListName(choices[Math.floor(Math.random() * choices.length)]);
   };
+
+  if (presentation === 'modal') {
+    return (
+      <div
+        className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 p-4"
+        onClick={onClose}
+        data-testid="add-to-list-modal"
+      >
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('lists.addToList')}
+          className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#20252f] p-6 text-white shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-bold">{t('lists.addToList')}</h2>
+            <button type="button" onClick={onClose} aria-label={t('common.close')} className="rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-white">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {mediaType === 'collection' && !lists.some((list) => list.name === title) && (
+            <button
+              type="button"
+              onClick={handleCreateCollectionList}
+              className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-500"
+            >
+              <FolderPlus className="h-4 w-4" />
+              {t('lists.createListNamed', { name: title })}
+              {!!movieCount && <span className="text-xs text-white/70">({movieCount} {t('lists.movies')})</span>}
+            </button>
+          )}
+
+          {addedToList && (
+            <p className="mb-3 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-300">
+              ✓ {t('lists.addedSuccess')}
+            </p>
+          )}
+
+          {lists.length === 0 ? (
+            <div className="py-6 text-center">
+              <FolderPlus className="mx-auto mb-3 h-14 w-14 text-white/45" />
+              <p className="mb-4 text-sm text-white/60">{t('lists.noLists')}</p>
+              <button type="button" onClick={() => setShowCreateForm(true)} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-500">
+                {t('lists.createFirstList')}
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="max-h-64 space-y-1 overflow-y-auto">
+                {lists.map((list) => {
+                  const alreadyAdded = (list.items ?? []).some((item) => Number(item.id) === mediaId && item.type === mediaType);
+                  return (
+                    <button
+                      key={String(list.id)}
+                      type="button"
+                      disabled={alreadyAdded}
+                      onClick={() => handleAddToList(list.id)}
+                      className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm text-white/85 transition-colors hover:bg-white/[0.08] disabled:text-emerald-300"
+                    >
+                      <span>{list.name}</span>
+                      {alreadyAdded ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <button type="button" onClick={() => setShowCreateForm(true)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white/85 hover:bg-white/[0.08]">
+                  <Plus className="h-4 w-4" />
+                  {t('lists.createNewList')}
+                </button>
+              </div>
+            </>
+          )}
+
+          {showCreateForm && (
+            <form onSubmit={handleCreateList} className="mt-3 space-y-3 border-t border-white/10 pt-4">
+              <input
+                ref={inputRef}
+                type="text"
+                value={newListName}
+                onChange={(event) => setNewListName(event.target.value)}
+                placeholder={t('lists.listNamePlaceholder')}
+                aria-label={t('lists.listName')}
+                className="w-full rounded-lg border border-white/15 bg-black/25 px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/35"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => { setShowCreateForm(false); setNewListName(''); }} className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white/80 hover:bg-white/15">
+                  {t('common.cancel')}
+                </button>
+                <button type="submit" disabled={!newListName.trim()} className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-40">
+                  {t('lists.create')}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div
