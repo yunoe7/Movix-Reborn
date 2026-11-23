@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import useEmblaCarousel from '@/hooks/useFlexGapEmblaCarousel';
 import type { EmblaOptionsType } from 'embla-carousel';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Play, Info, Star, Calendar, Pause } from 'lucide-react';
+import { Play, Info, Star, Calendar, Pause } from './icons/Icons8';
 import { motion, AnimatePresence, useMotionValue } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { encodeId } from '../utils/idEncoder';
@@ -482,6 +482,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
                       <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                         <Link
                           to={`/${item.media_type}/${encodeId(item.id)}`}
+                          state={{ heroImageUrl: morphImages[idx] || undefined, heroImagePosition: getSlideObjectPosition(slide) }}
                           data-hero-cta
                           className="inline-flex items-center justify-center gap-2 bg-white text-zinc-950 hover:bg-red-500 hover:text-white px-5 sm:px-6 md:px-7 py-3 min-h-[48px] rounded-xl sm:rounded-2xl text-sm sm:text-base font-semibold border border-white/70 shadow-lg shadow-black/25 transition-all duration-300 touch-manipulation"
                         >
