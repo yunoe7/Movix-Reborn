@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, type ComponentType } from 'react';
-import { Smile } from 'lucide-react';
+import { Smile } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 
 interface EmojiPickerProps {
