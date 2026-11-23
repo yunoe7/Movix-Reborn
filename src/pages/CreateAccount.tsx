@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Copy, Check, Eye, EyeOff, ArrowLeft, Camera, Shield } from 'lucide-react';
+import { Copy, Check, Eye, EyeOff, ArrowLeft, Camera, Shield } from '../components/icons/Icons8';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import AvatarSelector from '../components/AvatarSelector';
