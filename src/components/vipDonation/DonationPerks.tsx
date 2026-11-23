@@ -7,7 +7,7 @@ import {
   Unlock,
   Zap,
   type LucideIcon
-} from 'lucide-react';
+} from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 
