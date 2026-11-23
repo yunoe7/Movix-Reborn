@@ -365,7 +365,13 @@ try {
       assert.ok(heading.some(value => value.includes('details.youMightAlsoLike')), `${kind}/${mode}: titre recommandations`);
       assert.ok(heading.some(value => value.includes('details.castTab')), `${kind}/${mode}: titre distribution`);
       if (kind === 'tv') {
-        assert.ok(await page.locator('.seasons-section').isVisible(), `${kind}/${mode}: saisons et épisodes conservés`);
+        assert.ok(await page.locator('.seasons-section').isVisible(), `${kind}/${mode}: section des épisodes visible`);
+        const seasonPicker = page.locator('[data-testid="season-picker-trigger"]');
+        await seasonPicker.waitFor();
+        await seasonPicker.click();
+        await page.locator('[data-testid="season-option-1"]').waitFor();
+        assert.equal(await page.locator('.anime-season-card').count(), 0, `${kind}/${mode}: aucune grille de posters de saisons`);
+        await page.locator('[data-testid="season-option-1"]').click();
         await page.locator('[data-testid="episode-download-1-1"]').waitFor();
       }
 
@@ -391,6 +397,11 @@ try {
     await page.locator('.detail-hero').waitFor();
     const animeToggle = page.locator('button[aria-pressed]').filter({ hasText: 'details.backToStandardMode' });
     await animeToggle.waitFor();
+    const animeSeasonPicker = page.locator('[data-testid="season-picker-trigger"]');
+    await animeSeasonPicker.waitFor();
+    await animeSeasonPicker.click();
+    await page.locator('[data-testid="season-option-1"]').waitFor();
+    await page.locator('[data-testid="season-option-1"]').click();
     await page.locator('[data-testid="episode-download-1-1"]').waitFor();
 
     const heroCount = await page.locator('.detail-hero').count();
