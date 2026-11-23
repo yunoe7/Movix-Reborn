@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import {
     ArrowLeft, ArrowRight, Film, Tv, Calendar, Search,
     Check, Loader2, Zap, AlertCircle
-} from 'lucide-react';
+} from '../../components/icons/Icons8';
 import { Button } from '../../components/ui/button';
 import { getVipHeaders } from '../../utils/vipUtils';
 
