@@ -1,4 +1,4 @@
-import { Euro, Globe, Info, Puzzle, Scale, Shield, Smartphone, Tv, type LucideIcon, type LucideProps } from 'lucide-react';
+import { Euro, Globe, Info, Scale, Shield } from './icons/Icons8';
 import { Trans, useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useLightMode } from '@/context/LightModeContext';
@@ -43,9 +43,6 @@ const linkGroups: { title: string; links: FooterLink[] }[] = [
     title: 'footer.movix',
     links: [
       { label: 'footer.about', to: '/about', icon: Info },
-      { label: 'footer.application', to: '/app', icon: Smartphone },
-      { label: 'tvApp.footerLink', to: '/app-tv', icon: Tv },
-      { label: 'nav.extension', to: '/extension', icon: Puzzle },
     ],
   },
   {

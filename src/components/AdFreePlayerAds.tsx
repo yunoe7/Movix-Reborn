@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Crown, Gamepad2, Play, Puzzle, ShieldAlert, Smartphone, X } from "lucide-react";
+import { Crown, Gamepad2, Play, Puzzle, ShieldAlert, Smartphone, X } from './icons/Icons8';
 import { useTranslation } from "react-i18next";
 import { useLightMode } from '@/context/LightModeContext';
 import { useAdFreePopup } from "../context/AdFreePopupContext";

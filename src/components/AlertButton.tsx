@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Bell, BellRing } from 'lucide-react';
+import { Bell, BellRing } from './icons/Icons8';
 import { AlertService } from '../services/alertService';
 import { AlertButtonProps, NotifyBeforeDays } from '../types/alerts';
 import AlertMenu from './AlertMenu';

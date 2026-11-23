@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, Trash2, Loader2, Film, Tv, RefreshCw, MessageSquare, AlertCircle, Sparkles,
     Ban, Shield, Copy, UserX, Clock, CheckCircle, MoreHorizontal
-} from 'lucide-react';
+} from './icons/Icons8';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Input } from './ui/input';

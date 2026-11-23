@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLightMode } from '../context/LightModeContext';
-import { ChevronRight, ExternalLink, Gauge, Loader2 } from 'lucide-react';
+import { ChevronRight, ExternalLink, Gauge, Loader2 } from './icons/Icons8';
 import ReactCountryFlag from 'react-country-flag';
 import { Select, SelectTrigger, SelectContent, SelectItem } from '@/components/ui/select';
 

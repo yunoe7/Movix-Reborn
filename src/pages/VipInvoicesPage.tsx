@@ -1,14 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowLeft,
-  ArrowRight,
-  HandHeart,
-  Heart,
-  Loader2,
-  RefreshCcw
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, HandHeart, Heart, Loader2, RefreshCcw } from '../components/icons/Icons8';
 
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import AnimatedBorderCard from '../components/ui/animated-border-card';

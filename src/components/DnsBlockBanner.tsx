@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ShieldAlert, X } from 'lucide-react';
+import { ShieldAlert, X } from './icons/Icons8';
 import FaiTooltip from './FaiTooltip';
 
 // Flag module-level : persistent pour la durée du chargement de la page,

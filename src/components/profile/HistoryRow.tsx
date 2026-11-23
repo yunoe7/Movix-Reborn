@@ -5,7 +5,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Film, Play, Tv } from 'lucide-react';
+import { Film, Play, Tv } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { encodeId } from '@/utils/idEncoder';

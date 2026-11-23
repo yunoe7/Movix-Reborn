@@ -10,7 +10,7 @@
   isolation: isolate;
   display: flex;
   align-items: flex-end;
-  min-height: min(78vh, 760px);
+  min-height: 100vh;
   overflow: hidden;
   background: #000;
 }

@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   AlertTriangle, BarChart3, Loader2, MessageSquare, RefreshCw, Sparkles, UserPlus, Users,
-} from 'lucide-react';
+} from './icons/Icons8';
 import { fetchStatsOverview } from '../services/adminStatsService';
 import type { StatsOverview, StatsRange } from '../services/adminStatsService';
 import ChartCard from './stats/ChartCard';

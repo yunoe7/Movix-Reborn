@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X } from 'lucide-react';
+import { X } from '../icons/Icons8';
 import { isHalloweenDay } from '@/hooks/useHalloweenTheme';
 import { readSessionStorage } from '@/utils/browserStorage';
 import { Pumpkin } from './HalloweenIcons';

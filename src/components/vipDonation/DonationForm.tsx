@@ -8,7 +8,7 @@ import {
   Heart,
   KeyRound,
   Loader2
-} from 'lucide-react';
+} from '../icons/Icons8';
 import { toast } from 'sonner';
 
 import TurnstileWidget from '@/components/TurnstileWidget';

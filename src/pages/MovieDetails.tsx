@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate, Navigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
-import { Film, X, Download } from 'lucide-react';
+import { Film, X, Download } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import AddToListButton from '../components/AddToListButton';
@@ -1133,7 +1133,8 @@ const MovieDetails = (): JSX.Element => {
             classification={contentCert ? getClassificationLabel(contentCert, t) : null}
             genres={movie.genres || []}
             synopsis={movie.overview}
-            imageUrl={backdropImage}
+            imageUrl={location.state?.heroImageUrl || backdropImage}
+            imagePosition={location.state?.heroImagePosition || 'center top'}
             fallbackImageUrl={mainPosterUrl}
             genreHref={(genreId) => `/genre/movie/${genreId}`}
             seasonLabel={t('details.seasonsLabel')}

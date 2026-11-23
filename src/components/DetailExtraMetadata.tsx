@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronDown, Sparkles, Tags, Type } from 'lucide-react';
+import { ChevronDown, Sparkles, Tags, Type } from './icons/Icons8';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { regionLabel, type AlternateTitle } from '../utils/tmdbMetadata';

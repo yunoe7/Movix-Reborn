@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next';
 import { useReducedMotion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, CloudOff, EyeOff, History, Hourglass, LogIn, ServerOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CloudOff, EyeOff, History, Hourglass, LogIn, ServerOff } from '../icons/Icons8';
 import { getTmdbLanguage } from '@/i18n';
 import { useAgeRestrictedContent } from '@/hooks/useAgeRestrictedContent';
 import {

@@ -13,7 +13,7 @@ import {
   Trash2,
   Type,
   type LucideIcon
-} from 'lucide-react';
+} from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import {

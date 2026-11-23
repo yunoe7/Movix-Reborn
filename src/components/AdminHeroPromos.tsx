@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { AlertTriangle, GalleryHorizontalEnd, Plus, RefreshCw } from 'lucide-react';
+import { AlertTriangle, GalleryHorizontalEnd, Plus, RefreshCw } from './icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import {

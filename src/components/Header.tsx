@@ -7,8 +7,7 @@ import { HalloweenBatIcon, HalloweenLantern, HalloweenPumpkinIcon, HalloweenThem
 import HalloweenDayBanner from './halloween/HalloweenDayBanner';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { isHiddenOnTv } from '@/routing/registry';
-import { Film, Search, X, Star, Tv2, Users, Clapperboard, Bell, Tv, Lightbulb, Network, List, Radio, Unlock, ChevronDown, ExternalLink, LayoutGrid, Settings, Dices, Sparkles, HelpCircle, Github, CalendarDays, Puzzle, Smartphone, MonitorPlay, ShieldCheck, Home } from 'lucide-react';
+import { Film, Search, X, Star, Settings, ShieldCheck } from './icons/Icons8';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfileMenu from './ProfileMenu';
 import NotificationsPopup from './NotificationsPopup';
@@ -19,7 +18,6 @@ import { useSearch } from '../context/SearchContext';
 import { isUserVip } from '../utils/authUtils';
 import { checkVipStatus } from '../utils/vipUtils';
 import { useTranslation } from 'react-i18next';
-import { BurgerIcon, ExploreDesktopPanel, ExploreMobileSheet, type ExploreGroup } from './ExploreMenu';
 import { LiquidDropdown, LiquidSheet } from './header/liquidMenu';
 import { useSheetScrollLock } from './header/useSheetScrollLock';
 import { HeaderPanelsContext, type HeaderPanels } from './header/headerPanels';
@@ -41,15 +39,11 @@ const Header: React.FC = () => {
   // Citrouille qui allume ou éteint le thème : en octobre, ou dès que le thème
   // est actif pour pouvoir le couper ; le reste de l'année, seul le réglage.
   const showHalloweenToggle = halloween || isHalloweenSeason();
-  const [isExploreOpen, setIsExploreOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
   const isDesktopNav = useIsDesktopNav();
-  // Un panneau plein écran (Explorer, notifications, profil ou canaux) couvre
-  // la page.
-  const isSheetOpen = !isDesktopNav && (isExploreOpen || showNotifications || isProfileOpen || isCommunityOpen);
-  const pauseDecor = isExploreOpen || showNotifications || isProfileOpen || isCommunityOpen;
+  const pauseDecor = showNotifications || isProfileOpen || isCommunityOpen;
 
   // Signale un menu ouvert (Explorer, notifications, profil ou canaux, sur ordinateur
   // comme sur mobile) : le décor
@@ -91,11 +85,6 @@ const Header: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
-  const exploreRef = useRef<HTMLDivElement>(null);
-  const exploreSheetRef = useRef<HTMLDivElement>(null);
-  const exploreOverlayRef = useRef<HTMLDivElement>(null);
-  const exploreTriggerRef = useRef<HTMLButtonElement>(null);
-  const burgerRef = useRef<HTMLButtonElement>(null);
   const notificationsTriggerRef = useRef<HTMLButtonElement>(null);
   const notificationsSheetScrollerRef = useRef<HTMLDivElement>(null);
   // Calque de l'en-tête où coulent les menus d'ordinateur du profil (rendu
@@ -134,73 +123,6 @@ const Header: React.FC = () => {
     if (autocompleteType === 'tv') return item.media_type === 'tv' && !isAnime;
     return true;
   }), [ageFilteredAutocomplete, autocompleteType]);
-
-  // Navigation compacte façon plateforme cinéma : accueil, catégories, recherche.
-  const mainNavItems = useMemo(() => [
-    { name: t('nav.home', 'Accueil'), path: '/', icon: <Home size={15} />, isActive: location.pathname === '/' },
-    { name: t('nav.movies'), path: '/movies', icon: <Clapperboard size={15} />, isActive: location.pathname === '/movies' },
-    { name: t('nav.tvShows'), path: '/tv-shows', icon: <Tv2 size={15} />, isActive: location.pathname === '/tv-shows' },
-    { name: t('nav.anime'), path: '/anime', icon: <Sparkles size={15} />, isActive: location.pathname === '/anime' },
-  ], [t, location.pathname]);
-
-  // Groupes du mega menu — rangés par intention plutôt que par type de contenu :
-  // ce que je cherche à voir / avec qui / ce qui passe maintenant / le reste.
-  const exploreGroups: ExploreGroup[] = useMemo(() => [
-    {
-      // Trouver quoi regarder, du plus dirigé au plus sérendipitaire.
-      title: t('nav.groupDiscover'),
-      items: [
-        { name: t('nav.collections'), path: '/collections', icon: <Film size={18} />, desc: t('nav.collectionsDesc') },
-        { name: t('nav.top10'), path: '/top10', icon: <Star size={18} />, desc: t('nav.top10Desc') },
-        { name: t('nav.suggestions'), path: '/suggestion', icon: <Sparkles size={18} />, desc: t('nav.suggestionsDesc') },
-        { name: t('nav.roulette'), path: '/roulette', icon: <Dices size={18} />, desc: t('roulette.navDesc') },
-        { name: t('nav.cinegraph'), path: '/cinegraph', icon: <Network size={18} />, desc: t('nav.cinegraphDesc') },
-      ]
-    },
-    {
-      // Tout ce qui implique d'autres utilisateurs — Watch Party compris.
-      title: t('nav.groupCommunity'),
-      items: [
-        { name: t('nav.watchParty'), path: '/watchparty/list', icon: <Users size={18} />, desc: t('nav.watchPartyDesc') },
-        { name: t('nav.sharedLists'), path: '/list-catalog', icon: <List size={18} />, desc: t('nav.sharedListsDesc') },
-        { name: t('nav.greenlight'), path: '/wishboard', icon: <Lightbulb size={18} />, desc: t('nav.greenlightDesc') },
-      ]
-    },
-    {
-      // Ce qui passe en ce moment, puis ce qui arrive bientôt.
-      title: t('nav.groupLive'),
-      items: [
-        { name: t('nav.liveTV'), path: '/live-tv', icon: <Tv size={18} />, desc: t('nav.liveTVDesc') },
-        ...(isVip ? [{ name: t('nav.francetv'), path: '/ftv', icon: <Radio size={18} />, desc: t('nav.francetvDesc') }] : []),
-        { name: t('nav.calendar'), path: '/calendar', icon: <CalendarDays size={18} />, desc: t('nav.calendarDesc') },
-      ]
-    },
-    {
-      // Movix hors du site : pour que les visiteurs découvrent les applis.
-      title: t('nav.groupApps'),
-      items: [
-        { name: t('nav.appsExtension'), path: '/extension', icon: <Puzzle size={18} />, desc: t('nav.appsExtensionDesc') },
-        { name: t('nav.appsMobile'), path: '/app', icon: <Smartphone size={18} />, desc: t('nav.appsMobileDesc') },
-        { name: t('nav.appsTv'), path: '/app-tv', icon: <MonitorPlay size={18} />, desc: t('nav.appsTvDesc') },
-      ]
-    },
-    {
-      // Outils du compte d'abord, liens externes en dernier.
-      title: t('nav.groupTools'),
-      items: [
-        ...(hasAdminAccess ? [{ name: t('admin.title'), path: '/admin', icon: <ShieldCheck size={18} />, desc: t('admin.title') }] : []),
-        ...(isVip ? [{ name: t('nav.debrid'), path: '/debrid', icon: <Unlock size={18} />, desc: t('nav.debridDesc') }] : []),
-        { name: t('nav.settings'), path: '/settings', icon: <Settings size={18} />, desc: t('nav.settingsDesc') },
-        { name: t('nav.helpHub'), path: '/help', icon: <HelpCircle size={18} />, desc: t('nav.helpHubDesc') },
-        { name: t('nav.github'), path: 'https://github.com/movixstream/MovixOpenSource', icon: <Github size={18} />, desc: t('nav.githubDesc'), external: true },
-        { name: t('footer.ourUrls'), path: 'https://movix.online', icon: <ExternalLink size={18} />, desc: t('nav.officialLinksDesc'), external: true },
-      ]
-    },
-  ]
-    // Sur TV, les entrées hors périmètre V1 (CinéGraph, Watch Party) mèneraient
-    // à <NotFound /> : on les retire, puis on écarte les groupes vidés.
-    .map(g => ({ ...g, items: g.items.filter(item => !isHiddenOnTv(item.path)) }))
-    .filter(g => g.items.length > 0), [t, isVip, hasAdminAccess]);
 
   // Auth + droits d'administration : l'API reste l'unique autorité.
   useEffect(() => {
@@ -313,31 +235,10 @@ const Header: React.FC = () => {
         if (target.closest('[data-notification-button]') || target.closest('[data-notifications-popup]')) return;
         setShowNotifications(false);
       }
-      // Le menu mobile est rendu en portail : ses clics restent intérieurs (son
-      // voile referme le menu lui-même). Un toucher sur une icône de l'en-tête
-      // ferme le menu et fait son action.
-      if (isExploreOpen
-        && !exploreRef.current?.contains(target)
-        && !exploreSheetRef.current?.contains(target)
-        && !target.closest('[data-explore-trigger]')) {
-        setIsExploreOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications, isExploreOpen]);
-
-  // Échap ferme le menu et rend le focus au bouton qui l'a ouvert.
-  useEffect(() => {
-    if (!isExploreOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      setIsExploreOpen(false);
-      (isDesktopNav ? exploreTriggerRef : burgerRef).current?.focus();
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isExploreOpen, isDesktopNav]);
+  }, [showNotifications]);
 
   // Même chose pour les notifications : focus rendu à la cloche.
   useEffect(() => {
@@ -352,7 +253,6 @@ const Header: React.FC = () => {
   }, [showNotifications]);
 
   // Panneaux plein écran ouverts : la page derrière ne défile plus.
-  useSheetScrollLock(isExploreOpen && !isDesktopNav, exploreOverlayRef);
   useSheetScrollLock(showNotifications && !isDesktopNav, notificationsSheetScrollerRef);
 
   const closeNotifications = useCallback(() => setShowNotifications(false), []);
@@ -374,14 +274,13 @@ const Header: React.FC = () => {
   useEffect(() => {
     clearAutocompleteSuggestions();
     setShowAutocomplete(false);
-    setIsExploreOpen(false);
     setIsMobileSearchOpen(false);
     setShowNotifications(false);
     if (location.pathname !== '/search') setHeaderQuery('');
   }, [location.pathname]);
 
   // Autocomplete dropdown position
-  const prevDropdownPosRef = useRef<{ top: number; left: number } | null>(null);
+  const prevDropdownPosRef = useRef<{ top: number; left: number; width: number } | null>(null);
   const dropdownRafIdRef = useRef<number | null>(null);
   useEffect(() => {
     if (!showAutocomplete) return;
@@ -389,18 +288,17 @@ const Header: React.FC = () => {
     if (!activeInput) return;
     const calcPos = () => {
       const inputRect = activeInput.getBoundingClientRect();
-      const dropdownWidth = Math.min(400, window.innerWidth * 0.92);
-      let left = inputRect.left + inputRect.width / 2 - dropdownWidth / 2;
       const margin = 8;
-      if (left + dropdownWidth > window.innerWidth - margin) left = window.innerWidth - margin - dropdownWidth;
-      if (left < margin) left = margin;
-      const top = inputRect.bottom + 8;
+      const dropdownWidth = Math.min(inputRect.width, window.innerWidth - margin * 2);
+      const left = Math.max(margin, Math.min(inputRect.left, window.innerWidth - margin - dropdownWidth));
+      // Garder un vrai petit espace visuel entre le champ et les suggestions.
+      const top = inputRect.bottom + 12;
       if (dropdownRafIdRef.current != null) cancelAnimationFrame(dropdownRafIdRef.current);
       dropdownRafIdRef.current = requestAnimationFrame(() => {
         dropdownRafIdRef.current = null;
         const prev = prevDropdownPosRef.current;
-        if (prev && prev.top === top && prev.left === left) return;
-        prevDropdownPosRef.current = { top, left };
+        if (prev && prev.top === top && prev.left === left && prev.width === dropdownWidth) return;
+        prevDropdownPosRef.current = { top, left, width: dropdownWidth };
         setDropdownStyle({ position: 'fixed', top, left, width: dropdownWidth });
       });
     };
@@ -460,8 +358,6 @@ const Header: React.FC = () => {
       setIsMobileSearchOpen(false);
     }
   };
-
-  const closeExplore = useCallback(() => setIsExploreOpen(false), []);
 
   return (
     <HeaderPanelsContext.Provider value={headerPanels}>
@@ -563,27 +459,6 @@ const Header: React.FC = () => {
                   </Link>
                 )}
 
-                {/* Explorer reste disponible dans son panneau, sans alourdir la barre principale. */}
-                <button
-                  ref={exploreTriggerRef}
-                  type="button"
-                  data-explore-trigger
-                  aria-expanded={isExploreOpen}
-                  aria-controls={isExploreOpen ? 'explore-menu' : undefined}
-                  onClick={() => setIsExploreOpen(!isExploreOpen)}
-                  className={`hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-[color,background-color,border-color] duration-200 border ${
-                    isExploreOpen
-                      // Ouvert : le liquide du menu le remplit et le borde.
-                      ? 'text-white bg-transparent border-transparent'
-                      : 'text-gray-400 hover:text-white border-white/10 hover:border-white/20 hover:bg-white/5'
-                  }`}
-                >
-                  {halloween ? <HalloweenPumpkinIcon /> : <LayoutGrid size={15} />}
-                  <span>{t('nav.explore')}</span>
-                  {halloween
-                    ? <HalloweenBatIcon className={`transition-transform duration-200 ${isExploreOpen ? 'rotate-180' : ''}`} />
-                    : <ChevronDown size={14} className={`transition-transform duration-200 ${isExploreOpen ? 'rotate-180' : ''}`} />}
-                </button>
               </nav>
 
 
@@ -651,42 +526,10 @@ const Header: React.FC = () => {
                   <ProfileMenu />
                 </div>
 
-                {/* Mobile/Tablet : le panneau Explorer sort de ce rond, de même
-                    taille et de même teinte que lui au départ. 36 px, comme
-                    les autres icônes : la ligne tient encore à 375 px avec la
-                    citrouille. */}
-                <motion.button
-                  ref={burgerRef}
-                  type="button"
-                  className="lg:hidden flex h-9 w-9 shrink-0 items-center justify-center group rounded-full bg-white/[0.07] text-white"
-                  whileTap={{ scale: 0.9 }}
-                  onClick={() => setIsExploreOpen(!isExploreOpen)}
-                  data-explore-trigger
-                  aria-label={t('header.menu')}
-                  aria-expanded={isExploreOpen}
-                  aria-controls={isExploreOpen ? 'explore-menu' : undefined}
-                >
-                  <BurgerIcon open={isExploreOpen} />
-                </motion.button>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Menu Explorer sur ordinateur : il se déroule depuis son bouton. */}
-        <AnimatePresence>
-          {isExploreOpen && isDesktopNav && (
-            <ExploreDesktopPanel
-              key="explore-desktop"
-              groups={exploreGroups}
-              pathname={location.pathname}
-              label={t('nav.explore')}
-              triggerRef={exploreTriggerRef}
-              containerRef={exploreRef}
-              onNavigate={closeExplore}
-            />
-          )}
-        </AnimatePresence>
 
         {/* Notifications sur ordinateur : la cloche se remplit et coule dans
             le menu, calé sur le bord droit de la grille. */}
@@ -713,39 +556,7 @@ const Header: React.FC = () => {
         <div ref={setPanelHost} data-header-panels className="contents" />
       </header>
 
-      {/* Menu Explorer mobile/tablette. Porté dans la racine de surcouches
-          (enfant direct de <body>) plutôt que rendu sur place. Sur place, la
-          chaîne d'ancêtres du menu est #movix-fullscreen-host (`relative
-          overflow-clip`) → #root (`overflow-x: clip`) → body (`position:
-          relative; overflow-x: clip`). C'est la configuration connue pour
-          casser `position: fixed` sur iOS WebKit : le panneau est clippé ou
-          mal dimensionné de façon intermittente selon l'état de la barre
-          d'outils, et la zone qui défile se retrouve avec scrollHeight ==
-          clientHeight — le menu s'affiche mais ne défile plus. Le portail sort
-          des deux `clip` intérieurs et rend le dimensionnement de nouveau
-          relatif au viewport. La zone qui défile a ses quatre bords fixés :
-          aucune chaîne de height:100% que WebKit pourrait résoudre en `auto`. */}
-      {createPortal(
-        <AnimatePresence>
-          {isExploreOpen && !isDesktopNav && (
-            <ExploreMobileSheet
-              key="explore-mobile"
-              groups={exploreGroups}
-              mainItems={mainNavItems}
-              pathname={location.pathname}
-              label={t('nav.explore')}
-              triggerRef={burgerRef}
-              rootRef={exploreSheetRef}
-              scrollerRef={exploreOverlayRef}
-              onClose={closeExplore}
-            />
-          )}
-        </AnimatePresence>,
-        getOverlayPortalRoot(),
-      )}
-
-      {/* Notifications sur mobile et tablette : le rond de la cloche s'étire
-          en panneau, porté dans la même racine que le menu Explorer. */}
+      {/* Notifications sur mobile et tablette : panneau porté dans la racine de surcouches. */}
       {createPortal(
         <AnimatePresence>
           {showNotifications && isAuthenticated && !notificationsDisabled && !isDesktopNav && (

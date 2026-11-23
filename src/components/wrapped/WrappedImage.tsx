@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Film } from 'lucide-react';
+import { Film } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { WRAPPED_POSTER_BORDER_RADIUS } from '@/utils/wrappedPosterGeometry';
 

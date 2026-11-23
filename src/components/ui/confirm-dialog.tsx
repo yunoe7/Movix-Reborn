@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle } from '../icons/Icons8';
 
 import { Button } from './button';
 import ReusableModal from './reusable-modal';

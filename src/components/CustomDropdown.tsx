@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
 import { useLightMode } from '../context/LightModeContext';

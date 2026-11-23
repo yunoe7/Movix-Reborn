@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ExternalLink, Sparkles } from 'lucide-react';
+import { ArrowRight, ExternalLink, Sparkles } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';

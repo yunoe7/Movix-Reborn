@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Settings, Crown, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Plus, Settings, Crown, ShieldCheck, ChevronDown } from '../components/icons/Icons8';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import AvatarSelector from '../components/AvatarSelector';

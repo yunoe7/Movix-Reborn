@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarPlus, Trash2 } from 'lucide-react';
+import { CalendarPlus, Trash2 } from '../icons/Icons8';
 import ReusableModal from '../ui/reusable-modal';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';

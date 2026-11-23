@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { ExternalLink, Clock, Star } from 'lucide-react';
+import { ExternalLink, Clock, Star } from '../components/icons/Icons8';
 import { TMDB_API_KEY } from '../config/config';
 import { useTranslation } from 'react-i18next';
 import { getTmdbLanguage } from '../i18n';

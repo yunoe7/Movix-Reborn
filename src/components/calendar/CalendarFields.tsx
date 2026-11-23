@@ -17,7 +17,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock, Repeat, X } from 'lucide-react';
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock, Repeat, X } from '../icons/Icons8';
 import { parseDateKey, toDateKey } from '../../utils/calendarEntries';
 import type { CalendarRecurrence } from '../../types/calendar';
 import { getOverlayPortalRoot } from '../../utils/overlayPortal';

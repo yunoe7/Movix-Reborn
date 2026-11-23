@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
 import { Trans, useTranslation } from 'react-i18next';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from './icons/Icons8';
 import { SquareBackground } from './ui/square-background';
 import TutoFeedback from './TutoFeedback';
 

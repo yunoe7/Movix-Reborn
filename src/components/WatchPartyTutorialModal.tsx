@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, HelpCircle, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, HelpCircle, Users, ChevronLeft, ChevronRight } from './icons/Icons8';
 import useEmblaCarousel from '@/hooks/useFlexGapEmblaCarousel';
 import { useTranslation } from 'react-i18next';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';

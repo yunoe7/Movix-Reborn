@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, ChevronRight, Copy } from 'lucide-react';
+import { Check, ChevronRight, Copy } from '../icons/Icons8';
 import { cn } from '@/lib/utils';
 import { TV_APP_DOWNLOADER_CODE } from '@/config/tvApp';
 import { SplitFlapCode } from './SplitFlapCode';

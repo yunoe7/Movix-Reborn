@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { MessageCircle } from 'lucide-react';
+import { MessageCircle } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import CommentsSection from '../CommentsSection';
 import LazySection from '../LazySection';

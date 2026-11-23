@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { UserRound, Users } from 'lucide-react';
+import { UserRound, Users } from './icons/Icons8';
 import { Skeleton } from './ui/Skeleton';
 
 import type { DetailCharacter, DetailCharacters } from '../services/detailCharacters';

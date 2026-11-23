@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Eye, EyeOff, Shield, LogIn, UserPlus } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Shield, LogIn, UserPlus } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {

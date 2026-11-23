@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowLeft, Copy, Gift, KeyRound, Loader2, LockKeyhole, ShieldCheck, Sparkles, Unlock } from 'lucide-react';
+import { ArrowLeft, Copy, Gift, KeyRound, Loader2, LockKeyhole, ShieldCheck, Sparkles, Unlock } from '../components/icons/Icons8';
 
 import TurnstileWidget from '../components/TurnstileWidget';
 import AnimatedBorderCard from '../components/ui/animated-border-card';

@@ -5,7 +5,7 @@ import { toast as sonnerToast } from 'sonner';
 import {
     Flag, Trash2, Loader2, RefreshCw, CheckCircle, XCircle, MessageSquare,
     List, Film, Tv, Clock, User, AlertCircle, Scissors
-} from 'lucide-react';
+} from './icons/Icons8';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import {

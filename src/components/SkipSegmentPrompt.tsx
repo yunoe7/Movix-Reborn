@@ -22,7 +22,7 @@
 
 import React, { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SkipForward, X } from 'lucide-react';
+import { SkipForward, X } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { SegmentKind } from '../utils/skipSegmentPrefs';
 import { getPromptBottomRem, readViewportShape } from '../utils/playerPromptOffset';

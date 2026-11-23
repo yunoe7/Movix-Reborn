@@ -1,7 +1,7 @@
 import { forwardRef, useRef, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, useDragControls, useReducedMotionConfig } from 'framer-motion';
-import { Eye, Network, Star, User, X } from 'lucide-react';
+import { Eye, Network, Star, User, X } from '../icons/Icons8';
 
 import { AnimatedBeam } from '@/components/ui/animated-beam';
 import { AvatarGroup, AvatarGroupTooltip } from '@/components/ui/avatar-group';

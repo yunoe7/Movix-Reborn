@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Video, Star, Calendar, List, Check, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
+import { Loader, Video, Star, Calendar, List, Check, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
@@ -1829,6 +1829,31 @@ const TVDetails: React.FC = () => {
     }
   }, [useAnimeSeasonLayout, animeSeasonCards, selectedSeason]);
 
+  // Les séries classiques doivent afficher leur première saison dès l'ouverture
+  // de la fiche. Auparavant selectedSeason restait null jusqu'au clic sur
+  // « Lecture », ce qui masquait toute la liste des épisodes.
+  // On attend les détails TMDB pour respecter les saisons réellement disponibles
+  // et on conserve la saison demandée dans l'URL lorsqu'elle existe.
+  useEffect(() => {
+    if (useAnimeSeasonLayout) return;
+
+    const seasonNumbers = Object.entries(seasonsDetails)
+      .filter(([, details]) => Array.isArray(details?.episodes) && details.episodes.length > 0)
+      .map(([seasonNumber]) => Number(seasonNumber))
+      .filter((seasonNumber) => Number.isInteger(seasonNumber) && seasonNumber >= 0)
+      .sort((a, b) => a - b);
+
+    if (seasonNumbers.length === 0) return;
+    if (selectedSeason !== null && seasonNumbers.includes(Number(selectedSeason))) return;
+
+    const nextSeason = seasonNumbers.includes(defaultStartSeason)
+      ? defaultStartSeason
+      : seasonNumbers.find((seasonNumber) => seasonNumber > 0) ?? seasonNumbers[0];
+
+    setSelectedSeason(nextSeason);
+    setSelectedEpisode(null);
+  }, [useAnimeSeasonLayout, seasonsDetails, selectedSeason, defaultStartSeason]);
+
   const loadAnimeData = useCallback(async () => {
     if (!tvShow?.name) return;
 
@@ -3238,7 +3263,8 @@ const TVDetails: React.FC = () => {
             synopsis={shouldHide('episodeOverviews')
               ? getMaskedContent(tvShow.overview || '', 'episodeOverviews')
               : tvShow.overview}
-            imageUrl={backdropImage}
+            imageUrl={location.state?.heroImageUrl || backdropImage}
+            imagePosition={location.state?.heroImagePosition || 'center top'}
             fallbackImageUrl={mainPosterUrl}
             genreHref={(genreId) => `/genre/tv/${genreId}`}
             badges={

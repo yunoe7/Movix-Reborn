@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Bell, BellRing, Check, X, Trash2 } from 'lucide-react';
+import { Bell, BellRing, Check, X, Trash2 } from './icons/Icons8';
 import * as apiNotificationService from '../services/apiNotificationService';
 import { ApiNotification, Notification } from '../services/apiNotificationService';
 import { format } from 'date-fns';

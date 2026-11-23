@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Bell, Calendar, Clock } from 'lucide-react';
+import { X, Bell, Calendar, Clock } from './icons/Icons8';
 import { AlertMenuProps, NotifyBeforeDays } from '../types/alerts';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
 

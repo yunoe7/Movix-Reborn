@@ -1,5 +1,5 @@
 import React from 'react';
-import { Gauge, HelpCircle, Radio, ShieldAlert, Zap } from 'lucide-react';
+import { Gauge, HelpCircle, Radio, ShieldAlert, Zap } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import ReusableModal from './ui/reusable-modal';
 

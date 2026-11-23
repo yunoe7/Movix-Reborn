@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { HeartHandshake } from 'lucide-react';
+import { HeartHandshake } from '../components/icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 
 type CostItem = {

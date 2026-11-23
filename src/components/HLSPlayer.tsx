@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { getFrembedBase } from '../utils/frembedConfig';
 import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle, memo, useMemo, useSyncExternalStore } from 'react';
 import type HlsType from 'hls.js';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Rewind, FastForward, Volume1, ChevronRight, PictureInPicture, Users, Loader2, Repeat, Cast, Airplay, Info, X, Copy, Check, Lock, Gauge, Scissors } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, Settings, Rewind, FastForward, Volume1, ChevronRight, PictureInPicture, Users, Loader2, Repeat, Cast, Airplay, Info, X, Copy, Check, Lock, Gauge, Scissors } from './icons/Icons8';
 import { useNavigate } from 'react-router-dom';
 import SkipSegmentPrompt from './SkipSegmentPrompt';
 import SkipTransitionOverlay, { SKIP_FADE_IN_MS, SKIP_FADE_OUT_MS } from './SkipTransitionOverlay';

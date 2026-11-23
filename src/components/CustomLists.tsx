@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from './icons/Icons8';
 import { motion } from 'framer-motion';
 
 interface CustomList {

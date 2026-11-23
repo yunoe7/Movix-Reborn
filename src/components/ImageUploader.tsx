@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Upload, X, Camera } from 'lucide-react';
+import { Upload, X, Camera } from './icons/Icons8';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ImageUploaderProps {

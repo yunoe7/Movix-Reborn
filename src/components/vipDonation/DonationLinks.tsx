@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FolderHeart, KeyRound, LifeBuoy } from 'lucide-react';
+import { FolderHeart, KeyRound, LifeBuoy } from '../icons/Icons8';
 
 import { useVipModal } from '@/context/VipModalContext';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';

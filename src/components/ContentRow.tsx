@@ -1,7 +1,7 @@
 import React from 'react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ImageOff } from './icons/Icons8';
 import ContentRowSkeleton from './skeletons/ContentRowSkeleton';
 import { encodeId } from '../utils/idEncoder';
 import { useAgeRestrictedContent } from '../hooks/useAgeRestrictedContent';

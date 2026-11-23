@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Filter, X, Film, Tv, FolderOpen, SortAsc, SortDesc, Type, Monitor, Share2, CalendarDays } from 'lucide-react';
+import { Search, Filter, X, Film, Tv, FolderOpen, SortAsc, SortDesc, Type, Monitor, Share2, CalendarDays } from './icons/Icons8';
 import InputMask from 'react-input-mask';
 import { useTranslation } from 'react-i18next';
 import CustomDropdown from './CustomDropdown';

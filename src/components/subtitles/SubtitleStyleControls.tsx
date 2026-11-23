@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Minus, Plus, RotateCcw } from 'lucide-react';
+import { Minus, Plus, RotateCcw } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { BgColorPickerPanel } from '@/components/Settings/BgColorPickerPanel';
 import { SubtitlePreview } from '@/components/subtitles/SubtitlePreview';

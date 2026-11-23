@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Eye, EyeOff, Grid3X3, Maximize, Minimize, Play, RotateCcw, Settings, Volume2 } from 'lucide-react';
+import { Eye, EyeOff, Grid3X3, Maximize, Minimize, Play, RotateCcw, Settings, Volume2 } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import {
   calculateSubtitlePlacement,

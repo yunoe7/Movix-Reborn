@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, SlidersHorizontal, LayoutGrid, List, Loader2 } from 'lucide-react';
+import { ArrowLeft, SlidersHorizontal, LayoutGrid, List, Loader2 } from '../components/icons/Icons8';
 import SEO from '../components/SEO';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SquareBackground } from '../components/ui/square-background';

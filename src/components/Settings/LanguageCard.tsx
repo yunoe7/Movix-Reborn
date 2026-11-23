@@ -5,7 +5,7 @@
 // SourceCard : drapeau SVG (react-country-flag) + code + switch + pin + ⚙.
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings } from 'lucide-react';
+import { Settings } from '../icons/Icons8';
 import ReactCountryFlag from 'react-country-flag';
 import { Button } from '../ui/button';
 import { PinButton } from '../ui/PinButton';

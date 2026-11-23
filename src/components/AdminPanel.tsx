@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Lock, Trash2, Plus, Film } from 'lucide-react';
+import { Lock, Trash2, Plus, Film } from './icons/Icons8';
 import { motion } from 'framer-motion';
 
 interface AdminLink {

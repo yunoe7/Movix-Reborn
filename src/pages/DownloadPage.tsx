@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { AlertCircle, Check, Download, Loader, Search, X } from 'lucide-react';
+import { AlertCircle, Check, Download, Loader, Search, X } from '../components/icons/Icons8';
 import { listDownloadLinks, type AdminDownloadLink } from '@/services/downloadLinksService';
 import { useExternalSubtitles } from '@/hooks/useExternalSubtitles';
 import type { SubtitleTrack } from '@/services/subtitles';

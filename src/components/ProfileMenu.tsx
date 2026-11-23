@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
+import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Shield, Star, User } from './icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -37,6 +37,7 @@ import ReferralCodeField from './referral/ReferralCodeField';
 const DEFAULT_AVATAR = 'https://as2.ftcdn.net/v2/jpg/05/89/93/27/1000_F_589932782_vQAEAZhHnq1QCGu5ikwrYaQD0Mmurm0N.webp';
 const DISCORD_LOGO = 'https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a6a49cf127bf92de1e2_icon_clyde_blurple_RGB.png';
 const GOOGLE_LOGO = 'https://www.google.com/images/branding/googleg/1x/googleg_standard_color_128dp.png';
+
 
 type Provider = 'discord' | 'google' | 'bip39' | null;
 type MenuVariant = 'panel' | 'sheet';
@@ -75,7 +76,7 @@ const MenuItem: React.FC<{ variant: MenuVariant; value: string; children: React.
 );
 
 const MenuDivider: React.FC = () => (
-  <li aria-hidden="true" data-sheet-item className="mx-2 my-1.5 h-px bg-[#303030]" />
+  <li aria-hidden="true" data-sheet-item className="mx-2.5 my-2.5 h-px bg-[#303030]" />
 );
 
 const ProfileMenu: React.FC = () => {
@@ -323,8 +324,12 @@ const ProfileMenu: React.FC = () => {
   );
 
   const becomeVipButton = (
-    <LiquidButton tone="gold" onClick={handleOpenVipModal}>
-      <Crown className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+    <LiquidButton
+      tone="gold"
+      onClick={handleOpenVipModal}
+      className="h-12 w-full gap-3 rounded-xl border-[#80611f] bg-[#171717] px-5 text-sm font-semibold tracking-[0.01em] shadow-[inset_0_1px_0_rgba(255,255,255,0.045)]"
+    >
+      <Crown className="h-6 w-6 shrink-0 text-amber-400" aria-hidden="true" />
       <span>{t('vip.becomeVip')}</span>
     </LiquidButton>
   );
@@ -332,25 +337,24 @@ const ProfileMenu: React.FC = () => {
   const navLinks = [
     { to: '/profile?tab=watched', label: t('profile.watched', 'Historique'), Icon: History },
     { to: '/profile?tab=watchlist', label: t('profile.watchlist', 'Ma liste'), Icon: List },
-    { to: '/watchparty/list', label: t('nav.watchParty', 'Watch Party'), Icon: Users },
     { to: '/profile?tab=favorites', label: t('common.favorites'), Icon: Star },
     { to: '/profile', label: t('profile.title'), Icon: User },
   ];
 
   const renderConnected = (variant: MenuVariant) => (
-    <div className={variant === 'panel' ? 'px-2.5 py-2' : 'px-2'}>
-      <div data-sheet-item className="group relative mb-1.5 flex items-center gap-2.5 rounded-lg px-1.5 py-1.5">
+    <div className={variant === 'panel' ? 'px-3 py-2.5' : 'px-2'}>
+      <div data-sheet-item className="group relative mb-2 flex items-center gap-2.5 rounded-lg px-1.5 py-2">
         <img
           src={profileImage}
           alt=""
-          className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/15"
+          className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-white/15"
           onError={onAvatarError}
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-5 text-white">{username}</p>
+          <p className="truncate text-sm font-semibold leading-5 text-white">{username}</p>
           {isVip
             ? vipLine('mt-0.5')
-            : <p className="mt-0.5 truncate text-[11px] text-[#929292]">{providerStatus()}</p>}
+            : <p className="mt-0.5 truncate text-xs text-[#929292]">{providerStatus()}</p>}
         </div>
         {!notificationsDisabled && notificationsTriggerRef && (
           <button
@@ -359,7 +363,10 @@ const ProfileMenu: React.FC = () => {
             data-notification-button
             aria-label={t('notifications.title')}
             aria-expanded={Boolean(notificationsOpen)}
-            onClick={onNotificationsToggle}
+            onClick={() => {
+              close();
+              onNotificationsToggle?.();
+            }}
             className={cn(
               'relative ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
               notificationsOpen ? 'text-white' : 'text-[#929292] hover:bg-white/[0.06] hover:text-white',
@@ -394,12 +401,6 @@ const ProfileMenu: React.FC = () => {
           </MenuItem>
         ))}
         <MenuDivider />
-        <MenuItem variant={variant} value="/settings">
-          <Link to="/settings" onClick={close} className={rowClass(variant)}>
-            <Settings className={ICON_CLASS} aria-hidden="true" />
-            <span>{t('settings.title')}</span>
-          </Link>
-        </MenuItem>
         {canAccessAdminPanel && !isHiddenOnTv('/admin') && (
           <MenuItem variant={variant} value="/admin">
             <Link to="/admin" onClick={close} className={rowClass(variant)}>
@@ -413,12 +414,12 @@ const ProfileMenu: React.FC = () => {
       {/* L'invitation « Devenir VIP » mène à /vip, hors périmètre V1 sur TV ;
           le statut VIP, lui, reste affiché. */}
       {!isVip && showVipButton && (
-        <div data-sheet-item className="px-1 pt-2">
+        <div data-sheet-item className="px-2 pb-1 pt-3">
           {becomeVipButton}
         </div>
       )}
 
-      <div data-sheet-item className="px-1 pb-1 pt-2">
+      <div data-sheet-item className="px-2 pb-1 pt-2.5">
           {/* Déconnexion à maintenir (HoldButton de React Bits) : le rouge
               du site monte en vague dans le bouton, un clic de travers ne
               déconnecte plus. */}
@@ -436,8 +437,8 @@ const ProfileMenu: React.FC = () => {
             holdTime={1200}
             glow={false}
             resetAfter={0}
-            size={variant === 'sheet' ? 'lg' : 'md'}
-            className="w-full text-sm"
+            size="sm"
+            className="w-full min-w-0 rounded-xl px-3 text-xs"
           >
             {t('auth.holdToLogout')}
           </HoldButton>
@@ -468,12 +469,6 @@ const ProfileMenu: React.FC = () => {
       <ReferralCodeField variant="menu" className="pt-2" />
       <div data-sheet-item aria-hidden="true" className="mx-2 mb-1.5 mt-3 h-px bg-white/[0.07]" />
       <MenuList variant={variant}>
-        <MenuItem variant={variant} value="/settings">
-          <Link to="/settings" onClick={close} className={rowClass(variant)}>
-            <Settings className={ICON_CLASS} aria-hidden="true" />
-            <span>{t('settings.title')}</span>
-          </Link>
-        </MenuItem>
       </MenuList>
       {showVipButton && (
         <div data-sheet-item className="pt-2">
@@ -542,7 +537,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="relative isolate w-[240px] overflow-hidden rounded-xl border border-[#303030] bg-[#171717] shadow-[0_18px_48px_rgba(0,0,0,0.55)]"
+              panelClassName="relative isolate w-[272px] max-w-[calc(100vw-24px)] overflow-hidden rounded-2xl border border-[#303030] bg-[#171717] shadow-[0_20px_54px_rgba(0,0,0,0.6)]"
             >
               {renderContent('panel')}
             </LiquidDropdown>

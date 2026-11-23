@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bell, Calendar, Clock, Pencil, Trash2 } from 'lucide-react';
+import { Bell, Calendar, Clock, Pencil, Trash2 } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import CustomDropdown from '@/components/CustomDropdown';
 import { AlertService } from '@/services/alertService';

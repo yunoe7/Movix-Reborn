@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { useTranslation } from 'react-i18next';
-import { Star, Calendar } from 'lucide-react';
+import { Star, Calendar } from './icons/Icons8';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';

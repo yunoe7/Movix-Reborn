@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Clapperboard, Play } from 'lucide-react';
+import { Clapperboard, Play } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { backdropUrl } from './storage';
 import { buttonClass } from './ui';

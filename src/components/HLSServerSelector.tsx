@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Server as ServerIcon } from 'lucide-react';
+import { Server as ServerIcon } from './icons/Icons8';
 
 export interface HLSServerSource {
   url: string;

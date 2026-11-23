@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft, Star } from 'lucide-react';
+import { ArrowLeft, Star } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
@@ -24,6 +24,7 @@ export type DetailHeroProps = {
   genres?: HeroGenre[];
   synopsis?: string | null;
   imageUrl?: string | null;
+  imagePosition?: string;
   fallbackImageUrl?: string | null;
   badges?: ReactNode;
   actions?: ReactNode;
@@ -45,6 +46,7 @@ const DetailHero: React.FC<DetailHeroProps> = ({
   genres = [],
   synopsis,
   imageUrl,
+  imagePosition = 'center center',
   fallbackImageUrl,
   badges,
   actions,
@@ -79,7 +81,7 @@ const DetailHero: React.FC<DetailHeroProps> = ({
           src={background}
           alt=""
           fit="cover"
-          position="center center"
+          position={imagePosition}
           ambient={false}
           loading="eager"
           className="detail-hero__picture"

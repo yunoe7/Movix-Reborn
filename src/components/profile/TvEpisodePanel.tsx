@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ChevronDown, Eye, ListVideo, Trash2, X } from 'lucide-react';
+import { ChevronDown, Eye, ListVideo, Trash2, X } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import type { WatchItem } from './types';
 import { fetchTmdb, readStoredArray, readStoredRecord } from './storage';

@@ -7,7 +7,7 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Info } from 'lucide-react';
+import { Info } from '../icons/Icons8';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { HistoryListResponse } from '@/services/historyService';
 import { watchedFigures } from './historyFormat';

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Trash2, Loader2, RefreshCw, List, AlertCircle, CheckCircle, Sparkles, ExternalLink, Globe
-} from 'lucide-react';
+} from './icons/Icons8';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import ReusableModal from './ui/reusable-modal';

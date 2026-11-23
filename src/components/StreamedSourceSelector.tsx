@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { StreamedPlaybackChoice } from '@/types/streamed';
 import { getStreamedServerChoices, getStreamedServerDetails } from '@/utils/streamedPlayback';

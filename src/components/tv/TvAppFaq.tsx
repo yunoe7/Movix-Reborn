@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import AnimatedBorderCard from '@/components/ui/animated-border-card';
 import { TV_EASE } from './tvMotion';

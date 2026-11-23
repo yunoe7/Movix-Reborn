@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from './icons/Icons8';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';

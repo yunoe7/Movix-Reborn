@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, MessageCircle, Trash2, Send, X, AlertTriangle, Info, ExternalLink, Popcorn, Flag, Bell, BellOff } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Send, X, AlertTriangle, Info, ExternalLink, Popcorn, Flag, Bell, BellOff } from './icons/Icons8';
 import { isPushSupported, isSubscribed as isPushSubscribed, subscribeToPush, getPushPermission } from '../services/pushNotificationService';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';

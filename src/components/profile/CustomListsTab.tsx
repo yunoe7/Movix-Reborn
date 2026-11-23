@@ -22,7 +22,7 @@ import {
   Share2,
   Trash2,
   Tv,
-} from 'lucide-react';
+} from '../icons/Icons8';
 import {
   DndContext,
   DragOverlay,

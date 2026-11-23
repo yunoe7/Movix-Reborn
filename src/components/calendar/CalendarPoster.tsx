@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays } from '../icons/Icons8';
 
 const TMDB_IMAGE = 'https://image.tmdb.org/t/p';
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Copy, Share2, Gift, Users, BadgeCheck, Sparkles, Film } from 'lucide-react';
+import { Copy, Share2, Gift, Users, BadgeCheck, Sparkles, Film } from '../icons/Icons8';
 import { toast } from 'sonner';
 import { copyText } from '@/utils/clipboard';
 import { Button } from '@/components/profile/ui';

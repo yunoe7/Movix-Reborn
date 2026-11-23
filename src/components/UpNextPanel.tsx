@@ -26,7 +26,7 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import type { PanInfo } from 'framer-motion';
-import { Play, X, Eye } from 'lucide-react';
+import { Play, X, Eye } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { useLightMode } from '../context/LightModeContext';
 import { readViewportShape, resolveUpNextShape } from '../utils/playerPromptOffset';

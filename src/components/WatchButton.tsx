@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Check, Star, List } from 'lucide-react';
+import { Plus, Check, Star, List } from './icons/Icons8';
 import { motion } from 'framer-motion';
 
 interface WatchButtonProps {

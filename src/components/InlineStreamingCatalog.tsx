@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import EmblaCarousel from './EmblaCarousel';
 import { getTmdbLanguage } from '../i18n';

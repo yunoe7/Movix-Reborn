@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '../icons/Icons8';
 import { useLightMode } from '@/context/LightModeContext';
 
 const EASE_OUT = [0.23, 1, 0.32, 1] as const;

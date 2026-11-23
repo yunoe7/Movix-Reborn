@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { Plus } from 'lucide-react';
+import { Plus } from './icons/Icons8';
 import AddToListMenu from './AddToListMenu';
 
 interface AddToListButtonProps {

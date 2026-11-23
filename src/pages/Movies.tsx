@@ -7,7 +7,7 @@ import CatalogSkeleton from '../components/skeletons/CatalogSkeleton';
 import EmblaCarouselGenres from '../components/EmblaCarouselGenres';
 import LazySection from '../components/LazySection';
 import CarouselTitle from '../components/CarouselTitle';
-import { Flame, Compass } from 'lucide-react';
+import { Flame, Compass } from '../components/icons/Icons8';
 
 import TelegramPromotion from '../components/TelegramPromotion';
 import { useWrappedTracker } from '../hooks/useWrappedTracker';

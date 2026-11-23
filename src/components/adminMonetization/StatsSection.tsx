@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowDownRight, ArrowUpRight, BarChart3, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, BarChart3, Loader2, RefreshCw } from '../icons/Icons8';
 import type { TFunction } from 'i18next';
 
 import { cn } from '@/lib/utils';

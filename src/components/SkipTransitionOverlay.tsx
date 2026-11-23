@@ -15,7 +15,7 @@
 
 import React, { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SkipForward } from 'lucide-react';
+import { SkipForward } from './icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { SegmentKind } from '../utils/skipSegmentPrefs';
 

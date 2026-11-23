@@ -33,7 +33,7 @@ const loadMpegts = async (): Promise<typeof MpegtsType> => {
   return MpegtsLib;
 };
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, X, Loader2, Volume1, Cast, Airplay, Settings, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Minimize, X, Loader2, Volume1, Cast, Airplay, Settings, ArrowLeft, ExternalLink } from './icons/Icons8';
 import { isExtensionAvailable, fetchFromExtension } from '../utils/extensionProxy';
 import { isLiveTvSourceEnabled, type LiveTvSourceKey } from '../utils/extractionPrefs';
 import {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { AnimatePresence, LayoutGroup, motion, useMotionValue, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Share2, X } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Share2, X } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { WrappedData } from '@/services/wrappedService';
 import { DEFAULT_PUBLIC_DOMAIN } from '@/i18n/currentDomain';

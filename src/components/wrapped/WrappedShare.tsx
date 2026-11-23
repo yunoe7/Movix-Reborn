@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useState, type CSSProperties } from 'react';
-import { ArrowLeft, ChevronDown, Copy, Download, Loader2, Play, Share2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Copy, Download, Loader2, Play, Share2 } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { WrappedShareCardData, WrappedShareFormat, WrappedThemeId } from '@/types/wrapped';

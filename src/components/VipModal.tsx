@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Crown } from 'lucide-react';
+import { X, Crown } from './icons/Icons8';
 import AccessCodeForm from './AccessCodeForm';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { PauseCircle } from 'lucide-react';
+import { PauseCircle } from '../icons/Icons8';
 
 // Squelette léger affiché dans la carte de don pendant le chargement des
 // réglages : mêmes blocs que le formulaire, pour éviter un saut de mise en page.

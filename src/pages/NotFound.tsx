@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { ArrowLeft, Search, Clapperboard, Drama, RotateCcw, EyeOff, Ticket } from 'lucide-react';
+import { ArrowLeft, Search, Clapperboard, Drama, RotateCcw, EyeOff, Ticket } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useLightMode } from '@/context/LightModeContext';

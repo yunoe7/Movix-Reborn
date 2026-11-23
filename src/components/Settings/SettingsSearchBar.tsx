@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { rankSettingsSearch, type SettingsSearchItem } from '@/utils/settingsSearch';
 

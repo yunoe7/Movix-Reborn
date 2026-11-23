@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, LayoutGroup, motion, useMotionValueEvent, useScroll } from 'framer-motion';
-import { ArrowRight, BookOpen, Cast, Flame, Tv, type LucideIcon } from 'lucide-react';
+import { ArrowRight, BookOpen, Cast, Flame, Tv, type LucideIcon } from '../icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { TV_APP_DOWNLOADER_CODE } from '@/config/tvApp';
