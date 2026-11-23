@@ -1,6 +1,6 @@
 import { memo, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ChevronUp, Film, Link2, Star, Tv2, User, ZoomIn } from 'lucide-react';
+import { ChevronUp, Film, Link2, Star, Tv2, User, ZoomIn } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import type { CineMap, EntityType, MapItem, MapZone } from '@/services/cineGraph/types';
