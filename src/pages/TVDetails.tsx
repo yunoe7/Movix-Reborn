@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
 import { Loader, Video, Star, Calendar, List, Check, FolderPlus, ChevronRight, AlertTriangle, Play, X, Download, Shield, EyeOff, Sparkles, Tv, Search, ArrowDownUp, LayoutGrid } from 'lucide-react';
@@ -348,6 +348,7 @@ const TVDetails: React.FC = () => {
   const { id: encodedId } = useParams<{ id: string }>();
   const id = encodedId ? getTmdbId(encodedId) : null;
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentProfile } = useProfile();
 
   // Track page visit for Movix Wrapped
@@ -1470,7 +1471,7 @@ const TVDetails: React.FC = () => {
               whileHover={{ y: -2, scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              onClick={() => navigate(`/download/tv/${tvShow?.id}?season=${resumeData.seasonNumber || defaultStartSeason}&episode=${resumeData.episodeNumber || 1}`)}
+              onClick={() => navigate(`/download/tv/${tvShow?.id}?season=${resumeData.seasonNumber || defaultStartSeason}&episode=${resumeData.episodeNumber || 1}`, { state: { backgroundLocation: location } })}
               className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
               <Download className="h-5 w-5 flex-shrink-0 text-white" />
@@ -2600,7 +2601,7 @@ const TVDetails: React.FC = () => {
                         data-testid={`episode-download-${selectedSeason}-${episodeNumber}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${episodeNumber}`);
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${episodeNumber}`, { state: { backgroundLocation: location } });
                         }}
                         className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
                       >
