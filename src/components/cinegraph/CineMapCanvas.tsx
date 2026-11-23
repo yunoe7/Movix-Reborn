@@ -18,7 +18,7 @@ import {
   type NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/base.css';
-import { Expand, LocateFixed, Shrink, ZoomIn, ZoomOut } from 'lucide-react';
+import { Expand, LocateFixed, Shrink, ZoomIn, ZoomOut } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import type { CineMap, MapItem, ZoneKind } from '@/services/cineGraph/types';
