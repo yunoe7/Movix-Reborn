@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ListOrdered, GripVertical, Pin, Settings, RotateCcw } from 'lucide-react';
+import { ListOrdered, GripVertical, Pin, Settings, RotateCcw } from '../../components/icons/Icons8';
 import TutoLayout, { TutoSection } from '../../components/TutoLayout';
 
 const inlineIconClass =
