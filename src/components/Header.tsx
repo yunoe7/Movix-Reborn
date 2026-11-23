@@ -87,10 +87,10 @@ const Header: React.FC = () => {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
 
   const [headerQuery, setHeaderQuery] = useState('');
+  const [autocompleteType, setAutocompleteType] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
   const exploreRef = useRef<HTMLDivElement>(null);
   const exploreSheetRef = useRef<HTMLDivElement>(null);
   const exploreOverlayRef = useRef<HTMLDivElement>(null);
@@ -102,8 +102,17 @@ const Header: React.FC = () => {
   // par ProfileMenu, en portail) : sous la ligne d'icônes, comme Explorer.
   const [panelHost, setPanelHost] = useState<HTMLDivElement | null>(null);
   const headerPanels = useMemo<HeaderPanels>(
-    () => ({ host: panelHost, onProfileOpenChange: setIsProfileOpen, onCommunityOpenChange: setIsCommunityOpen }),
-    [panelHost],
+    () => ({
+      host: panelHost,
+      onProfileOpenChange: setIsProfileOpen,
+      onCommunityOpenChange: setIsCommunityOpen,
+      notificationsTriggerRef,
+      onNotificationsToggle: () => setShowNotifications((open) => !open),
+      notificationsOpen: showNotifications,
+      notificationsUnreadCount: unreadCount,
+      notificationsDisabled,
+    }),
+    [panelHost, showNotifications, unreadCount, notificationsDisabled],
   );
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const location = useLocation();
@@ -117,6 +126,14 @@ const Header: React.FC = () => {
     clearAutocompleteSuggestions
   } = useSearch();
   const { items: ageFilteredAutocomplete } = useAgeRestrictedContent(autocompleteSuggestions);
+
+  const filteredAutocomplete = useMemo(() => ageFilteredAutocomplete.filter((item: any) => {
+    const isAnime = (item.genre_ids || []).includes(16) && (item.original_language === 'ja' || (item.origin_country || []).includes('JP'));
+    if (autocompleteType === 'anime') return isAnime;
+    if (autocompleteType === 'movie') return item.media_type === 'movie' && !isAnime;
+    if (autocompleteType === 'tv') return item.media_type === 'tv' && !isAnime;
+    return true;
+  }), [ageFilteredAutocomplete, autocompleteType]);
 
   // Navigation compacte façon plateforme cinéma : accueil, catégories, recherche.
   const mainNavItems = useMemo(() => [
@@ -292,9 +309,9 @@ const Header: React.FC = () => {
       // Le menu des notifications (déroulant ou panneau mobile) porte
       // data-notifications-popup : ses clics, liquide compris, restent
       // intérieurs.
-      if (showNotifications && notificationsRef.current) {
+      if (showNotifications) {
         if (target.closest('[data-notification-button]') || target.closest('[data-notifications-popup]')) return;
-        if (!notificationsRef.current.contains(target)) setShowNotifications(false);
+        setShowNotifications(false);
       }
       // Le menu mobile est rendu en portail : ses clics restent intérieurs (son
       // voile referme le menu lui-même). Un toucher sur une icône de l'en-tête
@@ -629,39 +646,6 @@ const Header: React.FC = () => {
                   </motion.button>
                 )}
 
-                {/* Notifications : le menu coule de la cloche (rond de 36 px),
-                    voir plus bas. Sur ordinateur, pas d'enfoncement au clic :
-                    le liquide prend la mesure du bouton à l'ouverture. */}
-                {isAuthenticated && !notificationsDisabled && (
-                  <div className="relative" ref={notificationsRef}>
-                    <motion.button
-                      ref={notificationsTriggerRef}
-                      type="button"
-                      data-notification-button
-                      aria-label={t('notifications.title')}
-                      aria-expanded={showNotifications}
-                      className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors ${showNotifications ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                      whileTap={isDesktopNav ? undefined : { scale: 0.9 }}
-                      onClick={() => setShowNotifications(!showNotifications)}
-                    >
-                      <Bell size={20} />
-                      {/* La lanterne pend sous la cloche, là où coule le menu. */}
-                      {/* Elle s'efface avant que le liquide la couvre, et ne
-                          revient qu'une fois le panneau rentré (300 ms). */}
-                      {halloween && (
-                        <HalloweenLantern
-                          className={`transition-opacity motion-reduce:transition-none ${showNotifications || isSheetOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-300 duration-150'}`}
-                        />
-                      )}
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 bg-red-600 text-white text-[10px] rounded-full h-4 min-w-4 flex items-center justify-center px-1 font-bold">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
-                    </motion.button>
-                  </div>
-                )}
-
                 {/* Profile */}
                 <div className="flex items-center cursor-pointer relative shrink-0">
                   <ProfileMenu />
@@ -795,13 +779,21 @@ const Header: React.FC = () => {
             transition={{ duration: 0.15 }}
           >
             <div className="py-2">
+              <div className="flex items-center gap-1 px-2 pb-2" role="tablist" aria-label={t('search.filterByType', 'Filtrer par type')}>
+                {([{ value: 'all', label: t('common.all', 'Tous') }, { value: 'movie', label: t('nav.movies', 'Films') }, { value: 'tv', label: t('nav.tvShows', 'Séries') }, { value: 'anime', label: 'Anime' }] as const).map((tab) => (
+                  <button key={tab.value} type="button" role="tab" aria-selected={autocompleteType === tab.value} onClick={() => setAutocompleteType(tab.value)}
+                    className={'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ' + (autocompleteType === tab.value ? 'bg-[#383838] text-white' : 'text-white/55 hover:bg-white/[0.06] hover:text-white/85')}>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
               {loadingAutocomplete ? (
                 <div className="flex justify-center items-center py-4">
                   <div className="w-5 h-5 border-2 border-gray-600 border-t-red-600 rounded-full animate-spin" />
                 </div>
-              ) : (
+              ) : filteredAutocomplete.length > 0 ? (
                 <ul>
-                  {ageFilteredAutocomplete.map((item: any) => (
+                  {filteredAutocomplete.map((item: any) => (
                     <li key={item.id} className="px-2">
                       <button
                         className="w-full flex items-center py-2 px-3 hover:bg-white/5 rounded-lg transition-colors"
@@ -854,6 +846,8 @@ const Header: React.FC = () => {
                     </Link>
                   </li>
                 </ul>
+              ) : (
+                <p className="px-4 py-5 text-center text-xs text-white/40">{t('search.noResults', 'Aucun résultat dans cette catégorie')}</p>
               )}
             </div>
           </motion.div>

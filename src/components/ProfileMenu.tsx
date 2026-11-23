@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
+import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Settings, Shield, Star, User, Users } from 'lucide-react';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -18,7 +18,6 @@ import { readLocalStorage } from '../utils/browserStorage';
 import { API_BASE_URL } from '../config/api';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
 import { useIsDesktopNav } from '../hooks/useIsDesktopNav';
-import { HoverHighlight, HoverHighlightItem } from './ui/hover-highlight';
 import { LiquidButton } from './ui/liquid-button';
 import HoldButton from './ui/hold-button';
 import { LiquidDropdown, LiquidSheet } from './header/liquidMenu';
@@ -55,32 +54,28 @@ const onAvatarError = (event: React.SyntheticEvent<HTMLImageElement>) => {
 
 // Couleur pleine et opacité sur l'icône seule : une couleur translucide
 // éclaircirait les croisements de ses tracés.
-const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/50 transition-colors duration-200 group-hover:text-white group-hover:opacity-100';
+const ICON_CLASS = 'h-[17px] w-[17px] shrink-0 text-[#929292] transition-colors duration-150 group-hover:text-white';
 // Fond de survol simple du panneau mobile, seulement avec une souris
 // (fenêtre étroite sur ordinateur) : au toucher, il resterait accroché.
-const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.055] [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045)]';
+const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.045]';
 
 const rowClass = (variant: MenuVariant, extra?: string) => cn(
-  'group relative flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[color,background-color,box-shadow,transform] duration-200 active:scale-[0.99] active:bg-white/[0.07] focus-visible:ring-1 focus-visible:ring-[#9caeff]/70 focus-visible:ring-offset-1 focus-visible:ring-offset-[#101116]',
-  variant === 'sheet' ? cn('py-3 text-base', SHEET_HOVER) : 'py-2.5 text-sm hover:bg-[linear-gradient(100deg,rgba(117,139,255,0.11),rgba(255,255,255,0.025)_58%,rgba(181,133,255,0.07))] hover:shadow-[inset_0_0_0_1px_rgba(185,196,255,0.075)]',
+  'group relative flex w-full items-center gap-3 rounded-lg px-2.5 text-left outline-none transition-colors duration-150 active:bg-white/[0.07] focus-visible:ring-1 focus-visible:ring-white/40',
+  variant === 'sheet' ? cn('py-3 text-sm', SHEET_HOVER) : 'py-2.5 text-sm hover:bg-white/[0.055]',
   extra ?? 'text-white/85',
 );
 
 /** Liste du menu : sur ordinateur, un même fond glisse de ligne en ligne. */
 const MenuList: React.FC<{ variant: MenuVariant; className?: string; children: React.ReactNode }> = ({ variant, className, children }) => (
-  variant === 'panel'
-    ? <HoverHighlight className="rounded-xl bg-white/[0.06]"><ul className={className}>{children}</ul></HoverHighlight>
-    : <ul className={className}>{children}</ul>
+  <ul className={cn('space-y-0.5', variant === 'panel' ? 'py-0' : 'py-1', className)}>{children}</ul>
 );
 
 const MenuItem: React.FC<{ variant: MenuVariant; value: string; children: React.ReactNode }> = ({ variant, value, children }) => (
-  variant === 'panel'
-    ? <HoverHighlightItem itemValue={value}>{children}</HoverHighlightItem>
-    : <li data-sheet-item>{children}</li>
+  <li data-sheet-item data-menu-value={value} data-menu-variant={variant}>{children}</li>
 );
 
 const MenuDivider: React.FC = () => (
-  <li aria-hidden="true" data-sheet-item className="mx-3 my-1.5 h-px bg-white/[0.07]" />
+  <li aria-hidden="true" data-sheet-item className="mx-2 my-1.5 h-px bg-[#303030]" />
 );
 
 const ProfileMenu: React.FC = () => {
@@ -88,7 +83,7 @@ const ProfileMenu: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isDesktopNav = useIsDesktopNav();
-  const { host: panelHost, onProfileOpenChange } = useContext(HeaderPanelsContext);
+  const { host: panelHost, onProfileOpenChange, notificationsTriggerRef, onNotificationsToggle, notificationsOpen, notificationsUnreadCount = 0, notificationsDisabled } = useContext(HeaderPanelsContext);
   const menuId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -343,20 +338,41 @@ const ProfileMenu: React.FC = () => {
   ];
 
   const renderConnected = (variant: MenuVariant) => (
-    <div className={variant === 'panel' ? 'p-2' : undefined}>
-      <div data-sheet-item className="group relative isolate mb-2 flex items-center gap-3 overflow-hidden rounded-[17px] border border-white/[0.10] bg-[linear-gradient(118deg,rgba(91,112,205,0.17),rgba(255,255,255,0.045)_46%,rgba(143,98,191,0.12))] px-3.5 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.10),0_10px_30px_rgba(0,0,0,0.20)] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(ellipse_at_0%_0%,rgba(125,151,255,0.20),transparent_62%),radial-gradient(ellipse_at_100%_100%,rgba(167,117,255,0.10),transparent_58%)] after:pointer-events-none after:absolute after:inset-x-4 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/25 after:to-transparent">
+    <div className={variant === 'panel' ? 'px-2.5 py-2' : 'px-2'}>
+      <div data-sheet-item className="group relative mb-1.5 flex items-center gap-2.5 rounded-lg px-1.5 py-1.5">
         <img
           src={profileImage}
           alt=""
-          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-white/45 ring-offset-[3px] ring-offset-[#111214] shadow-[0_0_0_1px_rgba(132,153,255,0.18),0_0_26px_rgba(120,145,255,0.28)] transition-[box-shadow,transform] duration-300 group-hover:scale-[1.025]"
+          className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/15"
           onError={onAvatarError}
         />
-        <div className="min-w-0">
-          <p className="truncate text-[15px] font-semibold tracking-[-0.025em] leading-5 text-white [text-shadow:0_1px_12px_rgba(255,255,255,0.12)]">{username}</p>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold leading-5 text-white">{username}</p>
           {isVip
             ? vipLine('mt-0.5')
-            : <p className="mt-0.5 truncate text-xs text-white/45">{providerStatus()}</p>}
+            : <p className="mt-0.5 truncate text-[11px] text-[#929292]">{providerStatus()}</p>}
         </div>
+        {!notificationsDisabled && notificationsTriggerRef && (
+          <button
+            ref={notificationsTriggerRef}
+            type="button"
+            data-notification-button
+            aria-label={t('notifications.title')}
+            aria-expanded={Boolean(notificationsOpen)}
+            onClick={onNotificationsToggle}
+            className={cn(
+              'relative ml-auto flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors',
+              notificationsOpen ? 'text-white' : 'text-[#929292] hover:bg-white/[0.06] hover:text-white',
+            )}
+          >
+            <Bell className="h-[17px] w-[17px]" aria-hidden="true" />
+            {notificationsUnreadCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+                {notificationsUnreadCount > 9 ? '9+' : notificationsUnreadCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       <MenuList variant={variant}>
@@ -412,9 +428,9 @@ const ProfileMenu: React.FC = () => {
             icon={<LogOut className="h-4 w-4" aria-hidden="true" />}
             doneIcon={<LogOut className="h-4 w-4" aria-hidden="true" />}
             doneLabel={t('auth.logout')}
-            backgroundColor="rgba(255, 255, 255, 0.04)"
+            backgroundColor="rgba(255, 255, 255, 0)"
             fillColor="#dc2626"
-            textColor="rgba(255, 255, 255, 0.75)"
+            textColor="#ef4444"
             fillTextColor="#ffffff"
             radius={12}
             holdTime={1200}
@@ -526,7 +542,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="relative isolate w-72 overflow-hidden rounded-[22px] border border-white/[0.12] bg-[#0d0f16]/95 shadow-[0_32px_90px_rgba(0,0,0,0.72),0_10px_30px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.09)] ring-1 ring-inset ring-white/[0.025] backdrop-blur-2xl before:pointer-events-none before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/35 before:to-transparent after:pointer-events-none after:absolute after:inset-0 after:-z-10 after:bg-[radial-gradient(ellipse_at_0%_0%,rgba(105,132,255,0.20),transparent_56%),radial-gradient(ellipse_at_100%_12%,rgba(163,112,222,0.13),transparent_50%),linear-gradient(145deg,rgba(255,255,255,0.018),transparent_42%)]"
+              panelClassName="relative isolate w-[240px] overflow-hidden rounded-xl border border-[#303030] bg-[#171717] shadow-[0_18px_48px_rgba(0,0,0,0.55)]"
             >
               {renderContent('panel')}
             </LiquidDropdown>
