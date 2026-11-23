@@ -17,7 +17,7 @@ import {
   Trash2,
   Upload,
   X,
-} from 'lucide-react';
+} from './icons/Icons8';
 
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
