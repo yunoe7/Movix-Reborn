@@ -101,3 +101,10 @@ export const X = (p: Omit<Props, 'name'>) => <Icons8Icon name="close" {...p} />;
 export const Lightbulb = (p: Omit<Props, 'name'>) => <Icons8Icon name="info" {...p} />;
 
 export const Network = (p: Omit<Props, 'name'>) => <Icons8Icon name="network" {...p} />;
+
+export const ArrowUpRight = (p: Omit<Props, 'name'>) => <Icons8Icon name="arrow-up-right" {...p} />;
+export const BellRing = Bell;
+export const Check = (p: Omit<Props, 'name'>) => <Icons8Icon name="check" {...p} />;
+export const Trash2 = (p: Omit<Props, 'name'>) => <Icons8Icon name="trash" {...p} />;
+export const ChevronLeft = (p: Omit<Props, 'name'>) => <Icons8Icon name="chevron-left" {...p} />;
+export const ChevronRight = (p: Omit<Props, 'name'>) => <Icons8Icon name="chevron-right" {...p} />;
