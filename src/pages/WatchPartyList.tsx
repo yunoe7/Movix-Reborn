@@ -6,7 +6,6 @@ import {
   RefreshCw, Users, Film, Tv, Loader2
 } from 'lucide-react';
 import WatchPartyTutorialModal from '../components/WatchPartyTutorialModal';
-import JoinPartyModal from '../components/JoinPartyModal';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { WATCHPARTY_API } from '../config/runtime';
@@ -34,7 +33,6 @@ const WatchPartyList: React.FC = () => {
   const [error, setError] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
-  const [showJoinModal, setShowJoinModal] = useState(false);
 
   const fetchPublicParties = async () => {
     try {
@@ -139,7 +137,6 @@ const WatchPartyList: React.FC = () => {
         </section>
       </div>
       <WatchPartyTutorialModal isOpen={showTutorial} onClose={() => setShowTutorial(false)} />
-      <JoinPartyModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} />
     </main>
   );
 };
