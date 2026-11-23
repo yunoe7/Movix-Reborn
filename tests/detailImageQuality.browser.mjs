@@ -226,9 +226,15 @@ async function fulfillFixtureRoute(route) {
   const url = new URL(route.request().url());
   if (url.hostname === 'details.test') {
     const name = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
+    const body = await readFile(path.join(work, name))
+      .catch(() => readFile(path.join(repo, 'public', name)));
     await route.fulfill({
-      contentType: name.endsWith('.js') ? 'text/javascript' : name.endsWith('.css') ? 'text/css' : 'text/html',
-      body: await readFile(path.join(work, name)),
+      contentType: name.endsWith('.js') ? 'text/javascript'
+        : name.endsWith('.css') ? 'text/css'
+          : name.endsWith('.png') ? 'image/png'
+            : name.endsWith('.svg') ? 'image/svg+xml'
+              : 'text/html',
+      body,
     });
     return;
   }
@@ -276,58 +282,29 @@ async function openDetails(kind, mode) {
   await page.addInitScript(quality => localStorage.setItem('settings_image_quality', quality), mode);
   const routePath = kind === 'movie' ? '/movie/42' : '/tv/84';
   await page.goto(`http://details.test/?path=${encodeURIComponent(routePath)}`);
-  const title = kind === 'movie' ? movie.title : tv.name;
-  const posterPath = kind === 'movie' ? movie.poster_path : tv.poster_path;
-  const poster = page.locator(`img[alt=${JSON.stringify(title)}]`).first();
-  await poster.waitFor();
-  await page.waitForFunction(selector => {
-    const node = document.querySelector(selector);
+  const backdropPath = kind === 'movie' ? movie.backdrop_path : tv.backdrop_path;
+  const heroImage = page.locator('.detail-hero__picture img').first();
+  await heroImage.waitFor();
+  await page.waitForFunction(() => {
+    const node = document.querySelector('.detail-hero__picture img');
     return node instanceof HTMLImageElement && node.complete && node.naturalWidth > 0;
-  }, `img[alt=${JSON.stringify(title)}]`);
-  const posterUrl = await poster.getAttribute('src');
-  const posterCssWidth = await poster.evaluate(node => node.getBoundingClientRect().width);
-  const backdropStyle = await page.locator('div.fixed.inset-0[aria-hidden="true"]').first().getAttribute('style');
-  assert.ok(posterUrl?.includes(expected[mode].poster), `${kind}/${mode}: poster ${posterUrl}`);
-  assert.ok(posterUrl?.endsWith(posterPath), `${kind}/${mode}: chemin poster`);
+  });
+  const heroImageUrl = await heroImage.getAttribute('src');
+  const heroCssWidth = await heroImage.evaluate(node => node.getBoundingClientRect().width);
+  const backdropStyle = await page.locator('.detail-hero__ambient').first().getAttribute('style');
+  assert.ok(heroImageUrl?.includes(expected[mode].backdrop), `${kind}/${mode}: image nette ${heroImageUrl}`);
+  assert.ok(heroImageUrl?.endsWith(backdropPath), `${kind}/${mode}: chemin du fond`);
   assert.ok(backdropStyle?.includes(expected[mode].backdrop), `${kind}/${mode}: fond ${backdropStyle}`);
 
-  const row = { kind, mode, posterUrl, posterCssWidth, backdropStyle, errors };
-  if (kind === 'movie') {
-    const imageTab = page.getByRole('button', { name: 'details.imagesTab' }).first();
-    await imageTab.click();
-    await page.getByRole('tab', { name: /details\.posters/ }).click();
-    const galleryPoster = page.locator('img[alt="posters 1"]').first();
-    await galleryPoster.waitFor();
-    await galleryPoster.scrollIntoViewIfNeeded();
-    await page.waitForFunction(() => document.querySelector('img[alt="posters 1"]')?.getAttribute('srcset'));
-    row.galleryPoster = await galleryPoster.evaluate(node => ({
-      src: node.getAttribute('src'),
-      srcset: node.getAttribute('srcset'),
-      sizes: node.getAttribute('sizes'),
-      currentSrc: node.currentSrc,
-    }));
-  } else {
+  const row = { kind, mode, heroImageUrl, heroCssWidth, backdropStyle, errors };
+  if (kind === 'tv') {
     const seasonPoster = page.locator('img[alt="Saison 1 Fixture"]').first();
     await seasonPoster.waitFor();
     row.seasonPosterUrl = await seasonPoster.getAttribute('src');
     row.seasonPosterCssWidth = await seasonPoster.evaluate(node => node.getBoundingClientRect().width);
-    const expectedSeason = mode === 'high' ? '/w500/' : '/w342/';
+    const expectedSeason = mode === 'high' ? '/w780/' : mode === 'auto' ? '/w500/' : '/w342/';
     expectIncludes(row.seasonPosterUrl, expectedSeason, `tv/${mode}: poster de saison dimensionné sur le conteneur réel`);
   }
-
-  const imageTabForLogo = page.getByRole('button', { name: 'details.imagesTab' }).first();
-  if (kind === 'tv') await imageTabForLogo.click();
-  await page.getByRole('tab', { name: /details\.logos/ }).click();
-  const galleryLogo = page.locator('img[alt="logos 1"]').first();
-  await galleryLogo.waitFor();
-  await galleryLogo.scrollIntoViewIfNeeded();
-  await page.waitForFunction(() => document.querySelector('img[alt="logos 1"]')?.complete);
-  row.galleryLogo = await galleryLogo.evaluate(node => ({
-    src: node.getAttribute('src'),
-    cssWidth: node.getBoundingClientRect().width,
-  }));
-  const expectedLogo = mode === 'high' ? '/w500/' : '/w300/';
-  expectIncludes(row.galleryLogo.src, expectedLogo, `${kind}/${mode}: logo galerie dimensionné sur son contenu réel`);
   assert.deepEqual(errors, [], `${kind}/${mode}: erreurs navigateur`);
   await page.screenshot({ path: path.join(artifactDir, `${kind}-${mode}.png`), fullPage: true });
   observations.push(row);
@@ -352,7 +329,7 @@ async function observeTabletEpisode() {
     src: node.getAttribute('src'),
     cssWidth: node.getBoundingClientRect().width,
   }));
-  expectIncludes(observation.src, '/w300/', 'tv/auto tablette DPR2 : image épisode dimensionnée sur le conteneur réel');
+  expectIncludes(observation.src, '/original/', 'tv/auto tablette DPR2 : image épisode complète et nette');
   assert.deepEqual(errors, [], 'tv/auto tablette : erreurs navigateur');
   await page.screenshot({ path: path.join(artifactDir, 'tv-auto-tablet-episode.png'), fullPage: true });
   await tabletContext.close();
@@ -369,9 +346,9 @@ async function writeAuditReport(status) {
     .filter(item => item.kind === kind)
     .map(item => {
       const geometry = kind === 'movie'
-        ? `logo ${variant(item.galleryLogo?.src)} à ${item.galleryLogo?.cssWidth?.toFixed(2) ?? '?'} px CSS`
-        : `logo ${variant(item.galleryLogo?.src)} à ${item.galleryLogo?.cssWidth?.toFixed(2) ?? '?'} px CSS, saison ${variant(item.seasonPosterUrl)} à ${item.seasonPosterCssWidth?.toFixed(2) ?? '?'} px CSS`;
-      return `${item.mode}: poster ${variant(item.posterUrl)}, fond ${variant(item.backdropStyle)}, ${geometry}`;
+        ? `image à ${item.heroCssWidth.toFixed(2)} px CSS`
+        : `image à ${item.heroCssWidth.toFixed(2)} px CSS, saison ${variant(item.seasonPosterUrl)} à ${item.seasonPosterCssWidth?.toFixed(2) ?? '?'} px CSS`;
+      return `${item.mode}: image nette ${variant(item.heroImageUrl)}, fond ${variant(item.backdropStyle)}, ${geometry}`;
     })
     .join(' ; ');
   const report = {
@@ -390,11 +367,9 @@ async function writeAuditReport(status) {
       tv: { id: tv.id, title: tv.name, poster: tv.poster_path, backdrop: tv.backdrop_path, seasonPoster: '/season-poster.jpg' },
     },
     expected: {
-      primaryPoster: expected,
-      galleryPoster: 'economy réduit le srcset; auto et high restent identiques',
-      galleryLogo: { economy: 'w300', auto: 'w300', high: 'w500' },
-      tvSeasonPoster: { economy: 'w342', auto: 'w342', high: 'w500' },
-      tvEpisodeTabletAutoDpr2: 'w300',
+      heroBackdrop: expected,
+      tvSeasonPoster: { economy: 'w342', auto: 'w500', high: 'w780' },
+      tvEpisodeTabletAutoDpr2: 'original',
     },
     observed: observations,
     tabletEpisode,
@@ -411,12 +386,12 @@ async function writeAuditReport(status) {
     '- Données : fiches TMDB simulées Dune, réponses réseau interceptées, aucun serveur.',
     '- Rendu : vraies pages et vraie policy image ; `LightModeContext` et composants sans rapport sont stubés.',
     '- CSS : feuille Tailwind du projet compilée pour mesurer les conteneurs réels.',
-    '- Attendu principal : poster/fond economy = w500/w780, auto = w780/w1280, high = original/original sur DPR 3.',
-    '- Normal : le poster de galerie expose le même `srcset` en auto et high, car le plafond de carte est suffisant.',
+    '- Attendu principal : fond economy = w780, auto = w1280, high = original sur DPR 3 ; l’image nette utilise la même largeur.',
+    '- N’ayant plus d’onglets de galerie, ce contrôle couvre le bandeau, les saisons et les épisodes réellement rendus.',
     `- Observé Movie à 1280 px/DPR 3 : ${summarizeDetails('movie') || 'non observé'}.`,
     `- Observé TV à 1280 px/DPR 3 : ${summarizeDetails('tv') || 'non observé'}.`,
     `- Observé épisode TV à 768 px/DPR 2 : ${variant(tabletEpisode?.src)} à ${tabletEpisode?.cssWidth?.toFixed(2) ?? '?'} px CSS.`,
-    `- Vérifications de dimension réelle : ${expectationFailures.length ? expectationFailures.join(' ; ') : 'logos de galerie, saisons et épisode tablette utilisent la taille attendue.'}`,
+    `- Vérifications de dimension réelle : ${expectationFailures.length ? expectationFailures.join(' ; ') : 'saisons et épisode tablette utilisent la taille attendue.'}`,
     runError ? `- Erreur d’exécution : ${runError}` : '- Erreur d’exécution : aucune.',
     '',
     'Les captures, le bundle autonome dans `fixture/` et `trace.zip` accompagnent ce rapport.',
@@ -429,10 +404,6 @@ try {
     for (const mode of ['economy', 'auto', 'high']) await openDetails(kind, mode);
   }
 
-  const movieModes = Object.fromEntries(observations.filter(item => item.kind === 'movie').map(item => [item.mode, item]));
-  assert.notEqual(movieModes.economy.galleryPoster.srcset, movieModes.auto.galleryPoster.srcset, 'economy réduit le srcset poster galerie');
-  assert.equal(movieModes.auto.galleryPoster.srcset, movieModes.high.galleryPoster.srcset, 'high et auto exposent le même srcset poster galerie');
-  assert.equal(movieModes.auto.galleryPoster.sizes, movieModes.high.galleryPoster.sizes);
   tabletEpisode = await observeTabletEpisode();
   const prematureSlotRequest = imageRequests.find(url => /\/w(?:45|92)\/(?:movie-logo|tv-logo|season-poster|episode-still)\.jpg$/.test(url));
   if (prematureSlotRequest) expectationFailures.push(`requête lancée avant mesure du conteneur : ${prematureSlotRequest}`);

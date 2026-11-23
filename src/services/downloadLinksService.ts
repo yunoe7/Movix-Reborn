@@ -55,8 +55,9 @@ interface BaseParams {
 }
 
 function authHeader() {
+  const token = getAuthToken();
   return {
-    Authorization: `Bearer ${getAuthToken()}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     'Content-Type': 'application/json',
   };
 }

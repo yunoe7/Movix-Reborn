@@ -175,6 +175,9 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
   // until a different source is actually needed. Originals never enter Morph.
   // Une promo garde son image telle quelle (image mobile sur téléphone).
   const mobileLayout = viewport.width < 768;
+  const posterSlides = useMemo(() => slides.map((slide) => (
+    slide.kind === 'media' && !slide.item.backdrop_path && Boolean(slide.item.poster_path)
+  )), [slides]);
   const morphImages = useMemo(() => slides.map((slide) => {
     if (slide.kind === 'promo') {
       return (mobileLayout && slide.promo.mobileImageUrl) || slide.promo.imageUrl;
@@ -599,17 +602,26 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
                   {/* La couverture tient compte de la hauteur sur mobile.
                       Les appareils en mode léger et Morph gardent leurs limites. */}
                   {!isMorph && (
-                    <img
-                      ref={(image) => { backdropRefs.current[idx] = image; }}
-                      src={morphImages[idx] || undefined}
-                      alt={getSlideLabel(slide)}
-                      className={`hero-cinematic-image absolute inset-0 w-full h-full object-cover z-0 ${isActive ? 'is-active' : ''}`}
-                      style={{ objectPosition: getSlideObjectPosition(slide) }}
-                      draggable={false}
-                      loading={isActive || shouldPreload(idx) ? 'eager' : 'lazy'}
-                      decoding="async"
-                      {...{ fetchpriority: isActive ? 'high' : 'low' }}
-                    />
+                    <>
+                      {posterSlides[idx] && morphImages[idx] && (
+                        <div
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-0 z-0 scale-110 bg-cover bg-center opacity-35 blur-2xl"
+                          style={{ backgroundImage: `url("${morphImages[idx]}")` }}
+                        />
+                      )}
+                      <img
+                        ref={(image) => { backdropRefs.current[idx] = image; }}
+                        src={morphImages[idx] || undefined}
+                        alt={getSlideLabel(slide)}
+                        className={`hero-cinematic-image absolute inset-0 w-full h-full ${posterSlides[idx] ? 'object-contain' : 'object-cover'} z-0 ${isActive ? 'is-active' : ''}`}
+                        style={{ objectPosition: getSlideObjectPosition(slide) }}
+                        draggable={false}
+                        loading={isActive || shouldPreload(idx) ? 'eager' : 'lazy'}
+                        decoding="async"
+                        {...{ fetchpriority: isActive ? 'high' : 'low' }}
+                      />
+                    </>
                   )}
 
                   {!isMorph && (

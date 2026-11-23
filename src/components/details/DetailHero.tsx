@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
-import { Star } from 'lucide-react';
+import { ArrowLeft, Star } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
+import CompleteImage from '@/components/media/CompleteImage';
 import './details.css';
 
 type HeroGenre = {
@@ -13,6 +16,7 @@ export type DetailHeroProps = {
   year?: number | string | null;
   rating?: number | null;
   runtime?: string | null;
+  classification?: string | null;
   seasons?: number | null;
   episodes?: number | null;
   seasonLabel?: string;
@@ -33,6 +37,7 @@ const DetailHero: React.FC<DetailHeroProps> = ({
   year,
   rating,
   runtime,
+  classification,
   seasons,
   episodes,
   seasonLabel = 'Seasons',
@@ -46,9 +51,12 @@ const DetailHero: React.FC<DetailHeroProps> = ({
   note,
   genreHref,
 }) => {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const background = imageUrl || fallbackImageUrl || undefined;
+  const backgroundStyle = background ? { backgroundImage: `url("${background.replace(/["\\]/g, '\\$&')}")` } : undefined;
   const hasMeta = Boolean(
-    (typeof rating === 'number' && rating > 0) || year || runtime
+    (typeof rating === 'number' && rating > 0) || year || runtime || classification
     || (seasons && seasons > 0) || (episodes && episodes > 0),
   );
 
@@ -57,7 +65,29 @@ const DetailHero: React.FC<DetailHeroProps> = ({
       aria-label={title}
       className="detail-hero -mx-4 -mt-6 mb-0 w-[calc(100%+2rem)] px-5 pb-10 pt-28 sm:px-8 sm:pb-12 md:-mx-8 md:w-[calc(100%+4rem)] md:px-10 md:pb-14 md:pt-32 lg:-mx-16 lg:w-[calc(100%+8rem)] lg:px-16"
     >
-      <div className="detail-hero__image" style={background ? { backgroundImage: `url("${background}")` } : undefined} />
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="detail-hero__back"
+        aria-label={t('details.goBack')}
+      >
+        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        <span className="hidden sm:inline">{t('details.goBack')}</span>
+      </button>
+
+      <div className="detail-hero__ambient" style={backgroundStyle} aria-hidden="true" />
+      <div className="detail-hero__image">
+        <CompleteImage
+          src={background}
+          alt=""
+          fit="contain"
+          position="center top"
+          ambient={false}
+          loading="eager"
+          className="detail-hero__picture"
+          imageClassName="detail-hero__picture-img"
+        />
+      </div>
       <div className="detail-hero__gradient" aria-hidden="true" />
 
       <div className="detail-hero__content">
@@ -78,6 +108,7 @@ const DetailHero: React.FC<DetailHeroProps> = ({
               )}
               {year && <span>{year}</span>}
               {runtime && <span>{runtime}</span>}
+              {classification && <span className="rounded border border-white/25 px-1.5 py-0.5 text-xs">{classification}</span>}
               {seasons && seasons > 0 && <span>{seasons} {seasonLabel.toLowerCase()}</span>}
               {episodes && episodes > 0 && <span>{episodes} {episodeLabel.toLowerCase()}</span>}
             </div>

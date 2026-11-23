@@ -44,6 +44,7 @@ import DetailHero from '../components/details/DetailHero';
 import DetailCastRail from '../components/details/DetailCastRail';
 import DetailRecommendations from '../components/details/DetailRecommendations';
 import DetailComments from '../components/details/DetailComments';
+import CompleteImage from '../components/media/CompleteImage';
 import type { Media } from '../components/EmblaCarousel';
 import { getClassificationLabel as getClassificationLabelUtil, isContentAllowed } from '../utils/certificationUtils';
 import { useTvAiringSchedule } from '@/hooks/useTvAiringSchedule';
@@ -1469,7 +1470,7 @@ const TVDetails: React.FC = () => {
               whileHover={{ y: -2, scale: 1.015 }}
               whileTap={{ scale: 0.985 }}
               transition={{ type: "spring", stiffness: 400, damping: 17 }}
-              onClick={() => navigate(`/download/tv/${tvShow?.id}`)}
+              onClick={() => navigate(`/download/tv/${tvShow?.id}?season=${resumeData.seasonNumber || defaultStartSeason}&episode=${resumeData.episodeNumber || 1}`)}
               className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
             >
               <Download className="h-5 w-5 flex-shrink-0 text-white" />
@@ -2463,18 +2464,17 @@ const TVDetails: React.FC = () => {
                                 </div>
                               </div>
                             ) : imageSource ? (
-                              <img
+                              <CompleteImage
                                 src={episodeImageFailed ? fallbackSvg : retryUrl}
                                 alt={episodeLabel}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
+                                fit="contain"
+                                ambient={Boolean(episodeStillSource)}
+                                className="absolute inset-0"
+                                onError={() => {
                                   if (!episodeImageFailed) {
                                     setFailedImages(prev => ({ ...prev, [episodeImageKey]: true }));
-                                  } else {
-                                    e.currentTarget.src = fallbackSvg;
                                   }
                                 }}
-                                key={retryUrl}
                               />
                             ) : (
                               <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#24242a] via-[#17171b] to-[#0f0f11] text-white/40">
@@ -2701,18 +2701,17 @@ const TVDetails: React.FC = () => {
                                 ? `${t('details.episode')} ${ep.episode_number}`
                                 : (ep.name || `${t('details.episode')} ${ep.episode_number}`);
                               return (
-                                <img
+                                <CompleteImage
                                   src={hasFailed ? fallbackSvg : retryUrl}
                                   alt={episodeLabel}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
+                                  fit="contain"
+                                  ambient={Boolean(stillSource)}
+                                  className="absolute inset-0"
+                                  onError={() => {
                                     if (!hasFailed) {
                                       setFailedImages(prev => ({ ...prev, [imageKey]: true }));
-                                    } else {
-                                      e.currentTarget.src = fallbackSvg;
                                     }
                                   }}
-                                  key={retryUrl}
                                 />
                               );
                             })()}
@@ -3109,6 +3108,7 @@ const TVDetails: React.FC = () => {
             seasons={tvShow.number_of_seasons}
             episodes={tvShow.number_of_episodes}
             runtime={tvShow.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} ${t('details.minutesLabel')}` : null}
+            classification={contentCert ? getClassificationLabel(contentCert, t) : null}
             seasonLabel={t('details.seasonsLabel')}
             episodeLabel={t('details.episodesLabel')}
             genres={(tvShow.genres || []).map((genre) => ({
@@ -3284,7 +3284,7 @@ const TVDetails: React.FC = () => {
                                     <img
                                       src={hasFailed ? fallbackSvg : retryUrl}
                                       alt={shouldHide('episodeNames') ? `${t('details.season')} ${seasonNumber}` : seasonTitle}
-                                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                      className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                                       onError={(event) => {
                                         if (!hasFailed) {
                                           setFailedImages((previous) => ({ ...previous, [imageKey]: true }));
@@ -3364,7 +3364,7 @@ const TVDetails: React.FC = () => {
                                     <img
                                       src={hasFailed ? fallbackSvg : retryUrl}
                                       alt={shouldHide('episodeNames') ? `${t('details.season')} ${season}` : (details?.name || `${t('details.season')} ${season}`)}
-                                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                      className="absolute inset-0 w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                                       onError={(e) => {
                                         if (!hasFailed) {
                                           setFailedImages(prev => ({ ...prev, [imageKey]: true }));
