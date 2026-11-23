@@ -995,6 +995,7 @@ const TVDetails: React.FC = () => {
     setDropdownMode(null);
     setAnimeEpisodeSearch('');
     setAnimeEpisodeSearchOpen(false);
+    setSeasonPickerOpen(false);
 
     // Scroll vers le bouton de menu déroulant pour qu'il soit au centre de l'écran
     setTimeout(() => {
@@ -2253,6 +2254,7 @@ const TVDetails: React.FC = () => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSeasonPickerOpen(false);
               }}>
                 <button
+                  ref={dropdownToggleButtonRef}
                   type="button"
                   aria-haspopup="listbox"
                   aria-expanded={seasonPickerOpen}
@@ -3019,7 +3021,6 @@ const TVDetails: React.FC = () => {
   const measuredDetailsWidth = Math.max(1, detailsMediaSlot.width);
   const gridCardWidth = (columns: number) => Math.max(1, (measuredDetailsWidth - 16 * (columns - 1)) / columns);
   const episodeCardCssWidth = gridCardWidth(viewportWidth < 768 ? 1 : viewportWidth < 1024 ? 3 : 4);
-  const seasonCardCssWidth = gridCardWidth(viewportWidth < 640 ? 2 : viewportWidth < 768 ? 3 : viewportWidth < 1024 ? 4 : 5);
 
   return (
     <MotionConfig reducedMotion="user">
