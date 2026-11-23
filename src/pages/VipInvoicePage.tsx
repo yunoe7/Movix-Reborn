@@ -5,28 +5,11 @@ import { Trans, useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { toast } from 'sonner';
 import {
-  AlertTriangle,
-  ArrowLeft,
-  Bookmark,
-  CheckCircle2,
-  Clock3,
-  Copy,
-  CreditCard,
-  ExternalLink,
-  Gift,
-  HandHeart,
-  Hourglass,
-  Info,
-  KeyRound,
-  Loader2,
-  MessageCircle,
-  RefreshCcw,
-  ShieldCheck,
-  Timer,
-  TimerOff,
-  XCircle,
+  AlertTriangle, ArrowLeft, Bookmark, CheckCircle2, Clock3, Copy, CreditCard,
+  ExternalLink, Gift, HandHeart, Hourglass, Info, KeyRound, Loader2,
+  MessageCircle, RefreshCcw, ShieldCheck, Timer, TimerOff, XCircle,
   type LucideIcon
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 
 import { IX_MATRIX_URL } from '@/config/community';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
