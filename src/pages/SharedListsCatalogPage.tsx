@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { ArrowDownWideNarrow, ArrowLeft, ArrowUpWideNarrow, ArrowUpDown, CalendarClock, ExternalLink, Film, Globe, Heart, Link2, List, RefreshCw, Search, Type } from 'lucide-react';
+import { ArrowDownWideNarrow, ArrowLeft, ArrowUpWideNarrow, ArrowUpDown, CalendarClock, ExternalLink, Film, Globe, Heart, Link2, List, RefreshCw, Search, Type } from '../components/icons/Icons8';
 import { toast } from 'sonner';
 import { SquareBackground } from '../components/ui/square-background';
 import AnimatedBorderCard from '../components/ui/animated-border-card';
