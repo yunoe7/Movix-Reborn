@@ -1393,6 +1393,7 @@ const Collections: React.FC = () => {
       {/* Menu d'ajout à une liste */}
       {showAddToListMenu && selectedCollection && (
         <AddToListMenu
+          presentation="modal"
           mediaId={selectedCollection.id}
           mediaType="collection"
           title={selectedCollection.name}
