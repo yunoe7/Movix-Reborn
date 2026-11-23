@@ -1760,6 +1760,7 @@ const ProfileGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const AppWithIntro: React.FC = () => {
   const location = useLocation();
+  const backgroundLocation = (location.state as { backgroundLocation?: typeof location } | null)?.backgroundLocation;
   const { showIntro, completeIntro } = useIntro();
 
   // Couche TV : navigation D-pad, polyfill de la touche Retour et classe
@@ -1924,7 +1925,7 @@ const AppWithIntro: React.FC = () => {
         <AlertNotificationManager />
         <DefaultProfileNudge />
         <ProfileGate>
-          <Routes>
+          <Routes location={backgroundLocation || location}>
             {/* Eager — landing page, kept in main bundle */}
             <Route path="/" element={<Home />} />
 
@@ -1945,9 +1946,15 @@ const AppWithIntro: React.FC = () => {
             {/* Toutes les autres routes — depuis le registry */}
             {VISIBLE_ROUTES.map(renderRouteEntry)}
 
+            {/* When the download panel is opened from a detail page, keep that page mounted behind it. */}
             {/* 404 — eager (frequently entered cold) */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          {backgroundLocation && (
+            <Routes location={location}>
+              {VISIBLE_ROUTES.filter((route) => route.path === '/download/:type/:id').map(renderRouteEntry)}
+            </Routes>
+          )}
         </ProfileGate>
         {!isWatchRoute && <Footer />}
       </div>
