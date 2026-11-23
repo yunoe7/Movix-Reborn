@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search as SearchIcon, Loader, Filter, Star, Calendar, User, Film, Award, X, LayoutGrid, List, ExternalLink, Globe, Tag, Sparkles, Tv, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search as SearchIcon, Loader, Filter, Star, Calendar, User, Film, Award, X, LayoutGrid, List, ExternalLink, Globe, Tag, Sparkles, Tv, ArrowUpDown, ChevronDown, ChevronUp } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import { useSearch, SortByOption, MIN_VOTE_COUNT_WHEN_RATING_MATTERS } from '../context/SearchContext';
 import { hasUsefulContent, isReleased } from '../utils/searchResultFilters';
