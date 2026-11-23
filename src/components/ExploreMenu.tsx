@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from './icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { HoverHighlight, HoverHighlightItem } from './ui/hover-highlight';
 import { LiquidDropdown, LiquidSheet } from './header/liquidMenu';
