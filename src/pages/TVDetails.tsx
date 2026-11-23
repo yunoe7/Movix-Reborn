@@ -2521,7 +2521,7 @@ const TVDetails: React.FC = () => {
                       key={`anime-${selectedSeason}-${ep.index}`}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: Math.min(index * 0.025, 0.2), duration: 0.22 } }}
-                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-red-500/70 ring-1 ring-red-500/25' : ''}`}
+                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-white/25 ring-1 ring-white/10' : ''}`}
                       whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
@@ -2744,8 +2744,8 @@ const TVDetails: React.FC = () => {
                         // TVmaze attendait plus d'une seconde avant d'apparaître.
                         transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 }
                       }}
-                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/10 bg-white/[0.045] transition-all duration-300 hover:border-red-500/70 hover:bg-white/[0.075] md:min-h-[132px] ${isSelected ? 'ring-2 ring-red-500' : ''}`}
-                      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] transition-[background,border-color] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[132px] ${isSelected ? 'border-white/25 ring-1 ring-white/10' : ''}`}
+                      whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
                       <div
@@ -2873,19 +2873,19 @@ const TVDetails: React.FC = () => {
                             <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 {/* Hauteur fixe de deux lignes : la date reste au même niveau sur toutes les cartes. */}
-                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-red-500 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
+                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-white/85 transition-colors" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {shouldHide('episodeNames') ? getMaskedContent(ep.name, 'episodeNames', undefined, ep.episode_number) : `${ep.episode_number}. ${ep.name}`}
                                 </h4>
                                 <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
                                   {(airing.date || airing.timestamp !== null) && (
                                     <div className="flex items-start gap-1.5">
-                                      <Calendar className="h-3.5 w-3.5 shrink-0 mt-1 text-red-400 opacity-70" />
+                                      <Calendar className="h-3.5 w-3.5 shrink-0 mt-1 text-white/35" />
                                       <span>{airing.kind === 'aired' ? formatAiringDate(airing, i18n.language) : getAiringLabel(airing, t, i18n.language, airingNow)}</span>
                                     </div>
                                   )}
                                   {ep.runtime && (
                                     <div className="flex items-center gap-1.5">
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock h-3.5 w-3.5 text-red-400 opacity-70"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock h-3.5 w-3.5 text-white/35"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                       <span>{Math.floor(ep.runtime / 60)}h {ep.runtime % 60}m</span>
                                     </div>
                                   )}
@@ -2900,7 +2900,7 @@ const TVDetails: React.FC = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="flex gap-2 mt-auto pt-3 justify-end">
+                            <div className="flex gap-2 mt-auto pt-3 justify-end opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -2965,7 +2965,7 @@ const TVDetails: React.FC = () => {
                         data-testid={`episode-download-${selectedSeason}-${ep.episode_number}`}
                         onClick={(event) => {
                           event.stopPropagation();
-                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${ep.episode_number}`);
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${ep.episode_number}`, { state: { backgroundLocation: location } });
                         }}
                         className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
                       >
