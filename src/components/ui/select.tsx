@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown } from '../icons/Icons8';
 
 import { cn } from "@/lib/utils";
 import { getOverlayPortalRoot } from "@/utils/overlayPortal";
