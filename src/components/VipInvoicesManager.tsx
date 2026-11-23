@@ -11,7 +11,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Sparkles
-} from 'lucide-react';
+} from './icons/Icons8';
 
 import {
   adminCancelVipInvoice,
