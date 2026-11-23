@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ImagePlus, Loader2, Trash2, Upload } from 'lucide-react';
+import { ImagePlus, Loader2, Trash2, Upload } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 import {
