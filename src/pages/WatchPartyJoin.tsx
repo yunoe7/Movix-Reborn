@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
 import axios from 'axios';
-import { ArrowLeft, Users, Play, Film, Tv, Hash, User } from 'lucide-react';
+import { ArrowLeft, Users, Play, Film, Tv, Hash, User } from '../components/icons/Icons8';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
