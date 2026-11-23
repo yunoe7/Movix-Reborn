@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'network' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading';
+export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'network' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading' | 'arrow-up-right' | 'check' | 'trash' | 'chevron-left' | 'chevron-right';
 type Props = { name: Icons8Name; size?: number | string; className?: string; title?: string; style?: React.CSSProperties; strokeWidth?: number };
 
 const paths: Record<Icons8Name, string> = {
@@ -38,7 +38,12 @@ const paths: Record<Icons8Name, string> = {
   "close": "delete-sign",
   "info": "info",
   "play": "play",
-  "loading": "loading"
+  "loading": "loading",
+  "arrow-up-right": "up-right",
+  "check": "checkmark",
+  "trash": "trash",
+  "chevron-left": "chevron-left",
+  "chevron-right": "chevron-right"
 };
 
 export const Icons8Icon: React.FC<Props> = ({ name, size = 20, className, title, style }) => (
