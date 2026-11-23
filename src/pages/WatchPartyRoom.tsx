@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
 import io, { Socket } from 'socket.io-client';
-import { Copy, Share2, MessageSquare, Users, X, Send, Clipboard, Check, AlertTriangle, Loader2, Trash2, UserX, Maximize, Minimize, Hand, Clock, CheckCircle2, XCircle, RefreshCw, Settings, Info } from 'lucide-react';
+import { Copy, Share2, MessageSquare, Users, X, Send, Clipboard, Check, AlertTriangle, Loader2, Trash2, UserX, Maximize, Minimize, Hand, Clock, CheckCircle2, XCircle, RefreshCw, Settings, Info } from '../components/icons/Icons8';
 import ChangeMediaModal from '../components/ChangeMediaModal';
 import EmojiAutocomplete from '../components/EmojiAutocomplete';
 import ReactMarkdown, { type Components } from 'react-markdown';
