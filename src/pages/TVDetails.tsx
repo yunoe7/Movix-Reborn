@@ -2115,20 +2115,18 @@ const TVDetails: React.FC = () => {
     // Filter out empty episodes first to avoid issues
     const isAnime = type === 'anime';
     const nonEmptyEpisodes = episodes.filter((episode) => Boolean(episode));
-    const visibleEpisodes = isAnime
-      ? [...nonEmptyEpisodes]
-          .filter((episode: any) => {
-            const query = animeEpisodeSearch.trim().toLocaleLowerCase();
-            if (!query) return true;
-            return [episode.name, episode.index, episode.episode_number]
-              .some((value) => String(value ?? '').toLocaleLowerCase().includes(query));
-          })
-          .sort((left: any, right: any) => {
-            const leftNumber = Number(left.index ?? left.episode_number ?? 0);
-            const rightNumber = Number(right.index ?? right.episode_number ?? 0);
-            return animeEpisodeSortDescending ? rightNumber - leftNumber : leftNumber - rightNumber;
-          })
-      : nonEmptyEpisodes;
+    const episodeQuery = animeEpisodeSearch.trim().toLocaleLowerCase();
+    const visibleEpisodes = [...nonEmptyEpisodes]
+      .filter((episode: any) => {
+        if (!episodeQuery) return true;
+        return [episode.name, episode.index, episode.episode_number]
+          .some((value) => String(value ?? '').toLocaleLowerCase().includes(episodeQuery));
+      })
+      .sort((left: any, right: any) => {
+        const leftNumber = Number(left.index ?? left.episode_number ?? 0);
+        const rightNumber = Number(right.index ?? right.episode_number ?? 0);
+        return animeEpisodeSortDescending ? rightNumber - leftNumber : leftNumber - rightNumber;
+      });
 
     if (nonEmptyEpisodes.length === 0) {
       return (
@@ -2166,7 +2164,7 @@ const TVDetails: React.FC = () => {
       : null;
 
     // Déterminer le mode par défaut basé sur le nombre d'épisodes
-    const defaultDropdownMode = type === 'anime' ? false : nonEmptyEpisodes.length > 15;
+    const defaultDropdownMode = false;
 
     const dropdownOptions = nonEmptyEpisodes.map((ep: any) => {
       if (type === 'anime') {
@@ -2250,7 +2248,7 @@ const TVDetails: React.FC = () => {
     // un instant vide (sortie puis entrée) qui faisait clignoter la section.
     return (
       <>
-        {isAnime && (
+        {(
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <h4 className="text-lg font-semibold tracking-tight text-white">{t('details.episodes')}</h4>
@@ -2331,7 +2329,7 @@ const TVDetails: React.FC = () => {
             </div>
           </div>
         )}
-        {isAnime && visibleEpisodes.length === 0 && animeEpisodeSearch.trim() ? (
+        {visibleEpisodes.length === 0 && animeEpisodeSearch.trim() ? (
           <p className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-8 text-center text-sm text-white/50">
             {t('details.noEpisodesForSeason')}
           </p>
@@ -2367,7 +2365,7 @@ const TVDetails: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
           >
-            <div className={isAnime && animeEpisodeView === 'grid'
+            <div className={animeEpisodeView === 'grid'
               ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
               : "mb-6 grid grid-cols-1 gap-3"}>
               {visibleEpisodes.map((ep: any, index: number) => {
@@ -2585,6 +2583,19 @@ const TVDetails: React.FC = () => {
                           </div>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        aria-label={`${t('download.episode')} ${episodeNumber}`}
+                        title={`${t('download.episode')} ${episodeNumber}`}
+                        data-testid={`episode-download-${selectedSeason}-${episodeNumber}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${episodeNumber}`);
+                        }}
+                        className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </motion.div>
                   );
                 } else {
@@ -2846,6 +2857,19 @@ const TVDetails: React.FC = () => {
                           </div>
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        aria-label={`${t('download.episode')} ${ep.episode_number}`}
+                        title={`${t('download.episode')} ${ep.episode_number}`}
+                        data-testid={`episode-download-${selectedSeason}-${ep.episode_number}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${ep.episode_number}`);
+                        }}
+                        className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </motion.div>
                   );
                 }
