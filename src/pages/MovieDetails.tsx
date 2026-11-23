@@ -1173,7 +1173,7 @@ const MovieDetails = (): JSX.Element => {
           />
 
 
-        <div className="mx-auto w-full max-w-5xl">
+        <div className="detail-content-shell mx-auto w-full max-w-[1720px] px-0 sm:px-2">
           <div className="detail-section flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.08] pb-4">
             <LikeDislikeButton
               contentType="movie"
