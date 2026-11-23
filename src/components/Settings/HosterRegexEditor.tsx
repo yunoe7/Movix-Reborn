@@ -32,7 +32,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import ReusableModal from '../ui/reusable-modal';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ChevronDown, Plus, X, Trash2, RotateCcw, Pencil } from 'lucide-react';
+import { ChevronDown, Plus, X, Trash2, RotateCcw, Pencil } from '../icons/Icons8';
 import { toast } from 'sonner';
 import {
   BUILTIN_HOSTER_PATTERNS, HOSTER_LABELS, isHosterCustomized,
