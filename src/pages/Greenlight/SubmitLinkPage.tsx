@@ -6,7 +6,7 @@ import {
     ArrowLeft, ArrowRight, Film, Tv, Search, Check, Loader2,
     LinkIcon, ExternalLink, AlertCircle, Sparkles, Send, Trash2, Clock,
     ListChecks, Vote, List, AlignLeft
-} from 'lucide-react';
+} from '../../components/icons/Icons8';
 import { Button } from '../../components/ui/button';
 import { getVipHeaders } from '../../utils/vipUtils';
 import BlurText from '../../components/ui/blur-text';
