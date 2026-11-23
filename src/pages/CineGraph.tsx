@@ -20,7 +20,7 @@ import {
   Star,
   User,
   X,
-} from 'lucide-react';
+} from '../components/icons/Icons8';
 
 import { isChunkLoadError, lazyWithRetry } from '@/routing/lazyWithRetry';
 import { SquareBackground } from '@/components/ui/square-background';
