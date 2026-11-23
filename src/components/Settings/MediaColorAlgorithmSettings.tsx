@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent, type ReactNode } from 'react';
-import { Check, Upload } from 'lucide-react';
+import { Check, Upload } from '../icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { Media } from '@/components/EmblaCarousel';
 import { MEDIA_COLOR_EXAMPLES } from '@/config/mediaColorExamples';
