@@ -90,7 +90,6 @@ const Header: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
-  const notificationsRef = useRef<HTMLDivElement>(null);
   const exploreRef = useRef<HTMLDivElement>(null);
   const exploreSheetRef = useRef<HTMLDivElement>(null);
   const exploreOverlayRef = useRef<HTMLDivElement>(null);
@@ -102,8 +101,17 @@ const Header: React.FC = () => {
   // par ProfileMenu, en portail) : sous la ligne d'icônes, comme Explorer.
   const [panelHost, setPanelHost] = useState<HTMLDivElement | null>(null);
   const headerPanels = useMemo<HeaderPanels>(
-    () => ({ host: panelHost, onProfileOpenChange: setIsProfileOpen, onCommunityOpenChange: setIsCommunityOpen }),
-    [panelHost],
+    () => ({
+      host: panelHost,
+      onProfileOpenChange: setIsProfileOpen,
+      onCommunityOpenChange: setIsCommunityOpen,
+      notificationsTriggerRef,
+      onNotificationsToggle: () => setShowNotifications((open) => !open),
+      notificationsOpen: showNotifications,
+      notificationsUnreadCount: unreadCount,
+      notificationsDisabled,
+    }),
+    [panelHost, showNotifications, unreadCount, notificationsDisabled],
   );
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
   const location = useLocation();
@@ -292,9 +300,9 @@ const Header: React.FC = () => {
       // Le menu des notifications (déroulant ou panneau mobile) porte
       // data-notifications-popup : ses clics, liquide compris, restent
       // intérieurs.
-      if (showNotifications && notificationsRef.current) {
+      if (showNotifications) {
         if (target.closest('[data-notification-button]') || target.closest('[data-notifications-popup]')) return;
-        if (!notificationsRef.current.contains(target)) setShowNotifications(false);
+        setShowNotifications(false);
       }
       // Le menu mobile est rendu en portail : ses clics restent intérieurs (son
       // voile referme le menu lui-même). Un toucher sur une icône de l'en-tête
@@ -627,39 +635,6 @@ const Header: React.FC = () => {
                   >
                     <HalloweenThemeToggleIcon lit={halloween} />
                   </motion.button>
-                )}
-
-                {/* Notifications : le menu coule de la cloche (rond de 36 px),
-                    voir plus bas. Sur ordinateur, pas d'enfoncement au clic :
-                    le liquide prend la mesure du bouton à l'ouverture. */}
-                {isAuthenticated && !notificationsDisabled && (
-                  <div className="relative" ref={notificationsRef}>
-                    <motion.button
-                      ref={notificationsTriggerRef}
-                      type="button"
-                      data-notification-button
-                      aria-label={t('notifications.title')}
-                      aria-expanded={showNotifications}
-                      className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-colors ${showNotifications ? 'text-white' : 'text-gray-400 hover:text-white'}`}
-                      whileTap={isDesktopNav ? undefined : { scale: 0.9 }}
-                      onClick={() => setShowNotifications(!showNotifications)}
-                    >
-                      <Bell size={20} />
-                      {/* La lanterne pend sous la cloche, là où coule le menu. */}
-                      {/* Elle s'efface avant que le liquide la couvre, et ne
-                          revient qu'une fois le panneau rentré (300 ms). */}
-                      {halloween && (
-                        <HalloweenLantern
-                          className={`transition-opacity motion-reduce:transition-none ${showNotifications || isSheetOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-300 duration-150'}`}
-                        />
-                      )}
-                      {unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 bg-red-600 text-white text-[10px] rounded-full h-4 min-w-4 flex items-center justify-center px-1 font-bold">
-                          {unreadCount > 9 ? '9+' : unreadCount}
-                        </span>
-                      )}
-                    </motion.button>
-                  </div>
                 )}
 
                 {/* Profile */}
