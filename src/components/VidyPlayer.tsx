@@ -232,9 +232,14 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
       }
 
       if (data.type === 'vidrift:ended') {
+        const currentTime = Number(data.currentTime);
+        const messageDuration = Number(data.duration);
+        if (Number.isFinite(messageDuration) && messageDuration > 0) {
+          lastKnownDurationRef.current = messageDuration;
+        }
         persistProgress(
-          Number(data.currentTime) || 0,
-          Number(data.duration) || 0,
+          Number.isFinite(currentTime) && currentTime >= 0 ? currentTime : lastKnownDurationRef.current,
+          lastKnownDurationRef.current,
           true,
           data.season,
           data.episode,
@@ -250,12 +255,9 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
           lastKnownDurationRef.current = messageDuration;
         }
         const duration = lastKnownDurationRef.current;
-        // The current VidRift API reports the end as a paused event; it does
-        // not document a separate ended event. Treat a pause at the media end
-        // as completed so Continue Watching does not retain a finished title.
-        const completed = data.type === 'vidrift:paused'
-          && duration > 0
-          && currentTime >= duration - 2.5;
+        // A normal pause is not completion. VidRift has a dedicated
+        // vidrift:ended event; only that event should mark a title watched.
+        const completed = false;
         const now = Date.now();
         if (data.type === 'vidrift:paused' || now - lastSavedAtRef.current >= 5000) {
           persistProgress(
