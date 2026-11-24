@@ -177,7 +177,7 @@ const GenrePage: React.FC = () => {
   const parsedGenreId = genreId ? parseInt(genreId, 10) : NaN;
   const isMovie = mediaType === 'movie';
   const isLegacyAnimeGenre = mediaType === 'anime';
-  const resolvedMediaType = mediaType;
+  const resolvedMediaType = isLegacyAnimeGenre ? 'tv' : mediaType;
   const genreTranslationKey = Number.isFinite(parsedGenreId) ? GENRE_TRANSLATION_KEYS[parsedGenreId] : '';
   const genreName = genreTranslationKey
     ? t(genreTranslationKey)
@@ -232,7 +232,7 @@ const GenrePage: React.FC = () => {
   // Fetch content
   useEffect(() => {
     const fetchContent = async () => {
-      if (!genreId || !mediaType) return;
+      if (!genreId || !mediaType || isLegacyAnimeGenre) return;
       setLoading(true);
       try {
         const response = await axios.get(`https://api.themoviedb.org/3/discover/${resolvedMediaType}`, {
@@ -260,7 +260,7 @@ const GenrePage: React.FC = () => {
       }
     };
     fetchContent();
-  }, [genreId, mediaType, currentPage, sortBy, resolvedMediaType, t]);
+  }, [genreId, mediaType, currentPage, sortBy, resolvedMediaType, isLegacyAnimeGenre, t]);
 
   const handlePageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= totalPages) {
