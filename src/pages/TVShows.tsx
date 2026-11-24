@@ -602,10 +602,9 @@ const TVShows: React.FC = () => {
         ),
       ];
 
-      const [genreResponses, linkedAnimeShows] = await Promise.all([
-        Promise.all(genreRequests),
-        fetchLinkedAnimeShows(getTmdbLanguage()),
-      ]);
+      // Le catalogue TMDB principal doit s'afficher sans attendre l'index
+      // Anime-Sama ni les vérifications de certification de chaque anime.
+      const genreResponses = await Promise.all(genreRequests);
       if (!isCurrent()) return;
 
       // Filter out shows without poster_path or overview
@@ -633,10 +632,6 @@ const TVShows: React.FC = () => {
         if (!allShows.some(show => show.id === newShow.id)) {
           allShows.push(newShow);
         }
-      });
-
-      linkedAnimeShows.forEach((anime) => {
-        if (!allShows.some((show) => show.id === anime.id)) allShows.push(anime);
       });
 
       if (allShows.length > 0) {
@@ -745,6 +740,27 @@ const TVShows: React.FC = () => {
   useEffect(() => {
     fetchTVShows();
     return () => { fetchGeneration.current += 1; };
+  }, []);
+
+  // Charger les animes liés en arrière-plan : leur index peut être volumineux
+  // et ne doit jamais bloquer l'affichage initial du catalogue Séries.
+  useEffect(() => {
+    let cancelled = false;
+    fetchLinkedAnimeShows(getTmdbLanguage()).then((linkedShows) => {
+      if (cancelled || linkedShows.length === 0) return;
+      setTVShows((currentShows) => {
+        if (cancelled) return currentShows;
+        const mergedShows = [...currentShows];
+        linkedShows.forEach((show) => {
+          if (!mergedShows.some((current) => current.id === show.id)) {
+            mergedShows.push(show);
+          }
+        });
+        organizeContentByCategories(mergedShows);
+        return mergedShows;
+      });
+    });
+    return () => { cancelled = true; };
   }, []);
 
   // Fetch representative TMDB images for each TV genre and cache for 24h
