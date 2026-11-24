@@ -143,7 +143,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
             season: activeS,
             episode: activeE,
             progress: completed ? 0 : Math.max(0, currentTime),
-            duration: Math.max(0, duration),
+            duration: duration > 0 ? duration : Math.max(0, previous.currentEpisode?.duration ?? 0),
             completed,
           },
         };
@@ -161,7 +161,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
           id: numericId,
           lastAccessed: now,
           progress: completed ? 0 : Math.max(0, currentTime),
-          duration: Math.max(0, duration),
+          duration: duration > 0 ? duration : Math.max(0, previous.duration ?? 0),
           completed,
         };
         if (existingIndex >= 0) history.movies.splice(existingIndex, 1);
