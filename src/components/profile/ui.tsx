@@ -103,8 +103,8 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="group relative isolate flex flex-col items-start gap-5 overflow-hidden rounded-[1.4rem] border border-white/[0.07] bg-[#111827] px-6 py-8 shadow-[0_18px_48px_rgba(0,0,0,0.2)] sm:flex-row sm:items-center sm:px-8 sm:py-9">
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-600/15 text-red-400 ring-1 ring-red-500/15 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-6 [&>svg]:w-6">
+    <div className="group relative isolate flex flex-col items-start gap-5 overflow-hidden rounded-[24px] border border-[#303030] bg-[#202020] px-6 py-8 shadow-[0_18px_48px_rgba(0,0,0,0.16)] sm:flex-row sm:items-center sm:px-8 sm:py-9">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#e73545]/10 text-[#f04455] ring-1 ring-[#f04455]/15 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-6 [&>svg]:w-6">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
@@ -112,9 +112,9 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         <p className="mt-1 max-w-xl text-[15px] leading-relaxed text-white/60">{description}</p>
       </div>
       {action && (action.to ? (
-        <Link to={action.to} className={buttonClass('primary')}>{action.label}</Link>
+        <Link to={action.to} className={buttonClass('primary', 'md', '!bg-[#e73545] hover:!bg-[#f04455]')}>{action.label}</Link>
       ) : (
-        <Button variant="primary" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
+        <Button variant="primary" className="!bg-[#e73545] hover:!bg-[#f04455]" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
       ))}
     </div>
   );
@@ -126,9 +126,9 @@ export type TicketTone = 'default' | 'accent' | 'light';
 export const ticketToneAt = (index: number): TicketTone => (index % 7 === 3 ? 'accent' : index % 7 === 6 ? 'light' : 'default');
 
 const STRIP_TONES: Record<TicketTone, { strip: string; meta: string }> = {
-  default: { strip: 'bg-gray-900 text-white', meta: 'text-white/55' },
-  accent: { strip: 'bg-red-600 text-white', meta: 'text-white/80' },
-  light: { strip: 'bg-white text-black', meta: 'text-black/60' },
+  default: { strip: 'bg-[#202020] text-white', meta: 'text-[#929292]' },
+  accent: { strip: 'bg-[#e73545] text-white', meta: 'text-white/85' },
+  light: { strip: 'bg-[#292929] text-white', meta: 'text-[#b0b0b0]' },
 };
 
 interface PosterTicketProps {
@@ -176,7 +176,7 @@ export function PosterTicket({
   const showImage = poster && !failed;
 
   const art = (
-    <div className="relative aspect-[2/3] overflow-hidden rounded-t-lg bg-gray-900">
+    <div className="relative aspect-[2/3] overflow-hidden rounded-t-lg bg-[#202020]">
       {showImage ? (
         <img
           src={poster}
@@ -194,7 +194,7 @@ export function PosterTicket({
       )}
       {typeof progress === 'number' && progress > 0 && (
         <span className="absolute inset-x-0 bottom-0 h-1 bg-black/60" aria-hidden="true">
-          <span className="block h-full bg-red-600" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+          <span className="block h-full bg-[#e73545]" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
         </span>
       )}
     </div>
