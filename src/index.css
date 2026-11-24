@@ -2420,6 +2420,13 @@ html.tv-mode :focus {
 }
 
 
+/* Les carrousels enveloppent le titre dans un h2.section-title.
+   Le soulignement est dessiné par .catalog-section-title : désactiver
+   celui du parent pour éviter la double barre. */
+.section-title:has(> .catalog-section-title)::after {
+  display: none !important;
+}
+
 /* Typographie commune des titres de rubriques : style éditorial net,
    blanc constant au survol et soulignement rouge discret. */
 .catalog-section-title,
