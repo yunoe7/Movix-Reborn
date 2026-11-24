@@ -20,7 +20,6 @@ import { detectHoster } from '../../utils/hosterRegistry';
 import { setLastPlayer } from '../../utils/lastPlayerPref';
 
 import { getTmdbId, encodeId } from '../../utils/idEncoder';
-import { useAntiSpoilerSettings } from '../../hooks/useAntiSpoilerSettings';
 import { useWrappedTracker } from '../../hooks/useWrappedTracker';
 import { useTmdbImages, withTmdbImageSize } from '../../hooks/useTmdbImages';
 import { isUserVip } from '../../utils/authUtils';
@@ -457,9 +456,6 @@ const WatchTv: React.FC = () => {
   const playerPoster = localizedShowPosterUrl
     ? withTmdbImageSize(localizedShowPosterUrl, 'w500')
     : (showPosterPath ? `https://image.tmdb.org/t/p/w500${showPosterPath}` : undefined);
-
-  // Anti-spoiler settings
-  const { shouldHide, getMaskedContent } = useAntiSpoilerSettings();
 
   // Source states
   const [selectedSource, setSelectedSource] = useState<PlayerSourceType | null>(null);
