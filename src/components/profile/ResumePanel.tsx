@@ -13,12 +13,12 @@ export default function ResumePanel({ item, loading }: { item: ResumeItem | null
   const [imageFailed, setImageFailed] = useState(false);
 
   if (loading) {
-    return <div className="h-full min-h-[280px] animate-pulse rounded-[1.6rem] bg-gray-900 shadow-[0_22px_60px_rgba(0,0,0,0.3)] ring-1 ring-white/10" aria-hidden="true" />;
+    return <div className="h-full min-h-[280px] animate-pulse rounded-[1.6rem] bg-[#171717] shadow-[0_18px_48px_rgba(0,0,0,0.28)] ring-1 ring-[#303030]" aria-hidden="true" />;
   }
 
   if (!item) {
     return (
-      <section className="flex h-full min-h-[280px] flex-col justify-end gap-4 rounded-2xl bg-gray-900 p-6">
+      <section className="flex h-full min-h-[280px] flex-col justify-end gap-4 rounded-[26px] border border-[#303030] bg-[#171717] p-6">
         <Clapperboard className="h-8 w-8 text-red-500" aria-hidden="true" />
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-white">{t('profilePage.resume.emptyTitle', 'Rien en cours')}</h2>
@@ -39,7 +39,7 @@ export default function ResumePanel({ item, loading }: { item: ResumeItem | null
   return (
     <section
       aria-label={t('profilePage.resume.label', 'Reprendre')}
-      className="relative flex h-full min-h-[280px] flex-col justify-end overflow-hidden rounded-2xl bg-gray-900"
+      className="relative flex h-full min-h-[280px] flex-col justify-end overflow-hidden rounded-[26px] border border-[#303030] bg-[#171717]"
     >
       {image && !imageFailed && (
         <img
@@ -53,13 +53,13 @@ export default function ResumePanel({ item, loading }: { item: ResumeItem | null
       <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-black/15" />
 
       <div className="relative p-6 sm:p-7">
-        <p className="text-sm text-white/70">{t('profilePage.resume.kicker', 'Tu en étais là')}</p>
+        <p className="text-sm text-[#a3a3a3]">{t('profilePage.resume.kicker', 'Tu en étais là')}</p>
         <h2 className="mt-1 line-clamp-2 text-3xl font-semibold leading-tight tracking-tight text-white sm:text-4xl">{item.title}</h2>
-        <p className="mt-1 text-[15px] text-white/75">{episodeLine}</p>
+        <p className="mt-1 text-[15px] text-[#b0b0b0]">{episodeLine}</p>
 
         {item.progress > 0 && (
           <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-white/20" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(item.progress)}>
-            <div className="h-full rounded-full bg-red-600" style={{ width: `${item.progress}%` }} />
+            <div className="h-full rounded-full bg-[#e73545]" style={{ width: `${item.progress}%` }} />
           </div>
         )}
 
