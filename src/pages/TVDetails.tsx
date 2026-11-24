@@ -2541,7 +2541,6 @@ const TVDetails: React.FC = () => {
                         }}
                       >
                         <div className="flex min-w-0 flex-1 flex-row items-center gap-3 md:gap-4">
-                          <span className="hidden w-7 shrink-0 text-center text-xl font-semibold text-white/45 sm:inline-flex">{episodeNumber}</span>
                           <div className="relative aspect-video w-[38%] min-w-[108px] max-w-[210px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:w-[210px] sm:min-w-[170px]">
                             {shouldHide('episodeImages') ? (
                               <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
@@ -2637,42 +2636,7 @@ const TVDetails: React.FC = () => {
 
                               </div>
                             </div>
-                            <div className="ml-2 flex shrink-0 items-center gap-1 self-center justify-end">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (watchStatus && watchStatus.episodeWatchlist) {
-                                    updateWatchStatus('episodeWatchlist', !watchStatus.episodeWatchlist[episodeKey], episodeKey);
-                                  }
-                                }}
-                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-400' : 'text-white/45'}`}
-                                title={t('details.addToWatchlistTitle')}
-                              >
-                                <List className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (watchStatus && watchStatus.episodeWatched) {
-                                    updateWatchStatus('episodeWatched', !watchStatus.episodeWatched[episodeKey], episodeKey);
-                                  }
-                                }}
-                                className={`rounded-lg p-1.5 transition-colors hover:bg-white/[0.08] ${isEpisodeWatched ? 'text-red-400' : 'text-white/45'}`}
-                                title={t('details.markAsWatched')}
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                              {seenOnServer && (
-                                <span
-                                  role="img"
-                                  aria-label={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
-                                  title={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
-                                  className="inline-flex h-8 items-center gap-1 self-center rounded border border-dashed border-white/25 px-1.5 text-[11px] text-white/60"
-                                >
-                                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
-                                  {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
-                                </span>
-                              )}
+                            <div className="ml-2 flex shrink-0 items-center justify-end">
 
                             </div>
 
