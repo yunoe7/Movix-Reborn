@@ -5,7 +5,7 @@ import { safeEmbedUrl } from '../../utils/safeEmbedUrl';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import VidyPlayer from '../../components/VidyPlayer';
+import VidRiftPlayer from '../../components/VidRiftPlayer';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
@@ -166,7 +166,7 @@ interface NightflixSource {
   label?: string;
 }
 
-type PlayerSourceType = 'vidy' | 'primary' | 'vostfr' | 'videasy' | 'vidsrccc' | 'vidsrcsu' | 'vidsrcwtf1' | 'vidsrcwtf5' | 'multi' | 'omega' | 'darkino' | 'mp4' | 'coflix' | 'frembed' | 'custom' | 'nexus_hls' | 'nexus_file' | 'wiflix' | 'j1f' | 'swiftflow' | 'swiftflux' | 'viper' | 'vidmoly' | 'dropload' | 'adfree' | 'bravo' | 'kisskh' | number;
+type PlayerSourceType = 'vidrift' | 'primary' | 'vostfr' | 'videasy' | 'vidsrccc' | 'vidsrcsu' | 'vidsrcwtf1' | 'vidsrcwtf5' | 'multi' | 'omega' | 'darkino' | 'mp4' | 'coflix' | 'frembed' | 'custom' | 'nexus_hls' | 'nexus_file' | 'wiflix' | 'j1f' | 'swiftflow' | 'swiftflux' | 'viper' | 'vidmoly' | 'dropload' | 'adfree' | 'bravo' | 'kisskh' | number;
 
 function formatPremidSourceDetail(...parts: Array<string | null | undefined>) {
   const normalizedParts = parts
@@ -617,7 +617,7 @@ const WatchMovie: React.FC = () => {
   });
 
   useEffect(() => {
-    // Vidy est le lecteur unique des Films : ne pas lancer de résolution KissKH.
+    // vidrift est le lecteur unique des Films : ne pas lancer de résolution KissKH.
     kisskhRequestAbortRef.current?.abort();
     kisskhRequestAbortRef.current = null;
     setKisskhSources([]);
@@ -805,7 +805,7 @@ const WatchMovie: React.FC = () => {
             : null;
 
           if (existingIndex !== -1) {
-            // Move the existing entry to the front without losing Vidy progress.
+            // Move the existing entry to the front without losing vidrift progress.
             continueWatching.movies.splice(existingIndex, 1);
           }
 
@@ -821,7 +821,7 @@ const WatchMovie: React.FC = () => {
         // Un historique invalide ou indisponible ne doit pas bloquer la lecture.
       }
 
-      // Vidy est le lecteur unique des Films : aucun ancien fournisseur n'est interrogé.
+      // vidrift est le lecteur unique des Films : aucun ancien fournisseur n'est interrogé.
       // Libérer les états des anciens fournisseurs pour ne pas laisser l'UI en chargement.
       setLoadingDarkino(false);
       setLoadingCoflix(false);
@@ -830,7 +830,7 @@ const WatchMovie: React.FC = () => {
       setLoadingWiflix(false);
       setLoadingViper(false);
       setLoadingExtractions(false);
-      setSelectedSource('vidy');
+      setSelectedSource('vidrift');
       setIsLoading(false);
       return;
 
@@ -1274,8 +1274,8 @@ const WatchMovie: React.FC = () => {
 
         // Mapper les types de sources aux types de lecteurs pour le popup
         switch (selectedSource) {
-          case 'vidy':
-            // Vidy n'a pas de lecteur publicitaire dédié : réutiliser le flux générique.
+          case 'vidrift':
+            // vidrift n'a pas de lecteur publicitaire dédié : réutiliser le flux générique.
             playerType = 'adfree';
             break;
           case 'nexus_hls':
@@ -1396,7 +1396,7 @@ const WatchMovie: React.FC = () => {
     );
   }
 
-  // Respect the ad gate before mounting the Vidy iframe.
+  // Respect the ad gate before mounting the VidRift iframe.
   // In click-anywhere mode the iframe is preloaded and the ad catcher is an overlay.
   if (
     showAdFreePopup
@@ -1433,7 +1433,7 @@ const WatchMovie: React.FC = () => {
   if (!isLoading && id) {
     return (
       <div className="fixed inset-0 bg-black">
-        <VidyPlayer kind="movie" tmdbId={id} title={movieTitle} posterPath={playerPoster} />
+        <VidRiftPlayer kind="movie" tmdbId={id} title={movieTitle} posterPath={playerPoster} />
         {showAdFreePopup && adPopupTriggered && !adPopupBypass && (
           <AdFreePlayerAds
             onClose={handlePopupClose}

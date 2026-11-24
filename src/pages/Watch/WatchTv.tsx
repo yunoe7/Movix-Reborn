@@ -3,7 +3,7 @@ import { getFrembedBase, initFrembedBase } from '../../utils/frembedConfig';
 import { useParams, useNavigate } from 'react-router-dom'; // Added useNavigate
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import VidyPlayer from '../../components/VidyPlayer';
+import VidRiftPlayer from '../../components/VidRiftPlayer';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
@@ -1266,7 +1266,7 @@ const WatchTv: React.FC = () => {
             const existingShow = continueWatching.tv.find((tvShow: any) => tvShow?.id === showIdInt);
 
             if (existingShow) {
-              // Keep the saved Vidy position when reopening the same episode.
+              // Keep the saved playback position when reopening the same episode.
               const previousEpisode = existingShow.currentEpisode;
               const isSameEpisode = previousEpisode?.season === seasonNumber
                 && previousEpisode?.episode === episodeNumber;
@@ -1310,7 +1310,7 @@ const WatchTv: React.FC = () => {
 
         // Resume playback functionality removed
 
-        // Vidy est le lecteur unique des Séries : les métadonnées et la navigation TMDB sont conservées,
+        // VidRift est le lecteur unique des Séries : les métadonnées et la navigation TMDB sont conservées,
         // mais les anciens fournisseurs ne sont plus sollicités.
         void fetchNextEpisodeData(() => isCurrentRoute);
         // Les anciens fournisseurs ne tournent plus : libérer leurs indicateurs
@@ -1324,7 +1324,7 @@ const WatchTv: React.FC = () => {
         setLoadingExtractions(false);
         setLoadingWiflix(false);
         setLoadingVox(false);
-        setSelectedSource('vidy');
+        setSelectedSource('vidrift');
         setIsLoading(false);
         return;
 
@@ -2232,8 +2232,8 @@ const WatchTv: React.FC = () => {
 
         // Mapper les types de sources aux types de lecteurs pour le popup
         switch (selectedSource) {
-          case 'vidy':
-            // Vidy n'a pas de lecteur publicitaire dédié : réutiliser le flux générique.
+          case 'vidrift':
+            // VidRift n'a pas de lecteur publicitaire dédié : réutiliser le flux générique.
             playerType = 'adfree';
             break;
           case 'nexus_hls':
@@ -2336,7 +2336,7 @@ const WatchTv: React.FC = () => {
     };
   }, []);
 
-  // Invalid route or failed TMDB metadata must never produce a Vidy URL
+  // Invalid route or failed TMDB metadata must never produce a VidRift URL
   // containing NaN/invalid identifiers, nor leave the player loading forever.
   if (loadingError || !isValidEpisodeRoute) {
     return (
@@ -2408,8 +2408,8 @@ const WatchTv: React.FC = () => {
   if (!isLoading && id) {
     return (
       <div className="fixed inset-0 bg-black">
-        <VidyPlayer kind="tv" tmdbId={id} season={seasonNumber} episode={episodeNumber} title={showTitle} posterPath={playerPoster} />
-        {/* click-anywhere mode preloads Vidy behind the ad click-catcher */}
+        <VidRiftPlayer kind="tv" tmdbId={id} season={seasonNumber} episode={episodeNumber} title={showTitle} posterPath={playerPoster} onEpisodeChange={(nextSeason, nextEpisode) => window.history.replaceState(window.history.state, '', `/watch/tv/${encodeId(id)}/s/${nextSeason}/e/${nextEpisode}`)} />
+        {/* click-anywhere mode preloads VidRift behind the ad click-catcher */}
         {showAdFreePopup && adPopupTriggered && !adPopupBypass && (
           <AdFreePlayerAds
             onClose={handlePopupClose}

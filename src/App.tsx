@@ -1812,7 +1812,6 @@ const AppWithIntro: React.FC = () => {
   const isHeroHeaderPage =
     currentPath === '/' ||
     currentPath === '/movies' ||
-    currentPath === '/anime' ||
     currentPath === '/tv-shows' ||
     currentPath.startsWith('/movie/') ||
     currentPath.startsWith('/tv/') ||

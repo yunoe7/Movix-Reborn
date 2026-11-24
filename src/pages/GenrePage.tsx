@@ -10,7 +10,6 @@ import ShinyText from '../components/ui/shiny-text';
 import CustomDropdown from '../components/CustomDropdown';
 import { SearchGridCard, SearchListCard } from '../components/SearchCard';
 import { getTmdbLanguage } from '../i18n';
-import { resolveTmdbKeywordId } from '../utils/tmdbKeywords';
 
 // Genre IDs from TMDB
 const GENRES: Record<number, string> = {
@@ -177,19 +176,23 @@ const GenrePage: React.FC = () => {
 
   const parsedGenreId = genreId ? parseInt(genreId, 10) : NaN;
   const isMovie = mediaType === 'movie';
-  const isAnime = mediaType === 'anime';
-  const resolvedMediaType = isAnime ? 'tv' : mediaType;
+  const isLegacyAnimeGenre = mediaType === 'anime';
+  const resolvedMediaType = isLegacyAnimeGenre ? 'tv' : mediaType;
   const genreTranslationKey = Number.isFinite(parsedGenreId) ? GENRE_TRANSLATION_KEYS[parsedGenreId] : '';
   const genreName = genreTranslationKey
     ? t(genreTranslationKey)
     : genreId
       ? GENRES[parsedGenreId] || t('filter.genre')
       : t('filter.genre');
-  const contentTypeLabel = isMovie
-    ? t('filter.movies')
-    : isAnime
-      ? t('filter.anime')
-      : t('filter.series');
+  const contentTypeLabel = isMovie ? t('filter.movies') : t('filter.series');
+
+  // Old anime genre URLs now resolve to the shared TV/series genre catalogue.
+  useEffect(() => {
+    if (isLegacyAnimeGenre && genreId) {
+      const query = searchParams.toString();
+      navigate(`/genre/tv/${genreId}${query ? `?${query}` : ''}`, { replace: true });
+    }
+  }, [isLegacyAnimeGenre, genreId, navigate, searchParams]);
 
   // Sort options for dropdown — memoized so CustomDropdown sees stable refs.
   const sortOptions = useMemo(() => [
@@ -229,23 +232,19 @@ const GenrePage: React.FC = () => {
   // Fetch content
   useEffect(() => {
     const fetchContent = async () => {
-      if (!genreId || !mediaType) return;
+      if (!genreId || !mediaType || isLegacyAnimeGenre) return;
       setLoading(true);
       try {
-        const withGenres = isAnime && genreId !== '16' ? `16,${genreId}` : genreId;
-        const animeKeywordId = isAnime ? await resolveTmdbKeywordId('anime', getTmdbLanguage()) : null;
-
         const response = await axios.get(`https://api.themoviedb.org/3/discover/${resolvedMediaType}`, {
           params: {
             api_key: TMDB_API_KEY,
             language: getTmdbLanguage(),
-            with_genres: withGenres,
+            with_genres: genreId,
             page: currentPage,
             sort_by: sortBy,
             include_adult: false,
             'vote_count.gte': 5,
-            include_video: false,
-            ...(isAnime && animeKeywordId ? { with_keywords: String(animeKeywordId) } : {})
+            include_video: false
           }
         });
         const filtered = response.data.results.filter(
@@ -261,7 +260,7 @@ const GenrePage: React.FC = () => {
       }
     };
     fetchContent();
-  }, [genreId, mediaType, currentPage, sortBy, isAnime, resolvedMediaType, t]);
+  }, [genreId, mediaType, currentPage, sortBy, resolvedMediaType, isLegacyAnimeGenre, t]);
 
   const handlePageChange = useCallback((newPage: number) => {
     if (newPage > 0 && newPage <= totalPages) {
