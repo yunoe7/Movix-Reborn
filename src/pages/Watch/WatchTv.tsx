@@ -1324,7 +1324,7 @@ const WatchTv: React.FC = () => {
         setLoadingExtractions(false);
         setLoadingWiflix(false);
         setLoadingVox(false);
-        setSelectedSource('vidy');
+        setSelectedSource('vidrift');
         setIsLoading(false);
         return;
 
@@ -2232,7 +2232,7 @@ const WatchTv: React.FC = () => {
 
         // Mapper les types de sources aux types de lecteurs pour le popup
         switch (selectedSource) {
-          case 'vidy':
+          case 'vidrift':
             // VidRift n'a pas de lecteur publicitaire dédié : réutiliser le flux générique.
             playerType = 'adfree';
             break;
