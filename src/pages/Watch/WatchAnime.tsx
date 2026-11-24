@@ -142,11 +142,18 @@ const WatchAnime: React.FC = () => {
       if (!Array.isArray(parsed.movies) || !Array.isArray(parsed.tv)) return;
       const numericId = Number(id);
       const previous = parsed.tv.find((entry: { id?: number }) => entry?.id === numericId) || {};
+      const previousEpisode = previous.currentEpisode;
+      const sameEpisode = previousEpisode?.season === activeSeason
+        && previousEpisode?.episode === activeEpisode;
       parsed.tv = parsed.tv.filter((entry: { id?: number }) => entry?.id !== numericId);
       parsed.tv.unshift({
         ...previous,
         id: numericId,
-        currentEpisode: { season: activeSeason, episode: activeEpisode },
+        // Keep VidRift's saved position when this is still the same episode.
+        // A newly selected episode starts at zero until VidRift reports progress.
+        currentEpisode: sameEpisode
+          ? previousEpisode
+          : { season: activeSeason, episode: activeEpisode, progress: 0, duration: 0, completed: false },
         lastAccessed: new Date().toISOString(),
       });
       localStorage.setItem('continueWatching', JSON.stringify(parsed));
