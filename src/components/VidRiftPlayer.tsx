@@ -95,6 +95,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastSavedAtRef = useRef(0);
   const lastKnownDurationRef = useRef(0);
+  const pendingEpisodeResumeRef = useRef<string | null>(null);
   const navigate = useNavigate();
   const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
 
@@ -215,6 +216,14 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         if (Number.isFinite(duration) && duration > 0) {
           lastKnownDurationRef.current = duration;
         }
+        const episodeKey = `${data.season}:${data.episode}`;
+        if (kind === 'tv' && pendingEpisodeResumeRef.current === episodeKey) {
+          pendingEpisodeResumeRef.current = null;
+          const progress = getSavedProgress(kind, tmdbId, data.season, data.episode);
+          if (progress > 0) {
+            sendToPlayer({ type: 'vidrift:resume', currentTime: Math.floor(progress) });
+          }
+        }
         return;
       }
 
@@ -231,6 +240,10 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         // then mirror the URL and Movix history without remounting the iframe.
         lastKnownDurationRef.current = 0;
         lastSavedAtRef.current = 0;
+        // VidRift emits this immediately before switching episodes. Wait for
+        // the next state snapshot for that episode before restoring its saved
+        // position, otherwise the resume command could hit the episode ending.
+        pendingEpisodeResumeRef.current = `${data.season}:${data.episode}`;
         onEpisodeChange?.(data.season!, data.episode!);
         persistProgress(0, 0, false, data.season, data.episode);
         return;
