@@ -42,6 +42,8 @@ const WatchAnime: React.FC = () => {
   const parsedSeason = Number(seasonParam);
   const season = Number.isInteger(parsedSeason) && parsedSeason >= 0 ? parsedSeason : 1;
   const episode = Math.max(1, Number(episodeParam) || 1);
+  const [activeSeason, setActiveSeason] = useState(season);
+  const [activeEpisode, setActiveEpisode] = useState(episode);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentProfile } = useProfile();
@@ -57,7 +59,7 @@ const WatchAnime: React.FC = () => {
     type: 'tv',
     title: show?.name || '',
     poster_path: show?.poster_path || '',
-    episodeInfo: { season, episode },
+    episodeInfo: { season: activeSeason, episode: activeEpisode },
   });
 
   useWrappedTracker({
@@ -66,8 +68,8 @@ const WatchAnime: React.FC = () => {
       contentType: 'anime',
       contentId: id,
       contentTitle: show?.name,
-      seasonNumber: season,
-      episodeNumber: episode,
+      seasonNumber: activeSeason,
+      episodeNumber: activeEpisode,
     } : undefined,
     isActive: !loading && !!id && !blocked,
   });
@@ -146,27 +148,27 @@ const WatchAnime: React.FC = () => {
     } catch {
       // Playback should continue even when browser history storage is unavailable.
     }
-  }, [id, season, episode, blocked]);
+  }, [id, activeSeason, activeEpisode, blocked]);
 
   const goToEpisode = (nextSeason: number, nextEpisode: number) => {
     if (!id) return;
     navigate(`/watch/anime/${encodeId(id)}/season/${nextSeason}/episode/${nextEpisode}`);
   };
 
-  const currentSeason = show?.seasons.find((item) => item.season_number === season);
-  const previousEpisode = episode > 1
-    ? { season, episode: episode - 1 }
+  const currentSeason = show?.seasons.find((item) => item.season_number === activeSeason);
+  const previousEpisode = activeEpisode > 1
+    ? { season: activeSeason, episode: activeEpisode - 1 }
     : (() => {
         const previousSeason = [...(show?.seasons || [])]
-          .filter((item) => item.season_number < season && item.episode_count > 0)
+          .filter((item) => item.season_number < activeSeason && item.episode_count > 0)
           .sort((a, b) => b.season_number - a.season_number)[0];
         return previousSeason ? { season: previousSeason.season_number, episode: previousSeason.episode_count } : null;
       })();
-  const nextEpisode = episode < (currentSeason?.episode_count || 0)
-    ? { season, episode: episode + 1 }
+  const nextEpisode = activeEpisode < (currentSeason?.episode_count || 0)
+    ? { season: activeSeason, episode: activeEpisode + 1 }
     : (() => {
         const nextSeason = [...(show?.seasons || [])]
-          .filter((item) => item.season_number > season && item.episode_count > 0)
+          .filter((item) => item.season_number > activeSeason && item.episode_count > 0)
           .sort((a, b) => a.season_number - b.season_number)[0];
         return nextSeason ? { season: nextSeason.season_number, episode: 1 } : null;
       })();
@@ -205,26 +207,32 @@ const WatchAnime: React.FC = () => {
       posterPath={posterPath}
       season={season}
       episode={episode}
-      onEpisodeChange={(nextSeason, nextEpisode) =>
-        window.history.replaceState(window.history.state, '', `/watch/anime/${encodeId(id)}/season/${nextSeason}/episode/${nextEpisode}`)
-      }
+      onEpisodeChange={(nextSeason, nextEpisode) => {
+        setActiveSeason(nextSeason);
+        setActiveEpisode(nextEpisode);
+        window.history.replaceState(window.history.state, '', `/watch/anime/${encodeId(id)}/season/${nextSeason}/episode/${nextEpisode}`);
+        void axios.get<{ episodes: AnimeEpisode[] }>(
+          `https://api.themoviedb.org/3/tv/${encodeURIComponent(id)}/season/${nextSeason}`,
+          { params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() } },
+        ).then((response) => setEpisodes(Array.isArray(response.data.episodes) ? response.data.episodes : [])).catch(() => setEpisodes([]));
+      }}
     />
     <div className="pointer-events-none fixed left-4 top-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-2">
       <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={() => navigate(`/tv/${encodeId(id)}`)}>
         ← {t('watch.back')}
       </button>
-      <span className="rounded-lg bg-black/75 px-3 py-2 text-sm shadow">{show.name} · S{season} E{episode}</span>
+      <span className="rounded-lg bg-black/75 px-3 py-2 text-sm shadow">{show.name} · S{activeSeason} E{activeEpisode}</span>
       <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={toggleWatched}>
         {isWatched ? 'Déjà vu' : 'Marquer comme vu'}
       </button>
       {previousEpisode && <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={() => goToEpisode(previousEpisode.season, previousEpisode.episode)}>‹ Épisode précédent</button>}
       {nextEpisode && <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={() => goToEpisode(nextEpisode.season, nextEpisode.episode)}>Épisode suivant ›</button>}
-      <select aria-label={t('watch.seasonLabel')} className="pointer-events-auto max-w-40 rounded-lg bg-black/80 px-3 py-2 text-sm" value={season} onChange={(event) => goToEpisode(Number(event.target.value), 1)}>
+      <select aria-label={t('watch.seasonLabel')} className="pointer-events-auto max-w-40 rounded-lg bg-black/80 px-3 py-2 text-sm" value={activeSeason} onChange={(event) => goToEpisode(Number(event.target.value), 1)}>
         {show.seasons.filter((item) => item.episode_count > 0).map((item) =>
           <option key={item.id} value={item.season_number}>{item.name}</option>
         )}
       </select>
-      <select aria-label={t('watch.episodes')} className="pointer-events-auto max-w-48 rounded-lg bg-black/80 px-3 py-2 text-sm" value={episode} onChange={(event) => goToEpisode(season, Number(event.target.value))}>
+      <select aria-label={t('watch.episodes')} className="pointer-events-auto max-w-48 rounded-lg bg-black/80 px-3 py-2 text-sm" value={activeEpisode} onChange={(event) => goToEpisode(activeSeason, Number(event.target.value))}>
         {episodes.map((item) => <option key={item.id} value={item.episode_number}>E{item.episode_number} · {item.name}</option>)}
       </select>
     </div>
