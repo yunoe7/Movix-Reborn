@@ -2412,26 +2412,7 @@ const TVDetails: React.FC = () => {
               >
                 <ArrowDownUp className="h-4 w-4" />
               </button>
-              <div className="flex h-9 items-center rounded-full bg-white/[0.07] p-0.5" role="group" aria-label={t('details.episodeListSource')}>
-                <button
-                  type="button"
-                  aria-pressed={animeEpisodeView === 'list'}
-                  onClick={() => setAnimeEpisodeView('list')}
-                  title={t('details.episodeListTmdb')}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${animeEpisodeView === 'list' ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
-                >
-                  <List className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-pressed={animeEpisodeView === 'grid'}
-                  onClick={() => setAnimeEpisodeView('grid')}
-                  title={t('details.showEpisodeGrid')}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${animeEpisodeView === 'grid' ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </button>
-              </div>
+
             </div>
           </div>
         )}
@@ -2471,9 +2452,11 @@ const TVDetails: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
           >
-            <div className={animeEpisodeView === 'grid'
-              ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
-              : "mb-6 flex flex-col gap-2"}>
+            <div className={isAnime
+              ? "mb-6 flex flex-col gap-3"
+              : animeEpisodeView === 'grid'
+                ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
+                : "mb-6 flex flex-col gap-2"}>
               {visibleEpisodes.map((ep: any, index: number) => {
                 // ... grid item rendering ...
                 if (isAnime) {
