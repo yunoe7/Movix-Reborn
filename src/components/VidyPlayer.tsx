@@ -8,6 +8,7 @@ type VidRiftPlayerProps = {
   posterPath?: string;
   season?: number;
   episode?: number;
+  onEpisodeChange?: (season: number, episode: number) => void;
 };
 
 type ContinueWatchingEntry = {
@@ -89,6 +90,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   posterPath,
   season,
   episode,
+  onEpisodeChange,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastSavedAtRef = useRef(0);
@@ -197,6 +199,9 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         episode?: number;
       };
 
+      const messageTmdbId = Number(data.tmdbId);
+      if (Number.isSafeInteger(messageTmdbId) && messageTmdbId !== Number(tmdbId)) return;
+
       if (data.type === 'vidrift:exit') {
         navigate(-1);
         return;
@@ -204,7 +209,10 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
 
       if (data.type === 'vidrift:episode') {
         if (kind !== 'tv') return;
-        // The embed switches episodes itself; mirror the episode in Movix history.
+        if (!Number.isInteger(data.season) || data.season! < 0
+          || !Number.isInteger(data.episode) || data.episode! < 1) return;
+        // The embed switches episodes itself; mirror both the URL and Movix history.
+        onEpisodeChange?.(data.season!, data.episode!);
         persistProgress(0, 0, false, data.season, data.episode);
         return;
       }
@@ -244,7 +252,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
       iframe.removeEventListener('load', handleLoad);
       window.removeEventListener('message', handleMessage);
     };
-  }, [kind, navigate, persistProgress, savedProgress, sendToPlayer]);
+  }, [kind, navigate, onEpisodeChange, persistProgress, savedProgress, sendToPlayer, tmdbId]);
 
   return (
     <main className="fixed inset-0 z-50 flex h-[100dvh] w-full flex-col bg-black text-white">
