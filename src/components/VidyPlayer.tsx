@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-type VidyPlayerProps = {
+type VidRiftPlayerProps = {
   kind: 'movie' | 'tv';
   tmdbId: string;
   title?: string;
@@ -24,9 +25,15 @@ type ContinueWatchingEntry = {
   };
 };
 
-const VIDY_ORIGINS = new Set(['https://www.vidy.st', 'https://vidy.st']);
+type ContinueWatchingHistory = {
+  movies: Array<number | ContinueWatchingEntry>;
+  tv: ContinueWatchingEntry[];
+};
 
-function readContinueWatching(): { movies: Array<number | ContinueWatchingEntry>; tv: ContinueWatchingEntry[] } {
+const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
+const VIDRIFT_BRAND_COLOR = 'DC2626';
+
+function readContinueWatching(): ContinueWatchingHistory {
   try {
     const raw = window.localStorage.getItem('continueWatching');
     const parsed = raw ? JSON.parse(raw) : {};
@@ -39,8 +46,14 @@ function readContinueWatching(): { movies: Array<number | ContinueWatchingEntry>
   }
 }
 
-function getSavedProgress(kind: 'movie' | 'tv', tmdbId: string, season?: number, episode?: number): number {
+function getSavedProgress(
+  kind: 'movie' | 'tv',
+  tmdbId: string,
+  season?: number,
+  episode?: number,
+): number {
   if (typeof window === 'undefined') return 0;
+
   try {
     if (window.localStorage.getItem('settings_disable_history') === 'true') return 0;
   } catch {
@@ -59,64 +72,88 @@ function getSavedProgress(kind: 'movie' | 'tv', tmdbId: string, season?: number,
   }
 
   const entry = history.movies.find((item) => (typeof item === 'number' ? item : item?.id) === id);
-  return typeof entry === 'object' && entry && Number.isFinite(entry.progress) ? Math.max(0, entry.progress ?? 0) : 0;
+  return typeof entry === 'object' && entry && Number.isFinite(entry.progress)
+    ? Math.max(0, entry.progress ?? 0)
+    : 0;
 }
 
-/** Lecteur unique Vidy pour les films et séries. Anime conserve son lecteur dédié. */
-const VidyPlayer: React.FC<VidyPlayerProps> = ({
+/**
+ * VidRift replaces Vidy for films and TV. Anime keeps its dedicated HLS player.
+ * The embed is intentionally not sandboxed: VidRift documents that sandboxing
+ * prevents playback. All messages are restricted to its exact origin and iframe.
+ */
+const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   kind,
   tmdbId,
   title,
+  posterPath,
   season,
   episode,
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastSavedAtRef = useRef(0);
+  const navigate = useNavigate();
   const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
 
   const src = useMemo(() => {
     const path = kind === 'movie'
-      ? `/movie/${encodeURIComponent(tmdbId)}`
-      : `/tv/${encodeURIComponent(tmdbId)}/${season ?? 1}/${episode ?? 1}`;
-    const url = new URL(path, 'https://www.vidy.st');
-    url.searchParams.set('color', 'DC2626');
-    url.searchParams.set('autoplay', 'true');
-
-    if (savedProgress > 0) {
-      url.searchParams.set('progress', String(Math.floor(savedProgress)));
-    }
-
-    if (kind === 'tv') {
-      url.searchParams.set('nextEpisode', 'true');
-      url.searchParams.set('episodeSelector', 'true');
-      url.searchParams.set('autoplayNextEpisode', 'true');
-    }
-
+      ? `/embed/movie/${encodeURIComponent(tmdbId)}`
+      : `/embed/tv/${encodeURIComponent(tmdbId)}/${season ?? 1}/${episode ?? 1}`;
+    const url = new URL(path, VIDRIFT_ORIGIN);
+    url.searchParams.set('brand', 'Movix');
+    url.searchParams.set('brandColor', VIDRIFT_BRAND_COLOR);
+    url.searchParams.set('showTitle', '1');
+    url.searchParams.set('exit', '1');
+    if (title) url.searchParams.set('title', title);
+    if (posterPath?.startsWith('https://')) url.searchParams.set('poster', posterPath);
     return url.toString();
-  }, [kind, tmdbId, season, episode, savedProgress]);
+  }, [kind, tmdbId, season, episode, title, posterPath]);
 
-  useEffect(() => {
+  const sendToPlayer = useCallback((message: Record<string, unknown>) => {
+    iframeRef.current?.contentWindow?.postMessage(message, VIDRIFT_ORIGIN);
+  }, []);
+
+  const persistProgress = useCallback((
+    currentTime: number,
+    duration: number,
+    completed: boolean,
+    activeSeason?: number,
+    activeEpisode?: number,
+  ) => {
     const numericId = Number(tmdbId);
     if (!Number.isSafeInteger(numericId) || numericId <= 0) return;
 
-    const persistProgress = (currentTime: number, duration: number, completed: boolean) => {
-      try {
-        if (window.localStorage.getItem('settings_disable_history') === 'true') return;
+    try {
+      if (window.localStorage.getItem('settings_disable_history') === 'true') return;
+      const history = readContinueWatching();
+      const now = new Date().toISOString();
 
-        // PLAYER_EVENT does not identify the active TV episode. Only persist
-        // movie timestamps until Vidy exposes a documented episode identifier.
-        if (kind !== 'movie') return;
-
-        const history = readContinueWatching();
-        const now = new Date().toISOString();
-
+      if (kind === 'tv') {
+        const activeS = Number.isSafeInteger(activeSeason) ? activeSeason! : (season ?? 1);
+        const activeE = Number.isSafeInteger(activeEpisode) ? activeEpisode! : (episode ?? 1);
+        const existingIndex = history.tv.findIndex((item) => item?.id === numericId);
+        const previous = existingIndex >= 0 ? history.tv[existingIndex] : { id: numericId };
+        const updated: ContinueWatchingEntry = {
+          ...previous,
+          id: numericId,
+          lastAccessed: now,
+          currentEpisode: {
+            season: activeS,
+            episode: activeE,
+            progress: completed ? 0 : Math.max(0, currentTime),
+            duration: Math.max(0, duration),
+            completed,
+          },
+        };
+        if (existingIndex >= 0) history.tv.splice(existingIndex, 1);
+        history.tv.unshift(updated);
+      } else {
         const existingIndex = history.movies.findIndex(
           (item) => (typeof item === 'number' ? item : item?.id) === numericId,
         );
         const previous = existingIndex >= 0 && typeof history.movies[existingIndex] === 'object'
           ? history.movies[existingIndex] as ContinueWatchingEntry
           : { id: numericId };
-
         const updated: ContinueWatchingEntry = {
           ...previous,
           id: numericId,
@@ -125,74 +162,104 @@ const VidyPlayer: React.FC<VidyPlayerProps> = ({
           duration: Math.max(0, duration),
           completed,
         };
-
         if (existingIndex >= 0) history.movies.splice(existingIndex, 1);
         history.movies.unshift(updated);
+      }
 
-        window.localStorage.setItem('continueWatching', JSON.stringify(history));
-      } catch {
-        // Un problème de stockage ne doit jamais interrompre la lecture.
+      window.localStorage.setItem('continueWatching', JSON.stringify(history));
+    } catch {
+      // Storage failures must never interrupt playback.
+    }
+  }, [kind, tmdbId, season, episode]);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const handleLoad = () => {
+      sendToPlayer({ type: 'vidrift:get-state' });
+      if (savedProgress > 0) {
+        sendToPlayer({ type: 'vidrift:resume', currentTime: Math.floor(savedProgress) });
       }
     };
 
     const handleMessage = (event: MessageEvent) => {
-      if (!VIDY_ORIGINS.has(event.origin)) return;
-      if (event.source !== iframeRef.current?.contentWindow) return;
-      if (typeof event.data !== 'string') return;
+      if (event.origin !== VIDRIFT_ORIGIN) return;
+      if (event.source !== iframe.contentWindow) return;
+      if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string') return;
 
-      let payload: { type?: string; event?: string; currentTime?: number; duration?: number };
-      try {
-        payload = JSON.parse(event.data);
-      } catch {
+      const data = event.data as {
+        type: string;
+        tmdbId?: number | string;
+        currentTime?: number;
+        duration?: number;
+        season?: number;
+        episode?: number;
+      };
+
+      if (data.type === 'vidrift:exit') {
+        navigate(-1);
         return;
       }
 
-      // Vidy also posts MEDIA_DATA for its own local history. Only handle
-      // the documented playback event envelope from the iframe.
-      if (payload.type !== 'PLAYER_EVENT') return;
-      const playerEvent = payload.event;
-      if (!['timeupdate', 'play', 'pause', 'ended'].includes(playerEvent ?? '')) return;
+      if (data.type === 'vidrift:episode') {
+        if (kind !== 'tv') return;
+        // The embed switches episodes itself; mirror the episode in Movix history.
+        persistProgress(0, 0, false, data.season, data.episode);
+        return;
+      }
 
-      const currentTime = Number(payload.currentTime);
-      const duration = Number(payload.duration);
-      if (!Number.isFinite(currentTime) || currentTime < 0) return;
+      if (data.type === 'vidrift:ended') {
+        persistProgress(
+          Number(data.currentTime) || 0,
+          Number(data.duration) || 0,
+          true,
+          data.season,
+          data.episode,
+        );
+        return;
+      }
 
-      const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
-      const completed = playerEvent === 'ended';
-      const now = Date.now();
-      const shouldPersist = completed || playerEvent === 'pause' || now - lastSavedAtRef.current >= 5000;
-
-      if (shouldPersist) {
-        persistProgress(currentTime, safeDuration, completed);
-        lastSavedAtRef.current = now;
+      if (data.type === 'vidrift:progress' || data.type === 'vidrift:paused') {
+        const currentTime = Number(data.currentTime);
+        const duration = Number(data.duration);
+        if (!Number.isFinite(currentTime) || currentTime < 0) return;
+        const now = Date.now();
+        if (data.type === 'vidrift:paused' || now - lastSavedAtRef.current >= 5000) {
+          persistProgress(
+            currentTime,
+            Number.isFinite(duration) && duration > 0 ? duration : 0,
+            false,
+            data.season,
+            data.episode,
+          );
+          lastSavedAtRef.current = now;
+        }
       }
     };
 
+    iframe.addEventListener('load', handleLoad);
     window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, [kind, tmdbId]);
+    return () => {
+      iframe.removeEventListener('load', handleLoad);
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [kind, navigate, persistProgress, savedProgress, sendToPlayer]);
 
   return (
     <main className="fixed inset-0 z-50 flex h-[100dvh] w-full flex-col bg-black text-white">
-      <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/10 px-4">
-        <a href="/" className="text-sm text-white/70 hover:text-white" aria-label="Retour à Movix">←</a>
-        <span className="min-w-0 truncate text-sm font-medium">{title || 'Lecture'}</span>
-        <span className="ml-auto text-xs text-white/45">Vidy</span>
-      </header>
-      <section className="min-h-0 flex-1">
-        <iframe
-          ref={iframeRef}
-          key={src}
-          src={src}
-          title={title ? `Vidy — ${title}` : 'Lecteur Vidy'}
-          className="h-full w-full border-0"
-          allow="encrypted-media; autoplay *; fullscreen *"
-          allowFullScreen
-          loading="eager"
-        />
-      </section>
+      <iframe
+        ref={iframeRef}
+        key={src}
+        src={src}
+        title={title ? `VidRift — ${title}` : 'Lecteur VidRift'}
+        className="h-full w-full flex-1 border-0"
+        allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
+        allowFullScreen
+        loading="eager"
+      />
     </main>
   );
 };
 
-export default VidyPlayer;
+export default VidRiftPlayer;
