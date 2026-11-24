@@ -436,7 +436,7 @@ const TVDetails: React.FC = () => {
   const [showSimilarModal, setShowSimilarModal] = useState(false);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [recommendationsLoaded, setRecommendationsLoaded] = useState<boolean>(false);
-  const [animeMode, setAnimeMode] = useState<boolean>(false);
+  const animeMode = false; // Separate Anime playback mode removed; anime episode catalogue remains.
   // Anime presentation controls are separate from the optional Anime-Sama playback mode.
   const [animeEpisodeSearchOpen, setAnimeEpisodeSearchOpen] = useState(false);
   const [animeEpisodeSearch, setAnimeEpisodeSearch] = useState('');
@@ -882,7 +882,6 @@ const TVDetails: React.FC = () => {
       setSeasonsDetails({});
       setEpisodeWarningOpen(false);
       setPendingEpisode(null);
-      setAnimeMode(false);
       setAnimeEpisodeSearchOpen(false);
       setAnimeEpisodeSearch('');
       setAnimeEpisodeSortDescending(false);
