@@ -70,7 +70,7 @@ const WatchAnime: React.FC = () => {
   useWrappedTracker({
     mode: 'viewing',
     viewingData: id ? {
-      contentType: 'anime',
+      contentType: 'tv',
       contentId: id,
       contentTitle: show?.name,
       seasonNumber: activeSeason,
