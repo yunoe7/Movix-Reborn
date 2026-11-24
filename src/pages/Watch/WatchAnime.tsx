@@ -54,6 +54,11 @@ const WatchAnime: React.FC = () => {
   const [blocked, setBlocked] = useState(false);
   const [certificate, setCertificate] = useState('');
 
+  useEffect(() => {
+    setActiveSeason(season);
+    setActiveEpisode(episode);
+  }, [season, episode]);
+
   const { isWatched, toggleWatched } = useWatchStatus({
     id: id ? Number(id) : 0,
     type: 'tv',
@@ -141,7 +146,7 @@ const WatchAnime: React.FC = () => {
       parsed.tv.unshift({
         ...previous,
         id: numericId,
-        currentEpisode: { season, episode },
+        currentEpisode: { season: activeSeason, episode: activeEpisode },
         lastAccessed: new Date().toISOString(),
       });
       localStorage.setItem('continueWatching', JSON.stringify(parsed));
