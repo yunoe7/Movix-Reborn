@@ -2418,3 +2418,52 @@ html.tv-mode :focus {
     font-size: 22px;
   }
 }
+
+
+/* Typographie commune des titres de rubriques : style éditorial net,
+   blanc constant au survol et soulignement rouge discret. */
+.catalog-section-title,
+.section-title.section-title {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding-bottom: 0.55rem;
+  color: #fff !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(1.05rem, 1.35vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  text-shadow: none;
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  transform: none !important;
+  transition: color 180ms ease;
+}
+.catalog-section-title::after,
+.section-title.section-title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f11, #f66);
+  transition: width 180ms ease;
+}
+.catalog-section-title:hover,
+.section-title.section-title:hover {
+  color: #fff !important;
+  text-shadow: none !important;
+  background: none !important;
+  transform: none !important;
+}
+.catalog-section-title:hover::after,
+.section-title.section-title:hover::after {
+  width: 40px;
+  background: linear-gradient(90deg, #f11, #f66);
+}
