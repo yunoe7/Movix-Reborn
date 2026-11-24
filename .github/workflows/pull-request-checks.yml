@@ -31,4 +31,6 @@ jobs:
       - name: Lint new VidRift integration components
         run: npx eslint src/components/VidRiftPlayer.tsx src/pages/AnimeRedirect.tsx
       - name: Build production bundle
+        env:
+          VITE_SITE_URL: https://movix.health
         run: npm run build
