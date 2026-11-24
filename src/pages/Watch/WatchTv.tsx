@@ -2408,7 +2408,7 @@ const WatchTv: React.FC = () => {
   if (!isLoading && id) {
     return (
       <div className="fixed inset-0 bg-black">
-        <VidyPlayer kind="tv" tmdbId={id} season={seasonNumber} episode={episodeNumber} title={showTitle} posterPath={playerPoster} />
+        <VidyPlayer kind="tv" tmdbId={id} season={seasonNumber} episode={episodeNumber} title={showTitle} posterPath={playerPoster} onEpisodeChange={(nextSeason, nextEpisode) => window.history.replaceState(window.history.state, '', `/watch/tv/${encodeId(id)}/s/${nextSeason}/e/${nextEpisode}`)} />
         {/* click-anywhere mode preloads Vidy behind the ad click-catcher */}
         {showAdFreePopup && adPopupTriggered && !adPopupBypass && (
           <AdFreePlayerAds
