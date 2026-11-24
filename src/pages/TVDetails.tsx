@@ -2542,7 +2542,7 @@ const TVDetails: React.FC = () => {
                       key={`anime-${selectedSeason}-${ep.index}`}
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0, transition: { delay: Math.min(index * 0.025, 0.2), duration: 0.22 } }}
-                      className={`group relative flex min-h-[104px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[122px] ${isSelected ? 'border-white/25 ring-1 ring-white/10' : ''}`}
+                      className={`group relative flex min-h-[138px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#171719] font-sans transition-[background,border-color,box-shadow] duration-200 hover:border-white/20 hover:bg-[#202023] md:min-h-[138px] ${isSelected ? 'border-white/20 bg-[#29292b] ring-1 ring-white/[0.04]' : ''}`}
                       whileHover={{ y: -2, transition: { duration: 0.18 } }}
                       layout={false}
                     >
@@ -2559,7 +2559,7 @@ const TVDetails: React.FC = () => {
                       >
                         <div className="flex min-w-0 flex-1 flex-row items-center gap-3 md:gap-4">
                           <span className="hidden w-7 shrink-0 text-center text-xl font-semibold text-white/45 sm:inline-flex">{episodeNumber}</span>
-                          <div className="relative aspect-video w-[34%] min-w-[108px] max-w-[192px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:w-[190px] sm:min-w-[150px]">
+                          <div className="relative aspect-video w-[38%] min-w-[108px] max-w-[210px] shrink-0 overflow-hidden rounded-lg bg-black/30 sm:w-[210px] sm:min-w-[170px]">
                             {shouldHide('episodeImages') ? (
                               <div className="flex h-full w-full items-center justify-center bg-white/[0.035]">
                                 <div className="flex flex-col items-center gap-2 text-gray-400">
@@ -2589,6 +2589,11 @@ const TVDetails: React.FC = () => {
                                   {t('details.episode')} {episodeNumber}
                                 </span>
                               </div>
+                            )}
+                            {isSelected && (
+                              <span className="absolute left-2 top-2 rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-[#171719] shadow-sm">
+                                Suivant
+                              </span>
                             )}
                             {Number(ep.vote_average) > 0 && (
                               <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -2638,8 +2643,9 @@ const TVDetails: React.FC = () => {
                                 <h4 className="h-6 line-clamp-1 text-base font-semibold leading-6 text-white transition-colors group-hover:text-red-400 sm:text-[17px]" title={shouldHide('episodeNames') ? undefined : ep.name}>
                                   {episodeTitle}
                                 </h4>
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/55">
-                                  {tvShow?.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} min` : ''}
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/50">
+                                  E{episodeNumber}
+                                  {tvShow?.episode_run_time?.[0] ? <span>· {tvShow.episode_run_time[0]} min</span> : null}
                                   {(ep.air_date || ep.airDate) && <span>· {ep.air_date || ep.airDate}</span>}
                                 </div>
                                 {ep.overview && (
@@ -2686,16 +2692,7 @@ const TVDetails: React.FC = () => {
                               )}
 
                             </div>
-                            <div className="ml-auto flex shrink-0 items-center gap-1.5 pl-2">
-                              {availableLanguages.map((language: string, languageIndex: number) => (
-                                <span
-                                  key={`anime-language-${language}-${languageIndex}`}
-                                  className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white/85 ${language === 'vf' ? 'border-emerald-400/20 bg-emerald-500/15' : language === 'vostfr' ? 'border-sky-400/20 bg-sky-500/15' : 'border-white/10 bg-white/[0.06]'}`}
-                                >
-                                  {language === 'vf' ? 'DUB' : language === 'vostfr' ? 'SUB' : language.toUpperCase().slice(0, 4)}
-                                </span>
-                              ))}
-                            </div>
+
                           </div>
                         </div>
                       </div>
