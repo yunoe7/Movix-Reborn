@@ -7,7 +7,7 @@ import { HalloweenBatIcon, HalloweenLantern, HalloweenPumpkinIcon, HalloweenThem
 import HalloweenDayBanner from './halloween/HalloweenDayBanner';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { Film, Search, X, Star, Settings, ShieldCheck, Home, Clapperboard, Tv2, Sparkles } from './icons/Icons8';
+import { Film, Search, X, Star, Settings, ShieldCheck, Home, Clapperboard, Tv2 } from './icons/Icons8';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfileMenu from './ProfileMenu';
 import NotificationsPopup from './NotificationsPopup';
@@ -81,7 +81,7 @@ const Header: React.FC = () => {
   const [hasAdminAccess, setHasAdminAccess] = useState(false);
 
   const [headerQuery, setHeaderQuery] = useState('');
-  const [autocompleteType, setAutocompleteType] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
+  const [autocompleteType, setAutocompleteType] = useState<'all' | 'movie' | 'tv'>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
@@ -115,7 +115,6 @@ const Header: React.FC = () => {
     { name: t('nav.home', 'Accueil'), path: '/', icon: <Home size={15} />, isActive: location.pathname === '/' },
     { name: t('nav.movies'), path: '/movies', icon: <Clapperboard size={15} />, isActive: location.pathname === '/movies' },
     { name: t('nav.tvShows'), path: '/tv-shows', icon: <Tv2 size={15} />, isActive: location.pathname === '/tv-shows' },
-    { name: t('nav.anime'), path: '/anime', icon: <Sparkles size={15} />, isActive: location.pathname === '/anime' },
   ], [t, location.pathname]);
 
   const {
@@ -127,10 +126,8 @@ const Header: React.FC = () => {
   const { items: ageFilteredAutocomplete } = useAgeRestrictedContent(autocompleteSuggestions);
 
   const filteredAutocomplete = useMemo(() => ageFilteredAutocomplete.filter((item: any) => {
-    const isAnime = (item.genre_ids || []).includes(16) && (item.original_language === 'ja' || (item.origin_country || []).includes('JP'));
-    if (autocompleteType === 'anime') return isAnime;
-    if (autocompleteType === 'movie') return item.media_type === 'movie' && !isAnime;
-    if (autocompleteType === 'tv') return item.media_type === 'tv' && !isAnime;
+    if (autocompleteType === 'movie') return item.media_type === 'movie';
+    if (autocompleteType === 'tv') return item.media_type === 'tv';
     return true;
   }), [ageFilteredAutocomplete, autocompleteType]);
 
@@ -601,7 +598,7 @@ const Header: React.FC = () => {
           >
             <div className="py-2">
               <div className="flex items-center gap-1 px-2 pb-2" role="tablist" aria-label={t('search.filterByType', 'Filtrer par type')}>
-                {([{ value: 'all', label: t('common.all', 'Tous') }, { value: 'movie', label: t('nav.movies', 'Films') }, { value: 'tv', label: t('nav.tvShows', 'Séries') }, { value: 'anime', label: 'Anime' }] as const).map((tab) => (
+                {([{ value: 'all', label: t('common.all', 'Tous') }, { value: 'movie', label: t('nav.movies', 'Films') }, { value: 'tv', label: t('nav.tvShows', 'Séries') }] as const).map((tab) => (
                   <button key={tab.value} type="button" role="tab" aria-selected={autocompleteType === tab.value} onClick={() => setAutocompleteType(tab.value)}
                     className={'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ' + (autocompleteType === tab.value ? 'bg-[#383838] text-white' : 'text-white/55 hover:bg-white/[0.06] hover:text-white/85')}>
                     {tab.label}
