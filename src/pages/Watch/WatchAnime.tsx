@@ -39,7 +39,8 @@ const WatchAnime: React.FC = () => {
   const { id: encodedId, season: seasonParam, episode: episodeParam } =
     useParams<{ id: string; season: string; episode: string }>();
   const id = encodedId ? getTmdbId(encodedId) : null;
-  const season = Math.max(0, Number(seasonParam) || 1);
+  const parsedSeason = Number(seasonParam);
+  const season = Number.isInteger(parsedSeason) && parsedSeason >= 0 ? parsedSeason : 1;
   const episode = Math.max(1, Number(episodeParam) || 1);
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -73,7 +74,7 @@ const WatchAnime: React.FC = () => {
 
   useEffect(() => {
     if (!id || !TMDB_API_KEY) {
-      setError(!id ? t('watch.cannotLoadAnimeDetails') : t('watch.loadingError'));
+      setError(t('watch.cannotLoadAnimeDetails'));
       setLoading(false);
       return;
     }
@@ -179,8 +180,8 @@ const WatchAnime: React.FC = () => {
 
   if (blocked) {
     return <main className="fixed inset-0 flex items-center justify-center bg-black px-6 text-center text-white">
-      <div><h1 className="mb-2 text-xl font-bold">{t('watch.contentBlocked')}</h1>
-        <p className="text-white/70">{t('watch.ageRestriction', { rating: certificate })}</p>
+      <div><h1 className="mb-2 text-xl font-bold">{t('watch.cannotLoadAnimeDetails')}</h1>
+        <p className="text-white/70">Accès bloqué par la restriction d’âge du profil ({certificate}).</p>
         <button className="mt-5 rounded bg-red-700 px-4 py-2" onClick={() => navigate(-1)}>{t('watch.back')}</button>
       </div>
     </main>;
@@ -214,10 +215,10 @@ const WatchAnime: React.FC = () => {
       </button>
       <span className="rounded-lg bg-black/75 px-3 py-2 text-sm shadow">{show.name} · S{season} E{episode}</span>
       <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={toggleWatched}>
-        {isWatched ? t('watch.markAsUnwatched') : t('watch.markAsWatched')}
+        {isWatched ? 'Déjà vu' : 'Marquer comme vu'}
       </button>
-      {previousEpisode && <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={() => goToEpisode(previousEpisode.season, previousEpisode.episode)}>‹ {t('watch.previousEpisode')}</button>}
-      {nextEpisode && <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={() => goToEpisode(nextEpisode.season, nextEpisode.episode)}>{t('watch.nextEpisode')} ›</button>}
+      {previousEpisode && <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={() => goToEpisode(previousEpisode.season, previousEpisode.episode)}>‹ Épisode précédent</button>}
+      {nextEpisode && <button className="pointer-events-auto rounded-lg bg-black/75 px-3 py-2 text-sm shadow" onClick={() => goToEpisode(nextEpisode.season, nextEpisode.episode)}>Épisode suivant ›</button>}
       <select aria-label={t('watch.seasonLabel')} className="pointer-events-auto max-w-40 rounded-lg bg-black/80 px-3 py-2 text-sm" value={season} onChange={(event) => goToEpisode(Number(event.target.value), 1)}>
         {show.seasons.filter((item) => item.episode_count > 0).map((item) =>
           <option key={item.id} value={item.season_number}>{item.name}</option>
