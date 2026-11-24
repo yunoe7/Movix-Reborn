@@ -2636,9 +2636,6 @@ const TVDetails: React.FC = () => {
 
                               </div>
                             </div>
-                            <div className="ml-2 flex shrink-0 items-center justify-end">
-
-                            </div>
 
                           </div>
                         </div>
