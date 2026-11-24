@@ -2423,7 +2423,7 @@ html.tv-mode :focus {
 /* Typographie commune des titres de rubriques : style éditorial net,
    blanc constant au survol et soulignement rouge discret. */
 .catalog-section-title,
-.section-title {
+.section-title.section-title {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -2444,7 +2444,7 @@ html.tv-mode :focus {
   transition: color 180ms ease;
 }
 .catalog-section-title::after,
-.section-title::after {
+.section-title.section-title::after {
   content: "";
   position: absolute;
   left: 0;
@@ -2456,14 +2456,14 @@ html.tv-mode :focus {
   transition: width 180ms ease;
 }
 .catalog-section-title:hover,
-.section-title:hover {
+.section-title.section-title:hover {
   color: #fff !important;
   text-shadow: none !important;
   background: none !important;
   transform: none !important;
 }
 .catalog-section-title:hover::after,
-.section-title:hover::after {
+.section-title.section-title:hover::after {
   width: 40px;
   background: linear-gradient(90deg, #f11, #f66);
 }
