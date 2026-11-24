@@ -9,11 +9,11 @@ import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-[#e73545] text-white hover:bg-[#f04455]',
+  primary: 'bg-red-600 text-white hover:bg-red-500',
   secondary: 'bg-white/10 text-white hover:bg-white/[0.16]',
   // Icônes en couleur pleine + opacity (une couleur transparente fait foncer les croisements de traits).
   ghost: 'text-white/70 hover:bg-white/[0.06] hover:text-white [&_svg]:text-white [&_svg]:opacity-70 hover:[&_svg]:opacity-100',
-  danger: 'bg-[#292929] text-[#f04455] hover:bg-[#e73545] hover:text-white',
+  danger: 'bg-white/10 text-red-300 hover:bg-red-600 hover:text-white',
   light: 'bg-white text-black hover:bg-white/85',
 };
 
@@ -112,9 +112,9 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         <p className="mt-1 max-w-xl text-[15px] leading-relaxed text-white/60">{description}</p>
       </div>
       {action && (action.to ? (
-        <Link to={action.to} className={buttonClass('primary')}>{action.label}</Link>
+        <Link to={action.to} className={buttonClass('primary', 'md', '!bg-[#e73545] hover:!bg-[#f04455]')}>{action.label}</Link>
       ) : (
-        <Button variant="primary" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
+        <Button variant="primary" className="!bg-[#e73545] hover:!bg-[#f04455]" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
       ))}
     </div>
   );
