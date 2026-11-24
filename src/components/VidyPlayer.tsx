@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 type VidRiftPlayerProps = {
@@ -184,7 +184,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     }
   }, [savedProgress, sendToPlayer]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
 
@@ -196,6 +196,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
       const data = event.data as {
         type: string;
         tmdbId?: number | string;
+        mediaType?: string;
         currentTime?: number;
         duration?: number;
         season?: number;
@@ -207,6 +208,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
       // an unrelated or malformed event from the same iframe origin.
       const messageTmdbId = Number(data.tmdbId);
       if (!Number.isSafeInteger(messageTmdbId) || messageTmdbId !== Number(tmdbId)) return;
+      if (data.mediaType !== kind) return;
 
       if (data.type === 'vidrift:state') {
         const duration = Number(data.duration);
