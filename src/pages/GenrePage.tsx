@@ -185,11 +185,7 @@ const GenrePage: React.FC = () => {
     : genreId
       ? GENRES[parsedGenreId] || t('filter.genre')
       : t('filter.genre');
-  const contentTypeLabel = isMovie
-    ? t('filter.movies')
-    : isAnime
-      ? t('filter.anime')
-      : t('filter.series');
+  const contentTypeLabel = isMovie ? t('filter.movies') : t('filter.series');
 
   // Sort options for dropdown — memoized so CustomDropdown sees stable refs.
   const sortOptions = useMemo(() => [
