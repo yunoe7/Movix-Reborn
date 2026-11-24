@@ -32,7 +32,7 @@ export const ROUTES: RouteEntry[] = [
   // gardent RouteProgressBar pendant l'import, sans fausse grille d'affiches.
   // Catalog pages
   { path: '/movies',                  loader: lz(() => import('../pages/Movies')),                  fallback: <CatalogSkeleton variant="movies" /> },
-  { path: '/anime',                   loader: lz(() => import('../pages/Anime')),                   fallback: <CatalogSkeleton variant="anime" /> },
+  { path: '/anime',                   loader: lz(() => import('../pages/AnimeRedirect')),            fallback: <CatalogSkeleton variant="tv" /> },
   { path: '/tv-shows',                loader: lz(() => import('../pages/TVShows')),                 fallback: <CatalogSkeleton variant="tv" /> },
   { path: '/vip/invoices',            loader: lz(() => import('../pages/VipInvoicesPage')), tvExcluded: true },
 
