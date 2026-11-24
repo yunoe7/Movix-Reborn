@@ -10,7 +10,7 @@ interface CarouselTitleProps {
 // Icône Lucide plutôt qu'un emoji : le trait suit la couleur de `iconClass`
 // (currentColor) et garde la même allure sur tous les systèmes.
 const CarouselTitle: React.FC<CarouselTitleProps> = ({ icon: Icon, iconClass, label }) => (
-  <span>
+  <span className="catalog-section-title inline-flex items-center">
     {Icon && (
       <Icon
         aria-hidden="true"
