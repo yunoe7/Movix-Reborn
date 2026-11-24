@@ -14,6 +14,8 @@ import { useWrappedTracker } from '../hooks/useWrappedTracker';
 import { getTmdbLanguage } from '../i18n';
 import { readSessionStorage, writeSessionStorage } from '../utils/browserStorage';
 import { getMinimumCarouselCategoryItems, makeExclusiveCategories } from '../utils/exclusiveCategories';
+import { fetchAnimeCatalogue } from '../services/animeSamaService';
+import { getNumericAge } from '../utils/certificationUtils';
 
 // Nombre de sections à charger immédiatement
 const IMMEDIATE_LOAD_COUNT = 2;
@@ -282,6 +284,52 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 const ITEMS_PER_PAGE = 100;
 const ITEMS_PER_BATCH = 20;
 
+const fetchLinkedAnimeShows = async (language: string): Promise<TVShow[]> => {
+  if (!TMDB_API_KEY) return [];
+  try {
+    const [ongoing, dubbed] = await Promise.all([
+      fetchAnimeCatalogue({ type: 'tv', linked: true, status: 'ongoing', sort: 'recent', limit: 30 }),
+      fetchAnimeCatalogue({ type: 'tv', linked: true, lang: 'vf', sort: 'recent', limit: 30 }),
+    ]);
+    const ids = [...new Set([...ongoing.items, ...dubbed.items]
+      .flatMap((item) => item.tmdb?.type === 'tv' ? [item.tmdb.id] : []))];
+    const shows: TVShow[] = [];
+    for (let index = 0; index < ids.length; index += 10) {
+      const batch = ids.slice(index, index + 10);
+      const fetched = await Promise.all(batch.map(async (id) => {
+        try {
+          const { data } = await axios.get(`https://api.themoviedb.org/3/tv/${id}`, {
+            params: { api_key: TMDB_API_KEY, language, append_to_response: 'content_ratings' },
+          });
+          const ratings = data.content_ratings?.results ?? [];
+          const certification = ratings.find((item: any) => item.iso_3166_1 === 'FR' && item.rating)?.rating
+            || ratings.find((item: any) => item.iso_3166_1 === 'US' && item.rating)?.rating || '';
+          if (certification && getNumericAge(certification) >= 17) return null;
+          if (!data.name || !data.poster_path) return null;
+          return {
+            id,
+            name: data.name,
+            poster_path: data.poster_path,
+            backdrop_path: data.backdrop_path || '',
+            overview: data.overview || '',
+            vote_average: data.vote_average || 0,
+            first_air_date: data.first_air_date || '',
+            genre_ids: (data.genres || []).map((genre: { id: number }) => genre.id),
+            media_type: 'tv' as const,
+          };
+        } catch {
+          return null;
+        }
+      }));
+      shows.push(...fetched.filter((show): show is TVShow => Boolean(show)));
+    }
+    return shows;
+  } catch {
+    // The main TV catalogue remains available if the linked anime index is down.
+    return [];
+  }
+};
+
 
 const normalizeTVItem = <T extends { poster_path?: string | null; backdrop_path?: string | null; overview?: string | null }>(
   item: T
@@ -413,8 +461,8 @@ const TVShows: React.FC = () => {
       setLoading(true);
 
       // Check for cached data first
-      const cachedData = readSessionStorage('movix_tvshows_data');
-      const cacheTimestamp = readSessionStorage('movix_tvshows_data_timestamp');
+      const cachedData = readSessionStorage('movix_tvshows_data_v2');
+      const cacheTimestamp = readSessionStorage('movix_tvshows_data_v2_timestamp');
 
       // Use cache if it exists and is less than 15 minutes old
       if (cachedData && cacheTimestamp) {
@@ -540,7 +588,10 @@ const TVShows: React.FC = () => {
         ),
       ];
 
-      const genreResponses = await Promise.all(genreRequests);
+      const [genreResponses, linkedAnimeShows] = await Promise.all([
+        Promise.all(genreRequests),
+        fetchLinkedAnimeShows(getTmdbLanguage()),
+      ]);
       if (!isCurrent()) return;
 
       // Filter out shows without poster_path or overview
@@ -560,13 +611,18 @@ const TVShows: React.FC = () => {
           }))
       );
 
-      // Combiner toutes les séries en évitant les doublons
+      // Combiner les séries TMDB et les animes liés au catalogue du site.
+      // Les deux sont des contenus TV : ils partagent les mêmes fiches et le lecteur VidRift.
       const allShows = [...validShows];
 
       additionalShows.forEach(newShow => {
         if (!allShows.some(show => show.id === newShow.id)) {
           allShows.push(newShow);
         }
+      });
+
+      linkedAnimeShows.forEach((anime) => {
+        if (!allShows.some((show) => show.id === anime.id)) allShows.push(anime);
       });
 
       if (allShows.length > 0) {
@@ -660,8 +716,8 @@ const TVShows: React.FC = () => {
         categories: [] // Categories will be regenerated from tvShows
       };
 
-      if (writeSessionStorage('movix_tvshows_data', JSON.stringify(cacheData))) {
-        writeSessionStorage('movix_tvshows_data_timestamp', Date.now().toString());
+      if (writeSessionStorage('movix_tvshows_data_v2', JSON.stringify(cacheData))) {
+        writeSessionStorage('movix_tvshows_data_v2_timestamp', Date.now().toString());
       }
     } catch (error) {
       if (!isCurrent()) return;
