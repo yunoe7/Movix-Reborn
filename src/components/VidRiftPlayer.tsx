@@ -79,7 +79,7 @@ function getSavedProgress(
 }
 
 /**
- * VidRift replaces Vidy for films and TV. Anime keeps its dedicated HLS player.
+ * VidRift is the shared player for films, TV series and anime (via TMDB TV IDs).
  * The embed is intentionally not sandboxed: VidRift documents that sandboxing
  * prevents playback. All messages are restricted to its exact origin and iframe.
  */
@@ -227,7 +227,10 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         if (kind !== 'tv') return;
         if (!Number.isInteger(data.season) || data.season! < 0
           || !Number.isInteger(data.episode) || data.episode! < 1) return;
-        // The embed switches episodes itself; mirror both the URL and Movix history.
+        // The embed switches episodes itself; reset per-episode throttling and duration,
+        // then mirror the URL and Movix history without remounting the iframe.
+        lastKnownDurationRef.current = 0;
+        lastSavedAtRef.current = 0;
         onEpisodeChange?.(data.season!, data.episode!);
         persistProgress(0, 0, false, data.season, data.episode);
         return;
