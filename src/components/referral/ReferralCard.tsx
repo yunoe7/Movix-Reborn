@@ -28,8 +28,8 @@ function formatCode(code: string): string {
 
 function Stat({ value, label, icon: Icon }: { value: number; label: string; icon: React.ElementType }) {
   return (
-    <div className="min-w-0 rounded-xl border border-white/[0.09] bg-black/25 px-3 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:px-4">
-      <div className="flex items-center gap-2 text-white/45">
+    <div className="min-w-0 rounded-[18px] border border-[#383838] bg-[#202020] px-3 py-3.5 sm:px-4">
+      <div className="flex items-center gap-2 text-[#929292]">
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">{label}</p>
       </div>
@@ -44,7 +44,7 @@ function RefereeProgress({ progress }: { progress: ReferralProgress }) {
     return <p className="text-sm text-emerald-300">{t('referral.card.progressDone')}</p>;
   }
   if (progress.status === 'cancelled') {
-    return <p className="text-sm text-white/55">{t('referral.card.progressCancelled')}</p>;
+    return <p className="text-sm text-[#929292]">{t('referral.card.progressCancelled')}</p>;
   }
 
   const collectionOff = !isDataCollectionAllowed();
@@ -54,7 +54,7 @@ function RefereeProgress({ progress }: { progress: ReferralProgress }) {
   return (
     <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-6">
       <div className="min-w-0">
-        <p className="text-sm text-white/70">
+        <p className="text-sm text-[#b0b0b0]">
           {t('referral.card.progressMinutes', {
             watched: formatWatchDuration(minutes),
             required: formatWatchDuration(progress.requiredMinutes)
@@ -68,7 +68,7 @@ function RefereeProgress({ progress }: { progress: ReferralProgress }) {
           aria-valuenow={minutes}
           aria-label={t('referral.card.progressMinutesLabel')}
         >
-          <div className="h-full rounded-full bg-red-600 transition-[width] duration-500 ease-out" style={{ width: `${percent}%` }} />
+          <div className="h-full rounded-full bg-[#e73545] transition-[width] duration-500 ease-out" style={{ width: `${percent}%` }} />
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -183,28 +183,28 @@ export default function ReferralCard({ className = '' }: { className?: string })
   }
 
   return (
-    <section className={`relative isolate overflow-hidden rounded-[1.65rem] border border-red-300/[0.17] bg-[radial-gradient(ellipse_at_88%_0%,rgba(127,29,29,0.22),transparent_43%),linear-gradient(125deg,#171316_0%,#111116_52%,#171116_100%)] px-5 pb-5 pt-10 shadow-[0_24px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.055)] sm:px-7 sm:pb-7 sm:pt-11 ${className}`} aria-labelledby={`${inputId}-title`}>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-7 border-b border-red-300/[0.12] bg-black/35">
+    <section className={`relative isolate overflow-hidden rounded-[26px] border border-[#303030] bg-[#171717] px-5 pb-5 pt-10 shadow-[0_18px_48px_rgba(0,0,0,0.24)] sm:rounded-[30px] sm:px-7 sm:pb-7 sm:pt-11 ${className}`} aria-labelledby={`${inputId}-title`}>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-7 border-b border-[#303030] bg-[#202020]">
         <div className="mx-3 flex h-full items-center gap-2 overflow-hidden sm:mx-4 sm:gap-2.5">
           {Array.from({ length: 22 }, (_, index) => (
             <span key={index} className="h-3.5 w-4 shrink-0 rounded-[4px] bg-black/80 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] sm:w-[18px]" />
           ))}
         </div>
       </div>
-      <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-28 -z-10 h-80 w-80 rounded-full bg-red-700/[0.13] blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 left-[30%] -z-10 h-64 w-64 rounded-full bg-rose-950/[0.16] blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-28 -z-10 h-80 w-80 rounded-full bg-[#e73545]/[0.07] blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 left-[30%] -z-10 h-64 w-64 rounded-full bg-[#e73545]/[0.04] blur-3xl" />
       <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.9fr)] lg:items-center">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-red-300/25 bg-red-950/45 text-red-200 shadow-[0_0_26px_rgba(185,28,28,0.13)]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#f04455]/25 bg-[#e73545]/10 text-[#f04455]">
               <Gift className="h-5 w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-rose-300/80">MOVIX REWARDS</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f04455]">MOVIX REWARDS</p>
               <h2 id={`${inputId}-title`} className="mt-0.5 text-xl font-semibold tracking-tight text-white sm:text-[1.35rem]">{t('referral.card.title')}</h2>
             </div>
           </div>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300/75 sm:text-[15px]">
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#a3a3a3] sm:text-[15px]">
             {t('referral.card.pitch', {
               duration: formatWatchDuration(data.requiredMinutes),
               days: formatDistinctDays(t, data.requiredDays),
@@ -214,12 +214,12 @@ export default function ReferralCard({ className = '' }: { className?: string })
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {/* Code de parrainage présenté comme un billet premium. */}
-            <div className="relative min-w-[12.5rem] overflow-hidden rounded-xl border border-white/25 bg-[linear-gradient(135deg,#fff7f7_0%,#e7e2e5_100%)] px-5 py-3.5 text-[#171116] shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
-              <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#171316]" />
+            <div className="relative min-w-[12.5rem] overflow-hidden rounded-xl border border-[#414141] bg-[#242424] px-5 py-3.5 text-white shadow-[0_10px_30px_rgba(0,0,0,0.22)]">
+              <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#171717]" />
               <span aria-hidden="true" className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#171316]" />
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{t('referral.card.yourCode')}</p>
-                <Film className="h-3.5 w-3.5 text-red-600" aria-hidden="true" />
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#929292]">{t('referral.card.yourCode')}</p>
+                <Film className="h-3.5 w-3.5 text-[#f04455]" aria-hidden="true" />
               </div>
               <p className="mt-1 font-mono text-[1.45rem] font-bold tabular-nums tracking-[0.16em]" aria-label={data.code.split('').join(' ')}>
                 {formatCode(data.code)}
@@ -253,7 +253,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
       </div>
 
       {data.referee && (
-        <div className="mt-7 rounded-2xl border border-white/[0.09] bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-5">
+        <div className="mt-7 rounded-[20px] border border-[#383838] bg-[#202020] p-4 sm:p-5">
           <h3 className="mb-3 text-sm font-medium text-white">
             {data.referee.status === 'pending'
               ? t('referral.card.progressTitle', { reward: formatDays(t, data.rewardDays) })
@@ -277,7 +277,7 @@ export default function ReferralCard({ className = '' }: { className?: string })
               value={codeInput}
               onChange={(event) => setCodeInput(event.target.value.slice(0, 300))}
               placeholder={t('referral.field.placeholder')}
-              className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-[#100d11]/85 px-4 text-[15px] uppercase tracking-[0.12em] text-white outline-none transition-colors placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 hover:border-white/20 focus:border-rose-400/65 focus:ring-2 focus:ring-red-500/15 sm:max-w-sm"
+              className="h-11 min-w-0 flex-1 rounded-xl border border-[#414141] bg-[#202020] px-4 text-[15px] uppercase tracking-[0.12em] text-white outline-none transition-colors placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 hover:border-white/20 focus:border-rose-400/65 focus:ring-2 focus:ring-red-500/15 sm:max-w-sm"
             />
             <Button type="submit" variant="light" pending={claiming} disabled={!codeInput.trim()}>
               {t('referral.card.enterSubmit')}
