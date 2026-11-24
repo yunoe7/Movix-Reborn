@@ -287,13 +287,30 @@ const ITEMS_PER_BATCH = 20;
 const fetchLinkedAnimeShows = async (language: string): Promise<TVShow[]> => {
   if (!TMDB_API_KEY) return [];
   try {
-    const [ongoing, dubbed] = await Promise.all([
-      fetchAnimeCatalogue({ type: 'tv', linked: true, status: 'ongoing', sort: 'recent', limit: 30 }),
-      fetchAnimeCatalogue({ type: 'tv', linked: true, lang: 'vf', sort: 'recent', limit: 30 }),
-    ]);
-    const ids = [...new Set([...ongoing.items, ...dubbed.items]
-      .flatMap((item) => item.tmdb?.type === 'tv' ? [item.tmdb.id] : []))];
+    // The index contains the full Anime-Sama catalogue. Read every page rather
+    // than sampling only the first 30 ongoing + 30 dubbed titles.
+    const firstPage = await fetchAnimeCatalogue({
+      type: 'tv', linked: true, sort: 'recent', page: 1, limit: 60,
+    });
+    const cataloguePages = [firstPage];
+    for (let page = 2; page <= firstPage.totalPages; page += 4) {
+      const pageNumbers = Array.from(
+        { length: Math.min(4, firstPage.totalPages - page + 1) },
+        (_, index) => page + index,
+      );
+      const nextPages = await Promise.all(pageNumbers.map((pageNumber) =>
+        fetchAnimeCatalogue({
+          type: 'tv', linked: true, sort: 'recent', page: pageNumber, limit: 60,
+        }),
+      ));
+      cataloguePages.push(...nextPages);
+    }
+
+    const ids = [...new Set(cataloguePages.flatMap((cataloguePage) =>
+      cataloguePage.items.flatMap((item) => item.tmdb?.type === 'tv' ? [item.tmdb.id] : []),
+    ))];
     const shows: TVShow[] = [];
+    // Keep TMDB traffic bounded while checking every linked title's age rating.
     for (let index = 0; index < ids.length; index += 10) {
       const batch = ids.slice(index, index + 10);
       const fetched = await Promise.all(batch.map(async (id) => {
