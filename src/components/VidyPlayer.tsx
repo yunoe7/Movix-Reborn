@@ -94,6 +94,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
 }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastSavedAtRef = useRef(0);
+  const lastKnownDurationRef = useRef(0);
   const navigate = useNavigate();
   const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
 
@@ -174,16 +175,18 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     }
   }, [kind, tmdbId, season, episode]);
 
+  const handleIframeLoad = useCallback(() => {
+    // Bind through the iframe's React onLoad prop so a fast/cached embed
+    // cannot finish loading before the message listener is registered.
+    sendToPlayer({ type: 'vidrift:get-state' });
+    if (savedProgress > 0) {
+      sendToPlayer({ type: 'vidrift:resume', currentTime: Math.floor(savedProgress) });
+    }
+  }, [savedProgress, sendToPlayer]);
+
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
-
-    const handleLoad = () => {
-      sendToPlayer({ type: 'vidrift:get-state' });
-      if (savedProgress > 0) {
-        sendToPlayer({ type: 'vidrift:resume', currentTime: Math.floor(savedProgress) });
-      }
-    };
 
     const handleMessage = (event: MessageEvent) => {
       if (event.origin !== VIDRIFT_ORIGIN) return;
@@ -199,8 +202,19 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         episode?: number;
       };
 
+      // VidRift documents these identifiers on every player message.
+      // Reject messages without the expected title id rather than accepting
+      // an unrelated or malformed event from the same iframe origin.
       const messageTmdbId = Number(data.tmdbId);
-      if (Number.isSafeInteger(messageTmdbId) && messageTmdbId !== Number(tmdbId)) return;
+      if (!Number.isSafeInteger(messageTmdbId) || messageTmdbId !== Number(tmdbId)) return;
+
+      if (data.type === 'vidrift:state') {
+        const duration = Number(data.duration);
+        if (Number.isFinite(duration) && duration > 0) {
+          lastKnownDurationRef.current = duration;
+        }
+        return;
+      }
 
       if (data.type === 'vidrift:exit') {
         navigate(-1);
@@ -230,14 +244,24 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
 
       if (data.type === 'vidrift:progress' || data.type === 'vidrift:paused') {
         const currentTime = Number(data.currentTime);
-        const duration = Number(data.duration);
+        const messageDuration = Number(data.duration);
         if (!Number.isFinite(currentTime) || currentTime < 0) return;
+        if (Number.isFinite(messageDuration) && messageDuration > 0) {
+          lastKnownDurationRef.current = messageDuration;
+        }
+        const duration = lastKnownDurationRef.current;
+        // The current VidRift API reports the end as a paused event; it does
+        // not document a separate ended event. Treat a pause at the media end
+        // as completed so Continue Watching does not retain a finished title.
+        const completed = data.type === 'vidrift:paused'
+          && duration > 0
+          && currentTime >= duration - 2.5;
         const now = Date.now();
         if (data.type === 'vidrift:paused' || now - lastSavedAtRef.current >= 5000) {
           persistProgress(
             currentTime,
-            Number.isFinite(duration) && duration > 0 ? duration : 0,
-            false,
+            duration,
+            completed,
             data.season,
             data.episode,
           );
@@ -246,18 +270,15 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
       }
     };
 
-    iframe.addEventListener('load', handleLoad);
     window.addEventListener('message', handleMessage);
-    return () => {
-      iframe.removeEventListener('load', handleLoad);
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [kind, navigate, onEpisodeChange, persistProgress, savedProgress, sendToPlayer, tmdbId]);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [kind, navigate, onEpisodeChange, persistProgress, tmdbId]);
 
   return (
     <main className="fixed inset-0 z-50 flex h-[100dvh] w-full flex-col bg-black text-white">
       <iframe
         ref={iframeRef}
+        onLoad={handleIframeLoad}
         key={src}
         src={src}
         title={title ? `VidRift — ${title}` : 'Lecteur VidRift'}
