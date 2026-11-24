@@ -5,7 +5,7 @@ import { safeEmbedUrl } from '../../utils/safeEmbedUrl';
 import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import VidyPlayer from '../../components/VidyPlayer';
+import VidRiftPlayer from '../../components/VidRiftPlayer';
 import { useAdFreePopup } from '../../context/AdFreePopupContext';
 import AdFreePlayerAds from '../../components/AdFreePlayerAds';
 import AdWaitingScreen from '@/components/AdWaitingScreen';
@@ -1396,7 +1396,7 @@ const WatchMovie: React.FC = () => {
     );
   }
 
-  // Respect the ad gate before mounting the Vidy iframe.
+  // Respect the ad gate before mounting the VidRift iframe.
   // In click-anywhere mode the iframe is preloaded and the ad catcher is an overlay.
   if (
     showAdFreePopup
@@ -1433,7 +1433,7 @@ const WatchMovie: React.FC = () => {
   if (!isLoading && id) {
     return (
       <div className="fixed inset-0 bg-black">
-        <VidyPlayer kind="movie" tmdbId={id} title={movieTitle} posterPath={playerPoster} />
+        <VidRiftPlayer kind="movie" tmdbId={id} title={movieTitle} posterPath={playerPoster} />
         {showAdFreePopup && adPopupTriggered && !adPopupBypass && (
           <AdFreePlayerAds
             onClose={handlePopupClose}
