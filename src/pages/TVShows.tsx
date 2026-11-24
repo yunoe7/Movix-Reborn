@@ -281,9 +281,6 @@ interface Category {
 
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
-const ITEMS_PER_PAGE = 100;
-const ITEMS_PER_BATCH = 20;
-
 const fetchLinkedAnimeShows = async (language: string): Promise<TVShow[]> => {
   if (!TMDB_API_KEY) return [];
   try {
