@@ -142,7 +142,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         type="button"
         onClick={handleToggle}
         disabled={disabled}
-        className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-[#242424] border border-[#484848] rounded-xl text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#d0d0d0]/55 focus:border-[#d0d0d0]/60 transition-colors ${
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-[#242424] border border-[#484848] rounded-xl text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/40 transition-colors ${
           disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#383838]'
         }`}
       >
