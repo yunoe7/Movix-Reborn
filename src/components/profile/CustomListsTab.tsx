@@ -51,7 +51,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import ConfirmDialog from '@/components/ui/confirm-dialog';
 import NewListModal from '@/components/NewListModal';
 import AgeRestrictedMedia from '@/components/AgeRestrictedMedia';
 import TurnstileWidget from '@/components/TurnstileWidget';
@@ -274,7 +273,6 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
   const renameInputRef = useRef<HTMLInputElement>(null);
   const renameFromMenuRef = useRef(false);
 
-  const [pendingDelete, setPendingDelete] = useState<CustomList | null>(null);
   const [showNewListModal, setShowNewListModal] = useState(false);
 
   const [sharedStatus, setSharedStatus] = useState<Record<string, SharedListStatus>>({});
@@ -443,12 +441,9 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
     setShowNewListModal(false);
   };
 
-  const confirmDelete = () => {
-    if (!pendingDelete) return;
-    const deletedId = pendingDelete.id;
-    saveLists(lists.filter((list) => list.id !== deletedId));
-    setPendingDelete(null);
-    if (selectedListId === deletedId) closeList();
+  const deleteList = (list: CustomList) => {
+    saveLists(lists.filter((current) => current.id !== list.id));
+    if (selectedListId === list.id) closeList();
   };
 
   const startRenaming = (listId: number, fromMenu = false) => {
@@ -557,18 +552,6 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
   };
 
   // --- Rendus -------------------------------------------------------------------
-
-  const deleteDialog = (
-    <ConfirmDialog
-      isOpen={!!pendingDelete}
-      title={t('profilePage.lists.deleteTitle', 'Supprimer cette liste ?')}
-      message={t('profilePage.lists.deleteMessage', '« {{name}} » et tout son contenu seront supprimés. Cette action est définitive.', { name: pendingDelete?.name ?? '' })}
-      confirmLabel={t('profilePage.sharing.delete')}
-      variant="destructive"
-      onConfirm={confirmDelete}
-      onCancel={() => setPendingDelete(null)}
-    />
-  );
 
   const shareBadge = (status: SharedListStatus | undefined, short: boolean) => status && (
     <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1 text-xs font-medium text-white/80">
@@ -876,7 +859,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
                 {isFlat ? t('profilePage.collectionView.editList') : t('profilePage.collectionView.viewAllMovies')}
               </Button>
             )}
-            <Button variant="danger" onClick={() => setPendingDelete(list)}>
+            <Button variant="danger" onClick={() => deleteList(list)}>
               <Trash2 className="h-4 w-4" aria-hidden="true" />
               {t('profilePage.sharing.delete')}
             </Button>
@@ -1006,7 +989,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuItem
                 className="gap-2 text-red-300 focus:bg-red-600 focus:text-white"
-                onSelect={() => setPendingDelete(list)}
+                onSelect={() => deleteList(list)}
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
                 {t('profilePage.sharing.delete')}
@@ -1088,7 +1071,6 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
           ? renderOpenedList(selectedList)
           : renderOverview()}
       {showNewListModal && <NewListModal onClose={() => setShowNewListModal(false)} onCreateList={createList} />}
-      {deleteDialog}
     </>
   );
 }
