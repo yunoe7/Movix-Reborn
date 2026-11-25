@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { MAIN_API } from '../config/runtime';
+import { useAdminConfirm } from './admin/AdminConfirmProvider';
 
 type Post = { id:string; title:string; summary:string; date:string; status:'draft'|'published'; changes:{text:string;category:'new'|'modified'|'fix'}[] };
 const empty = { title:'', summary:'', status:'draft' as const, changes:[] as {text:string;category:'new'|'modified'|'fix'}[] };
 const cls='w-full rounded-xl border border-white/10 bg-white/[0.045] px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/30 focus:border-amber-300/50';
 const headers=()=>({Authorization:'Bearer '+(localStorage.getItem('auth_token')||''),'Content-Type':'application/json'});
 export default function AdminWhatsNew(){
+ const { confirm } = useAdminConfirm();
  const [posts,setPosts]=useState<Post[]>([]),[draft,setDraft]=useState<any>(empty),[line,setLine]=useState(''),[category,setCategory]=useState<'new'|'modified'|'fix'>('new'),[editing,setEditing]=useState<string|null>(null),[busy,setBusy]=useState(false);
  const load=async()=>{try{const r=await fetch(MAIN_API+'/api/admin/whats-new',{headers:headers(),cache:'no-store'});const j=await r.json();if(!r.ok)throw Error(j.error);setPosts(j.posts||[]);}catch(e){toast.error(e instanceof Error?e.message:'Chargement impossible')}};
  useEffect(()=>{void load()},[]);
  const reset=()=>{setDraft(empty);setEditing(null);setLine('')};
  const save=async(status:'draft'|'published')=>{setBusy(true);try{const payload={...draft,status};const r=await fetch(MAIN_API+'/api/admin/whats-new'+(editing?'/'+editing:''),{method:editing?'PUT':'POST',headers:headers(),body:JSON.stringify(payload)});const j=await r.json();if(!r.ok)throw Error(j.error);toast.success(status==='published'?'Nouveauté publiée !':'Brouillon enregistré');reset();await load()}catch(e){toast.error(e instanceof Error?e.message:'Enregistrement impossible')}finally{setBusy(false)}};
  const edit=(p:Post)=>{setEditing(p.id);setDraft({title:p.title,summary:p.summary,status:p.status,changes:p.changes||[]})};
- const remove=async(id:string)=>{if(!confirm('Supprimer cette publication ?'))return;try{const r=await fetch(MAIN_API+'/api/admin/whats-new/'+id,{method:'DELETE',headers:headers()});if(!r.ok)throw Error();toast.success('Publication supprimée');await load()}catch{toast.error('Suppression impossible')}};
+ const remove=async(id:string)=>{const ok=await confirm({title:'Êtes-vous sûr de vouloir supprimer cette publication ?',message:'Cette action est irréversible.',confirmLabel:'Supprimer',destructive:true});if(!ok)return;try{const r=await fetch(MAIN_API+'/api/admin/whats-new/'+id,{method:'DELETE',headers:headers()});if(!r.ok)throw Error();toast.success('Publication supprimée');await load()}catch{toast.error('Suppression impossible')}};
  return <div className="mx-auto max-w-5xl space-y-6 text-white">
   <header><p className="text-[10px] font-bold uppercase tracking-[.2em] text-white/40">Communication · Movix</p><h2 className="mt-1 text-2xl font-bold">Centre de nouveautés</h2><p className="mt-1 text-sm text-white/55">Publie des annonces visibles immédiatement, sans redéployer le site.</p></header>
   <section className="space-y-4 rounded-2xl border border-white/10 bg-white/[.025] p-5">

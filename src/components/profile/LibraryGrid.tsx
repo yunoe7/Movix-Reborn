@@ -103,7 +103,7 @@ export default function LibraryGrid({ items, listType, onRemove }: LibraryGridPr
             selected={isOpen}
             to={isShow ? undefined : watchItemPath(item)}
             onOpen={isShow ? () => setOpenShowId(isOpen ? null : (item.id as number)) : undefined}
-            actions={(
+            actions={listType === 'watched' ? undefined : (
               <IconButton
                 label={t('profilePage.media.removeFrom', { title, defaultValue: 'Retirer « {{title}} »' })}
                 tone="danger"
