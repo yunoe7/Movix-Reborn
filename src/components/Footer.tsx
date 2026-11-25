@@ -23,7 +23,7 @@ const Footer = () => {
         <p className="site-footer__disclaimer">{t('footer.contentText')}</p>
 
         <div className="site-footer__bottom">
-          <p>© {new Date().getFullYear()} <span className="site-footer__brand"><MovixWordmark className="inline-block h-4 w-auto align-middle" /></span>. {t('footer.copyright', { year: new Date().getFullYear() }).replace(/^©?\s*\d{4}\s*/, '')}</p>
+          <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
         </div>
       </div>
 
