@@ -102,7 +102,7 @@ const SpoilerToggle: React.FC<SpoilerToggleProps> = ({ checked, onChange, size =
 // Composant Skeleton pour les commentaires
 const CommentSkeleton: React.FC = () => {
   return (
-    <div className="bg-gray-800/70 rounded-xl p-3 sm:p-4 md:p-6 relative overflow-hidden" aria-hidden="true">
+    <div className="movix-comments-glass__comment rounded-2xl p-4 sm:p-5 md:p-6 relative overflow-hidden" aria-hidden="true">
       <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
         <div className="flex-shrink-0">
           <div className="w-8 h-8 sm:w-10 sm:h-10"><Skeleton variant="circle" height="100%" baseColor="#374151" /></div>
@@ -297,7 +297,7 @@ const CommentItem = React.memo<CommentItemProps>((props) => {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.3 }}
-      className="bg-gray-800/70 rounded-xl p-3 sm:p-4 md:p-6 relative overflow-hidden"
+      className="movix-comments-glass__comment rounded-2xl p-4 sm:p-5 md:p-6 relative overflow-hidden"
     >
       {/* Overlay de suppression */}
       <AnimatePresence>
@@ -1904,14 +1904,22 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
 
   return (
     <>
-    <div className={`relative w-full max-w-5xl mx-auto px-2 sm:px-4 md:px-6 ${areCommentsHidden ? 'py-2 sm:py-3 md:py-4' : 'py-4 sm:py-6 md:py-8'}`}>
+    <style>{`.movix-comments-glass{position:relative;isolation:isolate;color:#f4f4f5}.movix-comments-glass:before{content:"";position:absolute;z-index:-1;inset:1rem -1rem;pointer-events:none;background:radial-gradient(ellipse at 12% 8%,rgba(255,255,255,.08),transparent 42%),radial-gradient(ellipse at 88% 35%,rgba(148,163,184,.06),transparent 38%);filter:blur(36px)}
+.movix-comments-glass__notice,.movix-comments-glass__composer,.movix-comments-glass__comment{border:1px solid rgba(255,255,255,.13)!important;background:linear-gradient(135deg,rgba(255,255,255,.085),rgba(255,255,255,.025))!important;backdrop-filter:blur(30px) saturate(115%);-webkit-backdrop-filter:blur(30px) saturate(115%);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 18px 48px rgba(0,0,0,.22)}
+.movix-comments-glass__notice{position:relative;overflow:hidden;border-radius:18px}.movix-comments-glass__composer{position:relative;overflow:hidden;border-radius:22px}.movix-comments-glass__textarea,.movix-comments-glass textarea{background:rgba(5,7,11,.28)!important;border:1px solid rgba(255,255,255,.14)!important;color:#f4f4f5!important;backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px)}.movix-comments-glass textarea:focus{border-color:rgba(255,255,255,.34)!important;box-shadow:0 0 0 3px rgba(255,255,255,.06)!important}
+.movix-comments-glass__comment{border-radius:20px;transition:border-color .22s,background .22s,transform .22s}.movix-comments-glass__comment:hover{border-color:rgba(255,255,255,.22)!important;background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.035))!important}
+.movix-comments-glass [class*=bg-gray-800],.movix-comments-glass [class*=bg-gray-900],.movix-comments-glass [class*=bg-slate-800],.movix-comments-glass [class*=bg-slate-900]{background-color:rgba(255,255,255,.045)!important}.movix-comments-glass [class*=border-gray-700],.movix-comments-glass [class*=border-gray-600],.movix-comments-glass [class*=border-slate-700]{border-color:rgba(255,255,255,.12)!important}
+.movix-comments-glass [class*=text-red-],.movix-comments-glass [class*=text-blue-],.movix-comments-glass [class*=text-orange-],.movix-comments-glass [class*=text-yellow-]{color:rgba(241,245,249,.82)!important}.movix-comments-glass [class*=bg-red-],.movix-comments-glass [class*=bg-blue-],.movix-comments-glass [class*=bg-orange-],.movix-comments-glass [class*=bg-yellow-]{background-color:rgba(255,255,255,.09)!important}.movix-comments-glass [class*=border-red-],.movix-comments-glass [class*=border-blue-],.movix-comments-glass [class*=border-orange-],.movix-comments-glass [class*=border-yellow-]{border-color:rgba(255,255,255,.18)!important}
+.movix-comments-glass button:hover:not(:disabled){color:#fff}.movix-comments-glass button:disabled{opacity:.48;cursor:not-allowed}.movix-comments-glass__overlay{background:rgba(0,0,0,.74)!important}.movix-comments-glass__modal{border:1px solid rgba(255,255,255,.17)!important;background:linear-gradient(145deg,rgba(35,38,44,.84),rgba(12,14,18,.76))!important;backdrop-filter:blur(36px) saturate(120%);-webkit-backdrop-filter:blur(36px) saturate(120%);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 30px 90px rgba(0,0,0,.55)}
+.movix-comments-glass__modal button{border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.07)!important;color:#f4f4f5!important}.movix-comments-glass__modal button:hover:not(:disabled){background:rgba(255,255,255,.14)!important}.movix-comments-glass__modal [class*=text-red-],.movix-comments-glass__modal [class*=text-orange-],.movix-comments-glass__modal [class*=text-yellow-]{color:rgba(241,245,249,.82)!important}.movix-comments-glass__modal [class*=bg-red-],.movix-comments-glass__modal [class*=bg-orange-],.movix-comments-glass__modal [class*=bg-yellow-]{background:rgba(255,255,255,.09)!important}.movix-comments-glass__modal [class*=border-red-],.movix-comments-glass__modal [class*=border-orange-],.movix-comments-glass__modal [class*=border-yellow-]{border-color:rgba(255,255,255,.18)!important}.movix-comments-glass a{color:rgba(241,245,249,.84)!important}.movix-comments-glass a:hover{color:#fff!important}@media(max-width:640px){.movix-comments-glass__composer,.movix-comments-glass__comment{border-radius:17px}.movix-comments-glass__notice{border-radius:15px}}`}</style>
+    <div className={`movix-comments-glass relative w-full max-w-5xl mx-auto px-2 sm:px-4 md:px-6 ${areCommentsHidden ? 'py-2 sm:py-3 md:py-4' : 'py-4 sm:py-6 md:py-8'}`}>
       {!areCommentsHidden ? (
       <div>
       {/* Message d'information sur les demandes d'ajouts */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4 sm:mb-6 bg-blue-600/20 border-2 border-blue-500/50 backdrop-blur-sm rounded-xl p-3 sm:p-4"
+        className="movix-comments-glass__notice mb-4 sm:mb-6 rounded-2xl p-4 sm:p-5"
       >
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 sm:w-6 sm:h-6 text-blue-400 flex-shrink-0 mt-0.5" />
@@ -1946,7 +1954,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-gray-700/50"
+          className="movix-comments-glass__composer mb-8 rounded-2xl p-4 sm:p-6"
         >
           <div className="flex gap-4">
             <div className="flex-shrink-0 hidden sm:block">
@@ -1972,7 +1980,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   placeholder={contentType === 'movie' ? t('comments.moviePlaceholder') : t('comments.seriesPlaceholder')}
-                  className="w-full bg-gray-900/50 text-gray-100 rounded-xl p-4 pr-12 min-h-[100px] focus:ring-2 focus:ring-blue-500/50 focus:outline-none resize-y border border-gray-700/50 placeholder-gray-500 transition-colors duration-150"
+                  className="movix-comments-glass__textarea w-full text-gray-100 rounded-xl p-4 pr-12 min-h-[120px] focus:outline-none resize-y placeholder-gray-500 transition-colors duration-150"
                   maxLength={500}
                 />
                 <div className="absolute bottom-3 right-3 text-xs text-gray-500 font-medium bg-gray-900/80 px-2 py-1 rounded-md">
@@ -2208,7 +2216,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[100000]"
+            className="movix-comments-glass__overlay fixed inset-0 backdrop-blur-xl flex items-center justify-center p-4 z-[100000]"
             onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}
           >
             <motion.div
@@ -2216,7 +2224,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-              className="bg-gray-900 rounded-2xl p-6 max-w-sm w-full border border-gray-700/50 shadow-2xl"
+              className="movix-comments-glass__modal rounded-2xl p-6 max-w-sm w-full shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
@@ -2265,7 +2273,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-[100000]"
+            className="movix-comments-glass__overlay fixed inset-0 backdrop-blur-xl flex items-center justify-center p-4 z-[100000]"
             onClick={(e) => { if (e.target === e.currentTarget) { setReportModal(null); setReportReason(''); setReportDetails(''); } }}
           >
             <motion.div
@@ -2273,7 +2281,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-              className="bg-gray-900 rounded-2xl p-6 max-w-md w-full border border-gray-700/50 shadow-2xl"
+              className="movix-comments-glass__modal rounded-2xl p-6 max-w-md w-full shadow-2xl"
             >
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
