@@ -247,7 +247,7 @@ function mergeStoredTeamSelection(raw) {
     tmdbId,
     badge: text('badge', 60) || defaults.badge,
     title: text('title', 100) || defaults.title,
-    description: text('description', 600) || defaults.description,
+    description: text('description', 5000) || defaults.description,
     backdropUrl: isImageRef(backdropUrl) || backdropUrl.startsWith('/') ? backdropUrl : defaults.backdropUrl,
     detailsUrl: isLinkRef(detailsUrl) ? detailsUrl : defaults.detailsUrl,
     ageRating: text('ageRating', 12) || defaults.ageRating,
@@ -484,7 +484,7 @@ function validateSettingsInput(input, currentSettings = DEFAULT_HERO_PROMO_SETTI
   const teamSelection = mergeStoredTeamSelection(teamInput);
   if (hasOwnValue(teamInput, 'enabled') && typeof teamInput.enabled !== 'boolean') throw createSettingsError('La sélection de l’équipe doit être activée ou désactivée.');
   if (hasOwnValue(teamInput, 'tmdbId') && (!Number.isSafeInteger(Number(teamInput.tmdbId)) || Number(teamInput.tmdbId) < 1)) throw createSettingsError('Identifiant TMDB invalide.');
-  for (const [key, max] of [['badge', 60], ['title', 100], ['description', 600], ['backdropUrl', URL_MAX_LENGTH], ['detailsUrl', URL_MAX_LENGTH], ['ageRating', 12], ['rating', 16], ['genres', 120], ['duration', 40]]) {
+  for (const [key, max] of [['badge', 60], ['title', 100], ['description', 5000], ['backdropUrl', URL_MAX_LENGTH], ['detailsUrl', URL_MAX_LENGTH], ['ageRating', 12], ['rating', 16], ['genres', 120], ['duration', 40]]) {
     if (hasOwnValue(teamInput, key) && (typeof teamInput[key] !== 'string' || cleanText(teamInput[key]).length > max)) throw createSettingsError(`Champ « ${key} » invalide (maximum ${max} caractères).`);
   }
   const ids = new Set(promos.map((promo) => promo.id));
