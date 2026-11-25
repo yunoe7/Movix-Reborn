@@ -11,7 +11,7 @@ function UpdateAvailableToast({ toastId }: { toastId: string | number }) {
   return (
     <section
       role="status"
-      className="relative w-[min( calc(100vw-32px), 390px)] overflow-hidden rounded-2xl border border-white/10 bg-[#111318]/95 text-white shadow-[0_20px_70px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+      className="relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#111318]/95 text-white shadow-[0_20px_70px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
       style={{ width: 'min(390px, calc(100vw - 32px))' }}
     >
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/80 to-transparent" />
