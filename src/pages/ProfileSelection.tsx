@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Settings, Crown, ShieldCheck, ChevronDown } from '../components/icons/Icons8';
+import { Plus, Settings, ShieldCheck, ChevronDown } from '../components/icons/Icons8';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import AvatarSelector from '../components/AvatarSelector';
@@ -130,12 +130,6 @@ const ProfileSelection: React.FC = () => {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    {/* Icône profil par défaut */}
-                    {profile.isDefault && (
-                      <div className="absolute -top-1 -right-1 xs:-top-1.5 xs:-right-1.5 bg-yellow-500 rounded-full p-1 xs:p-1.5 sm:p-2 shadow-lg shadow-yellow-500/30">
-                        <Crown className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-white" />
-                      </div>
-                    )}
                     {/* Badge restriction d'âge */}
                     {(profile.ageRestriction ?? 0) > 0 && (
                       <div className="absolute -bottom-1 -right-1 xs:-bottom-1.5 xs:-right-1.5 bg-red-600 rounded-full px-1.5 xs:px-2 py-0.5 z-10 flex items-center gap-0.5 shadow-lg shadow-red-600/30">
