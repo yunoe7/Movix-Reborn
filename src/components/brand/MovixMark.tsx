@@ -1,12 +1,12 @@
-/** Monogramme Movix officiel fourni par le propriétaire de la marque. */
+/** Monogramme Movix original du site. */
 export function MovixMark({ className = '', testId }: { className?: string; testId?: string }) {
   return (
     <img
       data-testid={testId}
-      src="/movix-monogram.svg"
+      src="/movix-mark.png"
       alt="Movix"
+      className={`h-full w-auto aspect-square object-contain ${className}`}
       draggable={false}
-      className={`block h-full w-full object-contain ${className}`}
     />
   );
 }
