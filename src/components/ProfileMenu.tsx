@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Shield, Star, User } from './icons/Icons8';
+import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Shield, Sparkles, Star, User } from './icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -339,6 +339,7 @@ const ProfileMenu: React.FC = () => {
     { to: '/profile?tab=watchlist', label: t('profile.watchlist', 'Ma liste'), Icon: List },
     { to: '/profile?tab=favorites', label: t('common.favorites'), Icon: Star },
     { to: '/profile', label: t('profile.title'), Icon: User },
+    { to: '/nouveautes', label: 'Nouveautés', Icon: Sparkles },
   ];
 
   const renderConnected = (variant: MenuVariant) => (

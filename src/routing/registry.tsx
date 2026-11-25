@@ -71,6 +71,7 @@ export const ROUTES: RouteEntry[] = [
   // en gardant le code. Un seul segment : React Router la sépare de /tv/:id.
   { path: '/tv',                      loader: lz(() => import('../pages/TvLinkRedirect')) },
   { path: '/profile',                 loader: lz(() => import('../pages/Profile')), guard: 'private' },
+  { path: '/nouveautes',              loader: lz(() => import('../pages/WhatsNewPage')) },
   { path: '/profile-management',      loader: lz(() => import('../pages/ProfileManagement')) },
   { path: '/alerts',                  loader: lz(() => import('../pages/AlertsPage')) },
 

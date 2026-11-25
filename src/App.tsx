@@ -3,6 +3,7 @@ import axios from 'axios';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
 import UpdateAvailableNotifier from './components/UpdateAvailableNotifier';
+import WhatsNewNotifier from './components/WhatsNewNotifier';
 import { TooltipProvider } from './components/ui/tooltip';
 import Header from './components/Header';
 import Home from './pages/Home';
@@ -2060,6 +2061,7 @@ function App() {
                       <TopProgressBar />
                       <Toaster position="bottom-right" richColors />
                       <UpdateAvailableNotifier />
+                      <WhatsNewNotifier />
                       <DnsBlockBanner />
                       <RequireUsernameChange />
                       <ReferralManager />

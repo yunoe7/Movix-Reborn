@@ -1716,4 +1716,78 @@ router.put('/admin/release-notes', isAdmin, async (req, res) => {
   }
 });
 
+
+// === Centre de nouveautés (publications indépendantes des déploiements) ===
+const WHATS_NEW_KEY = 'movix:whats-new:posts';
+const readWhatsNew = async () => {
+  const raw = await redis.get(WHATS_NEW_KEY);
+  if (!raw) return [];
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : [];
+};
+const cleanWhatsNewPost = (value, previous = {}) => {
+  const source = value && typeof value === 'object' ? value : {};
+  const category = ['new', 'modified', 'fix'].includes(source.category) ? source.category : 'new';
+  const lines = Array.isArray(source.changes)
+    ? source.changes.filter((line) => typeof line === 'string').map((line) => line.trim()).filter(Boolean).slice(0, 40)
+    : [];
+  return {
+    id: previous.id || (typeof source.id === 'string' ? source.id.slice(0, 80) : require('crypto').randomUUID()),
+    title: String(source.title || '').trim().slice(0, 160),
+    summary: String(source.summary || '').trim().slice(0, 600),
+    date: previous.date || (typeof source.date === 'string' && source.date ? source.date.slice(0, 40) : new Date().toISOString()),
+    status: source.status === 'published' ? 'published' : 'draft',
+    changes: lines.map((text) => ({ text, category })),
+    updatedAt: new Date().toISOString(),
+  };
+};
+router.get('/whats-new', async (_req, res) => {
+  try {
+    const posts = await readWhatsNew();
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ success: true, posts: posts.filter((post) => post.status === 'published').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) });
+  } catch (error) {
+    console.error('[WHATS-NEW] Lecture impossible:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Nouveautés temporairement indisponibles' });
+  }
+});
+router.get('/admin/whats-new', isAdmin, async (_req, res) => {
+  try { return res.json({ success: true, posts: await readWhatsNew() }); }
+  catch (error) { return res.status(500).json({ success: false, error: 'Impossible de charger les publications' }); }
+});
+router.post('/admin/whats-new', isAdmin, async (req, res) => {
+  try {
+    const post = cleanWhatsNewPost(req.body);
+    if (!post.title || !post.summary) return res.status(400).json({ success: false, error: 'Le titre et le résumé sont obligatoires.' });
+    const posts = await readWhatsNew();
+    posts.unshift(post);
+    await redis.set(WHATS_NEW_KEY, JSON.stringify(posts.slice(0, 100)));
+    return res.status(201).json({ success: true, post });
+  } catch (error) {
+    console.error('[WHATS-NEW] Création impossible:', error.message || error);
+    return res.status(500).json({ success: false, error: 'Impossible de créer la publication' });
+  }
+});
+router.put('/admin/whats-new/:id', isAdmin, async (req, res) => {
+  try {
+    const posts = await readWhatsNew();
+    const index = posts.findIndex((post) => post.id === req.params.id);
+    if (index < 0) return res.status(404).json({ success: false, error: 'Publication introuvable' });
+    const post = cleanWhatsNewPost(req.body, posts[index]);
+    if (!post.title || !post.summary) return res.status(400).json({ success: false, error: 'Le titre et le résumé sont obligatoires.' });
+    posts[index] = post;
+    await redis.set(WHATS_NEW_KEY, JSON.stringify(posts));
+    return res.json({ success: true, post });
+  } catch (error) { return res.status(500).json({ success: false, error: 'Impossible de modifier la publication' }); }
+});
+router.delete('/admin/whats-new/:id', isAdmin, async (req, res) => {
+  try {
+    const posts = await readWhatsNew();
+    const next = posts.filter((post) => post.id !== req.params.id);
+    if (next.length === posts.length) return res.status(404).json({ success: false, error: 'Publication introuvable' });
+    await redis.set(WHATS_NEW_KEY, JSON.stringify(next));
+    return res.json({ success: true });
+  } catch (error) { return res.status(500).json({ success: false, error: 'Impossible de supprimer la publication' }); }
+});
+
 module.exports = router;
