@@ -242,6 +242,29 @@ export async function fetchTmdb() {
   return null;
 }
 `,
+  axios: `
+const empty = { data: {} };
+export default {
+  get: async () => ({ data: { shared: {} } }),
+  post: async () => empty,
+  delete: async () => empty,
+};
+`,
+  newListModal: `
+import React from 'react';
+export default function NewListModal({ onCreateList }) {
+  return (
+    <div data-testid="new-list-modal">
+      <button type="button" data-testid="new-list-create" onClick={() => onCreateList('Liste créée')}>Créer</button>
+    </div>
+  );
+}
+`,
+  ageRestrictedMedia: `export default function AgeRestrictedMedia({ children }) { return children; }`,
+  turnstileWidget: `export default function TurnstileWidget() { return <div data-testid="turnstile-widget" />; }`,
+  useTurnstileBypass: `export function useTurnstileBypass() { return 'bypass'; }`,
+  turnstileBypass: `export const ADMIN_BYPASS_TOKEN = 'fixture-bypass-token';`,
+  turnstileKeys: `export const TURNSTILE_SITE_KEY = '';`,
   alertsTab: `
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -338,6 +361,13 @@ const stubSuffixes = {
   useCustomLists: 'useCustomLists',
   useResumeItem: 'useResumeItem',
   storage: 'storage',
+  axios: 'axios',
+  newListModal: 'NewListModal',
+  ageRestrictedMedia: 'AgeRestrictedMedia',
+  turnstileWidget: 'TurnstileWidget',
+  useTurnstileBypass: 'useTurnstileBypass',
+  turnstileBypass: 'turnstileBypass',
+  turnstileKeys: 'turnstileKeys',
   alertsTab: 'AlertsTab',
   historyTab: 'HistoryTab',
   sessionsTab: 'SessionsTab',
@@ -398,6 +428,68 @@ createRoot(document.getElementById('root')).render(
   <MemoryRouter initialEntries={['/profile' + location.search]}>
     <LocationProbe />
     <Profile />
+  </MemoryRouter>,
+);
+`;
+
+const polishEntry = `
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
+import CustomListsTab from ${importPath('components/profile/CustomListsTab')};
+import HistoryRowActions from ${importPath('components/profile/HistoryRowActions')};
+
+const initialLists = [
+  { id: 1, name: 'Liste vide', items: [] },
+  {
+    id: 2,
+    name: 'Liste remplie',
+    items: [
+      { type: 'movie', id: 11, title: 'Film A', poster_path: '/poster-a.jpg', name: 'Film A' },
+      { type: 'tv', id: 12, title: 'Série B', poster_path: '/poster-b.jpg', name: 'Série B' },
+      { type: 'movie', id: 13, title: 'Film C', poster_path: '/poster-c.jpg', name: 'Film C' },
+      { type: 'movie', id: 14, title: 'Film D', poster_path: '/poster-d.jpg', name: 'Film D' },
+      { type: 'movie', id: 15, title: 'Film E', poster_path: '/poster-e.jpg', name: 'Film E' },
+    ],
+  },
+];
+
+function PolishHarness() {
+  const [lists, setLists] = React.useState(initialLists);
+  return (
+    <main className="profile-console mx-auto w-full max-w-[1100px] px-4 py-6" data-testid="polish-harness">
+      <div data-testid="custom-lists-harness">
+        <CustomListsTab lists={lists} saveLists={setLists} loading={false} />
+      </div>
+      <div style={{ position: 'fixed', top: 8, right: 8 }}>
+        <span data-testid="edge-menu-trigger">
+          <HistoryRowActions
+            rowKey="movie-11"
+            title="Film A"
+            actions={['markMovie']}
+            onAction={() => {}}
+            onDelete={() => {}}
+          />
+        </span>
+      </div>
+      <div style={{ position: 'fixed', bottom: 8, right: 8 }}>
+        <span data-testid="bottom-menu-trigger">
+          <HistoryRowActions
+            rowKey="movie-12"
+            title="Film B"
+            actions={['unmark']}
+            onAction={() => {}}
+            onDelete={() => {}}
+          />
+        </span>
+      </div>
+    </main>
+  );
+}
+
+createRoot(document.getElementById('root')).render(
+  <MemoryRouter initialEntries={['/polish']}>
+    <PolishHarness />
   </MemoryRouter>,
 );
 `;
@@ -571,6 +663,33 @@ async function withScenario(name, options, run) {
   await page.close();
 }
 
+const withPolishScenario = async (name, run) => {
+  const viewport = { width: 900, height: 600 };
+  const page = await browser.newPage({ viewport, reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    localStorage.clear();
+    localStorage.setItem('auth_token', 'fixture-token');
+    localStorage.setItem('selected_profile_id', 'p-1');
+    window.__toasts = [];
+    window.__copied = [];
+  });
+  await page.route('**/*', routeFixture);
+  page.on('pageerror', (error) => {
+    pageErrors.push(`${name}: pageerror: ${error.message}`);
+  });
+  page.on('console', (message) => {
+    if (message.type() === 'error') pageErrors.push(`${name}: console: ${message.text()}`);
+  });
+  page.on('response', (response) => {
+    if (response.status() >= 400) pageErrors.push(`${name}: HTTP ${response.status()}: ${response.url()}`);
+  });
+  await page.goto('https://movix.test/polish.html', { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-testid="polish-harness"]').waitFor();
+  const result = await run(page, viewport);
+  checks[name] = result ?? true;
+  await page.close();
+};
+
 const screenshot = async (page, name) => {
   const file = `${name}.png`;
   await page.screenshot({ path: path.join(artifactDir, file), fullPage: true });
@@ -599,9 +718,13 @@ try {
     plugins: [{
       name: 'profile-redesign-fixture',
       setup(builder) {
-        builder.onResolve({ filter: stubPattern }, ({ path: specifier }) => {
+        builder.onResolve({ filter: stubPattern }, ({ path: specifier, importer }) => {
           const key = resolveStubKey(specifier);
-          return key ? { path: key, namespace: 'fixture' } : undefined;
+          if (!key) return undefined;
+          // La page Profil garde son stub léger ; le harnais de finition utilise
+          // le vrai composant pour tester aperçus et menus.
+          if (key === 'customListsTab' && !String(importer).replace(/\\/g, '/').endsWith('/src/pages/Profile.tsx')) return undefined;
+          return { path: key, namespace: 'fixture' };
         });
         builder.onLoad({ filter: /.*/, namespace: 'fixture' }, ({ path: key }) => ({
           contents: stubSources[key],
@@ -624,6 +747,47 @@ try {
   await writeFile(
     path.join(work, 'index.html'),
     '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/app.css"><style>html,body{margin:0;background:#000;color:#fff}</style></head><body><div id="root"></div><div id="fixture-toasts"></div><script type="module" src="/app.js"></script></body></html>',
+  );
+
+  await writeFile(path.join(work, 'polish-entry.tsx'), polishEntry);
+  await build({
+    entryPoints: [path.join(work, 'polish-entry.tsx')],
+    outfile: path.join(work, 'polish.js'),
+    bundle: true,
+    format: 'esm',
+    target: 'es2020',
+    jsx: 'automatic',
+    nodePaths: [path.join(repo, 'node_modules')],
+    alias: { '@': path.join(repo, 'src') },
+    define: {
+      'import.meta.env': JSON.stringify({
+        VITE_MAIN_API: 'https://main-api.test',
+        VITE_TMDB_API_KEY: 'fixture-key',
+        VITE_SITE_URL: 'https://movix.test',
+      }),
+    },
+    plugins: [{
+      name: 'profile-polish-fixture',
+      setup(builder) {
+        builder.onResolve({ filter: stubPattern }, ({ path: specifier, importer }) => {
+          const key = resolveStubKey(specifier);
+          if (!key) return undefined;
+          // La page Profil garde son stub léger ; le harnais de finition utilise
+          // le vrai composant pour tester aperçus et menus.
+          if (key === 'customListsTab' && !String(importer).replace(/\\/g, '/').endsWith('/src/pages/Profile.tsx')) return undefined;
+          return { path: key, namespace: 'fixture' };
+        });
+        builder.onLoad({ filter: /.*/, namespace: 'fixture' }, ({ path: key }) => ({
+          contents: stubSources[key],
+          loader: 'tsx',
+          resolveDir: repo,
+        }));
+      },
+    }],
+  });
+  await writeFile(
+    path.join(work, 'polish.html'),
+    '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/app.css"><style>html,body{margin:0;background:#000;color:#fff}</style></head><body><div id="root"></div><div id="fixture-toasts"></div><script type="module" src="/polish.js"></script></body></html>',
   );
 
   browser = await chromium.launch(browserOptions);
@@ -689,8 +853,14 @@ try {
     for (const testId of ['member-edit', 'member-change-avatar', 'member-vip', 'member-switch', 'member-settings']) {
       await visibleAndEnabled(page, `[data-testid="${testId}"]`);
     }
+    const tabOverflow = {};
+    for (const tab of ['favorites', 'watched', 'history', 'alerts', 'custom-lists']) {
+      await page.getByTestId(`tab-${tab}`).click();
+      tabOverflow[tab] = await overflowOf(page);
+      assert.ok(tabOverflow[tab] <= 1, `mobile ${tab}: débordement horizontal ${tabOverflow[tab]}px`);
+    }
     const shot = await screenshot(page, '02-mobile-profile');
-    return { overflow, tabs, screenshot: shot };
+    return { overflow, tabs, tabOverflow, screenshot: shot };
   });
 
   await withScenario('avatar-selector', {}, async (page) => {
@@ -854,6 +1024,14 @@ try {
     assert.equal(await page.getByTestId('referral-stat-rewarded').locator('.profile-stat-value').innerText(), '2');
     assert.equal(await page.getByTestId('referral-stat-days').locator('.profile-stat-value').innerText(), '14');
 
+    const codeFont = await fontSizeOf(page, '.profile-code-value');
+    const statFont = await fontSizeOf(page, '.profile-stat-value');
+    assert.ok(codeFont > statFont, `code du parrainage mis en avant (${codeFont}px vs ${statFont}px)`);
+    const referralGap = await page.locator('.profile-referral-row').evaluate(
+      (element) => Number.parseFloat(getComputedStyle(element).columnGap),
+    );
+    assert.ok(referralGap <= 20, `espacement parrainage maîtrisé (${referralGap}px)`);
+
     await page.getByTestId('referral-copy').click();
     const copied = await page.evaluate(() => window.__copied);
     assert.deepEqual(copied, ['https://movix.test/r/MOVIX7X42']);
@@ -883,6 +1061,69 @@ try {
     await page.locator('[data-testid="profile-page"]').waitFor();
     assert.equal(await page.getByTestId('referral-card').count(), 0);
     return { hidden: true };
+  });
+
+  await withPolishScenario('list-previews-and-empty-state', async (page) => {
+    await page.locator('[data-testid="list-card"]').first().waitFor();
+    assert.equal(await page.getByTestId('list-preview-empty').count(), 1, 'carte vide: aperçu vide élégant');
+    assert.equal(await page.getByTestId('list-preview').count(), 1, 'carte remplie: aperçu avec affiches');
+    assert.ok(await page.getByTestId('list-preview').locator('img').count() >= 4, 'quatre affiches d’aperçu');
+    assert.equal(await page.getByTestId('list-preview').locator('.profile-list-preview-count').innerText(), '+1', 'badge des éléments supplémentaires');
+
+    const overflow = await overflowOf(page);
+    assert.ok(overflow <= 1, `listes: débordement horizontal ${overflow}px`);
+    const shot = await screenshot(page, '08-list-previews');
+
+    const emptyCard = page.getByTestId('list-card').filter({ hasText: 'Liste vide' });
+    await emptyCard.locator('button[aria-label^="Ouvrir"]').click();
+    await page.locator('[data-testid="custom-lists-harness"] .profile-empty').waitFor();
+    assert.ok((await page.locator('[data-testid="custom-lists-harness"] .profile-empty').innerText()).includes('Cette liste est vide'));
+    await page.locator('button[aria-label="Retour"]').first().click();
+
+    const filledCard = page.getByTestId('list-card').filter({ hasText: 'Liste remplie' });
+    await filledCard.getByTestId('list-actions').click();
+    const menu = page.locator('[data-profile-menu="list"]');
+    await menu.waitFor();
+    const labels = await menu.getByRole('menuitem').allInnerTexts();
+    for (const label of ['Renommer', 'Partager par code', 'Supprimer']) {
+      assert.ok(labels.some((value) => value.includes(label)), `action « ${label} » conservée`);
+    }
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
+
+    return { overflow, previewImages: 4, menuLabels: labels, screenshot: shot };
+  });
+
+  await withPolishScenario('menus-near-viewport-edges', async (page, viewport) => {
+    const results = {};
+    for (const [name, testId, expectedSide] of [
+      ['top-right', 'edge-menu-trigger', 'bottom'],
+      ['bottom-right', 'bottom-menu-trigger', 'top'],
+    ]) {
+      await page.getByTestId(testId).locator('button').click();
+      const menu = page.locator('[data-profile-menu="history"]');
+      await menu.waitFor();
+      await menu.evaluate((element) => Promise.all(element.getAnimations().map((animation) => animation.finished.catch(() => {}))));
+      const box = await menu.boundingBox();
+      assert.ok(box, `${name}: menu visible`);
+      const side = await menu.getAttribute('data-side');
+      assert.equal(side, expectedSide, `${name}: ouverture ${side}`);
+      assert.ok(box.x >= 8, `${name}: bord gauche ${box.x}`);
+      assert.ok(box.x + box.width <= viewport.width - 8, `${name}: bord droit ${box.x + box.width}`);
+      assert.ok(box.y >= 8, `${name}: bord haut ${box.y}`);
+      assert.ok(box.y + box.height <= viewport.height - 8, `${name}: bord bas ${box.y + box.height}`);
+      results[name] = {
+        side,
+        x: Math.round(box.x),
+        y: Math.round(box.y),
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+      };
+      await page.keyboard.press('Escape');
+      await menu.waitFor({ state: 'detached' });
+    }
+    const shot = await screenshot(page, '09-menus-edge-positioning');
+    return { viewport, results, screenshot: shot };
   });
 
   await withScenario('resume-empty', { resume: 'none' }, async (page) => {
@@ -919,6 +1160,19 @@ const profileSource = await Promise.all([
   'src/components/profile/useProfileLibrary.ts',
 ].map((file) => readFile(path.join(repo, file), 'utf8'))).then((parts) => parts.join('\n'));
 const tabsSource = await readFile(path.join(repo, 'src/components/profile/ProfileTabs.tsx'), 'utf8');
+const polishSources = (await Promise.all([
+  'src/components/profile/HistoryRow.tsx',
+  'src/components/profile/HistoryTab.tsx',
+  'src/components/profile/HistoryStatusSwitch.tsx',
+  'src/components/profile/CustomListsTab.tsx',
+  'src/components/profile/AlertsTab.tsx',
+  'src/components/profile/SessionsTab.tsx',
+  'src/components/profile/TvEpisodePanel.tsx',
+].map((file) => readFile(path.join(repo, file), 'utf8')))).join('\n');
+const menuSources = (await Promise.all([
+  'src/components/profile/HistoryRowActions.tsx',
+  'src/components/profile/CustomListsTab.tsx',
+].map((file) => readFile(path.join(repo, file), 'utf8')))).join('\n');
 
 const staticChecks = {
   storageKeysPreserved: [
@@ -930,6 +1184,9 @@ const staticChecks = {
     'custom_lists',
   ].every((key) => profileSource.includes(key)),
   ariaContractsPreserved: ['profile-tab-', 'profile-tab-panel', 'aria-controls', 'role="tab"'].every((needle) => tabsSource.includes(needle)),
+  navyBackgroundsRemoved: !/#111827|bg-gray-900/.test(polishSources),
+  menuCollisionGuardsPreserved: ['collisionPadding={12}', 'data-profile-menu="history"', 'data-profile-menu="list"']
+    .every((needle) => menuSources.includes(needle)),
   generatedAvatarDataUntouched: await gitUnchanged(['src/data/new_avatars.ts']),
   playersUntouched: await gitUnchanged([
     'src/components/VideoJS.tsx',

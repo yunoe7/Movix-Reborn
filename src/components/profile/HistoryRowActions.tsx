@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { MarkAction } from './watchMarks';
+import { profileMenuContentClass, profileMenuItemClass } from './ui';
 
 interface HistoryRowActionsProps {
   /** Repère du bouton (`data-history-actions`) : l'onglet y pose le focus quand une ligne part. */
@@ -52,8 +53,12 @@ export default function HistoryRowActions({ rowKey, title, actions, onAction, on
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
+        data-profile-menu="history"
         align="end"
-        className="min-w-[14rem]"
+        side="bottom"
+        sideOffset={8}
+        collisionPadding={12}
+        className={profileMenuContentClass}
         // La ligne a quitté la liste (titre terminé) : Radix rendrait le focus
         // à un bouton disparu, donc à <body>. L'onglet le pose lui-même sur
         // la ligne voisine.
@@ -62,14 +67,14 @@ export default function HistoryRowActions({ rowKey, title, actions, onAction, on
         }}
       >
         {actions.map((action) => (
-          <DropdownMenuItem key={action} onSelect={() => onAction(action)} className="min-h-10 px-3 text-[15px]">
+          <DropdownMenuItem key={action} onSelect={() => onAction(action)} className={profileMenuItemClass}>
             {labels[action]}
           </DropdownMenuItem>
         ))}
         {actions.length > 0 && <DropdownMenuSeparator className="my-1 h-px bg-white/10" />}
         <DropdownMenuItem
           onSelect={onDelete}
-          className="min-h-10 gap-2 px-3 text-[15px] text-red-300 hover:bg-red-600/20 focus:bg-red-600/20 focus:text-red-200"
+          className={`${profileMenuItemClass} text-[#ff8a94] hover:bg-[#2a1416] focus:bg-[#2a1416] focus:text-[#ff8a94]`}
         >
           <Trash2 className="h-4 w-4" aria-hidden="true" />
           {t('profilePage.history.actions.delete', 'Supprimer de l’historique')}

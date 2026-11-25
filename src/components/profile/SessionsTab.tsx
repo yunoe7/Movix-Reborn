@@ -173,7 +173,7 @@ export default function SessionsTab() {
           const created = new Date(session.createdAt);
 
           return (
-            <li key={session.id} className="rounded-xl bg-gray-900 p-4 sm:p-5">
+            <li key={session.id} className="profile-raised p-4 sm:p-5">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex min-w-0 flex-1 items-start gap-4">
                   <span

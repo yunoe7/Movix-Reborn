@@ -18,7 +18,7 @@ function WatchedTimeDialog({ open, onOpenChange }: { open: boolean; onOpenChange
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-0 bg-gray-900 backdrop-blur-none">
+      <DialogContent className="max-w-md border-0 bg-[#171717] backdrop-blur-none">
         <DialogHeader>
           <DialogTitle>{t('profilePage.history.watchedInfo.title', 'Deux façons de compter')}</DialogTitle>
           <DialogDescription className="pt-2 text-[15px] leading-relaxed text-white/70">
@@ -49,7 +49,7 @@ export default function HistoryStats({ data }: { data: HistoryListResponse | nul
   ];
   return (
     <>
-      <dl className="grid grid-cols-3 gap-y-4 rounded-[24px] border border-[#303030] bg-[#202020] px-2 py-5 shadow-[0_16px_42px_rgba(0,0,0,0.16)] sm:grid-cols-5 sm:px-0 sm:py-6">
+      <dl className="profile-raised grid grid-cols-3 gap-y-4 px-2 py-5 shadow-[0_16px_42px_rgba(0,0,0,0.16)] sm:grid-cols-5 sm:px-0 sm:py-6">
         {stats.map((stat, index) => (
           <div
             key={stat.key}

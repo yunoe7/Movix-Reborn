@@ -25,6 +25,13 @@ export function buttonClass(variant: ButtonVariant = 'secondary', size: 'sm' | '
   return `${BASE_BUTTON} ${sizing} ${VARIANTS[variant]} ${extra}`.trim();
 }
 
+/* Menus « ⋯ » du profil : portail inclus, donc couleurs explicites déjà
+   utilisées par la refonte (elles ne héritent pas des variables CSS). */
+export const profileMenuContentClass =
+  'min-w-[14rem] border-[#363636] bg-[#111111] text-white shadow-[0_20px_60px_rgba(0,0,0,0.7)]';
+export const profileMenuItemClass =
+  'min-h-10 gap-2 px-3 text-[15px] text-white/85 focus:text-white [&_svg]:text-white [&_svg]:opacity-85 focus:[&_svg]:opacity-100';
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: 'sm' | 'md';
@@ -233,5 +240,5 @@ export function PosterBadge({ children }: { children: React.ReactNode }) {
 
 /** Grille d'affiches commune à tous les onglets. */
 export function PosterGrid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">{children}</div>;
+  return <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6">{children}</div>;
 }
