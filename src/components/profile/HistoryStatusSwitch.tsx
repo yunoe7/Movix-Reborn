@@ -69,19 +69,19 @@ export default function HistoryStatusSwitch({ active, counts, onChange, panelId,
             tabIndex={selected ? 0 : -1}
             onClick={() => onChange(status)}
             onKeyDown={(event) => handleKeyDown(event, index)}
-            className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[13px] font-semibold leading-tight transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-9 sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:py-0 sm:text-sm ${selected ? 'text-white' : 'text-white/55 hover:text-white'}`}
+            className={`relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1.5 py-2 text-[13px] font-semibold leading-tight transition-[color,background-color,transform] duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-9 sm:flex-row sm:gap-2 sm:rounded-full sm:px-4 sm:py-0 sm:text-sm ${selected ? 'bg-[#e11d2e] text-white shadow-[0_4px_14px_rgba(225,29,46,0.22)]' : 'text-white/65 hover:bg-white/[0.06] hover:text-white'}`}
           >
             {selected && (
               <motion.span
                 layoutId="profile-history-status"
                 transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }}
-                className="absolute inset-0 rounded-xl bg-white/10 sm:rounded-full"
+                className="absolute inset-0 rounded-xl bg-[#e11d2e] sm:rounded-full"
                 aria-hidden="true"
               />
             )}
             <span className="relative max-w-full break-words text-center sm:whitespace-nowrap">{labels[status]}</span>
             {typeof count === 'number' ? (
-              <span className={`relative min-w-[1.5rem] rounded-full px-1.5 text-center text-[11px] tabular-nums leading-4 sm:text-xs sm:leading-5 ${selected ? 'bg-red-600 text-white' : 'bg-white/[0.08] text-white/55'}`}>
+              <span className={`relative min-w-[1.5rem] rounded-full px-1.5 text-center text-[11px] tabular-nums leading-4 sm:text-xs sm:leading-5 ${selected ? 'bg-black/20 text-white' : 'bg-white/[0.08] text-white/65'}`}>
                 {count}
               </span>
             ) : (
