@@ -99,6 +99,7 @@ function injectPublicConfig(): Plugin {
       mkdirSync(distDirectory, { recursive: true })
       const bundledServiceWorker = replacePlaceholders(await bundleServiceWorker(true))
       writeFileSync(resolve(distDirectory, 'sw.js'), bundledServiceWorker, 'utf-8')
+      writeFileSync(resolve(distDirectory, 'version.json'), JSON.stringify({ buildId }), 'utf-8')
 
       for (const fileName of ['sitemap.xml', 'robots.txt', 'llms.txt']) {
         const outputPath = resolve(distDirectory, fileName)
@@ -121,6 +122,10 @@ function injectPublicConfig(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         const pathOnly = (req.url || '').split('?')[0]
         const publicFiles: Record<string, { fileName: string; contentType: string }> = {
+          '/version.json': {
+            fileName: 'version.json',
+            contentType: 'application/json; charset=utf-8',
+          },
           '/sw.js': {
             fileName: 'sw.js',
             contentType: 'application/javascript; charset=utf-8',
@@ -201,6 +206,7 @@ export default defineConfig(({ mode, command }) => {
 
   return {
     logLevel: 'warn',
+    define: { __MOVIX_BUILD_ID__: JSON.stringify(buildId) },
     plugins: [
       react(),
       injectPublicConfig(),
