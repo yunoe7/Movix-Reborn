@@ -333,9 +333,7 @@ interface ContinueWatching {
   };
 }
 
-type ContinueWatchingRemoval =
-  | { type: 'item'; itemId: number; mediaType: 'movie' | 'tv' }
-  | { type: 'all' };
+type ContinueWatchingRemoval = { type: 'item'; itemId: number; mediaType: 'movie' | 'tv' };
 
 const inferHomeMediaType = (item: any): 'tv' | 'movie' =>
   item.media_type || item.mediaType || (item.first_air_date ? 'tv' : 'movie');
@@ -1100,26 +1098,23 @@ const Home: React.FC = () => {
     setContinueWatchingRemoval({ type: 'item', itemId, mediaType });
   }, []);
 
+  // « Tout supprimer » vide immédiatement la rangée, sans confirmation.
+  // Le retrait local est instantané ; le serveur reçoit ensuite une seule
+  // requête qui masque les titres retirés pour éviter leur réapparition.
   const removeAllContinueWatching = useCallback(() => {
-    setContinueWatchingRemoval({ type: 'all' });
-  }, []);
+    const displayed = continueWatching.map((item) => ({ mediaType: item.media_type, id: item.id }));
+    localStorage.setItem('continueWatching', JSON.stringify({ movies: [], tv: [] }));
+    setContinueWatching([]);
+    setContinueWatchingRemoval(null);
+    void hideAllContinueWatching(displayed);
+  }, [continueWatching]);
 
+  // La confirmation reste réservée à la suppression d'un seul titre.
   const confirmContinueWatchingRemoval = useCallback(() => {
     if (!continueWatchingRemoval) return;
-
-    if (continueWatchingRemoval.type === 'all') {
-      localStorage.setItem('continueWatching', JSON.stringify({ movies: [], tv: [] }));
-      // Vidage côté serveur en une seule requête, au mieux (un échec laisse
-      // le vidage local) ; les cartes affichées restent filtrées des
-      // lectures suivantes de la session.
-      void hideAllContinueWatching(continueWatching.map((item) => ({ mediaType: item.media_type, id: item.id })));
-      setContinueWatching([]);
-    } else {
-      deleteContinueWatchingItem(continueWatchingRemoval.itemId, continueWatchingRemoval.mediaType);
-    }
-
+    deleteContinueWatchingItem(continueWatchingRemoval.itemId, continueWatchingRemoval.mediaType);
     setContinueWatchingRemoval(null);
-  }, [continueWatching, continueWatchingRemoval, deleteContinueWatchingItem]);
+  }, [continueWatchingRemoval, deleteContinueWatchingItem]);
 
   useEffect(() => {
     // Simple title for homepage
@@ -1524,13 +1519,9 @@ const Home: React.FC = () => {
         )}
       </motion.div>
       <ConfirmDialog
-        isOpen={continueWatchingRemoval !== null}
+        isOpen={continueWatchingRemoval?.type === 'item'}
         title={t('common.delete')}
-        message={t(
-          continueWatchingRemoval?.type === 'all'
-            ? 'home.confirmRemoveAll'
-            : 'home.confirmRemoveItem'
-        )}
+        message={t('home.confirmRemoveItem')}
         confirmLabel={t('common.delete')}
         variant="destructive"
         onConfirm={confirmContinueWatchingRemoval}
