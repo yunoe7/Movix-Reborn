@@ -106,9 +106,8 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     const url = new URL(path, VIDRIFT_ORIGIN);
     url.searchParams.set('brand', 'Movix');
     url.searchParams.set('brandColor', VIDRIFT_BRAND_COLOR);
-    // Keep VidRift's native download panel. Hide the in-player server and
-    // settings menus (including source/language mode selectors), and do not
-    // enable the optional exit/back control.
+    // Keep VidRift's native download and quality/settings controls visible.
+    // Hide only the server selector, and do not enable the optional exit/back control.
     url.searchParams.set('download', '1');
     url.searchParams.set('hide', 'server');
     if (title) url.searchParams.set('title', title);
