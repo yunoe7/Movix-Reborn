@@ -6,7 +6,7 @@
 
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2 } from '../icons/Icons8';
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from './ui';
 
@@ -59,7 +59,7 @@ export default function DeleteTitleDialog({ open, title, busy, onCancel, onConfi
         <div className="bg-[#08090b] px-6 py-5">
           <div className="flex items-start gap-3">
             <span className="mt-0.5 shrink-0 rounded-full border border-red-400/25 bg-white/[0.07] p-2.5 text-white/55 shadow-[0_0_28px_rgba(248,65,75,0.12)]">
-              <Trash2 className="h-5 w-5" aria-hidden="true" />
+              <img src="/movix-monogram.svg" alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
             </span>
             <DialogDescription className="pt-0.5 text-[13px] font-medium leading-[1.55] text-white/75">
               {t('profilePage.history.delete.title', { title, defaultValue: 'Supprimer « {{title}} » de l’historique ?' })}
