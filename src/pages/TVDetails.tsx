@@ -1461,6 +1461,18 @@ const TVDetails: React.FC = () => {
             title={tvShow?.name || ''}
             posterPath={tvShow?.poster_path || ''}
           />
+          {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
+            <motion.button
+              whileHover={{ y: -2, scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              onClick={() => navigate(`/download/tv/${tvShow?.id}?season=${resumeData.seasonNumber || defaultStartSeason}&episode=${resumeData.episodeNumber || 1}`, { state: { backgroundLocation: location } })}
+              className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
+            >
+              <Download className="h-5 w-5 flex-shrink-0 text-white" />
+              <span className="text-left">{t('details.downloadBtn')}</span>
+            </motion.button>
+          )}
           </div>
 
                   {/* Saisons et épisodes : choix direct dans l'en-tête, sans galerie de posters. */}
