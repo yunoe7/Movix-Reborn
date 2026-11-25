@@ -888,6 +888,8 @@
 }
 
 .avatar-selector-console .profile-avatar-option {
+  position: relative;
+  display: block;
   width: 70px;
   height: 70px;
   padding: 3px;
