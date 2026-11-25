@@ -1431,13 +1431,23 @@ const Home: React.FC = () => {
                       style={{ zIndex: 11 }}
                     >
                       <div
-                        className="w-full min-h-[400px] h-[65svh] max-h-[700px] bg-cover bg-no-repeat relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl"
-                        style={{
-                          backgroundImage: `url("${featuredSelection.backdropUrl}")`,
-                          backgroundPosition: 'center 30%'
-                        }}
+                        className="w-full min-h-[400px] h-[65svh] max-h-[700px] relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#080808]"
                       >
-                        <div className="absolute inset-0 pointer-events-none z-10 bg-gradient-to-b from-black/60 via-transparent to-black/90"></div>
+                        {/* Fond flouté pour remplir le format panoramique sans étirer l’image. */}
+                        <div
+                          aria-hidden="true"
+                          className="absolute inset-0 bg-cover bg-center scale-110 blur-2xl opacity-45"
+                          style={{ backgroundImage: `url("${featuredSelection.backdropUrl}")` }}
+                        ></div>
+                        {/* L’image complète reste visible au premier plan : pas de coupe en haut ou en bas. */}
+                        <img
+                          src={featuredSelection.backdropUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="absolute inset-0 z-[1] h-full w-full object-contain object-center"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 pointer-events-none z-10 bg-gradient-to-b from-black/55 via-transparent to-black/85"></div>
                         <div
                           className="absolute inset-0 z-[2] pointer-events-none"
                           style={{
