@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import { Clapperboard, Flag, GalleryHorizontalEnd, Gift, HandCoins, HelpCircle, Home, KeyRound, LayoutGrid, Link2, ListOrdered, Megaphone, MessageSquare, Plug, ShieldCheck, Sparkles, Sprout, Users } from 'lucide-react';
+import { Clapperboard, Flag, GalleryHorizontalEnd, Gift, HandCoins, HelpCircle, Home, KeyRound, LayoutGrid, Link2, ListOrdered, Megaphone, MessageSquare, Plug, ShieldCheck, Sparkles, Sprout, Users, FileText } from 'lucide-react';
 
 export type AdminRole = 'admin' | 'moderator' | 'uploader';
 
@@ -21,7 +21,7 @@ export type AdminSectionId =
   | 'referral'
   | 'oauth-apps'
   | 'team'
-  | 'help-feedback';
+  | 'help-feedback'\n  | 'release-notes';
 
 export type AdminGroupId = 'overview' | 'moderation' | 'catalog' | 'revenue' | 'platform';
 
@@ -235,6 +235,17 @@ export function getAdminSections(t: Translate): AdminSectionMeta[] {
       group: 'platform',
       icon: Users,
       keywords: ['equipe', 'team', 'admins', 'uploaders', 'roles'],
+      allowedRoles: ADMIN,
+    },
+    {
+      id: 'release-notes',
+      titleKey: 'admin.releaseNotes.title',
+      titleDefault: 'Notes de version',
+      descriptionKey: 'admin.releaseNotes.description',
+      descriptionDefault: 'Rédiger les nouveautés et corrections',
+      group: 'platform',
+      icon: FileText,
+      keywords: ['release', 'notes', 'version', 'nouveautes', 'corrections', 'mise a jour'],
       allowedRoles: ADMIN,
     },
     {
