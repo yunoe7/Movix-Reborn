@@ -2,11 +2,9 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
-  AtSign,
   Copy,
   ExternalLink,
   Gift,
-  Hash,
   Mail,
   MessageCircle,
   Send,
@@ -36,9 +34,7 @@ interface GiftCardDonationProps {
 const CONTACT_COPY: Record<DonationContactId, { icon: LucideIcon; label: string }> = {
   email: { icon: Mail, label: 'vipDonations.donate.giftCard.contacts.email' },
   discord: { icon: MessageCircle, label: 'vipDonations.donate.giftCard.contacts.discord' },
-  telegram: { icon: Send, label: 'vipDonations.donate.giftCard.contacts.telegram' },
-  matrixUser: { icon: AtSign, label: 'vipDonations.donate.giftCard.contacts.matrixUser' },
-  matrixRoom: { icon: Hash, label: 'vipDonations.donate.giftCard.contacts.matrixRoom' }
+  telegram: { icon: Send, label: 'vipDonations.donate.giftCard.contacts.telegram' }
 };
 
 const STEP_ICONS: readonly LucideIcon[] = [Gift, Send, ShieldCheck];
@@ -183,11 +179,6 @@ const GiftCardDonation: React.FC<GiftCardDonationProps> = ({ settings, exampleAm
                     <div className="min-w-0 flex-1">
                       <p className="text-xs text-white/55">{label}</p>
                       <p className="break-all text-sm font-medium text-white">{contact.value}</p>
-                      {contact.id === 'matrixRoom' && (
-                        <p className="mt-0.5 text-xs leading-5 text-white/55">
-                          {t('vipDonations.donate.giftCard.contacts.matrixRoomHint')}
-                        </p>
-                      )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
                       <button
