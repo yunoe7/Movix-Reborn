@@ -181,7 +181,7 @@ const AdminTeamSelection: React.FC = () => {
           mediaType: item.mediaType,
           tmdbId: details.id,
           title,
-          description: details.overview || '',
+          description: (details.overview || '').slice(0, 600),
           backdropUrl: backdropUrl || current.teamSelection.backdropUrl,
           rating,
           genres,
@@ -280,7 +280,8 @@ const AdminTeamSelection: React.FC = () => {
           {fields.map(({ key, label, multiline, type }) => (
             <SettingsField key={key} id={`team-selection-${key}`} label={label} className={multiline ? 'md:col-span-2' : undefined}>
               {multiline ? (
-                <textarea id={`team-selection-${key}`} rows={4} value={String(selection[key])} onChange={(event) => update(key, event.target.value)} className={fieldClass} />
+                <textarea id={`team-selection-${key}`} rows={4} maxLength={600} value={String(selection[key])} onChange={(event) => update(key, event.target.value.slice(0, 600))} className={fieldClass} />
+                {key === 'description' && <p className="mt-1 text-right text-xs text-white/45">{String(selection[key]).length}/600 caractères</p>}
               ) : (
                 <input id={`team-selection-${key}`} type={type || 'text'} min={type === 'number' ? 1 : undefined} value={String(selection[key])} onChange={(event) => update(key, type === 'number' ? Number(event.target.value) : event.target.value)} className={fieldClass} />
               )}
