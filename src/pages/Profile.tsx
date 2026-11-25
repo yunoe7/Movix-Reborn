@@ -32,6 +32,7 @@ import { useProfileLibrary } from '@/components/profile/useProfileLibrary';
 import { useResumeItem } from '@/components/profile/useResumeItem';
 import { readJson } from '@/components/profile/storage';
 import { EmptyState, Spinner } from '@/components/profile/ui';
+import '../components/profile/profile-console.css';
 import type { MainListType, ProfileTabId, WatchItem } from '@/components/profile/types';
 
 const TAB_IDS: ProfileTabId[] = ['watchlist', 'favorites', 'watched', 'history', 'alerts', 'custom-lists', 'sessions'];
@@ -246,7 +247,7 @@ const Profile: React.FC = () => {
       }
       const filtered = filters[activeTab].filteredItems;
       if (filtered.length === 0) {
-        return <p className="py-12 text-[15px] text-white/60">{t('profilePage.media.noMatch', 'Rien ne correspond à ces filtres.')}</p>;
+        return <p className="profile-muted py-12 text-[15px]">{t('profilePage.media.noMatch', 'Rien ne correspond à ces filtres.')}</p>;
       }
       return <LibraryGrid items={filtered} listType={activeTab} onRemove={(item) => removeItem(item, activeTab)} />;
     }
@@ -260,7 +261,7 @@ const Profile: React.FC = () => {
 
   if (!authenticated && !currentProfile) {
     return (
-      <main className="mx-auto max-w-3xl px-4 pb-24 pt-10 sm:px-6">
+      <main className="profile-console mx-auto max-w-3xl px-4 pb-24 pt-10 sm:px-6">
         <EmptyState
           icon={<LogIn />}
           title={t('profilePage.auth.loginRequired')}
@@ -280,9 +281,16 @@ const Profile: React.FC = () => {
     });
 
   return (
-    <main className="mx-auto w-full max-w-[1480px] px-4 pb-24 pt-5 text-white sm:px-6 sm:pt-7 lg:px-9">
-      {/* grid-cols-1 = minmax(0, 1fr) : sans lui, la bande perforée de la carte
-          (largeur min-content ~566 px) élargit la colonne au-delà de l'écran. */}
+    <main className="profile-console mx-auto w-full max-w-[1480px] bg-[#080808] px-4 pb-24 pt-5 text-white sm:px-6 sm:pt-7 lg:px-9" data-testid="profile-page">
+      <header className="profile-page-header">
+        <div>
+          <p className="profile-eyebrow">MOVIX / {t('profile.myProfile')}</p>
+          <h2 className="profile-page-title" data-testid="profile-page-title">{t('profile.myProfile')}</h2>
+          <p className="profile-page-subtitle">{t('profilePage.library.title', 'Ta bibliothèque')} — {t('profile.editProfile')}</p>
+        </div>
+      </header>
+
+      {/* grid-cols-1 = minmax(0, 1fr) : sans lui, une carte élargit la colonne au-delà de l'écran. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
         <motion.div className="min-w-0" {...rise(0)}>
           <MemberCard
@@ -303,17 +311,17 @@ const Profile: React.FC = () => {
       </div>
 
       {/* Parrainage : rien pour un compte à code d'accès seul ou si l'admin l'a coupé. */}
-      <ReferralCard className="mt-3" />
+      <ReferralCard className="mt-4" />
 
-      <section className="mt-10 sm:mt-12" aria-labelledby={tabButtonId(activeTab)}>
+      <section className="mt-10 sm:mt-12" aria-labelledby={tabButtonId(activeTab)} data-testid="library-section">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-          <h2 className="text-[28px] font-semibold tracking-[-0.035em] text-white sm:text-[32px]">{t('profilePage.library.title', 'Ta bibliothèque')}</h2>
+          <h2 className="profile-section-title">{t('profilePage.library.title', 'Ta bibliothèque')}</h2>
         </div>
         <div className="mt-4">
           <ProfileTabs tabs={tabs} active={activeTab} onChange={changeTab} label={t('profilePage.library.title', 'Ta bibliothèque')} />
         </div>
 
-        <div id={tabPanelId} role="tabpanel" aria-labelledby={tabButtonId(activeTab)} className="mt-5 min-h-[40vh] rounded-[24px] border border-[#303030] bg-[#171717] p-3 sm:rounded-[28px] sm:p-5">
+        <div id={tabPanelId} role="tabpanel" aria-labelledby={tabButtonId(activeTab)} className="profile-panel" data-testid="profile-tab-panel">
           {activeFilter && activeSource.length > 0 && (
             <FilterSystem
               onFiltersChange={handleFiltersChange}

@@ -18,22 +18,22 @@ import {
 } from '@/services/referralService';
 import { describeReferralError, formatDays, formatDistinctDays, requestReferralRefresh } from './referralActions';
 
-// Carte « Parrainage » de la page profil, dans le langage des tickets de la
-// page : surface gray-900, talon blanc perforé qui porte le code, un seul
-// accent rouge (la barre de minutes). Rien si le parrainage est coupé.
+// Carte « Parrainage » : même langage visuel que le compte (surfaces
+// anthracite, accent rouge), code très lisible et trois chiffres contrastés.
+// Rien si le parrainage est coupé.
 
 function formatCode(code: string): string {
   return `${code.slice(0, 4)} ${code.slice(4)}`;
 }
 
-function Stat({ value, label, icon: Icon }: { value: number; label: string; icon: React.ElementType }) {
+function Stat({ value, label, icon: Icon, testId }: { value: number; label: string; icon: React.ElementType; testId: string }) {
   return (
-    <div className="min-w-0 rounded-[18px] border border-[#383838] bg-[#202020] px-3 py-3.5 sm:px-4">
-      <div className="flex items-center gap-2 text-[#929292]">
+    <div className="profile-stat" data-testid={testId}>
+      <div className="profile-stat-label">
         <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.09em]">{label}</p>
+        <span>{label}</span>
       </div>
-      <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-white sm:text-[1.7rem]">{value}</p>
+      <span className="profile-stat-value">{value}</span>
     </div>
   );
 }
@@ -41,10 +41,10 @@ function Stat({ value, label, icon: Icon }: { value: number; label: string; icon
 function RefereeProgress({ progress }: { progress: ReferralProgress }) {
   const { t } = useTranslation();
   if (progress.status === 'rewarded') {
-    return <p className="text-sm text-emerald-300">{t('referral.card.progressDone')}</p>;
+    return <p className="text-sm font-semibold text-[#7ee7a8]">{t('referral.card.progressDone')}</p>;
   }
   if (progress.status === 'cancelled') {
-    return <p className="text-sm text-[#929292]">{t('referral.card.progressCancelled')}</p>;
+    return <p className="text-sm text-[#d0d0d0]">{t('referral.card.progressCancelled')}</p>;
   }
 
   const collectionOff = !isDataCollectionAllowed();
@@ -52,23 +52,23 @@ function RefereeProgress({ progress }: { progress: ReferralProgress }) {
   const percent = progress.requiredMinutes > 0 ? (minutes / progress.requiredMinutes) * 100 : 0;
   const days = Math.min(progress.watchDays, progress.requiredDays);
   return (
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-6">
+    <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end sm:gap-6">
       <div className="min-w-0">
-        <p className="text-sm text-[#b0b0b0]">
+        <p className="text-sm text-[#d8d8d8]">
           {t('referral.card.progressMinutes', {
             watched: formatWatchDuration(minutes),
             required: formatWatchDuration(progress.requiredMinutes)
           })}
         </p>
         <div
-          className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"
+          className="profile-progress-track mt-2"
           role="progressbar"
           aria-valuemin={0}
           aria-valuemax={progress.requiredMinutes}
           aria-valuenow={minutes}
           aria-label={t('referral.card.progressMinutesLabel')}
         >
-          <div className="h-full rounded-full bg-[#e73545] transition-[width] duration-500 ease-out" style={{ width: `${percent}%` }} />
+          <div className="profile-progress-fill transition-[width] duration-500 ease-out" style={{ width: `${percent}%` }} />
         </div>
       </div>
       <div className="flex items-center gap-3">
@@ -76,18 +76,18 @@ function RefereeProgress({ progress }: { progress: ReferralProgress }) {
           {Array.from({ length: progress.requiredDays }, (_, index) => (
             <span
               key={index}
-              className={`h-3 w-3 rounded-full ${index < days ? 'bg-white' : 'border border-white/30'}`}
+              className={`h-3 w-3 rounded-full ${index < days ? 'bg-[#e11d2e]' : 'border border-[#777777]'}`}
             />
           ))}
         </div>
-        <p className="text-sm tabular-nums text-white/70">
+        <p className="text-sm font-semibold tabular-nums text-[#f0f0f0]">
           {t('referral.card.progressDays', { watched: days, required: progress.requiredDays })}
         </p>
       </div>
       {collectionOff && (
-        <p className="text-sm leading-relaxed text-amber-200 sm:col-span-2">
+        <p className="text-sm leading-relaxed text-[#ffdca8] sm:col-span-2">
           {t('referral.card.collectionOff')}{' '}
-          <Link to="/settings#privacy" className="font-medium text-white underline underline-offset-2 hover:text-amber-100">
+          <Link to="/settings#privacy" className="font-semibold text-white underline underline-offset-2 hover:text-[#ffdca8]">
             {t('referral.card.collectionOffLink')}
           </Link>
         </p>
@@ -183,78 +183,72 @@ export default function ReferralCard({ className = '' }: { className?: string })
   }
 
   return (
-    <section className={`relative isolate overflow-hidden rounded-[26px] border border-[#303030] bg-[#171717] px-5 pb-5 pt-10 shadow-[0_18px_48px_rgba(0,0,0,0.24)] sm:rounded-[30px] sm:px-7 sm:pb-7 sm:pt-11 ${className}`} aria-labelledby={`${inputId}-title`}>
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-7 border-b border-[#303030] bg-[#202020]">
-        <div className="mx-3 flex h-full items-center gap-2 overflow-hidden sm:mx-4 sm:gap-2.5">
-          {Array.from({ length: 22 }, (_, index) => (
-            <span key={index} className="h-3.5 w-4 shrink-0 rounded-[4px] bg-black/80 shadow-[inset_0_1px_2px_rgba(0,0,0,0.8)] sm:w-[18px]" />
-          ))}
-        </div>
-      </div>
-      <div aria-hidden="true" className="pointer-events-none absolute -right-24 -top-28 -z-10 h-80 w-80 rounded-full bg-[#e73545]/[0.07] blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-32 left-[30%] -z-10 h-64 w-64 rounded-full bg-[#e73545]/[0.04] blur-3xl" />
-      <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,0.9fr)] lg:items-center">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#f04455]/25 bg-[#e73545]/10 text-[#f04455]">
-              <Gift className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#f04455]">MOVIX REWARDS</p>
-              <h2 id={`${inputId}-title`} className="mt-0.5 text-xl font-semibold tracking-tight text-white sm:text-[1.35rem]">{t('referral.card.title')}</h2>
-            </div>
+    <section
+      className={`profile-surface profile-referral-card ${className}`}
+      aria-labelledby={`${inputId}-title`}
+      data-testid="referral-card"
+    >
+      <div className="profile-referral-head">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="profile-referral-icon">
+            <Gift className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="profile-eyebrow text-[#ff8a94]">MOVIX REWARDS</p>
+            <h2 id={`${inputId}-title`} className="profile-section-title mt-1">{t('referral.card.title')}</h2>
           </div>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-[#a3a3a3] sm:text-[15px]">
-            {t('referral.card.pitch', {
-              duration: formatWatchDuration(data.requiredMinutes),
-              days: formatDistinctDays(t, data.requiredDays),
-              reward: formatDays(t, data.rewardDays)
-            })}
-          </p>
+        </div>
+        <Sparkles className="hidden h-6 w-6 text-[#ff8a94] sm:block" aria-hidden="true" />
+      </div>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            {/* Code de parrainage présenté comme un billet premium. */}
-            <div className="relative min-w-[12.5rem] overflow-hidden rounded-xl border border-[#414141] bg-[#242424] px-5 py-3.5 text-white shadow-[0_10px_30px_rgba(0,0,0,0.22)]">
-              <span aria-hidden="true" className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#171717]" />
-              <span aria-hidden="true" className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-[#171316]" />
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#929292]">{t('referral.card.yourCode')}</p>
-                <Film className="h-3.5 w-3.5 text-[#f04455]" aria-hidden="true" />
-              </div>
-              <p className="mt-1 font-mono text-[1.45rem] font-bold tabular-nums tracking-[0.16em]" aria-label={data.code.split('').join(' ')}>
-                {formatCode(data.code)}
-              </p>
+      <p className="profile-referral-pitch">
+        {t('referral.card.pitch', {
+          duration: formatWatchDuration(data.requiredMinutes),
+          days: formatDistinctDays(t, data.requiredDays),
+          reward: formatDays(t, data.rewardDays)
+        })}
+      </p>
+
+      <div className="profile-referral-row">
+        <div className="min-w-0">
+          <div className="profile-code-ticket" data-testid="referral-code">
+            <div className="profile-code-label">
+              <span>{t('referral.card.yourCode')}</span>
+              <Film className="h-4 w-4 text-[#ff8a94]" aria-hidden="true" />
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="primary" className="!bg-[#e73545] hover:!bg-[#f04455]" onClick={handleCopy}>
-                <Copy className="h-4 w-4" aria-hidden="true" />
-                {t('referral.card.copyLink')}
+            <p className="profile-code-value" aria-label={data.code.split('').join(' ')}>
+              {formatCode(data.code)}
+            </p>
+          </div>
+          <div className="profile-referral-actions">
+            <Button variant="primary" onClick={handleCopy} data-testid="referral-copy">
+              <Copy className="h-4 w-4" aria-hidden="true" />
+              {t('referral.card.copyLink')}
+            </Button>
+            {canShare && (
+              <Button variant="secondary" onClick={handleShare} data-testid="referral-share">
+                <Share2 className="h-4 w-4" aria-hidden="true" />
+                {t('referral.card.share')}
               </Button>
-              {canShare && (
-                <Button variant="secondary" onClick={handleShare}>
-                  <Share2 className="h-4 w-4" aria-hidden="true" />
-                  {t('referral.card.share')}
-                </Button>
-              )}
-            </div>
+            )}
           </div>
           {codeActiveDate && (
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-amber-200">
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-[#ffdca8]">
               {t('referral.card.codeNotActive', { date: codeActiveDate })}
             </p>
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:w-full">
-          <Stat value={data.stats.invited} label={t('referral.card.statInvited')} icon={Users} />
-          <Stat value={data.stats.rewarded} label={t('referral.card.statRewarded')} icon={BadgeCheck} />
-          <Stat value={data.stats.daysEarned} label={t('referral.card.statDays')} icon={Gift} />
+        <div className="profile-metric-grid">
+          <Stat value={data.stats.invited} label={t('referral.card.statInvited')} icon={Users} testId="referral-stat-invited" />
+          <Stat value={data.stats.rewarded} label={t('referral.card.statRewarded')} icon={BadgeCheck} testId="referral-stat-rewarded" />
+          <Stat value={data.stats.daysEarned} label={t('referral.card.statDays')} icon={Gift} testId="referral-stat-days" />
         </div>
       </div>
 
       {data.referee && (
-        <div className="mt-7 rounded-[20px] border border-[#383838] bg-[#202020] p-4 sm:p-5">
-          <h3 className="mb-3 text-sm font-medium text-white">
+        <div className="profile-referral-subpanel" data-testid="referral-progress">
+          <h3 className="mb-3 text-sm font-bold text-white">
             {data.referee.status === 'pending'
               ? t('referral.card.progressTitle', { reward: formatDays(t, data.rewardDays) })
               : t('referral.card.progressTitleDone')}
@@ -264,10 +258,10 @@ export default function ReferralCard({ className = '' }: { className?: string })
       )}
 
       {!data.referee && data.canEnterCode && (
-        <form onSubmit={handleClaim} className="mt-7 rounded-2xl border border-white/[0.09] bg-black/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-5">
-          <label htmlFor={inputId} className="block text-sm font-medium text-white">{t('referral.card.enterTitle')}</label>
-          {deadline && <p className="mt-1 text-[13px] text-white/50">{t('referral.card.enterDeadline', { date: deadline })}</p>}
-          <div className="mt-3 flex flex-wrap gap-2">
+        <form onSubmit={handleClaim} className="profile-referral-subpanel mt-5" data-testid="referral-claim">
+          <label htmlFor={inputId} className="block text-sm font-bold text-white">{t('referral.card.enterTitle')}</label>
+          {deadline && <p className="mt-1 text-[13px] text-[#d0d0d0]">{t('referral.card.enterDeadline', { date: deadline })}</p>}
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
             <input
               id={inputId}
               type="text"
@@ -277,16 +271,20 @@ export default function ReferralCard({ className = '' }: { className?: string })
               value={codeInput}
               onChange={(event) => setCodeInput(event.target.value.slice(0, 300))}
               placeholder={t('referral.field.placeholder')}
-              className="h-11 min-w-0 flex-1 rounded-xl border border-[#414141] bg-[#202020] px-4 text-[15px] uppercase tracking-[0.12em] text-white outline-none transition-colors placeholder:normal-case placeholder:tracking-normal placeholder:text-white/35 hover:border-white/20 focus:border-rose-400/65 focus:ring-2 focus:ring-red-500/15 sm:max-w-sm"
+              className="profile-referral-input"
+              data-testid="referral-claim-input"
             />
-            <Button type="submit" variant="light" pending={claiming} disabled={!codeInput.trim()}>
+            <Button type="submit" variant="primary" pending={claiming} disabled={!codeInput.trim()} data-testid="referral-claim-submit">
               {t('referral.card.enterSubmit')}
             </Button>
           </div>
         </form>
       )}
 
-      <p className="mt-5 flex items-center gap-2 text-xs leading-relaxed text-white/45"><Gift className="h-3.5 w-3.5 shrink-0 text-rose-300/75" aria-hidden="true" />{t('referral.card.vipNote')}</p>
+      <p className="profile-referral-note">
+        <Gift className="h-4 w-4 shrink-0 text-[#ff8a94]" aria-hidden="true" />
+        {t('referral.card.vipNote')}
+      </p>
     </section>
   );
 }
