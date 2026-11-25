@@ -334,14 +334,16 @@ const REQUEST_TIMEOUT_MS = 10_000;
 
 const createEmptyPublicConfig = (): PublicHeroPromoConfig => ({
   carousels: createDefaultHeroPromoCarousels(),
-  promos: []
+  promos: [],
+  teamSelection: DEFAULT_TEAM_SELECTION
 });
 
 function normalizePublicConfig(raw: unknown): PublicHeroPromoConfig | null {
   if (!isPlainObject(raw) || !Array.isArray(raw.promos)) return null;
   return {
     carousels: normalizeCarousels(raw.carousels),
-    promos: normalizePromoList(raw.promos).map(toPublicPromo)
+    promos: normalizePromoList(raw.promos).map(toPublicPromo),
+    teamSelection: normalizeTeamSelection(raw.teamSelection)
   };
 }
 
