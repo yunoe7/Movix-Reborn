@@ -39,7 +39,7 @@ const cleanRating = (value?: string): string => {
   const map: Record<string, string> = {
     G: 'Tous publics', U: 'Tous publics', '-10': '10+', '-12': '12+', '-16': '16+', '-18': '18+', 'TV-Y': 'Tous publics', 'TV-G': 'Tous publics',
     PG: '10+', 'TV-PG': '10+', 'PG-13': '13+', 'TV-14': '14+',
-    R: '16+', 'TV-MA': '18+', NC-17: '18+'
+    R: '16+', 'TV-MA': '18+', 'NC-17': '18+'
   };
   if (/^\d{1,2}\+?$/.test(rating)) return rating.endsWith('+') ? rating : `${rating}+`;
   return map[rating.toUpperCase()] || rating;
@@ -138,7 +138,6 @@ const AdminTeamSelection: React.FC = () => {
       });
       const details = response.data;
       const title = details.title || details.name || item.title || item.name || '';
-      const date = details.release_date || details.first_air_date || '';
       const rating = typeof details.vote_average === 'number' && details.vote_average > 0
         ? `${details.vote_average.toFixed(1).replace('.', ',')}/10`
         : '';
