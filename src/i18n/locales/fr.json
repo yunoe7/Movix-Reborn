@@ -4096,6 +4096,14 @@
       "verifyKeyError": "Erreur lors de la vérification de la clé",
       "activateError": "Erreur lors de l'activation du VIP",
       "createKeyError": "Erreur lors de la création de la clé VIP"
+    },
+    "accessModal": {
+      "subtitle": "Active ta clé VIP pour débloquer tous tes avantages.",
+      "codeLabel": "Clé VIP",
+      "codePlaceholder": "Colle ta clé VIP ici",
+      "submit": "Activer mon accès VIP",
+      "submitting": "Activation en cours…",
+      "success": "Accès VIP activé."
     }
   },
   "extension": {

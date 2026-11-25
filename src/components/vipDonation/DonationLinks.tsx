@@ -1,21 +1,20 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FolderHeart, KeyRound, LifeBuoy } from 'lucide-react';
+import { FolderHeart, KeyRound, LifeBuoy, MessageCircle } from 'lucide-react';
 
 import { useVipModal } from '@/context/VipModalContext';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 
 interface DonationLinksProps {
-  matrixUrl: string;
-  discordUrl: string | null;
+  discordUrl: string;
 }
 
 const secondaryLinkClass = 'vip-card-hover flex min-h-[2.75rem] items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-center text-sm font-medium leading-tight text-white/85 transition-colors duration-150 hover:border-yellow-400/30 hover:bg-yellow-400/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60';
 const helpLinkClass = 'rounded font-medium text-white/80 underline decoration-white/25 underline-offset-4 transition-colors hover:text-white hover:decoration-yellow-400/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60';
 
 // Liens sous la carte de don : historique des dons, activation d'une clé
-// existante et aide. Gardés aussi quand les dons sont en pause.
-const DonationLinks: React.FC<DonationLinksProps> = ({ matrixUrl, discordUrl }) => {
+// existante et support Discord. Gardés aussi quand les dons sont en pause.
+const DonationLinks: React.FC<DonationLinksProps> = ({ discordUrl }) => {
   const { t } = useTranslation();
   const { openVipModal } = useVipModal();
 
@@ -46,17 +45,10 @@ const DonationLinks: React.FC<DonationLinksProps> = ({ matrixUrl, discordUrl }) 
           <LifeBuoy className="h-4 w-4" />
         </span>
         <span>{t('vipDonations.donate.links.help')}</span>
-        <a href={matrixUrl} target="_blank" rel="noopener noreferrer" className={helpLinkClass}>
-          {t('vipDonations.donate.links.matrix')}
+        <a href={discordUrl} target="_blank" rel="noopener noreferrer" className={helpLinkClass} data-testid="vip-link-discord">
+          <MessageCircle className="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />
+          {t('vipDonations.donate.links.discord')}
         </a>
-        {discordUrl && (
-          <>
-            <span aria-hidden="true">·</span>
-            <a href={discordUrl} target="_blank" rel="noopener noreferrer" className={helpLinkClass}>
-              {t('vipDonations.donate.links.discord')}
-            </a>
-          </>
-        )}
       </p>
     </div>
   );

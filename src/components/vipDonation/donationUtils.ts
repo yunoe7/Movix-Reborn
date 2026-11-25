@@ -124,26 +124,13 @@ export const isSafeExternalUrl = (value: string | null | undefined): value is st
   typeof value === 'string' && /^https?:\/\/\S+$/i.test(value.trim())
 );
 
-// « https://matrix.to/#/%23groupe-ix:matrix.org » → « #groupe-ix:matrix.org ».
-function getMatrixRoomLabel(value: string): string {
-  const match = value.match(/matrix\.to\/#\/(.+)$/i);
-  if (!match) {
-    return value.replace(/^https?:\/\//i, '');
-  }
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
-}
-
 function buildMailtoHref(mailto: string, subject: string, body: string): string {
   // RFC 6068 : les retours à la ligne du corps s'écrivent %0D%0A.
   const normalizedBody = body.replace(/\r?\n/g, '\r\n');
   return `${mailto}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(normalizedBody)}`;
 }
 
-export type DonationContactId = 'email' | 'discord' | 'telegram' | 'matrixUser' | 'matrixRoom';
+export type DonationContactId = 'email' | 'discord' | 'telegram';
 
 export interface DonationContact {
   id: DonationContactId;
@@ -173,24 +160,6 @@ export function getDonationContacts(
   const telegram = contacts.telegramUsername.trim().replace(/^@/, '');
   if (telegram) {
     list.push({ id: 'telegram', value: `@${telegram}`, href: links.telegram });
-  }
-
-  const matrixUser = contacts.matrixUserId.trim();
-  if (matrixUser) {
-    list.push({
-      id: 'matrixUser',
-      value: matrixUser.startsWith('@') ? matrixUser : `@${matrixUser}`,
-      href: links.matrixUser
-    });
-  }
-
-  const matrixRoom = contacts.matrixRoomUrl.trim();
-  if (matrixRoom) {
-    list.push({
-      id: 'matrixRoom',
-      value: getMatrixRoomLabel(matrixRoom),
-      href: isSafeExternalUrl(matrixRoom) ? matrixRoom : null
-    });
   }
 
   return list;
