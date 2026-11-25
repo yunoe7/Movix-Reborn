@@ -20,6 +20,7 @@ const { logDownloadLinkAction } = require('../utils/downloadLinksHistory');
 const { resolveAdminIdentity } = require('../utils/adminIdentity');
 const { isHttpUrl, isHttpLinkEntry, isHttpLinkInput } = require('../utils/safeLinkUrl');
 const { readUserData } = require('./sync');
+const { redis } = require('../config/redis');
 
 function parseAccessKeyExpiresAt(value) {
   if (value === undefined || value === null || value === '') {
@@ -1628,6 +1629,86 @@ router.get('/admin/download-links/:type/:id', isUploaderOrAdmin, async (req, res
   } catch (error) {
     console.error('Error fetching download links:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch download links' });
+  }
+});
+
+
+
+// === Notes de version Movix ===
+// Les brouillons sont stockés dans Redis : l'admin peut préparer les notes
+// avant une publication, sans modifier les fichiers du frontend.
+const RELEASE_NOTES_KEY = 'movix:release-notes:published';
+const DEFAULT_RELEASE_NOTES = {
+  version: '',
+  severity: 'normal',
+  mandatory: false,
+  summary: '',
+  changes: [],
+  history: [],
+};
+
+function normalizeReleaseNotes(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const severity = ['normal', 'important', 'critical'].includes(source.severity)
+    ? source.severity
+    : 'normal';
+  const cleanLines = (items, maxItems = 30) => Array.isArray(items)
+    ? items.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, maxItems)
+    : [];
+  const history = Array.isArray(source.history) ? source.history.slice(0, 20).map((entry) => ({
+    version: typeof entry?.version === 'string' ? entry.version.trim().slice(0, 40) : '',
+    date: typeof entry?.date === 'string' ? entry.date.trim().slice(0, 40) : '',
+    summary: typeof entry?.summary === 'string' ? entry.summary.trim().slice(0, 500) : '',
+    changes: cleanLines(entry?.changes, 20),
+  })).filter((entry) => entry.version || entry.summary || entry.changes.length) : [];
+
+  return {
+    version: typeof source.version === 'string' ? source.version.trim().slice(0, 40) : '',
+    severity,
+    mandatory: source.mandatory === true || severity === 'critical',
+    summary: typeof source.summary === 'string' ? source.summary.trim().slice(0, 500) : '',
+    changes: cleanLines(source.changes),
+    history,
+  };
+}
+
+// Public : les clients récupèrent les notes dynamiques, tandis que le buildId
+// continue de provenir de /version.json (déploiement réel).
+router.get('/version/release-notes', async (_req, res) => {
+  try {
+    const stored = await redis.get(RELEASE_NOTES_KEY);
+    const metadata = stored ? normalizeReleaseNotes(JSON.parse(stored)) : DEFAULT_RELEASE_NOTES;
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ success: true, metadata });
+  } catch (error) {
+    console.error('[RELEASE-NOTES] Lecture impossible:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Notes de version temporairement indisponibles' });
+  }
+});
+
+// Admin only : lecture et sauvegarde du brouillon de notes de version.
+router.get('/admin/release-notes', isAdmin, async (_req, res) => {
+  try {
+    const stored = await redis.get(RELEASE_NOTES_KEY);
+    const metadata = stored ? normalizeReleaseNotes(JSON.parse(stored)) : DEFAULT_RELEASE_NOTES;
+    return res.json({ success: true, metadata });
+  } catch (error) {
+    console.error('[RELEASE-NOTES] Lecture admin impossible:', error.message || error);
+    return res.status(500).json({ success: false, error: 'Impossible de charger les notes de version' });
+  }
+});
+
+router.put('/admin/release-notes', isAdmin, async (req, res) => {
+  try {
+    const metadata = normalizeReleaseNotes(req.body);
+    if (!metadata.summary && metadata.changes.length === 0) {
+      return res.status(400).json({ success: false, error: 'Ajoutez un résumé ou au moins une nouveauté.' });
+    }
+    await redis.set(RELEASE_NOTES_KEY, JSON.stringify(metadata));
+    return res.json({ success: true, metadata });
+  } catch (error) {
+    console.error('[RELEASE-NOTES] Sauvegarde impossible:', error.message || error);
+    return res.status(500).json({ success: false, error: 'Impossible d’enregistrer les notes de version' });
   }
 });
 
