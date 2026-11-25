@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Settings, Crown, ShieldCheck, ChevronDown } from '../components/icons/Icons8';
+import { isUserVip } from '../utils/vipUtils';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import AvatarSelector from '../components/AvatarSelector';
@@ -16,6 +17,19 @@ const ProfileSelection: React.FC = () => {
   const [selectedAvatar, setSelectedAvatar] = useState('');
   const [newAgeRestriction, setNewAgeRestriction] = useState(0);
   const [isFading, setIsFading] = useState(false);
+  const [isVip, setIsVip] = useState(() => isUserVip());
+
+  // Keep the profile crown synchronized with the verified VIP status.
+  useEffect(() => {
+    const syncVipStatus = () => setIsVip(isUserVip());
+    window.addEventListener('vipStatusChanged', syncVipStatus);
+    window.addEventListener('storage', syncVipStatus);
+    syncVipStatus();
+    return () => {
+      window.removeEventListener('vipStatusChanged', syncVipStatus);
+      window.removeEventListener('storage', syncVipStatus);
+    };
+  }, []);
 
   // Custom dropdown state
   const [ageDropdownOpen, setAgeDropdownOpen] = useState(false);
@@ -130,10 +144,14 @@ const ProfileSelection: React.FC = () => {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    {/* Icône profil par défaut */}
-                    {profile.isDefault && (
-                      <div className="absolute -top-1 -right-1 xs:-top-1.5 xs:-right-1.5 bg-yellow-500 rounded-full p-1 xs:p-1.5 sm:p-2 shadow-lg shadow-yellow-500/30">
-                        <Crown className="w-3.5 h-3.5 xs:w-4 xs:h-4 sm:w-5 sm:h-5 text-white" />
+                    {/* VIP crown: only the default profile gets the badge, and only while VIP is active. */}
+                    {profile.isDefault && isVip && (
+                      <div
+                        aria-label="Profil VIP"
+                        title="Profil VIP"
+                        className="absolute -top-2 -right-2 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500 shadow-md shadow-yellow-500/30 ring-2 ring-black/70"
+                      >
+                        <Crown className="block h-5 w-5 text-white" />
                       </div>
                     )}
                     {/* Badge restriction d'âge */}
