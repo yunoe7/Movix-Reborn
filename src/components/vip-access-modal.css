@@ -1,0 +1,369 @@
+/* Fenêtre « Accès Movix VIP » : même langage visuel que la page VIP et le
+   profil modernisés — noir profond, surfaces anthracite, accent rouge unique.
+   Tout est scopé à `.vip-access-modal-*` pour ne pas toucher aux autres modales. */
+
+.vip-access-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(225, 29, 46, 0.1), transparent 38%),
+    rgba(2, 2, 3, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.vip-access-modal {
+  position: relative;
+  width: min(100%, 30rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  padding: 1.75rem;
+  background:
+    linear-gradient(155deg, rgba(35, 35, 38, 0.97) 0%, rgba(15, 15, 17, 0.98) 58%, rgba(9, 9, 10, 0.99) 100%);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 28px 80px -20px rgba(0, 0, 0, 0.9);
+  color: #f7f7f7;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.vip-access-modal::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  border-radius: 1.5rem 1.5rem 0 0;
+  background: linear-gradient(90deg, transparent, rgba(225, 29, 46, 0.85), transparent);
+  pointer-events: none;
+}
+
+.vip-access-modal *,
+.vip-access-modal *::before,
+.vip-access-modal *::after {
+  box-sizing: border-box;
+}
+
+.vip-access-modal :focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.vip-access-modal-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  padding-right: 2.25rem;
+}
+
+.vip-access-modal-mark {
+  display: flex;
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: 0 0 3.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: 1px solid rgba(225, 29, 46, 0.35);
+  border-radius: 1rem;
+  background: linear-gradient(145deg, rgba(225, 29, 46, 0.18), rgba(225, 29, 46, 0.04));
+  box-shadow: 0 0 28px -10px rgba(225, 29, 46, 0.7);
+}
+
+.vip-access-modal-eyebrow {
+  margin: 0 0 0.15rem;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.vip-access-modal-title {
+  margin: 0;
+  color: #fff;
+  font-size: 1.375rem;
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.vip-access-modal-close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.vip-access-modal-close:hover {
+  border-color: rgba(225, 29, 46, 0.5);
+  background: rgba(225, 29, 46, 0.14);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.vip-access-modal-subtitle {
+  margin: 1.125rem 0 0;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.vip-access-modal-form {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 0.875rem;
+}
+
+.vip-access-modal-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.vip-access-modal-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.vip-access-modal-input-icon {
+  position: absolute;
+  left: 1rem;
+  display: inline-flex;
+  color: rgba(255, 255, 255, 0.4);
+  pointer-events: none;
+}
+
+.vip-access-modal-input {
+  width: 100%;
+  height: 3.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  padding: 0 1rem 0 3rem;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 1rem;
+  letter-spacing: 0.015em;
+  transition: border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.vip-access-modal-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.vip-access-modal-input:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.vip-access-modal-input:focus {
+  border-color: rgba(225, 29, 46, 0.7);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 3px rgba(225, 29, 46, 0.16);
+  outline: none;
+}
+
+.vip-access-modal-input[aria-invalid='true'] {
+  border-color: rgba(225, 29, 46, 0.65);
+}
+
+.vip-access-modal-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0;
+  border: 1px solid rgba(225, 29, 46, 0.28);
+  border-radius: 0.875rem;
+  padding: 0.6875rem 0.75rem;
+  background: rgba(225, 29, 46, 0.1);
+  color: #fca5a5;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.vip-access-modal-note svg {
+  flex: 0 0 auto;
+  margin-top: 0.0625rem;
+}
+
+.vip-access-modal-note--success {
+  border-color: rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.1);
+  color: #bbf7d0;
+}
+
+.vip-access-modal-submit {
+  display: inline-flex;
+  width: 100%;
+  min-height: 3.375rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  border: 1px solid #e11d2e;
+  border-radius: 1rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(180deg, #ed2637 0%, #d31626 100%);
+  box-shadow: 0 12px 28px -14px rgba(225, 29, 46, 0.9);
+  color: #fff;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.vip-access-modal-submit:hover:not(:disabled) {
+  border-color: #f12639;
+  background: linear-gradient(180deg, #f12639 0%, #e11d2e 100%);
+  box-shadow: 0 16px 34px -14px rgba(225, 29, 46, 0.95);
+  transform: translateY(-1px);
+}
+
+.vip-access-modal-submit:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.vip-access-modal-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.vip-access-modal-spinner {
+  animation: vip-access-modal-spin 900ms linear infinite;
+}
+
+.vip-access-modal-footer {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1.25rem;
+  text-align: center;
+}
+
+.vip-access-modal-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(255, 255, 255, 0.32);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.vip-access-modal-divider::before,
+.vip-access-modal-divider::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12));
+}
+
+.vip-access-modal-divider::after {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.12), transparent);
+}
+
+.vip-access-modal-no-key {
+  margin: 1.125rem 0 0.75rem;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.875rem;
+}
+
+.vip-access-modal-secondary {
+  display: inline-flex;
+  min-height: 2.875rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.875rem;
+  padding: 0.625rem 1rem;
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.vip-access-modal-secondary svg {
+  color: #f12639;
+}
+
+.vip-access-modal-secondary:hover {
+  border-color: rgba(225, 29, 46, 0.45);
+  background: rgba(225, 29, 46, 0.1);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+@keyframes vip-access-modal-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 480px) {
+  .vip-access-modal {
+    padding: 1.375rem;
+    border-radius: 1.25rem;
+  }
+
+  .vip-access-modal::before {
+    border-radius: 1.25rem 1.25rem 0 0;
+  }
+
+  .vip-access-modal-close {
+    top: 0.875rem;
+    right: 0.875rem;
+  }
+
+  .vip-access-modal-title {
+    font-size: 1.25rem;
+  }
+}
+
+@media (max-height: 700px) {
+  .vip-access-modal {
+    padding-top: 1.25rem;
+    padding-bottom: 1.25rem;
+  }
+
+  .vip-access-modal-header {
+    padding-right: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vip-access-modal,
+  .vip-access-modal *,
+  .vip-access-modal *::before,
+  .vip-access-modal *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .vip-access-modal-spinner {
+    animation: none;
+  }
+}

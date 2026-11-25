@@ -1,0 +1,36 @@
+name: Pull request checks
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Focused lint and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Lint new VidRift integration components
+        run: npx eslint src/components/VidRiftPlayer.tsx src/pages/AnimeRedirect.tsx
+      - name: Build production bundle
+        env:
+          VITE_SITE_URL: https://movix.health
+        run: npm run build

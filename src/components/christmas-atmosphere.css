@@ -1,0 +1,185 @@
+/* MOVIX Christmas — premium seasonal frame, intentionally subtle over content. */
+.movix-christmas-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  overflow: hidden;
+  pointer-events: none;
+  contain: layout style;
+  isolation: isolate;
+  --xmas-gold: #f4d38b;
+  --xmas-red: #bd3545;
+  --xmas-green: #26734f;
+}
+.movix-christmas-atmosphere * { box-sizing: border-box; }
+
+/* Three restrained snowfall depths: sparse distant flakes, soft midground, a few close flakes. */
+.mx-xmas-snow { position:absolute; inset:-18% 0 0; background-repeat:repeat; will-change:transform; }
+.mx-xmas-snow-back {
+  opacity:.19; filter:blur(.35px);
+  background-image:radial-gradient(1px 1px at 18px 26px,#fff 98%,transparent),radial-gradient(1px 1px at 122px 154px,#fff 98%,transparent),radial-gradient(1px 1px at 204px 76px,#fff 98%,transparent);
+  background-size:280px 240px; animation:mx-xmas-fall-back 42s linear infinite;
+}
+.mx-xmas-snow-mid {
+  opacity:.24;
+  background-image:radial-gradient(1.7px 1.7px at 70px 88px,rgba(255,255,255,.95) 98%,transparent),radial-gradient(1.4px 1.4px at 210px 190px,rgba(255,255,255,.9) 98%,transparent);
+  background-size:360px 310px; animation:mx-xmas-fall-mid 29s linear infinite;
+}
+.mx-xmas-snow-front {
+  opacity:.12; filter:blur(.8px);
+  background-image:radial-gradient(2.6px 2.6px at 44px 70px,white 98%,transparent),radial-gradient(2px 2px at 180px 205px,white 98%,transparent);
+  background-size:470px 390px; animation:mx-xmas-fall-front 21s linear infinite;
+}
+@keyframes mx-xmas-fall-back { to { transform:translate3d(16px,18%,0); } }
+@keyframes mx-xmas-fall-mid { to { transform:translate3d(-22px,22%,0); } }
+@keyframes mx-xmas-fall-front { to { transform:translate3d(34px,26%,0); } }
+
+/* Evergreen swags: thin gold wire, layered pine silhouettes and warm glints. */
+.mx-xmas-garland {
+  position:absolute; top:-10px; width:min(42vw,570px); height:170px;
+  opacity:.96; filter:drop-shadow(0 7px 12px rgba(0,0,0,.52));
+}
+.mx-xmas-garland-left { left:0; }
+.mx-xmas-garland-right { right:0; transform:scaleX(-1); }
+.mx-xmas-garland svg { width:100%; height:100%; overflow:visible; }
+.mx-xmas-wire { fill:none; stroke:#c49a55; stroke-width:2.2; opacity:.9; }
+.mx-xmas-pine {
+  fill:none; stroke:#276847; stroke-width:8; stroke-linecap:round; stroke-linejoin:round;
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.45));
+}
+.mx-xmas-pine::after { stroke:#4a9b68; }
+
+/* A delicate string of warm fairy lights, not a row of bright dots. */
+.mx-xmas-light-string {
+  position:absolute; top:0; left:3%; right:3%; height:86px;
+  display:flex; justify-content:space-around; align-items:flex-start;
+}
+.mx-xmas-light-string::before {
+  content:""; position:absolute; left:0; right:0; top:-15px; height:64px;
+  border-bottom:1px solid rgba(214,180,112,.52); border-radius:0 0 50% 50%;
+}
+.mx-xmas-light-string span {
+  position:relative; width:7px; height:10px; border-radius:45% 45% 50% 50%;
+  background:var(--bulb,#f6d58a);
+  box-shadow:0 0 5px 1px var(--bulb),0 0 13px 2px color-mix(in srgb,var(--bulb),transparent 60%);
+  animation:mx-xmas-twinkle 3.2s ease-in-out infinite alternate;
+  animation-delay:calc(var(--light-index)*-.23s);
+}
+.mx-xmas-light-string span::before {
+  content:""; position:absolute; width:4px; height:3px; top:-3px; left:1.5px;
+  border-radius:2px 2px 0 0; background:#b9a071;
+}
+.mx-xmas-light-string span:nth-child(4n+1){--bulb:#f7d58c}
+.mx-xmas-light-string span:nth-child(4n+2){--bulb:#e66c70}
+.mx-xmas-light-string span:nth-child(4n+3){--bulb:#7bc99a}
+.mx-xmas-light-string span:nth-child(4n){--bulb:#d9e8f5}
+@keyframes mx-xmas-twinkle { from{opacity:.58;filter:brightness(.85)} to{opacity:1;filter:brightness(1.35)} }
+
+/* Glass-like baubles with a fine metallic cap and highlight. */
+.mx-xmas-ornament {
+  position:absolute; top:82px; width:27px; height:34px; border-radius:48% 48% 50% 50%;
+  transform-origin:50% -18px; animation:mx-xmas-sway 5.5s ease-in-out infinite alternate;
+  box-shadow:inset -5px -4px 8px rgba(0,0,0,.3),0 9px 22px rgba(0,0,0,.42),0 0 18px rgba(228,190,112,.12);
+}
+.mx-xmas-ornament::before {
+  content:""; position:absolute; left:10px; top:-10px; width:7px; height:10px;
+  border:1.5px solid #d7bd83; border-bottom:0; border-radius:6px 6px 0 0;
+}
+.mx-xmas-ornament i { position:absolute; left:10px; top:-2px; width:7px; height:5px; border-radius:2px; background:#d9bd7d; }
+.mx-xmas-ornament-one { left:12%; background:radial-gradient(circle at 30% 23%,rgba(255,255,255,.9),transparent 22%),linear-gradient(115deg,#7d1827,#df5960 48%,#711724); }
+.mx-xmas-ornament-two { right:13%; top:106px; width:31px; height:39px; background:radial-gradient(circle at 30% 23%,rgba(255,255,255,.85),transparent 22%),linear-gradient(115deg,#8b641e,#f2d27b 50%,#77531b); animation-delay:-2s; }
+.mx-xmas-ornament-three { left:49%; top:39px; width:18px; height:24px; background:radial-gradient(circle at 30% 23%,rgba(255,255,255,.8),transparent 22%),linear-gradient(115deg,#145437,#5db27d 50%,#17452f); animation-delay:-.7s; }
+@keyframes mx-xmas-sway { from{rotate:-4deg} to{rotate:4deg} }
+
+/* Soft snow banks and tiny fir silhouettes anchor the bottom corners. */
+.mx-xmas-ground {
+  position:absolute; bottom:-92px; width:44vw; height:205px; border-radius:50%;
+  background:radial-gradient(ellipse at 50% 0%,rgba(239,247,255,.2),rgba(201,224,239,.08) 36%,transparent 72%);
+  filter:blur(14px);
+}
+.mx-xmas-ground-left { left:-14%; }
+.mx-xmas-ground-right { right:-14%; }
+.mx-xmas-gift {
+  position:absolute; bottom:25px; width:66px; height:57px; border-radius:4px 4px 7px 7px;
+  background:linear-gradient(110deg,#781d2b,#c53c4b 55%,#741925);
+  box-shadow:0 13px 28px rgba(0,0,0,.52),0 0 18px rgba(198,57,72,.15); opacity:.94;
+}
+.mx-xmas-gift::before { content:"";position:absolute;left:27px;top:0;bottom:0;width:11px;background:linear-gradient(90deg,#b78a42,#f4d58d,#a77a31); }
+.mx-xmas-gift::after { content:"";position:absolute;left:0;right:0;top:12px;height:8px;background:linear-gradient(#b78a42,#f4d58d,#a77a31); }
+.mx-xmas-gift i,.mx-xmas-gift b { position:absolute;top:-12px;left:22px;width:21px;height:15px;border:4px solid #e8c778;border-radius:90% 90% 10% 90%; }
+.mx-xmas-gift i { transform:rotate(22deg); }
+.mx-xmas-gift b { left:34px;transform:scaleX(-1) rotate(22deg); }
+.mx-xmas-gift span { position:absolute;left:30px;top:-3px;width:6px;height:10px;background:#f2d68d;z-index:1; }
+.mx-xmas-gift-left { left:25px; transform:rotate(-5deg); }
+.mx-xmas-gift-right { right:28px; transform:scale(1.06) rotate(5deg); background:linear-gradient(110deg,#145437,#26835a 55%,#10452f); }
+.mx-xmas-sparkle { position:absolute;color:#f7dfaa;text-shadow:0 0 12px rgba(255,213,124,.7);animation:mx-xmas-twinkle 2.8s ease-in-out infinite alternate; }
+.mx-xmas-sparkle-one { top:20%;left:8%;font-size:17px; }
+.mx-xmas-sparkle-two { top:29%;right:9%;font-size:22px;animation-delay:-1s; }
+
+.christmas-theme { --christmas-accent:190 55 75; }
+.christmas-theme [data-christmas-accent] { color:#e8c477; }
+
+@media(max-width:700px) {
+  .mx-xmas-garland { width:55vw;height:112px; }
+  .mx-xmas-light-string { height:54px; }
+  .mx-xmas-light-string span { width:6px;height:8px; }
+  .mx-xmas-ornament { top:58px;width:18px;height:24px; }
+  .mx-xmas-ornament-two { top:74px; }
+  .mx-xmas-gift { bottom:13px;transform:scale(.66); }
+  .mx-xmas-gift-right { transform:scale(.74); }
+  .mx-xmas-ground { height:125px; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .mx-xmas-snow,.mx-xmas-light-string span,.mx-xmas-ornament,.mx-xmas-sparkle { animation:none!important; }
+}
+
+
+/* Santa's sleigh: one calm, cinematic fly-by, matching the Halloween witch. */
+.mx-xmas-sleigh-flight {
+  position: absolute;
+  top: clamp(105px, 16vh, 190px);
+  left: 0;
+  width: clamp(330px, 43vw, 620px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-115%, 2vh, 0);
+  animation: mx-xmas-sleigh-cross 38s linear 4s infinite;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 12px 20px rgba(0,0,0,.38));
+}
+.mx-xmas-sleigh-particles { position:absolute; z-index:0; inset:-24px -30px; pointer-events:none; opacity:.78; }
+.mx-xmas-sleigh-particles canvas { display:block; width:100%; height:100%; }
+.mx-xmas-sleigh-bob { position:relative; z-index:1; display:block; animation: mx-xmas-sleigh-bob 2.8s ease-in-out infinite; }
+.mx-xmas-sleigh-bob svg { display:block; width:100%; height:auto; overflow:visible; }
+.mx-xmas-reindeer { transform-origin: 50% 70%; animation: mx-xmas-reindeer-gallop .72s ease-in-out infinite alternate; }
+.mx-xmas-santa { transform-origin: 50% 100%; animation: mx-xmas-santa-wave 2.4s ease-in-out infinite; }
+.mx-xmas-sleigh-stars { opacity:.8; animation: mx-xmas-star-glint 2.2s ease-in-out infinite alternate; }
+@keyframes mx-xmas-sleigh-cross {
+  0% { opacity:0; transform:translate3d(-115%, 3vh, 0); }
+  4% { opacity:1; }
+  52% { opacity:1; transform:translate3d(112vw, -5vh, 0); }
+  55%,100% { opacity:0; transform:translate3d(112vw, -5vh, 0); }
+}
+@keyframes mx-xmas-sleigh-bob {
+  0%,100% { transform:translate3d(0,0,0) rotate(-1deg); }
+  50% { transform:translate3d(0,-9px,0) rotate(1deg); }
+}
+@keyframes mx-xmas-reindeer-gallop {
+  from { transform:translateY(0) rotate(-1deg); }
+  to { transform:translateY(-4px) rotate(1deg); }
+}
+@keyframes mx-xmas-star-glint {
+  from { opacity:.35; }
+  to { opacity:1; }
+}
+@keyframes mx-xmas-santa-wave {
+  0%,100% { transform:translateY(0) rotate(-.5deg); }
+  50% { transform:translateY(-2px) rotate(.5deg); }
+}
+@media(max-width:700px) {
+  .mx-xmas-sleigh-flight { top:clamp(100px, 17vh, 160px); width:min(82vw, 390px); animation-duration:44s; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .mx-xmas-sleigh-flight,.mx-xmas-sleigh-bob,.mx-xmas-reindeer,.mx-xmas-sleigh-stars,.mx-xmas-santa { animation:none!important; }
+  .mx-xmas-sleigh-flight { display:none; }
+}
