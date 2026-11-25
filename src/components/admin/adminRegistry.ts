@@ -17,6 +17,7 @@ export type AdminSectionId =
   | 'vip-donation-settings'
   | 'monetization'
   | 'hero-promos'
+  | 'team-selection'
   | 'referral'
   | 'oauth-apps'
   | 'team'
@@ -193,6 +194,17 @@ export function getAdminSections(t: Translate): AdminSectionMeta[] {
       allowedRoles: ADMIN,
     },
     {
+      id: 'team-selection',
+      titleKey: 'admin.teamSelection.title',
+      titleDefault: 'Sélection de l’équipe',
+      descriptionKey: 'admin.teamSelection.description',
+      descriptionDefault: 'Choisir le film ou la série mis en avant sur l’accueil',
+      group: 'catalog',
+      icon: Sparkles,
+      keywords: ['selection', 'equipe', 'mise en avant', 'featured', 'home', 'tmdb'],
+      allowedRoles: ADMIN,
+    },
+    {
       id: 'referral',
       titleKey: 'referral.admin.dashboardTitle',
       titleDefault: 'Parrainage',
@@ -293,6 +305,7 @@ export function getSectionIcon(id: AdminSectionId): ComponentType<{ className?: 
   if (id === 'vip-donation-settings') return HandCoins;
   if (id === 'monetization') return Megaphone;
   if (id === 'hero-promos') return GalleryHorizontalEnd;
+  if (id === 'team-selection') return Sparkles;
   if (id === 'referral') return Gift;
   if (id === 'oauth-apps') return Plug;
   if (id === 'team') return Users;
