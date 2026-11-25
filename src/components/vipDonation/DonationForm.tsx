@@ -1,13 +1,15 @@
 import React, { useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
 import {
+  BadgeCheck,
+  Bitcoin,
+  Coins,
   CreditCard,
   Gift,
   Heart,
   KeyRound,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -25,7 +27,7 @@ import {
 import { TURNSTILE_SITE_KEY } from '@/utils/vipDonationsUi';
 import { rememberVipInvoice } from '@/utils/vipInvoiceHistory';
 import GiftCardDonation from './GiftCardDonation';
-import { CryptoLogo, GiftCardIcon, type CryptoLogoCoin } from './DonationMethodIcons';
+import { GiftCardIcon } from './DonationMethodIcons';
 import {
   formatDonationAmount,
   getDonationSuggestions,
@@ -44,11 +46,11 @@ interface DonationFormProps {
 interface MethodCopy {
   title: string;
   subtitle: string;
-  icon?: React.ComponentType<{ className?: string }>;
-  logo?: CryptoLogoCoin;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 // Le nom CryptoGate n'apparaît que dans le sous-titre de la carte bancaire.
+// Toutes les icônes sont des SVG locaux : aucun masque ni logo distant.
 const METHOD_COPY: Record<VipDonationMethodId, MethodCopy> = {
   giftcard: {
     icon: GiftCardIcon,
@@ -61,12 +63,12 @@ const METHOD_COPY: Record<VipDonationMethodId, MethodCopy> = {
     subtitle: 'vipDonations.donate.methods.cryptogate.subtitle'
   },
   btc: {
-    logo: 'btc',
+    icon: Bitcoin,
     title: 'vipDonations.donate.methods.btc.title',
     subtitle: 'vipDonations.donate.methods.btc.subtitle'
   },
   ltc: {
-    logo: 'ltc',
+    icon: Coins,
     title: 'vipDonations.donate.methods.ltc.title',
     subtitle: 'vipDonations.donate.methods.ltc.subtitle'
   }
@@ -83,6 +85,15 @@ const RECIPIENT_MODES: readonly VipRecipientMode[] = ['self', 'gift'];
 const sectionLabelClass = 'text-sm font-semibold text-white';
 const focusRingClass = 'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-yellow-400/60';
 const inputClass = 'h-12 w-full rounded-xl border bg-black/40 text-base text-white outline-none transition-colors duration-150 placeholder:text-white/30 focus:border-yellow-400/60 focus:ring-2 focus:ring-yellow-400/15';
+
+const StepLegend: React.FC<{ step: number; children: React.ReactNode }> = ({ step, children }) => (
+  <legend className="mb-3 flex items-center gap-2.5">
+    <span aria-hidden="true" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-yellow-400/15 text-[11px] font-semibold text-yellow-300">
+      {step}
+    </span>
+    <span className={sectionLabelClass}>{children}</span>
+  </legend>
+);
 
 const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) => {
   const { t, i18n } = useTranslation();
@@ -213,21 +224,26 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
 
       <div className="space-y-8">
         <fieldset>
-          <legend className={sectionLabelClass}>{t('vipDonations.donate.amountTitle')}</legend>
+          <StepLegend step={1}>{t('vipDonations.donate.amountTitle')}</StepLegend>
 
           {suggestions.length > 0 && (
-            <div className={cn('mt-3 grid gap-2', AMOUNT_GRID_COLUMNS[suggestions.length] ?? 'grid-cols-3')}>
+            <div
+              data-testid="vip-amount-grid"
+              className={cn('mt-3 grid gap-2', AMOUNT_GRID_COLUMNS[suggestions.length] ?? 'grid-cols-3')}
+            >
               {suggestions.map((value) => {
                 const checked = presetAmount === value;
                 const duration = getVipDurationForAmount(t, value, settings.eurosPerVipYear);
                 return (
                   <label
                     key={value}
+                    data-testid={`vip-amount-${value}`}
+                    data-selected={checked}
                     className={cn(
-                      'flex min-h-[4.25rem] min-w-0 cursor-pointer flex-col items-center justify-center rounded-xl border px-2 py-2.5 text-center transition-colors duration-150',
+                      'relative flex min-h-[4.75rem] min-w-0 cursor-pointer flex-col items-center justify-center rounded-xl border px-2 py-2.5 text-center transition-colors duration-150',
                       focusRingClass,
                       checked
-                        ? 'border-yellow-400/70 bg-yellow-400/10'
+                        ? 'border-yellow-400/70 bg-yellow-400/10 shadow-[0_0_0_1px_rgba(234,179,8,0.18)]'
                         : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
                     )}
                   >
@@ -239,6 +255,15 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
                       onChange={() => handlePresetChange(value)}
                       className="sr-only"
                     />
+                    {checked && (
+                      <span
+                        data-vip-icon={`vip-amount-check-${value}`}
+                        className="absolute right-2 top-2 inline-flex text-yellow-400"
+                        aria-hidden="true"
+                      >
+                        <BadgeCheck className="h-4 w-4" />
+                      </span>
+                    )}
                     <span className="text-lg font-semibold tabular-nums leading-tight text-white">
                       {formatDonationAmount(locale, value)}
                     </span>
@@ -266,6 +291,7 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
               <div className="relative mt-1.5">
                 <input
                   id={ids.custom}
+                  data-testid="vip-custom-amount"
                   type="text"
                   inputMode="numeric"
                   pattern="[0-9]*"
@@ -306,8 +332,14 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
           )}
 
           {amount !== null && (
-            <p aria-live="polite" className="mt-4 flex items-start gap-2 text-sm leading-6 text-yellow-100">
-              <Gift className="mt-1 h-4 w-4 shrink-0 text-yellow-400" aria-hidden="true" />
+            <p
+              data-testid="vip-duration"
+              aria-live="polite"
+              className="mt-4 flex items-start gap-2.5 rounded-xl border border-yellow-400/20 bg-yellow-400/[0.07] px-3.5 py-3 text-sm leading-6 text-yellow-100"
+            >
+              <span data-vip-icon="vip-duration" className="mt-0.5 inline-flex shrink-0 text-yellow-400" aria-hidden="true">
+                <Gift className="h-4 w-4" />
+              </span>
               <span>
                 {thanksDuration
                   ? t('vipDonations.donate.thankYou', { duration: thanksDuration })
@@ -319,7 +351,7 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
 
         {settings.giftOptionEnabled && (
           <fieldset>
-            <legend className={sectionLabelClass}>{t('vipDonations.donate.recipientTitle')}</legend>
+            <StepLegend step={2}>{t('vipDonations.donate.recipientTitle')}</StepLegend>
             <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-black/40 p-1">
               {RECIPIENT_MODES.map((mode) => {
                 const checked = recipient === mode;
@@ -327,6 +359,8 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
                 return (
                   <label
                     key={mode}
+                    data-testid={`vip-recipient-${mode}`}
+                    data-selected={checked}
                     className={cn(
                       'group flex min-h-[2.75rem] cursor-pointer items-center justify-center gap-2 rounded-lg px-3 text-center text-sm font-medium transition-colors duration-150',
                       focusRingClass,
@@ -343,19 +377,16 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
                       onChange={() => handleRecipientChange(mode)}
                       className="sr-only"
                     />
-                    {/* Couleur pleine + opacité sur l'icône : une couleur
-                        translucide éclaircit les endroits où ses traits se
-                        croisent (ruban du cadeau, anneau de la clé). Sa
-                        propre couleur dans les deux états : héritée, elle
-                        passerait par du translucide pendant la transition
-                        du libellé. */}
-                    <Icon
+                    <span
+                      data-vip-icon={`vip-recipient-${mode}`}
                       className={cn(
-                        'h-4 w-4 shrink-0 transition-opacity duration-150',
+                        'inline-flex shrink-0 transition-opacity duration-150',
                         checked ? 'text-yellow-100' : 'text-white opacity-65 group-hover:opacity-100'
                       )}
                       aria-hidden="true"
-                    />
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
                     {mode === 'self'
                       ? t('vipDonations.donate.recipientSelf')
                       : t('vipDonations.donate.recipientGift')}
@@ -374,7 +405,7 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
         )}
 
         <fieldset>
-          <legend className={sectionLabelClass}>{t('vipDonations.donate.methodTitle')}</legend>
+          <StepLegend step={settings.giftOptionEnabled ? 3 : 2}>{t('vipDonations.donate.methodTitle')}</StepLegend>
           {selectableMethods.length === 0 ? (
             <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-white/65">
               {t('vipDonations.donate.noMethod')}
@@ -382,11 +413,13 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
           ) : (
             <div className="mt-3 space-y-2">
               {selectableMethods.map((id) => {
-                const { icon: Icon, logo, title, subtitle } = METHOD_COPY[id];
+                const { icon: Icon, title, subtitle } = METHOD_COPY[id];
                 const checked = id === activeMethod;
                 return (
                   <label
                     key={id}
+                    data-testid={`vip-method-${id}`}
+                    data-selected={checked}
                     className={cn(
                       'flex cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 transition-colors duration-150',
                       focusRingClass,
@@ -404,17 +437,15 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
                       className="sr-only"
                     />
                     <span
+                      data-testid={`vip-method-icon-${id}`}
+                      data-vip-icon={`vip-method-${id}`}
                       aria-hidden="true"
                       className={cn(
                         'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-150',
                         checked ? 'bg-yellow-400/15 text-yellow-300' : 'bg-white/[0.06] text-white'
                       )}
                     >
-                      {logo
-                        ? <CryptoLogo coin={logo} className="h-6 w-6" />
-                        : Icon
-                          ? <Icon className={cn('h-5 w-5 transition-opacity duration-150', !checked && 'opacity-65')} />
-                          : null}
+                      <Icon className={cn('h-5 w-5 transition-opacity duration-150', !checked && 'opacity-65')} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[15px] font-medium leading-snug text-white">
@@ -439,17 +470,17 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
             </div>
           )}
           {giftCardHiddenForGift && selectableMethods.length > 0 && (
-            <p className="mt-2 text-xs leading-5 text-white/55">{t('vipDonations.donate.giftCardNotForGift')}</p>
+            <p data-testid="vip-gift-not-available" className="mt-2 text-xs leading-5 text-white/55">
+              {t('vipDonations.donate.giftCardNotForGift')}
+            </p>
           )}
         </fieldset>
 
         {activeMethod !== null && (
-          <motion.div
+          <div
             key={isGiftCard ? 'giftcard' : 'direct'}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="space-y-8"
+            className="vip-reveal space-y-8"
+            style={{ animationDuration: '260ms' }}
           >
             {isGiftCard ? (
               <GiftCardDonation settings={settings} exampleAmount={amount} />
@@ -520,13 +551,16 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
                   <Button
                     type="submit"
                     size="lg"
+                    data-testid="vip-submit"
                     disabled={isCreating || amount === null}
                     aria-busy={isCreating || undefined}
                     className="h-12 w-full gap-2 rounded-xl bg-yellow-400 font-semibold text-black shadow-yellow-500/15 hover:bg-yellow-300 focus-visible:ring-yellow-300/70 active:scale-[0.98]"
                   >
-                    {isCreating
-                      ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-                      : <Heart className="h-5 w-5" aria-hidden="true" />}
+                    <span data-vip-icon="vip-submit" className="inline-flex" aria-hidden="true">
+                      {isCreating
+                        ? <Loader2 className="h-5 w-5 animate-spin" />
+                        : <Heart className="h-5 w-5" />}
+                    </span>
                     {isCreating
                       ? t('vipDonations.donate.submitting')
                       : amount !== null
@@ -544,7 +578,7 @@ const DonationForm: React.FC<DonationFormProps> = ({ settings, availability }) =
                 </div>
               </>
             )}
-          </motion.div>
+          </div>
         )}
       </div>
     </form>

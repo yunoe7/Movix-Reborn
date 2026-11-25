@@ -3,19 +3,19 @@ import { useTranslation } from 'react-i18next';
 import {
   ListPlus,
   MessageCircle,
-  Shield,
+  ShieldCheck,
   Unlock,
   Zap,
-  type LucideIcon
+  type LucideIcon,
 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
 // Clés `vip.*` déjà traduites, reprises de l'ancienne page VIP. `note` s'affiche
-// en italique sous la description.
+// en italique sous la description. Chaque avantage a son propre SVG local.
 const PERKS: ReadonlyArray<{ icon: LucideIcon; title: string; description: string; note?: string }> = [
   { icon: Zap, title: 'vip.adFreePlayers', description: 'vip.adFreePlayersDesc' },
-  { icon: Shield, title: 'vip.noAdBeforeContent', description: 'vip.noAdBeforeContentDesc' },
+  { icon: ShieldCheck, title: 'vip.noAdBeforeContent', description: 'vip.noAdBeforeContentDesc' },
   { icon: ListPlus, title: 'vip.priorityRequests', description: 'vip.priorityRequestsDesc' },
   { icon: MessageCircle, title: 'vip.vipCommentTag', description: 'vip.vipCommentTagDesc' },
   {
@@ -30,7 +30,7 @@ const DonationPerks: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <section aria-labelledby="vip-perks-title">
+    <section data-testid="vip-perks" aria-labelledby="vip-perks-title">
       <h2 id="vip-perks-title" className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
         {t('vipDonations.donate.perksTitle')}
       </h2>
@@ -40,14 +40,19 @@ const DonationPerks: React.FC = () => {
         {PERKS.map(({ icon: Icon, title, description, note }, index) => (
           <li
             key={title}
+            data-testid={`vip-perk-${index}`}
             className={cn(
-              'flex gap-3.5 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4',
+              'vip-card-hover flex h-full min-h-[8.5rem] gap-3.5 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4',
               // Nombre impair : la dernière carte prend toute la ligne.
               index === PERKS.length - 1 && PERKS.length % 2 === 1 && 'sm:col-span-2'
             )}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-yellow-400/10 text-yellow-400">
-              <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+            <span
+              data-vip-icon={`vip-perk-${index}`}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-yellow-400/10 text-yellow-400 ring-1 ring-inset ring-yellow-400/15"
+              aria-hidden="true"
+            >
+              <Icon className="h-[18px] w-[18px]" />
             </span>
             <div className="min-w-0">
               <p className="font-medium leading-snug text-white">{t(title)}</p>
