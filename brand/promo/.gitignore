@@ -1,4 +1,0 @@
-# Affiches TMDB du fond : récupérées par fetch-posters.mjs, jamais versionnées.
-posters/
-# Captures brutes du site avant recadrage.
-*.png

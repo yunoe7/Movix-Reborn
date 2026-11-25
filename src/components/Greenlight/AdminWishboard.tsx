@@ -23,6 +23,7 @@ import {
     SelectValue,
 } from '../ui/select';
 import ReusableModal from '../ui/reusable-modal';
+import ConfirmDialog from '../ui/confirm-dialog';
 import Counter from '../ui/counter';
 import { encodeId } from '../../utils/idEncoder';
 import { getTmdbLanguage } from '../../i18n';
@@ -1858,27 +1859,7 @@ const AdminWishboard: React.FC = () => {
                 </div>
             </ReusableModal >
 
-            {/* Delete Modal */}
-            < ReusableModal
-                isOpen={deleteModalOpen}
-                onClose={() => setDeleteModalOpen(false)}
-                title={t('admin.deleteRequest')}
-            >
-                <div className="space-y-6">
-                    <p className="text-white">
-                        {t('admin.confirmDeleteRequest', { title: selectedRequest?.title })}
-                    </p>
-                    <div className="flex justify-end gap-2 pt-4">
-                        <Button variant="ghost" onClick={() => setDeleteModalOpen(false)}>
-                            {t('admin.cancel')}
-                        </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={submitting}>
-                            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            {t('admin.delete')}
-                        </Button>
-                    </div>
-                </div>
-            </ReusableModal >
+            <ConfirmDialog isOpen={deleteModalOpen} title={t('admin.deleteRequest')} message={t('admin.confirmDeleteRequest', { title: selectedRequest?.title })} confirmLabel={t('admin.delete')} cancelLabel={t('admin.cancel')} variant="destructive" busy={submitting} onCancel={() => setDeleteModalOpen(false)} onConfirm={handleDelete} />
 
             {/* Status Change Modal */}
             < ReusableModal

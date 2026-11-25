@@ -16,6 +16,7 @@ import {
     SelectValue,
 } from './ui/select';
 import ReusableModal from './ui/reusable-modal';
+import ConfirmDialog from './ui/confirm-dialog';
 import { getTmdbLanguage } from '../i18n';
 
 const MAIN_API = import.meta.env.VITE_MAIN_API;
@@ -467,55 +468,7 @@ const AdminReports: React.FC = () => {
                 </div>
             )}
 
-            {/* Delete confirmation modal - same pattern as AdminComments */}
-            <ReusableModal
-                isOpen={!!resolveModal}
-                onClose={() => setResolveModal(null)}
-                title={t('admin.deleteReportedContent')}
-                className="max-w-md"
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-sm text-red-200 font-medium">{t('admin.irreversibleAction')}</p>
-                            <p className="text-xs text-red-100/70">
-                                {t('admin.deleteReportedContentDesc')}
-                            </p>
-                        </div>
-                    </div>
-
-                    {resolveModal?.target?.content && (
-                        <div className="bg-white/5 p-3 rounded-lg border border-white/10">
-                            <p className="text-xs text-white/50 mb-1">
-                                {resolveModal.target.authorUsername || resolveModal.target.username} :
-                            </p>
-                            <p className="text-sm italic text-white/80">"{resolveModal.target.content}"</p>
-                        </div>
-                    )}
-
-                    {resolveModal?.target_type === 'shared_list' && resolveModal?.target?.name && (
-                        <div className="bg-white/5 p-3 rounded-lg border border-white/10 flex items-center gap-2">
-                            <List className="w-4 h-4 text-white opacity-50" />
-                            <p className="text-sm text-white/80">{resolveModal.target.name}</p>
-                        </div>
-                    )}
-
-                    <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
-                        <Button variant="ghost" onClick={() => setResolveModal(null)}>
-                            {t('common.cancel')}
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            onClick={() => resolveModal && handleResolve(resolveModal, true)}
-                            disabled={submitting !== null}
-                        >
-                            {submitting !== null ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-                            {t('admin.deletePermanently')}
-                        </Button>
-                    </div>
-                </div>
-            </ReusableModal>
+            <ConfirmDialog isOpen={!!resolveModal} title={t('admin.deleteReportedContent')} message={t('admin.deleteReportedContentDesc')} confirmLabel={t('admin.deletePermanently')} cancelLabel={t('common.cancel')} variant="destructive" busy={submitting !== null} onCancel={() => setResolveModal(null)} onConfirm={() => resolveModal && handleResolve(resolveModal, true)} />
         </div>
     );
 };

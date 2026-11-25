@@ -7,6 +7,7 @@ import {
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import ReusableModal from './ui/reusable-modal';
+import ConfirmDialog from './ui/confirm-dialog';
 
 interface SharedListItem {
     id: number;
@@ -456,52 +457,7 @@ const AdminSharedLists: React.FC = () => {
                 )}
             </motion.div>
 
-            {/* Delete Modal */}
-            <ReusableModal
-                isOpen={deleteModalOpen}
-                onClose={() => setDeleteModalOpen(false)}
-                title={t('admin.deleteSharedList')}
-            >
-                <div className="space-y-6">
-                    <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-sm text-red-200 font-medium">{t('admin.irreversibleAction')}</p>
-                            <p className="text-xs text-red-100/70">
-                                {t('admin.deleteSharedListWarning')}
-                            </p>
-                        </div>
-                    </div>
-
-                    {selectedList && (
-                        <div className="bg-white/5 p-3 rounded-lg border border-white/10 space-y-2">
-                            <p className="text-xs text-white/50">{t('admin.listBy')} <span className="text-white font-medium">{selectedList.username}</span></p>
-                            <p className="text-sm font-medium text-white">"{selectedList.listName}"</p>
-                            <p className="text-xs text-white/40">{t('lists.itemsInList', { count: selectedList.itemCount })} · {t('watchParty.code')}: {selectedList.shareCode}</p>
-                            {selectedList.moderationReason && (
-                                <div className="flex items-center gap-2 mt-2">
-                                    <Badge variant="rejected" className="bg-red-500/20 text-red-400 border-red-500/30">
-                                        {selectedList.moderationReason}
-                                    </Badge>
-                                    {selectedList.moderationDetails && (
-                                        <span className="text-[10px] text-white/50">{selectedList.moderationDetails}</span>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className="flex justify-end gap-2 pt-4 border-t border-white/10">
-                        <Button variant="ghost" onClick={() => setDeleteModalOpen(false)}>
-                            {t('admin.cancel')}
-                        </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={submitting}>
-                            {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            {t('admin.deletePermanently')}
-                        </Button>
-                    </div>
-                </div>
-            </ReusableModal>
+            <ConfirmDialog isOpen={deleteModalOpen} title={t('admin.deleteSharedList')} message={t('admin.deleteSharedListWarning')} confirmLabel={t('admin.deletePermanently')} cancelLabel={t('common.cancel')} variant="destructive" busy={submitting} onCancel={() => setDeleteModalOpen(false)} onConfirm={handleDelete} />
         </div>
     );
 };
