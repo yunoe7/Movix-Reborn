@@ -76,16 +76,41 @@ export interface HeroPromoCarousel {
 
 export type HeroPromoCarousels = Record<HeroPromoPage, HeroPromoCarousel>;
 
+export interface TeamSelectionSettings {
+  enabled: boolean;
+  mediaType: 'movie' | 'tv';
+  tmdbId: number;
+  badge: string;
+  title: string;
+  description: string;
+  backdropUrl: string;
+  detailsUrl: string;
+  ageRating: string;
+  rating: string;
+  genres: string;
+  duration: string;
+}
+
+export const DEFAULT_TEAM_SELECTION: TeamSelectionSettings = {
+  enabled: true, mediaType: 'tv', tmdbId: 215160,
+  badge: "🔥 LA SÉLECTION DE L'ÉQUIPE", title: "Les Carnets de l'apothicaire",
+  description: "Maomao mène une vie paisible avec son père, un apothicaire. Kidnappée, elle est vendue comme servante au palais impérial. Grâce à son esprit vif et sa connaissance de la médecine et des poisons, elle résout les mystères et complots médicaux au sein de la cour.",
+  backdropUrl: '/apothecary_backdrop.jpg', detailsUrl: '/tv/fFFB6OvEJ1NFH93LdfdR0Svt2TsSUhSZBmdU2a',
+  ageRating: '12+', rating: '8,6/10', genres: 'Animation,Mystère,Drame', duration: '24 min / épisode'
+};
+
 export interface HeroPromoSettings {
   enabled: boolean;
   carousels: HeroPromoCarousels;
   promos: HeroPromo[];
+  teamSelection: TeamSelectionSettings;
 }
 
 /** Réponse publique de `GET /api/hero-promos`. */
 export interface PublicHeroPromoConfig {
   carousels: HeroPromoCarousels;
   promos: PublicHeroPromo[];
+  teamSelection: TeamSelectionSettings;
 }
 
 export interface HeroPromoClickStats {
@@ -238,12 +263,33 @@ function normalizeCarousels(raw: unknown): HeroPromoCarousels {
   return carousels;
 }
 
+export function normalizeTeamSelection(raw: unknown): TeamSelectionSettings {
+  const source = isPlainObject(raw) ? raw : {};
+  const fallback = DEFAULT_TEAM_SELECTION;
+  const pickText = (key: string, max: number): string => typeof source[key] === 'string' ? String(source[key]).trim().slice(0, max) : String(fallback[key as keyof TeamSelectionSettings]);
+  return {
+    enabled: pickBoolean(source.enabled, fallback.enabled),
+    mediaType: source.mediaType === 'movie' ? 'movie' : 'tv',
+    tmdbId: typeof source.tmdbId === 'number' && Number.isSafeInteger(source.tmdbId) && source.tmdbId > 0 ? source.tmdbId : fallback.tmdbId,
+    badge: pickText('badge', 60) || fallback.badge,
+    title: pickText('title', 100) || fallback.title,
+    description: pickText('description', 600) || fallback.description,
+    backdropUrl: pickText('backdropUrl', 1000) || fallback.backdropUrl,
+    detailsUrl: pickText('detailsUrl', 1000) || fallback.detailsUrl,
+    ageRating: pickText('ageRating', 12) || fallback.ageRating,
+    rating: pickText('rating', 16) || fallback.rating,
+    genres: pickText('genres', 120) || fallback.genres,
+    duration: pickText('duration', 40) || fallback.duration
+  };
+}
+
 export function normalizeHeroPromoSettings(raw: unknown): HeroPromoSettings {
   const source = isPlainObject(raw) ? raw : {};
   return {
     enabled: pickBoolean(source.enabled, true),
     carousels: normalizeCarousels(source.carousels),
-    promos: normalizePromoList(source.promos)
+    promos: normalizePromoList(source.promos),
+    teamSelection: normalizeTeamSelection(source.teamSelection)
   };
 }
 
@@ -288,14 +334,16 @@ const REQUEST_TIMEOUT_MS = 10_000;
 
 const createEmptyPublicConfig = (): PublicHeroPromoConfig => ({
   carousels: createDefaultHeroPromoCarousels(),
-  promos: []
+  promos: [],
+  teamSelection: DEFAULT_TEAM_SELECTION
 });
 
 function normalizePublicConfig(raw: unknown): PublicHeroPromoConfig | null {
   if (!isPlainObject(raw) || !Array.isArray(raw.promos)) return null;
   return {
     carousels: normalizeCarousels(raw.carousels),
-    promos: normalizePromoList(raw.promos).map(toPublicPromo)
+    promos: normalizePromoList(raw.promos).map(toPublicPromo),
+    teamSelection: normalizeTeamSelection(raw.teamSelection)
   };
 }
 
@@ -447,6 +495,14 @@ function normalizeAdminPayload(data: Record<string, unknown>): HeroPromoAdminPay
     updatedBy: typeof data.updatedBy === 'string' ? data.updatedBy : null,
     stats: normalizeStats(data.stats)
   };
+}
+
+export async function getPublicTeamSelection(): Promise<TeamSelectionSettings> {
+  const response = await fetch(`${MAIN_API}/api/hero-promos`, { cache: 'no-store' });
+  if (!response.ok) throw createApiError('Impossible de charger la sélection de l’équipe', response.status);
+  const data: unknown = await response.json();
+  const body = isPlainObject(data) ? data : {};
+  return normalizeTeamSelection(body.teamSelection);
 }
 
 export async function getAdminHeroPromos(): Promise<HeroPromoAdminPayload> {

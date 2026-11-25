@@ -25,6 +25,7 @@ import ContentRowSkeleton from '../components/skeletons/ContentRowSkeleton';
 import { readLocalStorage } from '../utils/browserStorage';
 import { useProfile } from '../context/ProfileContext';
 import { isHalloweenSeason } from '../hooks/useHalloweenTheme';
+import { getPublicTeamSelection, type TeamSelectionSettings } from '../services/heroPromoService';
 
 // Rangée « Spécial Halloween » : téléchargée seulement quand elle s'affiche
 // (en octobre, ou thème actif). Un échec réseau laisse simplement l'accueil
@@ -384,6 +385,7 @@ const Home: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sagaCollections, setSagaCollections] = useState<any[]>([]);
   const [featuredSeries, setFeaturedSeries] = useState<any>(null);
+  const [featuredSelection, setFeaturedSelection] = useState<TeamSelectionSettings | null>(null);
   const [streamingPlatformsHidden, setStreamingPlatformsHidden] = useState(() => {
     return readLocalStorage('settings_hide_streaming_platforms') === 'true';
   });
@@ -805,15 +807,22 @@ const Home: React.FC = () => {
   // Fetch featured series (team selection) — différé via le LazySection de la section (perf)
   const fetchFeaturedSeries = useCallback(async () => {
     try {
+      const selection = await getPublicTeamSelection();
+      setFeaturedSelection(selection);
+      if (!selection.enabled) {
+        setFeaturedSeries(null);
+        return;
+      }
       const data = await fetchTMDBDetails(
-        'tv',
-        215160,
+        selection.mediaType,
+        selection.tmdbId,
         { append_to_response: 'content_ratings' },
         tmdbLanguage,
       );
       setFeaturedSeries(data);
     } catch (error) {
-      console.error('Error fetching featured series:', error);
+      console.error('Error fetching team selection:', error);
+      setFeaturedSeries(null);
     }
   }, [tmdbLanguage]);
 
@@ -1404,8 +1413,7 @@ const Home: React.FC = () => {
                     </LazySection>
                   </div>
 
-                  {/* Featured Series - Team Selection — fetch + image différés via LazySection,
-                      image en w1280 au lieu de original (perf) */}
+                  {/* Sélection de l’équipe — réglée depuis l’administration. */}
                   <LazySection
                     key={`featured-${tmdbLanguage}`}
                     index={5}
@@ -1413,7 +1421,7 @@ const Home: React.FC = () => {
                     onLoad={fetchFeaturedSeries}
                     showLoadingDuringFetch={true}
                   >
-                  {featuredSeries && (
+                  {featuredSeries && featuredSelection?.enabled && (
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       whileInView={{ opacity: 1, y: 0 }}
@@ -1425,7 +1433,7 @@ const Home: React.FC = () => {
                       <div
                         className="w-full min-h-[400px] h-[65svh] max-h-[700px] bg-cover bg-no-repeat relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl"
                         style={{
-                          backgroundImage: 'url("/apothecary_backdrop.jpg")',
+                          backgroundImage: `url("${featuredSelection.backdropUrl}")`,
                           backgroundPosition: 'center 30%'
                         }}
                       >
@@ -1445,38 +1453,25 @@ const Home: React.FC = () => {
                         ></div>
                         <div className="flex items-start justify-center flex-col h-full z-20 relative gap-5 px-6 md:px-12 py-10">
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/90 border border-red-500/40 text-white text-xs font-semibold uppercase tracking-wider">
-                            🔥 {t('home.teamSelection')}
+                            {featuredSelection.badge}
                           </span>
                           <span className="text-white text-4xl sm:text-5xl font-bold leading-tight">
-                            {t('home.featuredSpotlightTitle')}
+                            {featuredSelection.title || featuredSeries.name || featuredSeries.title}
                           </span>
                           <div className="flex flex-row gap-2 items-center flex-wrap">
-                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white/90 text-xs font-medium">
-                              12+
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 text-xs font-semibold">
-                              <Star className="w-3 h-3 fill-current" />
-                              {t('nav.collections') === 'Collections' ? '8.6' : '8,6'}/10
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-medium">
-                              {t('home.featuredSpotlightGenreAnimation')}
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-medium">
-                              {t('home.featuredSpotlightGenreComedy')}
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-medium">
-                              {t('home.featuredSpotlightGenreDrama')}
-                            </span>
-                            <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-medium">
-                              24 min / {t('home.perEpisode')}
-                            </span>
+                            {featuredSelection.ageRating && <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white/90 text-xs font-medium">{featuredSelection.ageRating}</span>}
+                            {featuredSelection.rating && <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/15 border border-yellow-500/30 text-yellow-300 text-xs font-semibold"><Star className="w-3 h-3 fill-current" />{featuredSelection.rating}</span>}
+                            {featuredSelection.genres.split(',').map((genre) => genre.trim()).filter(Boolean).map((genre) => (
+                              <span key={genre} className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-medium">{genre}</span>
+                            ))}
+                            {featuredSelection.duration && <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/10 border border-white/10 text-white/80 text-xs font-medium">{featuredSelection.duration}</span>}
                           </div>
                           <p className="text-white/80 my-0 w-full lg:w-2/3 xl:w-1/2 line-clamp-4 leading-relaxed">
-                            {t('home.featuredSpotlightDescription')}
+                            {featuredSelection.description || featuredSeries.overview}
                           </p>
                           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                             <Link
-                              to="/tv/fFFB6OvEJ1NFH93LdfdR0Svt2TsSUhSZBmdU2a"
+                              to={featuredSelection.detailsUrl}
                               className="inline-flex items-center gap-2 bg-white hover:bg-white/90 text-black px-6 md:px-7 py-3 rounded-2xl font-semibold transition-colors shadow-lg"
                             >
                               <Info className="w-5 h-5" />

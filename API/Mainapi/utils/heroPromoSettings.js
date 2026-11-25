@@ -79,7 +79,21 @@ const DEFAULT_HERO_PROMO_SETTINGS = deepFreeze({
     page,
     { enabled: true, maxPromos: DEFAULT_PROMOS_PER_CAROUSEL }
   ])),
-  promos: []
+  promos: [],
+  teamSelection: {
+    enabled: true,
+    mediaType: 'tv',
+    tmdbId: 215160,
+    badge: "🔥 LA SÉLECTION DE L'ÉQUIPE",
+    title: "Les Carnets de l'apothicaire",
+    description: "Maomao mène une vie paisible avec son père, un apothicaire. Kidnappée, elle est vendue comme servante au palais impérial. Grâce à son esprit vif et sa connaissance de la médecine et des poisons, elle résout les mystères et complots médicaux au sein de la cour.",
+    backdropUrl: '/apothecary_backdrop.jpg',
+    detailsUrl: '/tv/fFFB6OvEJ1NFH93LdfdR0Svt2TsSUhSZBmdU2a',
+    ageRating: '12+',
+    rating: '8,6/10',
+    genres: 'Animation,Mystère,Drame',
+    duration: '24 min / épisode'
+  }
 });
 
 function getDefaultHeroPromoSettings() {
@@ -217,6 +231,32 @@ function mergeStoredCarousels(raw) {
 
 // Chaque champ absent ou mal typé reprend sa valeur par défaut ; une promo
 // sans identifiant valable est ignorée. Ne lève jamais.
+function mergeStoredTeamSelection(raw) {
+  const source = isPlainObject(raw) ? raw : {};
+  const defaults = DEFAULT_HERO_PROMO_SETTINGS.teamSelection;
+  const mediaType = source.mediaType === 'movie' ? 'movie' : 'tv';
+  const tmdbId = Number.isSafeInteger(Number(source.tmdbId)) && Number(source.tmdbId) > 0
+    ? Number(source.tmdbId)
+    : defaults.tmdbId;
+  const text = (key, max) => cleanText(source[key]).slice(0, max);
+  const backdropUrl = text('backdropUrl', URL_MAX_LENGTH);
+  const detailsUrl = text('detailsUrl', URL_MAX_LENGTH);
+  return {
+    enabled: typeof source.enabled === 'boolean' ? source.enabled : defaults.enabled,
+    mediaType,
+    tmdbId,
+    badge: text('badge', 60) || defaults.badge,
+    title: text('title', 100) || defaults.title,
+    description: text('description', 600) || defaults.description,
+    backdropUrl: isImageRef(backdropUrl) || backdropUrl.startsWith('/') ? backdropUrl : defaults.backdropUrl,
+    detailsUrl: isLinkRef(detailsUrl) ? detailsUrl : defaults.detailsUrl,
+    ageRating: text('ageRating', 12) || defaults.ageRating,
+    rating: text('rating', 16) || defaults.rating,
+    genres: text('genres', 120) || defaults.genres,
+    duration: text('duration', 40) || defaults.duration
+  };
+}
+
 function mergeStoredSettings(raw) {
   let source = raw;
   if (typeof source === 'string') {
@@ -239,7 +279,8 @@ function mergeStoredSettings(raw) {
   return {
     enabled: typeof stored.enabled === 'boolean' ? stored.enabled : DEFAULT_HERO_PROMO_SETTINGS.enabled,
     carousels: mergeStoredCarousels(stored.carousels),
-    promos
+    promos,
+    teamSelection: mergeStoredTeamSelection(stored.teamSelection)
   };
 }
 
@@ -438,11 +479,19 @@ function validateSettingsInput(input, currentSettings = DEFAULT_HERO_PROMO_SETTI
     throw createSettingsError(`${MAX_HERO_PROMOS} promos au plus.`);
   }
   const promos = rawPromos.map((promo, index) => validatePromoInput(promo, index));
+  const teamInput = hasOwnValue(input, 'teamSelection') ? input.teamSelection : current.teamSelection;
+  if (!isPlainObject(teamInput)) throw createSettingsError('Réglage invalide : « sélection de l’équipe ».');
+  const teamSelection = mergeStoredTeamSelection(teamInput);
+  if (hasOwnValue(teamInput, 'enabled') && typeof teamInput.enabled !== 'boolean') throw createSettingsError('La sélection de l’équipe doit être activée ou désactivée.');
+  if (hasOwnValue(teamInput, 'tmdbId') && (!Number.isSafeInteger(Number(teamInput.tmdbId)) || Number(teamInput.tmdbId) < 1)) throw createSettingsError('Identifiant TMDB invalide.');
+  for (const [key, max] of [['badge', 60], ['title', 100], ['description', 600], ['backdropUrl', URL_MAX_LENGTH], ['detailsUrl', URL_MAX_LENGTH], ['ageRating', 12], ['rating', 16], ['genres', 120], ['duration', 40]]) {
+    if (hasOwnValue(teamInput, key) && (typeof teamInput[key] !== 'string' || cleanText(teamInput[key]).length > max)) throw createSettingsError(`Champ « ${key} » invalide (maximum ${max} caractères).`);
+  }
   const ids = new Set(promos.map((promo) => promo.id));
   if (ids.size !== promos.length) {
     throw createSettingsError('Deux promos portent le même identifiant.');
   }
-  return { enabled, carousels, promos };
+  return { enabled, carousels, promos, teamSelection };
 }
 
 // ---------------------------------------------------------------------------
@@ -472,7 +521,8 @@ function buildPublicHeroPromoConfig(settings, now = new Date()) {
   const source = mergeStoredSettings(settings);
   return {
     carousels: source.carousels,
-    promos: buildPublicHeroPromos(source, now)
+    promos: buildPublicHeroPromos(source, now),
+    teamSelection: source.teamSelection
   };
 }
 
