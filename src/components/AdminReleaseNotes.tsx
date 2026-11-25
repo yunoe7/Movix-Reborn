@@ -153,13 +153,13 @@ const AdminReleaseNotes: React.FC = () => {
         </label>
 
         <label className="block">
-          <span className={labelClass}>Résumé de la mise à jour</span>
+          <span className={labelClass}>Résumé de la mise à jour (facultatif)</span>
           <textarea className={inputClass + ' min-h-24 resize-y'} value={notes.summary} maxLength={500} placeholder="Présente en quelques phrases les changements de cette version…" onChange={(e) => update('summary', e.target.value)} />
           <span className="mt-1 block text-right text-[10px] text-white/30">{notes.summary.length}/500</span>
         </label>
 
         <div>
-          <span className={labelClass}>Nouveautés et corrections</span>
+          <span className={labelClass}>Nouveautés et corrections (facultatif)</span>
           <div className="space-y-2">
             {notes.changes.map((change, index) => (
               <div key={index} className="flex items-start gap-2 rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2">
@@ -206,7 +206,7 @@ const AdminReleaseNotes: React.FC = () => {
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button type="button" onClick={() => void load()} disabled={saving} className="rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-white/60 hover:bg-white/5 disabled:opacity-40">Annuler les modifications</button>
-        <button type="button" onClick={() => void save()} disabled={saving || (!notes.summary.trim() && notes.changes.length === 0)} className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-white/85 disabled:cursor-not-allowed disabled:opacity-40">{saving ? 'Enregistrement…' : 'Enregistrer les notes'}</button>
+        <button type="button" onClick={() => void save()} disabled={saving} className="rounded-xl bg-white px-6 py-3 text-sm font-bold text-black transition hover:bg-white/85 disabled:cursor-not-allowed disabled:opacity-40">{saving ? 'Enregistrement…' : 'Enregistrer les notes'}</button>
       </div>
     </div>
   );

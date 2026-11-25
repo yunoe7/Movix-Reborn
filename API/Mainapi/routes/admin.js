@@ -1705,9 +1705,6 @@ router.get('/admin/release-notes', isAdmin, async (_req, res) => {
 router.put('/admin/release-notes', isAdmin, async (req, res) => {
   try {
     const metadata = normalizeReleaseNotes(req.body);
-    if (!metadata.summary && metadata.changes.length === 0) {
-      return res.status(400).json({ success: false, error: 'Ajoutez un résumé ou au moins une nouveauté.' });
-    }
     await redis.set(RELEASE_NOTES_KEY, JSON.stringify(metadata));
     return res.json({ success: true, metadata });
   } catch (error) {
