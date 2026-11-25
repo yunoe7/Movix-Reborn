@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Megaphone, Plus } from '../icons/Icons8';
+import { Plus } from '../icons/Icons8';
+import { Megaphone } from 'lucide-react';
 
 import {
   createEmptyAd,
