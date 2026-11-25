@@ -69,7 +69,7 @@
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.34);
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .admin-nav-item {
@@ -82,7 +82,7 @@
   padding: 9px 10px;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, 0.78);
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
@@ -121,7 +121,7 @@
   padding: 10px;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.78);
   transition: background-color 160ms ease, color 160ms ease;
 }
 
@@ -187,7 +187,7 @@
 }
 
 .admin-search-input::placeholder {
-  color: rgba(255, 255, 255, 0.32);
+  color: rgba(255, 255, 255, 0.58);
 }
 
 .admin-search-input:focus {
@@ -226,7 +226,7 @@
 .admin-search-empty {
   padding: 12px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .admin-role-badge {
@@ -239,7 +239,7 @@
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .admin-icon-button {
@@ -279,7 +279,7 @@
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
   transition: background-color 160ms ease, color 160ms ease;
 }
 
@@ -357,7 +357,7 @@
 
 .admin-console .admin-section-content th {
   background: #0b0b0d;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
