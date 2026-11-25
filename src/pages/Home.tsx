@@ -1456,7 +1456,7 @@ const Home: React.FC = () => {
                           }}
                         ></div>
                         <div className="flex items-start justify-center flex-col h-full z-20 relative gap-5 px-6 md:px-12 py-10">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600/90 border border-red-500/40 text-white text-xs font-semibold uppercase tracking-wider">
+                          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/95 text-xs sm:text-sm font-bold uppercase tracking-wide shadow-sm">
                             {featuredSelection.badge}
                           </span>
                           <span className="text-white text-4xl sm:text-5xl font-bold leading-tight">
