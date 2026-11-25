@@ -24,7 +24,6 @@ import {
   type HistoryListResponse,
   type HistoryStatus,
 } from '@/services/historyService';
-import DeleteTitleDialog from './DeleteTitleDialog';
 import { EstimateInfoDialog } from './EstimateInfo';
 import HistoryRow, { HistoryRowsSkeleton } from './HistoryRow';
 import HistoryStats from './HistoryStats';
@@ -320,56 +319,24 @@ export default function HistoryTab() {
     });
   }, [status, t, scheduleRefetch]);
 
-  // « Supprimer de l'historique » : confirmation, appel serveur, puis
-  // effacement des mêmes clés locales (sinon le navigateur les renverrait).
-  // Définitif : pas d'« Annuler ».
-  const [pendingDelete, setPendingDelete] = useState<HistoryListItem | null>(null);
+  // Suppression directe : un clic sur « Supprimer de l'historique » suffit.
   const [deleting, setDeleting] = useState(false);
-  // Ligne visée par la dernière confirmation et issue, lues à la fermeture du dialogue.
-  const deleteTarget = useRef<HistoryListItem | null>(null);
-  const deleteSucceeded = useRef(false);
 
-  const openDelete = (item: HistoryListItem) => {
-    deleteTarget.current = item;
-    deleteSucceeded.current = false;
-    setPendingDelete(item);
-  };
-
-  const cancelDelete = () => {
-    if (!deleting) setPendingDelete(null);
-  };
-
-  // Fermeture du dialogue (Radix) : ligne supprimée → le focus va à la ligne
-  // voisine (effet focusAfterMark) ; sinon il revient sur le « ⋯ » de la
-  // ligne, le menu qui a ouvert le dialogue n'existant plus.
-  const handleDeleteCloseFocus = (event: Event) => {
-    event.preventDefault();
-    if (deleteSucceeded.current) return;
-    const target = deleteTarget.current;
-    const trigger = target
-      ? rootRef.current?.querySelector<HTMLElement>(`[data-history-actions="${historyRowKey(target)}"]`)
-      : null;
-    (trigger ?? listRef.current)?.focus({ preventScroll: true });
-  };
-
-  const confirmDelete = async () => {
-    const item = pendingDelete;
-    if (!item || deleting) return;
+  const openDelete = async (item: HistoryListItem) => {
+    if (deleting) return;
     const actionView = viewKeyRef.current;
     const actionStatus = status;
     setDeleting(true);
     const ok = await deleteTitleHistory(item.mediaType, item.tmdbId);
     setDeleting(false);
-    setPendingDelete(null);
     if (!ok) {
       toast.error(t('profilePage.history.delete.error', 'Impossible de supprimer ce titre pour l’instant. Réessaie dans un moment.'));
       return;
     }
-    deleteSucceeded.current = true;
     try {
       applyValues(localStorage, titleCleanup(Object.keys(localStorage), readLocal, item.mediaType, item.tmdbId));
     } catch {
-      // Stockage inaccessible : le serveur a déjà tout effacé, la relecture suit.
+      // Le serveur a déjà supprimé le titre ; la relecture synchronisera l'affichage.
     }
     if (viewKeyRef.current === actionView) {
       const keys = visibleKeysRef.current;
@@ -536,14 +503,6 @@ export default function HistoryTab() {
       )}
 
       <EstimateInfoDialog open={estimateOpen} onOpenChange={setEstimateOpen} />
-      <DeleteTitleDialog
-        open={pendingDelete !== null}
-        busy={deleting}
-        title={pendingDelete?.title || deleteTarget.current?.title || t('profilePage.history.untitled', 'Titre inconnu')}
-        onCancel={cancelDelete}
-        onConfirm={() => void confirmDelete()}
-        onCloseAutoFocus={handleDeleteCloseFocus}
-      />
     </div>
   );
 }
