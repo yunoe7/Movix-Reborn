@@ -292,7 +292,7 @@ export function getRoleLabel(t: Translate, role: AdminRole): string {
   return t('admin.console.roleUploader', 'Uploader');
 }
 
-export function getSectionIcon(id: AdminSectionId): ComponentType<{ className?: string }> {
+export function getSectionIcon(id: AdminSectionId): LucideIcon {
   if (id === 'overview') return Home;
   if (id === 'links') return Clapperboard;
   if (id === 'wishboard') return Sprout;
@@ -312,7 +312,7 @@ export function getSectionIcon(id: AdminSectionId): ComponentType<{ className?: 
   return HelpCircle;
 }
 
-export function getGroupIcon(id: AdminGroupId): ComponentType<{ className?: string }> {
+export function getGroupIcon(id: AdminGroupId): LucideIcon {
   if (id === 'overview') return LayoutGrid;
   if (id === 'moderation') return ShieldCheck;
   if (id === 'catalog') return Clapperboard;
