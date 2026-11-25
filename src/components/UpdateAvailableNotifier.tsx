@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { MAIN_API } from '../config/runtime';
 
 type ReleaseEntry = {
   version?: string;
@@ -311,6 +312,26 @@ export default function UpdateAvailableNotifier() {
         if (!response.ok) return;
 
         const published = (await response.json()) as PublishedVersion;
+
+        // Les notes sont éditables depuis l'admin et stockées côté API.
+        // Le buildId reste celui du fichier version.json, donc seule une vraie
+        // nouvelle publication déclenche la notification.
+        if (MAIN_API) {
+          try {
+            const notesResponse = await fetch(`${MAIN_API}/api/version/release-notes`, {
+              cache: 'no-store',
+              headers: { Accept: 'application/json' },
+            });
+            if (notesResponse.ok) {
+              const notesPayload = await notesResponse.json();
+              if (notesPayload?.success === true && notesPayload.metadata) {
+                Object.assign(published, notesPayload.metadata);
+              }
+            }
+          } catch {
+            // En cas d'indisponibilité de l'API, les notes intégrées au build restent utilisables.
+          }
+        }
         if (
           typeof published.buildId !== 'string' ||
           !published.buildId ||
