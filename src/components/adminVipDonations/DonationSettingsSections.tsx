@@ -795,11 +795,14 @@ const getContactWarningKey = (field: keyof VipDonationContacts, value: string): 
 
 export const ContactsSection: React.FC<DonationSettingsSectionProps> = ({ settings, errors, modified, onChange }) => {
   const { t, issueText, modifiedLabel } = useSettingsText();
+  // Le helper de liens utilise encore les champs Matrix historiques pour
+  // conserver le contrat API, même s'ils ne sont plus affichés dans l'admin.
+  // Il faut donc normaliser tous les champs avant de lui transmettre l'objet.
   const trimmedContacts = Object.fromEntries(
-    VISIBLE_CONTACT_FIELDS.map((field) => [field, settings.contacts[field].trim()])
+    VIP_CONTACT_FIELDS.map((field) => [field, (settings.contacts[field] ?? '').trim()])
   ) as Record<keyof VipDonationContacts, string>;
   const links = getVipDonationContactLinks(trimmedContacts);
-  const hasAnyContact = VIP_CONTACT_FIELDS.some((field) => trimmedContacts[field] !== '');
+  const hasAnyContact = VISIBLE_CONTACT_FIELDS.some((field) => trimmedContacts[field] !== '');
 
   return (
     <SettingsSection
