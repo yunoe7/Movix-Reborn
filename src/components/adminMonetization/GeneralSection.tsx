@@ -1,5 +1,6 @@
 import React from 'react';
-import { PauseCircle, Power } from '../icons/Icons8';
+import { PauseCircle } from '../icons/Icons8';
+import { Power } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { MonetizationSettings } from '../../services/monetizationAdminService';
