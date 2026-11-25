@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronRight, LayoutGrid, Search, ShieldCheck, X } from '../icons/Icons8';
+import { MovixMark } from '../brand/MovixMark';
 import {
   getGroupIcon,
   getRoleLabel,
@@ -103,7 +104,7 @@ const AdminShell: React.FC<{
     <div className="admin-console min-h-screen bg-black text-white">
       <aside data-testid="admin-sidebar" className="admin-sidebar hidden lg:flex" aria-label={t('admin.console.sidebarLabel', 'Navigation administration')}>
         <div className="admin-sidebar-brand">
-          <span className="admin-brand-mark">M</span>
+          <span className="admin-brand-mark"><MovixMark className="h-6 w-6" /></span>
           <div className="min-w-0">
             <p className="text-sm font-extrabold tracking-tight text-white">MOVIX</p>
             <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">
@@ -131,7 +132,7 @@ const AdminShell: React.FC<{
           <aside className="admin-drawer" aria-label={t('admin.console.sidebarLabel', 'Navigation administration')}>
             <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
               <div className="flex items-center gap-2.5">
-                <span className="admin-brand-mark h-8 w-8 text-xs">M</span>
+                <span className="admin-brand-mark h-8 w-8"><MovixMark className="h-5 w-5" /></span>
                 <p className="text-sm font-extrabold tracking-tight text-white">MOVIX</p>
               </div>
               <button
