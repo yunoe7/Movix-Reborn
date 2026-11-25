@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
+import { DISCORD_INVITE_URL } from '@/config/community';
 import './Footer.css';
 
 const Footer = () => {
