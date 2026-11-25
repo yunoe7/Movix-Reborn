@@ -4,8 +4,10 @@ import { toast } from 'sonner';
 import { getAdminHeroPromos, updateAdminHeroPromos, type HeroPromoSettings, type TeamSelectionSettings } from '../services/heroPromoService';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
-import { SettingsSection, SettingsField, settingsInputClass } from './adminVipDonations/SettingsUi';
+import { SettingsSection, SettingsField } from './adminVipDonations/SettingsUi';
 import { Skeleton } from './ui/Skeleton';
+
+const fieldClass = 'w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none transition focus-visible:ring-2 focus-visible:ring-amber-400/50';
 
 const FIELDS: { key: keyof TeamSelectionSettings; label: string; multiline?: boolean; type?: string }[] = [
   { key: 'tmdbId', label: 'Identifiant TMDB', type: 'number' },
@@ -86,7 +88,7 @@ const AdminTeamSelection: React.FC = () => {
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <SettingsField id="team-selection-type" label="Type de contenu" hint="Choisis un film ou une série TMDB.">
-            <select id="team-selection-type" value={selection.mediaType} onChange={(event) => update('mediaType', event.target.value)} className={settingsInputClass}>
+            <select id="team-selection-type" value={selection.mediaType} onChange={(event) => update('mediaType', event.target.value)} className={fieldClass}>
               <option value="tv">Série</option>
               <option value="movie">Film</option>
             </select>
