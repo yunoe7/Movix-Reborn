@@ -22,18 +22,24 @@ const CHECK_INTERVAL_MS = 60_000;
 const SNOOZE_DURATION_MS = 4 * 60 * 60 * 1000;
 const SNOOZE_STORAGE_KEY = 'movix-update-snoozed-until';
 
-function readSnoozeUntil(): number {
+function readSnoozeUntil(buildId: string): number {
   try {
-    const value = Number(window.localStorage.getItem(SNOOZE_STORAGE_KEY) || 0);
+    const stored = window.localStorage.getItem(SNOOZE_STORAGE_KEY) || '';
+    const separator = stored.lastIndexOf('|');
+    if (separator < 0 || stored.slice(0, separator) !== buildId) return 0;
+    const value = Number(stored.slice(separator + 1));
     return Number.isFinite(value) ? value : 0;
   } catch {
     return 0;
   }
 }
 
-function snoozeUpdate(): void {
+function snoozeUpdate(buildId: string): void {
   try {
-    window.localStorage.setItem(SNOOZE_STORAGE_KEY, String(Date.now() + SNOOZE_DURATION_MS));
+    window.localStorage.setItem(
+      SNOOZE_STORAGE_KEY,
+      `${buildId}|${Date.now() + SNOOZE_DURATION_MS}`
+    );
   } catch {
     // Le stockage local est facultatif : la notification reste simplement fermée.
   }
@@ -77,7 +83,7 @@ function UpdateAvailableToast({
 }: {
   toastId: string | number;
   published: PublishedVersion;
-  onSnooze: () => void;
+  onSnooze: (buildId: string) => void;
 }) {
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [reloadWarnings, setReloadWarnings] = useState<string[]>([]);
@@ -91,7 +97,7 @@ function UpdateAvailableToast({
 
   const dismiss = () => {
     if (mandatory) return;
-    onSnooze();
+    onSnooze(typeof published.buildId === 'string' ? published.buildId : '');
     toast.dismiss(toastId);
   };
 
@@ -294,7 +300,6 @@ export default function UpdateAvailableNotifier() {
 
     const checkForUpdate = async () => {
       if (stopped || checking || notified || document.visibilityState !== 'visible') return;
-      if (readSnoozeUntil() > Date.now()) return;
       checking = true;
 
       try {
@@ -313,6 +318,7 @@ export default function UpdateAvailableNotifier() {
         ) {
           return;
         }
+        if (readSnoozeUntil(published.buildId) > Date.now()) return;
 
         notified = true;
         toast.custom(
@@ -320,8 +326,8 @@ export default function UpdateAvailableNotifier() {
             <UpdateAvailableToast
               toastId={toastId}
               published={published}
-              onSnooze={() => {
-                snoozeUpdate();
+              onSnooze={(buildId) => {
+                snoozeUpdate(buildId);
                 notified = false;
               }}
             />
