@@ -95,7 +95,7 @@ const PaginationBar = ({ currentPage, maxPages, onSelect }: { currentPage: numbe
   return (
     <div className="flex justify-center items-center gap-1.5 flex-wrap my-8">
       <motion.button whileTap={{ scale: 0.92 }} onClick={() => onSelect(1)} disabled={currentPage <= 1}
-        className={`min-w-[40px] h-10 rounded-full text-sm font-medium transition-all ${currentPage === 1 ? 'bg-red-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'} disabled:opacity-30`}>
+        className={`min-w-[40px] h-10 rounded-full text-sm font-medium transition-all ${currentPage === 1 ? 'bg-[#555555] text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'} disabled:opacity-30`}>
         1
       </motion.button>
       {currentPage > 4 && <span className="text-white/20 px-1">...</span>}
@@ -103,7 +103,7 @@ const PaginationBar = ({ currentPage, maxPages, onSelect }: { currentPage: numbe
         const p = Math.max(2, currentPage - 2) + i;
         return p > 1 && p < maxPages ? (
           <motion.button key={p} whileTap={{ scale: 0.92 }} onClick={() => onSelect(p)}
-            className={`min-w-[40px] h-10 rounded-full text-sm font-medium transition-all ${p === currentPage ? 'bg-red-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'}`}>
+            className={`min-w-[40px] h-10 rounded-full text-sm font-medium transition-all ${p === currentPage ? 'bg-[#555555] text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'}`}>
             {p}
           </motion.button>
         ) : null;
@@ -111,7 +111,7 @@ const PaginationBar = ({ currentPage, maxPages, onSelect }: { currentPage: numbe
       {currentPage < maxPages - 3 && <span className="text-white/20 px-1">...</span>}
       {maxPages > 1 && (
         <motion.button whileTap={{ scale: 0.92 }} onClick={() => onSelect(maxPages)} disabled={currentPage >= maxPages}
-          className={`min-w-[40px] h-10 rounded-full text-sm font-medium transition-all ${currentPage === maxPages ? 'bg-red-600 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'} disabled:opacity-30`}>
+          className={`min-w-[40px] h-10 rounded-full text-sm font-medium transition-all ${currentPage === maxPages ? 'bg-[#555555] text-white' : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/10'} disabled:opacity-30`}>
           {maxPages}
         </motion.button>
       )}
@@ -300,7 +300,7 @@ const GenrePage: React.FC = () => {
     return (
       <SquareBackground squareSize={48} borderColor="rgba(239, 68, 68, 0.10)" mode="combined">
         <div className="min-h-screen flex flex-col justify-center items-center">
-          <Loader2 className="w-12 h-12 text-red-500 animate-spin mb-4" />
+          <Loader2 className="w-12 h-12 text-white/80 animate-spin mb-4" />
           <p className="text-white/60 animate-pulse">{t('genres.loadingGenre', { genre: genreName })}</p>
         </div>
       </SquareBackground>
@@ -312,13 +312,13 @@ const GenrePage: React.FC = () => {
       <SquareBackground squareSize={48} borderColor="rgba(239, 68, 68, 0.10)" mode="combined">
         <div className="min-h-screen flex justify-center items-center">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-red-500">{t('common.error')}</h1>
+            <h1 className="text-2xl font-bold text-white/80">{t('common.error')}</h1>
             <p className="mt-2 text-white/60">{error}</p>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => window.location.reload()}
-              className="mt-4 px-6 py-2 bg-red-600 hover:bg-red-500 rounded-full text-white font-medium transition-colors"
+              className="mt-4 px-6 py-2 bg-[#555555] hover:bg-[#777777] rounded-full text-white font-medium transition-colors"
             >
               {t('common.retry')}
             </motion.button>
@@ -353,7 +353,7 @@ const GenrePage: React.FC = () => {
                 whileHover={{ x: -3 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate(-1)}
-                className="p-2 rounded-xl bg-[#111827] border border-[#263449] hover:border-[#3b506d] hover:bg-[#1d293b] transition-all"
+                className="p-2 rounded-xl bg-[#111111] border border-[#383838] hover:border-[#555555] hover:bg-[#242424] transition-all"
               >
           <ArrowLeft className="w-5 h-5 text-white opacity-70" />
               </motion.button>
@@ -369,8 +369,8 @@ const GenrePage: React.FC = () => {
 
             <motion.button
               className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl transition-all ${isFilterOpen
-                ? 'bg-red-600 border border-red-500 hover:bg-red-500'
-                : 'bg-white/5 backdrop-blur-md border border-white/10 hover:border-red-500/40 hover:bg-red-500/10'
+                ? 'bg-[#555555] border border-[#777777] hover:bg-[#777777]'
+                : 'bg-white/5 backdrop-blur-md border border-white/10 hover:border-[#777777]/40 hover:bg-[#777777]/10'
                 }`}
               onClick={() => setIsFilterOpen(!isFilterOpen)}
               whileHover={{ scale: 1.03 }}
@@ -385,7 +385,7 @@ const GenrePage: React.FC = () => {
           <AnimatePresence>
             {isFilterOpen && (
               <motion.div
-                className="mb-8 p-5 rounded-2xl bg-[#111827] backdrop-blur-md border border-[#263449]"
+                className="mb-8 p-5 rounded-2xl bg-[#111111] backdrop-blur-md border border-[#383838]"
                 initial={{ opacity: 0, y: -20, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, y: -20, height: 0 }}
@@ -421,7 +421,7 @@ const GenrePage: React.FC = () => {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setViewType('grid')}
                       className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${viewType === 'grid'
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-[#555555] text-white'
                         : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
                         }`}
                     >
@@ -433,7 +433,7 @@ const GenrePage: React.FC = () => {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setViewType('list')}
                       className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${viewType === 'list'
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-[#555555] text-white'
                         : 'bg-white/5 text-white/60 border border-white/10 hover:bg-white/10'
                         }`}
                     >
@@ -453,7 +453,7 @@ const GenrePage: React.FC = () => {
               mise en page à chaque changement de page. */}
           {loading && content.length === 0 ? (
             <div className="flex justify-center py-20">
-              <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
+              <Loader2 className="w-8 h-8 text-white/80 animate-spin" />
             </div>
           ) : content.length === 0 ? (
             <motion.div
@@ -466,7 +466,7 @@ const GenrePage: React.FC = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="mt-4 px-6 py-2 bg-red-600 hover:bg-red-500 rounded-full text-white font-medium transition-colors"
+                className="mt-4 px-6 py-2 bg-[#555555] hover:bg-[#777777] rounded-full text-white font-medium transition-colors"
                 onClick={() => navigate(-1)}
               >
                 {t('common.back')}
