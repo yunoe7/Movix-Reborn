@@ -244,7 +244,7 @@ function RenameField({ initial, placeholder, className, inputRef, onSave, onCanc
             settle(false);
           }
         }}
-        className={`w-full min-w-0 rounded-lg bg-black px-3 text-white outline-none ring-1 ring-white/15 placeholder:text-white/40 focus:ring-2 focus:ring-red-600 ${className}`}
+        className={`w-full min-w-0 rounded-lg bg-black px-3 text-white outline-none ring-1 ring-white/15 placeholder:text-white/40 focus:ring-2 focus:ring-white/30 ${className}`}
       />
     </form>
   );
@@ -752,7 +752,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
         </SortableContext>
         <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
           {draggedItem ? (
-            <div className="aspect-[2/3] w-28 overflow-hidden rounded-lg bg-gray-800 ring-2 ring-red-600 sm:w-32">
+            <div className="aspect-[2/3] w-28 overflow-hidden rounded-lg bg-[#242424] ring-2 ring-white/30 sm:w-32">
               {draggedItem.poster_path && (
                 <img src={posterUrl(draggedItem.poster_path, 185)} alt="" className="h-full w-full object-cover" />
               )}
@@ -878,7 +878,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
 
     return (
       <div
-        className="group cursor-pointer rounded-2xl border border-white/[0.07] bg-[#111827] p-5 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition-[transform,background-color,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-white/[0.13] hover:bg-[#172033] hover:shadow-[0_22px_48px_rgba(0,0,0,0.3)]"
+        className="group cursor-pointer rounded-2xl border border-white/[0.07] bg-[#111111] p-5 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition-[transform,background-color,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-white/[0.13] hover:bg-[#181818] hover:shadow-[0_22px_48px_rgba(0,0,0,0.3)]"
         onClick={() => {
           if (!isRenaming && !activeListDragId) openList(list);
         }}
@@ -897,7 +897,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
             const item = previews[index];
             const src = item ? posterUrl(item.poster_path, 185) : '';
             return (
-              <span key={index} className="block aspect-[2/3] overflow-hidden rounded-md bg-gray-800">
+              <span key={index} className="block aspect-[2/3] overflow-hidden rounded-md bg-[#242424]">
                 {src && <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
               </span>
             );
@@ -988,7 +988,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
               )}
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuItem
-                className="gap-2 text-red-300 focus:bg-red-600 focus:text-white"
+                className="gap-2 text-white/80 focus:bg-[#555555] focus:text-white"
                 onSelect={() => deleteList(list)}
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -1049,7 +1049,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
             </SortableContext>
             <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
               {draggedList ? (
-                <div className="rounded-xl bg-gray-800 p-5 ring-2 ring-red-600">
+                <div className="rounded-xl bg-[#242424] p-5 ring-2 ring-white/30">
                   <p className="truncate text-lg font-semibold text-white">{draggedList.name}</p>
                   <p className="mt-1 text-sm text-white/55">
                     {t('profilePage.customLists.itemCount', { count: countListItems(draggedList) })}
