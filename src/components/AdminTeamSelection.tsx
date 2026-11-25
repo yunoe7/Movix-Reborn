@@ -86,8 +86,6 @@ const AdminTeamSelection: React.FC = () => {
 
   const selection = settings?.teamSelection;
   const dirty = Boolean(settings && saved && JSON.stringify(settings.teamSelection) !== JSON.stringify(saved.teamSelection));
-  const mediaType = selection?.mediaType || 'tv';
-
   useEffect(() => {
     const text = query.trim();
     if (text.length < 2) {
