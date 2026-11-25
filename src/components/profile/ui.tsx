@@ -10,7 +10,7 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-[#555555] text-white hover:bg-[#777777]',
-  secondary: 'bg-[#242424] text-slate-100 ring-1 ring-[#484848] hover:bg-[#2b3b53]',
+  secondary: 'bg-[#242424] text-slate-100 ring-1 ring-[#484848] hover:bg-[#383838]',
   // Icônes en couleur pleine + opacity (une couleur transparente fait foncer les croisements de traits).
   ghost: 'text-slate-300 hover:bg-[#242424] hover:text-white [&_svg]:text-slate-200 [&_svg]:opacity-90 hover:[&_svg]:opacity-100',
   danger: 'bg-[#242424] text-[#eeeeee] ring-1 ring-[#484848] hover:bg-[#555555] hover:text-white',
