@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2 } from '../icons/Icons8';
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog';
 import { Button } from './button';
 
@@ -58,7 +58,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                     <div className="flex items-start gap-3">
                         {isDestructive && (
                             <span className="mt-0.5 shrink-0 rounded-full border border-red-400/25 bg-red-500/[0.09] p-2.5 text-[#ff666d]">
-                                <Trash2 className="h-5 w-5" aria-hidden="true" />
+                                <img src="/movix-monogram.svg" alt="" aria-hidden="true" className="h-6 w-6 object-contain" />
                             </span>
                         )}
                         <DialogDescription asChild>
@@ -85,7 +85,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                                 ? 'h-10 rounded-xl border border-white/[0.12] bg-white/[0.08] px-5 text-[13px] font-bold text-white transition-colors hover:bg-white/[0.14]'
                                 : 'h-10 rounded-xl border border-white/10 bg-white/[0.09] px-5 text-[13px] font-bold text-white transition-colors hover:bg-white/[0.15]'}
                         >
-                            <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />{confirmLabel ?? t('common.confirm')}
+                            {confirmLabel ?? t('common.confirm')}
                         </Button>
                     </div>
                 </div>
