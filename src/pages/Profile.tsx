@@ -291,7 +291,7 @@ const Profile: React.FC = () => {
       </header>
 
       {/* grid-cols-1 = minmax(0, 1fr) : sans lui, une carte élargit la colonne au-delà de l'écran. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:gap-5">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:gap-4">
         <motion.div className="min-w-0" {...rise(0)}>
           <MemberCard
             name={displayName}
@@ -311,9 +311,9 @@ const Profile: React.FC = () => {
       </div>
 
       {/* Parrainage : rien pour un compte à code d'accès seul ou si l'admin l'a coupé. */}
-      <ReferralCard className="mt-4" />
+      <ReferralCard className="mt-3" />
 
-      <section className="mt-10 sm:mt-12" aria-labelledby={tabButtonId(activeTab)} data-testid="library-section">
+      <section className="mt-8 sm:mt-10" aria-labelledby={tabButtonId(activeTab)} data-testid="library-section">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <h2 className="profile-section-title">{t('profilePage.library.title', 'Ta bibliothèque')}</h2>
         </div>
@@ -334,10 +334,10 @@ const Profile: React.FC = () => {
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeTab}
-              initial={reduceMotion ? false : { opacity: 0, y: 8 }}
+              initial={reduceMotion ? false : { opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4 }}
-              transition={{ duration: 0.18, ease: 'easeOut' }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -3 }}
+              transition={{ duration: 0.14, ease: 'easeOut' }}
             >
               {renderTab()}
             </motion.div>

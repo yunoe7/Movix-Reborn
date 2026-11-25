@@ -39,7 +39,7 @@ export function EstimateInfoDialog({ open, onOpenChange }: { open: boolean; onOp
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-0 bg-gray-900 backdrop-blur-none">
+      <DialogContent className="max-w-md border-0 bg-[#171717] backdrop-blur-none">
         <DialogHeader>
           <DialogTitle>{t('profilePage.estimate.title', 'Pourquoi « estimé » ?')}</DialogTitle>
           <DialogDescription className="pt-2 text-[15px] leading-relaxed text-white/70">

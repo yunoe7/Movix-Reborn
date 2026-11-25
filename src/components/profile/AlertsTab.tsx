@@ -113,7 +113,7 @@ export default function AlertsTab({ onCountChange }: AlertsTabProps) {
         const isEditing = editingId === alert.id;
 
         return (
-          <li key={alert.id} className="rounded-xl bg-gray-900 p-4 sm:p-5">
+          <li key={alert.id} className="profile-raised p-4 sm:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1 space-y-2">
                 {/* Série et épisode */}

@@ -20,7 +20,7 @@ function Poster({ item }: { item: HistoryListItem }) {
   const [failed, setFailed] = useState(false);
   const src = posterUrl(item.posterPath, 154);
   return (
-    <span className="relative block aspect-[2/3] w-12 shrink-0 overflow-hidden rounded-md bg-white/[0.06] sm:w-14">
+    <span className="relative block aspect-[2/3] w-14 shrink-0 overflow-hidden rounded-md bg-white/[0.06] sm:w-16">
       {src && !failed ? (
         <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} className="h-full w-full object-cover" />
       ) : (
@@ -58,7 +58,7 @@ export default function HistoryRow({ item, dateFormat, onExplainEstimate, onMark
     episodePart = <EstimatedProgressButton percent={current.percent} onClick={onExplainEstimate} className="relative z-10 tabular-nums" />;
   } else if (current) {
     episodePart = (
-      <span className="tabular-nums">
+      <span className="font-semibold tabular-nums text-white">
         {t('profilePage.history.episodePercent', { percent: current.percent, defaultValue: '{{percent}} %' })}
       </span>
     );
@@ -68,11 +68,11 @@ export default function HistoryRow({ item, dateFormat, onExplainEstimate, onMark
   const meta = progressMeta(item, i18n.language);
   let progress: ReactNode = null;
   if (meta.kind === 'watched') {
-    progress = watchedMark;
+    progress = <span className="font-semibold text-white">{watchedMark}</span>;
   } else if (meta.kind === 'episodes') {
     // Avec le pourcentage de l'épisode juste avant, celui de la série serait ambigu : « 3/33 épisodes ».
     progress = (
-      <span className="tabular-nums">
+      <span className="font-semibold tabular-nums text-white">
         {current
           ? t('profilePage.history.episodesOfShort', { count: meta.total, watched: meta.watched, defaultValue: '{{watched}}/{{count}} épisodes' })
           : t('profilePage.history.episodesOf', { count: meta.total, watched: meta.watched, percent: meta.percent, defaultValue: '{{watched}}/{{count}} épisodes ({{percent}} %)' })}
@@ -80,7 +80,7 @@ export default function HistoryRow({ item, dateFormat, onExplainEstimate, onMark
     );
   } else if (meta.kind === 'count') {
     progress = (
-      <span className="tabular-nums">
+      <span className="font-semibold tabular-nums text-white">
         {t('profilePage.history.episodesSeen', { count: meta.watched, defaultValue: '{{count}} épisodes vus' })}
       </span>
     );
@@ -88,21 +88,21 @@ export default function HistoryRow({ item, dateFormat, onExplainEstimate, onMark
     // Au-dessus du lien étiré : ce bouton garde son propre clic.
     progress = <EstimatedProgressButton percent={meta.percent} onClick={onExplainEstimate} className="relative z-10 tabular-nums" />;
   } else if (meta.kind === 'progress') {
-    progress = <span className="tabular-nums">{meta.text}</span>;
+    progress = <span className="font-semibold tabular-nums text-white">{meta.text}</span>;
   }
 
   return (
-    <li className="group relative flex items-center gap-3 py-3 pl-3 pr-1.5 transition-colors duration-150 hover:bg-white/[0.04] has-[a:focus-visible]:bg-white/[0.06] sm:gap-4 sm:pl-4 sm:pr-2">
+    <li className="group relative flex items-center gap-3 py-3 pl-3 pr-1.5 transition-colors duration-150 hover:bg-white/[0.04] has-[a:focus-visible]:bg-white/[0.06] has-[button[data-state=open]]:bg-white/[0.06] sm:gap-4 sm:pl-4 sm:pr-2">
       <Poster item={item} />
       <div className="min-w-0 flex-1">
         <Link
           to={watchPath(item, encodeId)}
           title={title}
-          className={`block truncate text-[15px] font-semibold after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-white/70 ${item.title ? 'text-white' : 'text-white/60'}`}
+          className={`block truncate text-base font-semibold after:absolute after:inset-0 after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-white/70 ${item.title ? 'text-white' : 'text-white/60'}`}
         >
           {title}
         </Link>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-white/60">
+        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-white/65">
           <span className="inline-flex items-center gap-1.5">
             {isTv
               ? <Tv className="h-3.5 w-3.5 text-white opacity-60" aria-hidden="true" />
@@ -112,7 +112,7 @@ export default function HistoryRow({ item, dateFormat, onExplainEstimate, onMark
           {code && (
             <>
               <span aria-hidden="true" className="text-white/25">·</span>
-              <span className="font-semibold tabular-nums text-red-400">{code}</span>
+              <span className="font-semibold tabular-nums text-[#ff8a94]">{code}</span>
             </>
           )}
           {episodePart && (
@@ -129,7 +129,7 @@ export default function HistoryRow({ item, dateFormat, onExplainEstimate, onMark
           )}
         </p>
         {date && (
-          <p className="mt-0.5 text-xs text-white/40">
+          <p className="mt-0.5 text-xs font-medium text-white/50">
             <time dateTime={item.lastWatchedAt}>
               {isLastPlayedDate(item)
                 ? t('profilePage.history.lastWatched', { date, defaultValue: 'Dernière lecture · {{date}}' })
@@ -169,12 +169,12 @@ const SKELETON_WIDTHS = [
  */
 export function HistoryRowsSkeleton({ count }: { count: number }) {
   return (
-    <ul className="animate-skeleton-fade divide-y divide-white/[0.06] overflow-hidden rounded-xl bg-gray-900 motion-reduce:animate-none" aria-hidden="true">
+    <ul className="profile-history-list animate-skeleton-fade divide-y divide-white/[0.06] motion-reduce:animate-none" aria-hidden="true">
       {Array.from({ length: count }, (_, index) => {
         const widths = SKELETON_WIDTHS[index % SKELETON_WIDTHS.length];
         return (
           <li key={index} className="flex items-center gap-3 py-3 pl-3 pr-1.5 sm:gap-4 sm:pl-4 sm:pr-2">
-            <span className="block w-12 shrink-0 sm:w-14">
+            <span className="block w-14 shrink-0 sm:w-16">
               <Skeleton variant="poster" width="100%" className="!rounded-md" />
             </span>
             <div className="min-w-0 flex-1">
