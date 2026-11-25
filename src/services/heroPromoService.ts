@@ -273,7 +273,7 @@ export function normalizeTeamSelection(raw: unknown): TeamSelectionSettings {
     tmdbId: typeof source.tmdbId === 'number' && Number.isSafeInteger(source.tmdbId) && source.tmdbId > 0 ? source.tmdbId : fallback.tmdbId,
     badge: pickText('badge', 60) || fallback.badge,
     title: pickText('title', 100) || fallback.title,
-    description: pickText('description', 600) || fallback.description,
+    description: pickText('description', 5000) || fallback.description,
     backdropUrl: pickText('backdropUrl', 1000) || fallback.backdropUrl,
     detailsUrl: pickText('detailsUrl', 1000) || fallback.detailsUrl,
     ageRating: pickText('ageRating', 12) || fallback.ageRating,
