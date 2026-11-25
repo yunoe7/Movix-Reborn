@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { MAIN_API } from '../config/runtime';
@@ -89,6 +89,54 @@ function UpdateAvailableToast({
 }) {
   const [showReleaseNotes, setShowReleaseNotes] = useState(false);
   const [reloadWarnings, setReloadWarnings] = useState<string[]>([]);
+  const releaseCloseButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!showReleaseNotes) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+
+    document.body.style.overflow = 'hidden';
+    releaseCloseButtonRef.current?.focus();
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setShowReleaseNotes(false);
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const dialog = document.getElementById('movix-release-dialog');
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleDialogKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleDialogKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [showReleaseNotes]);
   const severity = published.severity || 'normal';
   const mandatory = published.mandatory === true || severity === 'critical';
   const version = published.version || (typeof published.buildId === 'string' ? published.buildId.slice(0, 8) : 'Nouvelle version');
@@ -219,7 +267,7 @@ function UpdateAvailableToast({
 
       {showReleaseNotes && createPortal(
         <div
-          className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/55 p-3 backdrop-blur-sm sm:p-4"
+          className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/35 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-[2px] sm:p-5"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setShowReleaseNotes(false);
@@ -231,19 +279,26 @@ function UpdateAvailableToast({
             aria-labelledby="movix-release-title"
             className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#0d0e11] text-white shadow-[0_30px_100px_rgba(0,0,0,0.7)]"
           >
-            <header className="flex shrink-0 items-start justify-between border-b border-white/10 p-5">
+            <header className="flex shrink-0 items-start gap-3 border-b border-white/[0.08] px-5 py-4 sm:px-6 sm:py-5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#cba66b]/20 bg-[#cba66b]/[0.08]">
+                <img src="/movix.svg?v=2" alt="" className="h-7 w-7 object-contain" />
+              </div>
+              <div className="min-w-0 flex-1">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Movix · Historique</p>
                 <h2 id="movix-release-title" className="mt-1 text-lg font-semibold">Nouveautés de Movix</h2>
-                <p className="mt-1 text-xs text-white/50">Version {version}</p>
+                <p className="mt-1 text-xs text-white/45">Version {version}</p>
               </div>
-              <button type="button" onClick={() => setShowReleaseNotes(false)} aria-label="Fermer" className="rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white">
+              <button ref={releaseCloseButtonRef} type="button" onClick={() => setShowReleaseNotes(false)} aria-label="Fermer" className="rounded-lg p-2 text-white/45 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cba66b]/70">
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
               </button>
             </header>
-            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5 [scrollbar-gutter:stable]">
-              <article>
-                <div className="flex items-center gap-2">
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6 [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(203,166,107,.35)_transparent]">
+              <p id="movix-release-description" className="text-sm leading-relaxed text-white/60">
+                Découvre ce qui a changé dans cette version et retrouve les mises à jour précédentes.
+              </p>
+              <article className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-4 sm:p-5">
+                <div className="flex flex-wrap items-center gap-2">
                   <h3 className="text-sm font-semibold">Version {version}</h3>
                   <span className={`text-[10px] font-semibold uppercase tracking-wider ${accent}`}>Actuelle</span>
                 </div>
@@ -282,8 +337,8 @@ function UpdateAvailableToast({
                 </div>
               )}
             </div>
-            <footer className="flex shrink-0 justify-end border-t border-white/10 p-4">
-              <button type="button" onClick={() => setShowReleaseNotes(false)} className="rounded-lg border border-white/15 bg-white/[0.06] px-4 py-2 text-xs font-semibold text-white/85 hover:bg-white/10">
+            <footer className="flex shrink-0 justify-end border-t border-white/[0.08] bg-[#111216] px-5 py-3.5 sm:px-6">
+              <button type="button" onClick={() => setShowReleaseNotes(false)} className="rounded-lg border border-white/15 bg-white/[0.06] px-4 py-2.5 text-xs font-semibold text-white/85 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cba66b]/70">
                 Fermer
               </button>
             </footer>
