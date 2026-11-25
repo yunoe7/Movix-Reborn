@@ -2207,63 +2207,16 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ contentType, contentI
       )}
     </div >
 
-    {/* Popup de confirmation de suppression */}
-    {createPortal(
-      <AnimatePresence mode="wait">
-        {deleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="movix-comments-glass__overlay fixed inset-0 backdrop-blur-xl flex items-center justify-center p-4 z-[100000]"
-            onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null); }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-              className="movix-comments-glass__modal rounded-2xl p-6 max-w-sm w-full shadow-2xl"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <Trash2 className="w-5 h-5 text-red-500" />
-                </div>
-                <h3 className="text-lg font-bold text-white">
-                  {deleteConfirm.type === 'comment' ? t('comments.deleteConfirm') : t('comments.deleteReplyConfirm')}
-                </h3>
-              </div>
-
-              <p className="text-sm text-gray-400 mb-6">
-                {t('comments.deleteIrreversible')}
-              </p>
-
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setDeleteConfirm(null)}
-                  className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl font-medium transition-colors text-sm"
-                >
-                  {t('common.cancel')}
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={executeDelete}
-                  className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium transition-colors text-sm flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {t('common.delete')}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>,
-      getOverlayPortalRoot()
-    )}
+    <ConfirmDialog
+      isOpen={!!deleteConfirm}
+      title={deleteConfirm?.type === 'comment' ? t('comments.deleteConfirm') : t('comments.deleteReplyConfirm')}
+      message={t('comments.deleteIrreversible')}
+      confirmLabel={t('common.delete')}
+      cancelLabel={t('common.cancel')}
+      variant="destructive"
+      onCancel={() => setDeleteConfirm(null)}
+      onConfirm={executeDelete}
+    />
     {/* Modal de signalement */}
     {createPortal(
       <AnimatePresence mode="wait">
