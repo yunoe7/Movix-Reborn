@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { MAIN_API } from '../config/runtime';
 
@@ -216,9 +217,9 @@ function UpdateAvailableToast({
         <div className="h-px bg-gradient-to-r from-white/20 via-white/[0.06] to-transparent" />
       </section>
 
-      {showReleaseNotes && (
+      {showReleaseNotes && createPortal(
         <div
-          className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/55 p-3 backdrop-blur-sm sm:p-4"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setShowReleaseNotes(false);
@@ -228,9 +229,9 @@ function UpdateAvailableToast({
             role="dialog"
             aria-modal="true"
             aria-labelledby="movix-release-title"
-            className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/15 bg-[rgba(13,14,17,0.96)] text-white shadow-[0_30px_100px_rgba(0,0,0,0.7)]"
+            className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#0d0e11] text-white shadow-[0_30px_100px_rgba(0,0,0,0.7)]"
           >
-            <header className="flex items-start justify-between border-b border-white/10 p-5">
+            <header className="flex shrink-0 items-start justify-between border-b border-white/10 p-5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Movix · Historique</p>
                 <h2 id="movix-release-title" className="mt-1 text-lg font-semibold">Nouveautés de Movix</h2>
@@ -240,7 +241,7 @@ function UpdateAvailableToast({
                 <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
               </button>
             </header>
-            <div className="max-h-[min(65vh,520px)] space-y-5 overflow-y-auto p-5">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5 [scrollbar-gutter:stable]">
               <article>
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold">Version {version}</h3>
@@ -281,13 +282,14 @@ function UpdateAvailableToast({
                 </div>
               )}
             </div>
-            <footer className="flex justify-end border-t border-white/10 p-4">
+            <footer className="flex shrink-0 justify-end border-t border-white/10 p-4">
               <button type="button" onClick={() => setShowReleaseNotes(false)} className="rounded-lg border border-white/15 bg-white/[0.06] px-4 py-2 text-xs font-semibold text-white/85 hover:bg-white/10">
                 Fermer
               </button>
             </footer>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
