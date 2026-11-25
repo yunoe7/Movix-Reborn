@@ -321,6 +321,7 @@ export function getSectionIcon(id: AdminSectionId): LucideIcon {
   if (id === 'referral') return Gift;
   if (id === 'oauth-apps') return Plug;
   if (id === 'team') return Users;
+  if (id === 'release-notes') return FileText;
   return HelpCircle;
 }
 
