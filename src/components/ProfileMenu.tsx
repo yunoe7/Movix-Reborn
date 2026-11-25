@@ -61,8 +61,8 @@ const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/45 transition-colors d
 const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.045]';
 
 const rowClass = (variant: MenuVariant, extra?: string) => cn(
-  'group relative flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[background,color,transform] duration-200 active:scale-[0.99] active:bg-[#263449] focus-visible:ring-2 focus-visible:ring-[#e73545]/50',
-  variant === 'sheet' ? cn('py-3.5 text-sm font-medium tracking-[0.005em]', SHEET_HOVER) : 'py-3 text-sm font-medium tracking-[0.005em] hover:bg-[#202b3d]',
+  'group relative flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[background,color,transform] duration-200 active:scale-[0.99] active:bg-[#383838] focus-visible:ring-2 focus-visible:ring-white/30',
+  variant === 'sheet' ? cn('py-3.5 text-sm font-medium tracking-[0.005em]', SHEET_HOVER) : 'py-3 text-sm font-medium tracking-[0.005em] hover:bg-[#242424]',
   extra ?? 'text-slate-100',
 );
 
@@ -375,7 +375,7 @@ const ProfileMenu: React.FC = () => {
           >
             <Bell className="h-[17px] w-[17px]" aria-hidden="true" />
             {notificationsUnreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#555555] px-1 text-[10px] font-bold text-white">
                 {notificationsUnreadCount > 9 ? '9+' : notificationsUnreadCount}
               </span>
             )}
@@ -538,7 +538,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="relative isolate w-[284px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[22px] border border-[#263449] bg-[#111827] shadow-[0_28px_80px_rgba(0,0,0,0.82),0_1px_0_rgba(255,255,255,0.035)_inset]"
+              panelClassName="relative isolate w-[284px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[22px] border border-[#383838] bg-[#111111] shadow-[0_28px_80px_rgba(0,0,0,0.82),0_1px_0_rgba(255,255,255,0.035)_inset]"
             >
               {renderContent('panel')}
             </LiquidDropdown>
