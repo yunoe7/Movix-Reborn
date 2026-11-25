@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAdminHeroPromos, updateAdminHeroPromos, type HeroPromoSettings, type TeamSelectionSettings } from '../services/heroPromoService';
 import { Button } from './ui/button';
@@ -72,6 +73,7 @@ const AdminTeamSelection: React.FC = () => {
   return (
     <div className="space-y-5">
       <SettingsSection
+        icon={Sparkles}
         title="Sélection de l’équipe"
         description="Choisis le film ou la série mis en avant sur la page d’accueil. Ces réglages sont indépendants des promos du carrousel."
       >
