@@ -615,7 +615,7 @@ const MovieDetails = (): JSX.Element => {
                 <div className="flex min-w-0 flex-col items-start text-left">
                   {/* Estimé seul : le lecteur repartira du début, donc « Regarder ». */}
                   <span>{serverResume.estimated ? t('details.watchBtn') : t('details.continueBtn')}</span>
-                  <span className="mt-1 rounded-md border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] font-medium text-white/85">
+                  <span className={`mt-1 inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide shadow-sm ${serverResume.estimated ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-black/10 bg-black/[0.06] text-black/65'}`}>
                     {serverResume.estimated
                       ? t('profilePage.progress.estimated', { percent: Math.round((serverResume.position / serverResume.duration) * 100), defaultValue: '≈ {{percent}} % · estimé' })
                       : `${formatTime(serverResume.position)}/${formatTime(serverResume.duration)}`}
