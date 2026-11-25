@@ -21,7 +21,8 @@ export type AdminSectionId =
   | 'referral'
   | 'oauth-apps'
   | 'team'
-  | 'help-feedback'\n  | 'release-notes';
+  | 'help-feedback'
+  | 'release-notes';
 
 export type AdminGroupId = 'overview' | 'moderation' | 'catalog' | 'revenue' | 'platform';
 
