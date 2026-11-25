@@ -274,18 +274,20 @@ function UpdateAvailableToast({
           }}
         >
           <section
+            id="movix-release-dialog"
             role="dialog"
             aria-modal="true"
             aria-labelledby="movix-release-title"
-            className="flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/15 bg-[#0d0e11] text-white shadow-[0_30px_100px_rgba(0,0,0,0.7)]"
+            aria-describedby="movix-release-description"
+            tabIndex={-1}
+            className="flex max-h-[min(88dvh,760px)] w-full max-w-xl flex-col overflow-hidden rounded-[22px] border border-[#cba66b]/25 bg-[#111216] text-white shadow-[0_28px_90px_rgba(0,0,0,0.62)] outline-none"
           >
             <header className="flex shrink-0 items-start gap-3 border-b border-white/[0.08] px-5 py-4 sm:px-6 sm:py-5">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#cba66b]/20 bg-[#cba66b]/[0.08]">
                 <img src="/movix.svg?v=2" alt="" className="h-7 w-7 object-contain" />
               </div>
               <div className="min-w-0 flex-1">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">Movix · Historique</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#cba66b]">Movix · Historique</p>
                 <h2 id="movix-release-title" className="mt-1 text-lg font-semibold">Nouveautés de Movix</h2>
                 <p className="mt-1 text-xs text-white/45">Version {version}</p>
               </div>
@@ -306,8 +308,8 @@ function UpdateAvailableToast({
                 {changes.length > 0 ? (
                   <ul className="mt-3 space-y-2">
                     {changes.map((change, index) => (
-                      <li key={`${version}-${index}`} className="flex gap-2 text-sm text-white/80">
-                        <span className="mt-0.5 text-white/45">✦</span><span>{change}</span>
+                      <li key={`${version}-${index}`} className="flex gap-2 text-sm leading-relaxed text-white/80">
+                        <span className="mt-0.5 shrink-0 text-[#cba66b]" aria-hidden="true">✦</span><span>{change}</span>
                       </li>
                     ))}
                   </ul>
@@ -320,14 +322,14 @@ function UpdateAvailableToast({
                   <h3 className="mb-4 text-xs font-bold uppercase tracking-[0.16em] text-white/45">Versions précédentes</h3>
                   <div className="space-y-4">
                     {history.map((entry, index) => (
-                      <article key={`${entry.version || 'release'}-${index}`} className="border-l border-white/15 pl-3">
+                      <article key={`${entry.version || 'release'}-${index}`} className="border-l border-[#cba66b]/30 pl-3">
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="text-sm font-semibold">{entry.version || 'Version précédente'}</h4>
                           {entry.date && <span className="text-[11px] text-white/40">{entry.date}</span>}
                         </div>
-                        {entry.summary && <p className="mt-1 text-sm text-white/60">{entry.summary}</p>}
+                        {entry.summary && <p className="mt-1 text-sm leading-relaxed text-white/60">{entry.summary}</p>}
                         {Array.isArray(entry.changes) && entry.changes.length > 0 && (
-                          <ul className="mt-2 space-y-1 text-xs text-white/65">
+                          <ul className="mt-2 space-y-1 text-xs leading-relaxed text-white/65">
                             {entry.changes.map((change, changeIndex) => <li key={changeIndex}>• {change}</li>)}
                           </ul>
                         )}
