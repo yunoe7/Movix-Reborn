@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, ExternalLink, Info, type LucideIcon } from '../icons/Icons8';
+import { AlertTriangle, ExternalLink, Info } from '../icons/Icons8';
+import type { LucideIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Input, type InputProps } from '../ui/input';

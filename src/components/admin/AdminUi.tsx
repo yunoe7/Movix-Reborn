@@ -21,10 +21,10 @@ export const AdminPanel: React.FC<{
       <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.07] px-5 py-4 sm:px-6">
         <div className="min-w-0">
           {eyebrow && (
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">{eyebrow}</p>
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/65">{eyebrow}</p>
           )}
           <h2 className="text-base font-bold tracking-tight text-white sm:text-lg">{title}</h2>
-          {description && <p className="mt-1 text-[13px] leading-5 text-white/50">{description}</p>}
+          {description && <p className="mt-1 text-sm leading-6 text-white/70">{description}</p>}
         </div>
         {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
       </header>
@@ -42,11 +42,11 @@ export const AdminStatCard: React.FC<{
 }> = ({ label, value, icon: Icon, caption, testId }) => (
   <div data-testid={testId} className="admin-stat rounded-xl border border-white/[0.08] bg-[#0e0e10] p-4">
     <div className="flex items-start justify-between gap-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">{label}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/70">{label}</p>
       <Icon className="h-[18px] w-[18px] text-white/55" aria-hidden="true" />
     </div>
     <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-white">{value}</p>
-    {caption && <p className="mt-1 text-xs text-white/40">{caption}</p>}
+    {caption && <p className="mt-1 text-[13px] text-white/65">{caption}</p>}
   </div>
 );
 
@@ -59,7 +59,7 @@ export const AdminMiniChart: React.FC<{
 
   return (
     <div className="min-w-0">
-      <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">{title}</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-white/70">{title}</p>
       {points.length === 0 || max === 0 ? (
         <div className="flex h-24 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-xs text-white/40">
           {emptyLabel}
@@ -76,7 +76,7 @@ export const AdminMiniChart: React.FC<{
               />
             ))}
           </div>
-          <div className="mt-2 flex justify-between text-[10px] text-white/30">
+          <div className="mt-2 flex justify-between text-xs text-white/60">
             <span>{points[0]?.date}</span>
             <span>{points[points.length - 1]?.date}</span>
           </div>

@@ -1,5 +1,6 @@
 import React from 'react';
-import { CircleOff, LayoutGrid } from '../icons/Icons8';
+import { CircleOff } from '../icons/Icons8';
+import { LayoutGrid } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import {
