@@ -11,7 +11,7 @@ import {
   type LucideIcon
 } from '../components/icons/Icons8';
 
-import { IX_MATRIX_URL } from '@/config/community';
+import { DISCORD_INVITE_URL } from '@/config/community';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import AnimatedBorderCard from '../components/ui/animated-border-card';
 import BlurText from '../components/ui/blur-text';
@@ -442,10 +442,6 @@ const VipInvoicePage: React.FC = () => {
               <RefreshCcw className="mr-2 h-4 w-4" />
               {t('vipDonations.track.retry')}
             </Button>
-            <a href={IX_MATRIX_URL} target="_blank" rel="noopener noreferrer" className={`h-11 ${OUTLINE_LINK_CLASS}`}>
-              <MessageCircle className="h-4 w-4" />
-              {t('vipDonations.track.help.buttonMatrix')}
-            </a>
           </div>
           <Link to="/vip" className="group/icon mt-5 inline-flex items-center gap-2 text-sm text-white/50 transition-colors hover:text-white">
             <ArrowLeft className="h-4 w-4 text-white opacity-50 transition-[color,opacity] group-hover/icon:opacity-100" />
@@ -490,10 +486,7 @@ const VipInvoicePage: React.FC = () => {
     ? t('vipDonations.track.summary.methodCryptoGate')
     : getVipPaymentLabel(t, invoice.paymentMethod, invoice.coin);
   const durationLabel = getVipDurationLabel(t, invoice.vipYears, 'plain');
-  const supportUrl = isHttpUrl(invoice.supportTelegramUrl) ? invoice.supportTelegramUrl : IX_MATRIX_URL;
-  const supportButtonLabel = /matrix/i.test(supportUrl)
-    ? t('vipDonations.track.help.buttonMatrix')
-    : t('vipDonations.track.help.button');
+  const supportUrl = isHttpUrl(invoice.supportTelegramUrl) ? invoice.supportTelegramUrl : DISCORD_INVITE_URL;
   const checkoutUrl = isHttpUrl(invoice.checkoutUrl) ? invoice.checkoutUrl : null;
   const pageUrl = toAbsoluteUrl(invoice.invoicePath || window.location.pathname);
   const vipKey = invoice.vipKey;
