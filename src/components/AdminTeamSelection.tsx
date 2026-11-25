@@ -37,7 +37,7 @@ const cleanRating = (value?: string): string => {
   const rating = String(value || '').trim();
   if (!rating) return '';
   const map: Record<string, string> = {
-    G: 'Tous publics', 'TV-Y': 'Tous publics', 'TV-G': 'Tous publics',
+    G: 'Tous publics', U: 'Tous publics', '-10': '10+', '-12': '12+', '-16': '16+', '-18': '18+', 'TV-Y': 'Tous publics', 'TV-G': 'Tous publics',
     PG: '10+', 'TV-PG': '10+', 'PG-13': '13+', 'TV-14': '14+',
     R: '16+', 'TV-MA': '18+', NC-17: '18+'
   };
