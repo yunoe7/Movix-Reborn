@@ -1352,7 +1352,7 @@ const TVDetails: React.FC = () => {
                       <span>{resumeData.estimated
                         ? t('details.watchBtn')
                         : t('details.resumeEpisode', { episode: resumeData.episodeNumber, season: getSeasonDisplayName(resumeData.seasonNumber, t) })}</span>
-                  <span className="mt-1 rounded-md bg-black/[0.07] px-2 py-0.5 text-[11px] font-semibold text-black/75">
+                  <span className={`mt-1 inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold tracking-wide shadow-sm ${resumeData.estimated ? 'border-violet-200 bg-violet-50 text-violet-700' : 'border-black/10 bg-black/[0.06] text-black/65'}`}>
                     {resumeData.estimated
                       ? t('profilePage.progress.estimated', { percent: Math.round((resumeData.position / resumeData.duration) * 100), defaultValue: '≈ {{percent}} % · estimé' })
                       : `${formatTime(resumeData.position)}/${formatTime(resumeData.duration)}`}
