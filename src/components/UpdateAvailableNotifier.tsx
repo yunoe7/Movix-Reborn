@@ -18,10 +18,13 @@ function UpdateAvailableToast({ toastId }: { toastId: string | number }) {
       <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-white/[0.035] blur-3xl" />
 
       <div className="relative flex gap-3.5 p-4 sm:p-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/55 text-white/90 shadow-inner shadow-black/40">
-          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
-            <path d="M20 7v5h-5M4.5 17a8 8 0 0 0 13.7 1.2A8 8 0 0 0 20 12M4 12a8 8 0 0 1 13.7-6.2L20 7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/55 shadow-inner shadow-black/40">
+          <img
+            src="/movix.svg?v=2"
+            alt="Movix"
+            className="h-8 w-8 object-contain"
+            aria-hidden="true"
+          />
         </div>
 
         <div className="min-w-0 flex-1">
