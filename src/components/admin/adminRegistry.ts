@@ -1,25 +1,6 @@
-import type { ComponentType } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import {
-  Clapperboard,
-  Flag,
-  GalleryHorizontalEnd,
-  Gift,
-  HandCoins,
-  HelpCircle,
-  Home,
-  KeyRound,
-  LayoutGrid,
-  Link2,
-  ListOrdered,
-  Megaphone,
-  MessageSquare,
-  Plug,
-  ShieldCheck,
-  Sparkles,
-  Sprout,
-  Users,
-} from '../icons/Icons8';
+import { Clapperboard, Flag, GalleryHorizontalEnd, Gift, HandCoins, HelpCircle, Home, KeyRound, LayoutGrid, Link2, ListOrdered, Megaphone, MessageSquare, Plug, ShieldCheck, Sparkles, Sprout, Users } from 'lucide-react';
 
 export type AdminRole = 'admin' | 'moderator' | 'uploader';
 
@@ -60,7 +41,7 @@ export interface AdminSectionMeta {
   descriptionDefault: string;
   description: string;
   group: AdminGroupId;
-  icon: ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   keywords: string[];
   allowedRoles: AdminRole[];
 }

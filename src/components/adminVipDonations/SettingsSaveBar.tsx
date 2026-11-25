@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Loader2, RotateCcw, Save, Undo2 } from '../icons/Icons8';
+import { CheckCircle2, Loader2, RotateCcw, Save, Undo2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { formatVipDateTime } from '../../utils/vipDonationsUi';
@@ -18,7 +18,7 @@ export interface SaveBarState {
   onDiscard: () => void;
 }
 
-const saveButtonClass = 'bg-amber-400 font-semibold text-black shadow-lg shadow-amber-500/20 hover:bg-amber-300 focus-visible:ring-amber-400/60';
+const saveButtonClass = 'border border-white/20 bg-white font-semibold text-[#111113] hover:bg-white/85 focus-visible:ring-white/40 disabled:border-white/10 disabled:bg-white/10 disabled:text-white/65';
 
 const SaveStatus: React.FC<{ isDirty: boolean; errorCount: number }> = ({ isDirty, errorCount }) => {
   const { t } = useTranslation();

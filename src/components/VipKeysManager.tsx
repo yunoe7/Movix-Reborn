@@ -271,7 +271,7 @@ const VipKeysManager: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Add New Key Section */}
-      <div className="bg-gray-800 rounded-lg p-6">
+      <div className="rounded-xl border border-white/10 bg-[#111113] p-6">
         <h2 className="text-xl font-semibold text-white mb-4">{t('admin.newVipKey')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
@@ -284,7 +284,7 @@ const VipKeysManager: React.FC = () => {
               onChange={(e) => setNewKey(e.target.value)}
               placeholder={t('admin.enterOrGenerateKey')}
               maxLength={255}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+              className="w-full rounded-lg border border-white/15 bg-[#09090b] px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/10"
             />
           </div>
           <div>
@@ -292,7 +292,7 @@ const VipKeysManager: React.FC = () => {
               {t('admin.validityDuration')}
             </label>
             <Select value={dureeValidite} onValueChange={setDureeValidite}>
-              <SelectTrigger className="bg-gray-700 border-gray-600">
+              <SelectTrigger className="border-white/15 bg-[#09090b] text-white">
                 <SelectValue placeholder={t('admin.noExpiration')} />
               </SelectTrigger>
               <SelectContent>
@@ -306,13 +306,13 @@ const VipKeysManager: React.FC = () => {
           <div className="flex space-x-2">
             <button
               onClick={generateKey}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+              className="rounded-lg border border-white/15 bg-[#242426] px-4 py-2 font-semibold text-white transition-colors hover:bg-[#343438]"
             >
               {t('admin.generate')}
             </button>
             <button
               onClick={addKey}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold"
+              className="rounded-lg border border-white/15 bg-white px-4 py-2 font-semibold text-black transition-colors hover:bg-white/85"
             >
               {t('admin.add')}
             </button>
@@ -328,7 +328,7 @@ const VipKeysManager: React.FC = () => {
             placeholder={t('admin.searchKeys')}
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 text-sm"
+            className="w-full rounded-lg border border-white/15 bg-[#09090b] py-2 pl-9 pr-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/10"
           />
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -346,8 +346,8 @@ const VipKeysManager: React.FC = () => {
               key={filter.id}
               onClick={() => filterKeys(filter.id as FilterType)}
               className={`px-4 py-2 rounded-lg font-semibold transition-colors ${currentFilter === filter.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-white text-black'
+                  : 'border border-white/10 bg-[#242426] text-white/80 hover:bg-[#343438]'
                 }`}
             >
               {filter.label}
