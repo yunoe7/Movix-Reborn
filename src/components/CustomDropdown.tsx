@@ -198,19 +198,19 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
     <div
       ref={contentRef}
       style={menuStyle}
-      className="bg-gray-800 border border-gray-600 rounded-lg shadow-xl overflow-hidden"
+      className="bg-[#111827] border border-[#263449] rounded-xl shadow-[0_18px_50px_rgba(0,0,0,0.55)] overflow-hidden"
       data-lenis-prevent
       onWheel={handleContentWheel}
     >
       {searchable && (
-        <div className="p-2 border-b border-gray-600">
+        <div className="p-2.5 border-b border-[#263449]">
           <input
             ref={searchRef}
             type="text"
             placeholder={t('common.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2.5 bg-[#0f1726] border border-[#2a3a52] rounded-lg text-slate-100 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e73545]/55 focus:border-[#e73545]/60"
             onKeyDown={handleKeyDown}
           />
         </div>
@@ -231,14 +231,14 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
                   key={option.value}
                   type="button"
                   onClick={() => handleSelect(option.value)}
-                  className={`absolute left-0 top-0 flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-700 transition-colors ${value === option.value ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}
+                  className={`absolute left-0 top-0 flex w-full items-center justify-between px-3 py-2 text-left hover:bg-[#263449] transition-colors ${value === option.value ? 'bg-[#263d60] text-[#9ec5ff] font-semibold' : 'text-slate-100'}`}
                   style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {option.icon}
                     <span className="truncate">{option.label}</span>
                   </div>
-                  {value === option.value && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                  {value === option.value && <Check className="w-4 h-4 text-[#9ec5ff] flex-shrink-0" />}
                 </button>
               );
             })}
@@ -264,19 +264,19 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
           exit={{ opacity: 0, y: placement === 'top' ? 8 : -8, scale: 0.95 }}
           transition={{ duration: 0.15, ease: 'easeOut' }}
           style={menuStyle}
-          className="bg-gray-800 border border-gray-600 rounded-lg shadow-xl overflow-hidden"
+          className="bg-[#111827] border border-[#263449] rounded-xl shadow-[0_18px_50px_rgba(0,0,0,0.55)] overflow-hidden"
           data-lenis-prevent
           onWheel={handleContentWheel}
         >
           {searchable && (
-            <div className="p-2 border-b border-gray-600">
+            <div className="p-2.5 border-b border-[#263449]">
               <input
                 ref={searchRef}
                 type="text"
                 placeholder={t('common.searchPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2.5 bg-[#0f1726] border border-[#2a3a52] rounded-lg text-slate-100 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e73545]/55 focus:border-[#e73545]/60"
                 onKeyDown={handleKeyDown}
               />
             </div>
@@ -297,14 +297,14 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
                   key={option.value}
                   type="button"
                   onClick={() => handleSelect(option.value)}
-                  className={`absolute left-0 top-0 flex w-full items-center justify-between px-3 py-2 text-left hover:bg-gray-700 transition-colors ${value === option.value ? 'bg-blue-600/20 text-blue-300' : 'text-white'}`}
+                  className={`absolute left-0 top-0 flex w-full items-center justify-between px-3 py-2 text-left hover:bg-[#263449] transition-colors ${value === option.value ? 'bg-[#263d60] text-[#9ec5ff] font-semibold' : 'text-slate-100'}`}
                   style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     {option.icon}
                     <span className="truncate">{option.label}</span>
                   </div>
-                  {value === option.value && <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                  {value === option.value && <Check className="w-4 h-4 text-[#9ec5ff] flex-shrink-0" />}
                 </button>
               );
             })}
@@ -327,7 +327,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
         type="button"
         onClick={handleToggle}
         disabled={disabled}
-        className={`w-full flex items-center justify-between px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-600'}`}
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-[#1d293b] border border-[#34445b] rounded-xl text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#e73545]/55 focus:border-[#e73545]/60 transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#263449]'}`}
         onKeyDown={handleKeyDown}
       >
         <div className="flex items-center gap-2 min-w-0">
