@@ -12,6 +12,7 @@ import {
 import ReusableModal from './ui/reusable-modal';
 import { copyText } from '../utils/clipboard';
 import { API_BASE_URL } from '../config/api';
+import { useAdminConfirm } from './admin/AdminConfirmProvider';
 
 interface VipKey {
   key_value: string;
@@ -29,6 +30,7 @@ const PAGE_SIZE = 30;
 
 const VipKeysManager: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const { confirm } = useAdminConfirm();
   const [newKey, setNewKey] = useState('');
   const [dureeValidite, setDureeValidite] = useState('');
   const [keys, setKeys] = useState<VipKey[]>([]);
@@ -198,7 +200,12 @@ const VipKeysManager: React.FC = () => {
   };
 
   const deleteKey = async (key: string) => {
-    if (!confirm(t('admin.confirmDeleteKey'))) return;
+    if (!await confirm({
+      title: t('common.delete', 'Supprimer'),
+      message: t('admin.confirmDeleteKey'),
+      confirmLabel: t('common.delete', 'Supprimer'),
+      destructive: true,
+    })) return;
 
     try {
       await axios.delete(`${API_URL}/api/admin/vip-keys/${encodeURIComponent(key)}`, {

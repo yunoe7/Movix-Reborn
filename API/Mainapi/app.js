@@ -380,6 +380,8 @@ app.use('/api/admin/oauth-apps', require('./routes/adminOauthApps'));
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/tv/link', require('./routes/tvLink'));
 app.use('/api', require('./routes/debrid'));
+// Statistiques d'administration : route protégée par isAdmin dans le routeur.
+app.use('/api/admin/stats', require('./routes/adminStats'));
 app.use('/api', require('./routes/admin'));
 app.use('/api', vipDonationsRouter);
 app.use('/api', vipPayblisRouter);

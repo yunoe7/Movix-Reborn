@@ -34,11 +34,11 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
                 className={cn(
                     'relative inline-flex shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent',
                     'transition-colors duration-200 ease-in-out',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:ring-offset-2 focus-visible:ring-offset-black',
                     'disabled:cursor-not-allowed disabled:opacity-50',
                     dims.track,
                     checked
-                        ? 'bg-yellow-300 shadow-[0_0_12px_rgba(253,224,71,0.45)]'
+                        ? 'bg-white/85'
                         : 'bg-white/10 hover:bg-white/20',
                     className,
                 )}
@@ -47,10 +47,10 @@ const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
                 <span
                     aria-hidden="true"
                     className={cn(
-                        'pointer-events-none inline-block transform rounded-full bg-white shadow-lg ring-0',
-                        'transition-transform duration-200 ease-in-out',
+                        'pointer-events-none inline-block transform rounded-full shadow-none ring-0',
+                        'transition-all duration-200 ease-in-out',
                         dims.thumb,
-                        checked ? dims.translate : 'translate-x-0.5',
+                        checked ? `${dims.translate} bg-black` : 'translate-x-0.5 bg-white/80',
                     )}
                 />
             </button>

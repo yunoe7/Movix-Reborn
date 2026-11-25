@@ -136,10 +136,10 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, SelectTriggerProps>(
                 type="button"
                 onClick={() => setOpen(!open)}
                 className={cn(
-                    "flex h-10 w-full items-center justify-between rounded-xl border border-white/[0.1] bg-[#111a29]/80 px-3.5 py-2 text-sm font-medium text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]",
+                    "flex h-10 w-full items-center justify-between rounded-xl border border-white/[0.1] bg-[#0f0f11] px-3.5 py-2 text-sm font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]",
                     "ring-offset-black placeholder:text-white/40",
                     "hover:border-white/20 hover:bg-white/[0.08]",
-                    "focus:outline-none focus:ring-2 focus:ring-rose-400/45 focus:ring-offset-2 focus:ring-offset-[#0b1220]",
+                    "focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-black",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     "transition-all duration-200",
                     className
@@ -372,7 +372,7 @@ const SelectItem: React.FC<SelectItemProps> = ({ value, className, children }) =
                 "relative flex w-full cursor-pointer select-none items-center rounded-lg px-3 py-2.5 pl-9 text-left text-sm leading-snug outline-none",
                 "text-slate-300 hover:text-white",
                 "transition-colors duration-150",
-                isSelected && "bg-rose-500/[0.12] font-semibold text-white ring-1 ring-inset ring-rose-400/15",
+                isSelected && "bg-white/[0.1] font-semibold text-white ring-1 ring-inset ring-white/15",
                 className
             )}
         >
@@ -385,7 +385,7 @@ const SelectItem: React.FC<SelectItemProps> = ({ value, className, children }) =
                             exit={{ scale: 0, opacity: 0 }}
                             transition={{ duration: 0.15 }}
                         >
-                            <Check className="h-4 w-4 text-rose-300" />
+                            <Check className="h-4 w-4 text-white/80" />
                         </motion.div>
                     )}
                 </AnimatePresence>

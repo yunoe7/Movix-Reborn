@@ -19,6 +19,7 @@ import {
   addDownloadLinks,
   deleteDownloadLink,
 } from '@/services/downloadLinksService';
+import { useAdminConfirm } from './admin/AdminConfirmProvider';
 
 interface MovieResult {
   id: number;
@@ -54,6 +55,7 @@ type StreamingLink =
 
 const StreamingLinksManager: React.FC = () => {
   const { t } = useTranslation();
+  const { confirm } = useAdminConfirm();
   const [currentMedia, setCurrentMedia] = useState<'movie' | 'tv'>('movie');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<MovieResult[]>([]);
@@ -305,7 +307,12 @@ const StreamingLinksManager: React.FC = () => {
   };
 
   const deleteAllLinks = async () => {
-    if (!confirm(t('streamingLinks.confirmDeleteAll'))) return;
+    if (!await confirm({
+      title: t('common.delete', 'Supprimer'),
+      message: t('streamingLinks.confirmDeleteAll'),
+      confirmLabel: t('common.delete', 'Supprimer'),
+      destructive: true,
+    })) return;
     if (!selectedItem) return;
 
     try {
@@ -372,7 +379,12 @@ const StreamingLinksManager: React.FC = () => {
 
   const deleteDownloadLinkFromList = async (url: string, fullSeasonFlag: boolean) => {
     if (!selectedItem) return;
-    if (!confirm('Supprimer ce lien ?')) return;
+    if (!await confirm({
+      title: t('common.delete', 'Supprimer'),
+      message: t('streamingLinks.confirmDeleteOne', 'Supprimer ce lien ?'),
+      confirmLabel: t('common.delete', 'Supprimer'),
+      destructive: true,
+    })) return;
     try {
       const params: any = {
         type: currentMedia,
@@ -396,7 +408,12 @@ const StreamingLinksManager: React.FC = () => {
   };
 
   const deleteSpecificLink = async (index: number) => {
-    if (!confirm(t('streamingLinks.confirmDeleteOne'))) return;
+    if (!await confirm({
+      title: t('common.delete', 'Supprimer'),
+      message: t('streamingLinks.confirmDeleteOne'),
+      confirmLabel: t('common.delete', 'Supprimer'),
+      destructive: true,
+    })) return;
     if (!selectedItem) return;
 
     // Delete the single link by URL. The backend enforces ownership (uploaders

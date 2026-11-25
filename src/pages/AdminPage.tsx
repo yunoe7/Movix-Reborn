@@ -1,85 +1,82 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import AdminDashboard from '../components/AdminDashboard';
 import { SquareBackground } from '../components/ui/square-background';
 import { API_BASE_URL } from '../config/api';
+import { normalizeAdminRole, type AdminRole } from '../components/admin/adminRegistry';
+import '../components/admin/admin-console.css';
+
+interface AdminIdentity {
+  userId?: string;
+  userType?: string;
+  adminId?: string | number;
+}
 
 const AdminPage: React.FC = () => {
   const { t } = useTranslation();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [adminRole, setAdminRole] = useState<'admin' | 'uploader'>('admin');
+  const [adminRole, setAdminRole] = useState<AdminRole | null>(null);
+  const [identity, setIdentity] = useState<AdminIdentity | null>(null);
   const [bgMode] = useState<'combined' | 'static' | 'animated'>(() => {
     return (localStorage.getItem('settings_bg_mode') as 'combined' | 'static' | 'animated') || 'combined';
   });
 
   useEffect(() => {
     const checkAdminAuth = async () => {
-      try {
-        const authToken = localStorage.getItem('auth_token');
+      const authToken = localStorage.getItem('auth_token');
+      if (!authToken) {
+        setIsAuthenticated(false);
+        return;
+      }
 
-        if (!authToken) {
-          setIsAuthenticated(false);
-          setIsLoading(false);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        const data = response.ok ? await response.json() : null;
+        const role = normalizeAdminRole(data?.admin?.role);
+
+        if (response.ok && data?.success === true && role) {
+          setIdentity({
+            userId: data.admin.userId,
+            userType: data.admin.userType,
+            adminId: data.admin.adminId,
+          });
+          setAdminRole(role);
+          setIsAuthenticated(true);
           return;
         }
-
-        // Vérifier si l'utilisateur est admin en utilisant l'endpoint de vérification
-        const API_URL = API_BASE_URL;
-        const response = await fetch(`${API_URL}/api/admin/check`, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setIsAuthenticated(true);
-          // Récupérer le rôle depuis la réponse (par défaut 'admin')
-          setAdminRole(data.admin?.role || 'admin');
-        } else {
-          setIsAuthenticated(false);
-        }
+        setIsAuthenticated(false);
       } catch (error) {
         console.error('Erreur lors de la vérification admin:', error);
         setIsAuthenticated(false);
-      } finally {
-        setIsLoading(false);
       }
     };
 
     checkAdminAuth();
   }, []);
 
-  if (isLoading) {
+  if (isAuthenticated === null) {
     return (
       <SquareBackground
         mode={bgMode}
-        borderColor="rgba(251, 191, 36, 0.12)"
+        borderColor="rgba(255,255,255,0.07)"
         className="min-h-screen bg-black text-white flex items-center justify-center"
       >
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>{t('admin.verifyingRights')}</p>
+        <div className="text-center" role="status">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-white" />
+          <p className="text-sm text-white/60">{t('admin.verifyingRights')}</p>
         </div>
       </SquareBackground>
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !adminRole) {
     return <Navigate to="/" replace />;
   }
 
-  return (
-    <SquareBackground
-      mode={bgMode}
-      borderColor="rgba(251, 191, 36, 0.12)"
-      className="min-h-screen bg-black text-white pt-20"
-    >
-      <AdminDashboard role={adminRole} />
-    </SquareBackground>
-  );
+  return <AdminDashboard role={adminRole} identity={identity} />;
 };
 
 export default AdminPage;
