@@ -10,10 +10,10 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light';
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: 'bg-red-600 text-white hover:bg-red-500',
-  secondary: 'bg-white/10 text-white hover:bg-white/[0.16]',
+  secondary: 'bg-[#202b3d] text-slate-100 ring-1 ring-[#34445b] hover:bg-[#2b3b53]',
   // Icônes en couleur pleine + opacity (une couleur transparente fait foncer les croisements de traits).
-  ghost: 'text-white/70 hover:bg-white/[0.06] hover:text-white [&_svg]:text-white [&_svg]:opacity-70 hover:[&_svg]:opacity-100',
-  danger: 'bg-white/10 text-red-300 hover:bg-red-600 hover:text-white',
+  ghost: 'text-slate-300 hover:bg-[#202b3d] hover:text-white [&_svg]:text-slate-200 [&_svg]:opacity-90 hover:[&_svg]:opacity-100',
+  danger: 'bg-[#202b3d] text-[#ff9aa4] ring-1 ring-[#34445b] hover:bg-[#8f2632] hover:text-white',
   light: 'bg-white text-black hover:bg-white/85',
 };
 
@@ -126,9 +126,9 @@ export type TicketTone = 'default' | 'accent' | 'light';
 export const ticketToneAt = (index: number): TicketTone => (index % 7 === 3 ? 'accent' : index % 7 === 6 ? 'light' : 'default');
 
 const STRIP_TONES: Record<TicketTone, { strip: string; meta: string }> = {
-  default: { strip: 'bg-[#202020] text-white', meta: 'text-[#929292]' },
+  default: { strip: 'bg-[#111827] text-white', meta: 'text-slate-300' },
   accent: { strip: 'bg-[#e73545] text-white', meta: 'text-white/85' },
-  light: { strip: 'bg-[#292929] text-white', meta: 'text-[#b0b0b0]' },
+  light: { strip: 'bg-[#202b3d] text-white', meta: 'text-slate-200' },
 };
 
 interface PosterTicketProps {
@@ -203,7 +203,7 @@ export function PosterTicket({
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-t-lg';
 
   return (
-    <article className={`group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(0,0,0,0.28)] ${selected ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
+    <article className={`group relative flex flex-col overflow-hidden rounded-2xl border border-[#263449] shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(0,0,0,0.28)] ${selected ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
       {to ? (
         <Link to={to} aria-label={title} className={`block ${focusRing}`}>{art}</Link>
       ) : onOpen ? (
