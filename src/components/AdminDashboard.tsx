@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import AdminComments from './AdminComments';
 import AdminHelpFeedback from './AdminHelpFeedback';
 import AdminHeroPromos from './AdminHeroPromos';
+import AdminTeamSelection from './AdminTeamSelection';
 import AdminMonetizationSettings from './AdminMonetizationSettings';
 import AdminLinkSubmissions from './Greenlight/AdminLinkSubmissions';
 import AdminWishboard from './Greenlight/AdminWishboard';
@@ -80,6 +81,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role, identity = null }
         return <AdminMonetizationSettings />;
       case 'hero-promos':
         return <AdminHeroPromos />;
+      case 'team-selection':
+        return <AdminTeamSelection />;
       case 'referral':
         return <AdminReferralSettings />;
       case 'oauth-apps':
