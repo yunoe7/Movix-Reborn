@@ -13,6 +13,8 @@ const fieldClass = 'w-full rounded-lg border border-white/10 bg-black/40 px-3 py
 
 type TmdbSearchResult = {
   id: number;
+  mediaType: 'movie' | 'tv';
+  popularity?: number;
   title?: string;
   name?: string;
   original_title?: string;
@@ -93,30 +95,55 @@ const AdminTeamSelection: React.FC = () => {
       setSearching(false);
       return;
     }
+
     let active = true;
     const timer = window.setTimeout(async () => {
       if (!TMDB_API_KEY) {
         setSearching(false);
+        setResults([]);
         toast.error('La clé TMDB du site est absente.');
         return;
       }
+
       setSearching(true);
       try {
-        const response = await axios.get(`${TMDB_API_URL}/search/${mediaType}`, {
-          params: { api_key: TMDB_API_KEY, language: 'fr-FR', query: text, include_adult: false }
-        });
-        if (active) setResults(Array.isArray(response.data?.results) ? response.data.results.slice(0, 8) : []);
+        const searchParams = {
+          api_key: TMDB_API_KEY,
+          language: 'fr-FR',
+          query: text,
+          include_adult: false,
+          page: 1
+        };
+        const [movieResponse, tvResponse] = await Promise.all([
+          axios.get(`${TMDB_API_URL}/search/movie`, { params: searchParams }),
+          axios.get(`${TMDB_API_URL}/search/tv`, { params: searchParams })
+        ]);
+
+        if (!active) return;
+        const movies: TmdbSearchResult[] = (movieResponse.data?.results || [])
+          .map((item: Omit<TmdbSearchResult, 'mediaType'>) => ({ ...item, mediaType: 'movie' as const }));
+        const series: TmdbSearchResult[] = (tvResponse.data?.results || [])
+          .map((item: Omit<TmdbSearchResult, 'mediaType'>) => ({ ...item, mediaType: 'tv' as const }));
+
+        const combined = [...movies, ...series]
+          .filter((item) => Number.isSafeInteger(item.id) && item.id > 0)
+          .sort((a, b) => (b.popularity || b.vote_average || 0) - (a.popularity || a.vote_average || 0));
+        setResults(combined.slice(0, 16));
       } catch {
-        if (active) toast.error('La recherche TMDB a échoué.');
+        if (active) {
+          setResults([]);
+          toast.error('La recherche TMDB a échoué. Réessaie dans quelques instants.');
+        }
       } finally {
         if (active) setSearching(false);
       }
     }, 350);
+
     return () => {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [query, mediaType]);
+  }, [query]);
 
   const update = (key: keyof TeamSelectionSettings, value: string | number | boolean) => {
     setSettings((current) => current ? {
@@ -129,11 +156,11 @@ const AdminTeamSelection: React.FC = () => {
     if (!settings || selectingId !== null) return;
     setSelectingId(item.id);
     try {
-      const response = await axios.get<TmdbDetails>(`${TMDB_API_URL}/${mediaType}/${item.id}`, {
+      const response = await axios.get<TmdbDetails>(`${TMDB_API_URL}/${item.mediaType}/${item.id}`, {
         params: {
           api_key: TMDB_API_KEY,
           language: 'fr-FR',
-          append_to_response: mediaType === 'tv' ? 'content_ratings' : 'release_dates'
+          append_to_response: item.mediaType === 'tv' ? 'content_ratings' : 'release_dates'
         }
       });
       const details = response.data;
@@ -142,18 +169,18 @@ const AdminTeamSelection: React.FC = () => {
         ? `${details.vote_average.toFixed(1).replace('.', ',')}/10`
         : '';
       const genres = (details.genres || []).map((genre) => genre.name).filter(Boolean).join(',');
-      const duration = mediaType === 'movie'
+      const duration = item.mediaType === 'movie'
         ? (details.runtime ? `${details.runtime} min` : '')
         : (details.episode_run_time?.[0] ? `${details.episode_run_time[0]} min / épisode` : '');
       const backdropUrl = details.backdrop_path
         ? `${TMDB_IMAGE_URL}/original${details.backdrop_path}`
         : item.backdrop_path ? `${TMDB_IMAGE_URL}/original${item.backdrop_path}` : '';
-      const ageRating = getFrenchAgeRating(details, mediaType);
+      const ageRating = getFrenchAgeRating(details, item.mediaType);
       setSettings((current) => current ? {
         ...current,
         teamSelection: {
           ...current.teamSelection,
-          mediaType,
+          mediaType: item.mediaType,
           tmdbId: details.id,
           title,
           description: details.overview || '',
@@ -162,7 +189,7 @@ const AdminTeamSelection: React.FC = () => {
           genres,
           duration,
           ageRating: ageRating || current.teamSelection.ageRating,
-          detailsUrl: `/${mediaType}/${details.id}`
+          detailsUrl: `/${item.mediaType}/${details.id}`
         }
       } : current);
       setQuery(title);
@@ -215,10 +242,10 @@ const AdminTeamSelection: React.FC = () => {
       <SettingsSection
         icon={Sparkles}
         title="Sélection de l’équipe"
-        description="Tape le nom d’un film ou d’une série : TMDB récupère automatiquement les informations de la bannière."
+        description="Recherche un titre : films et séries TMDB sont interrogés ensemble, puis les informations de la bannière sont récupérées automatiquement."
       >
         <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.025] p-4">
-          <SettingsField id="team-selection-search" label="Rechercher un film ou une série" hint="Deux caractères minimum. Choisis ensuite le bon résultat dans la liste.">
+          <SettingsField id="team-selection-search" label="Rechercher un film ou une série" hint="Deux caractères minimum. Films et séries sont recherchés simultanément.">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
               <input id="team-selection-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ex. : Dune, One Piece, Les Carnets de l’apothicaire…" className={`${fieldClass} pl-10`} />
@@ -236,7 +263,7 @@ const AdminTeamSelection: React.FC = () => {
                     {item.poster_path ? <img src={`${TMDB_IMAGE_URL}/w92${item.poster_path}`} alt="" className="h-16 w-11 rounded object-cover" /> : <div className="flex h-16 w-11 items-center justify-center rounded bg-white/5 text-[10px] text-white/30">Sans affiche</div>}
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-white">{name}</span>
-                      <span className="mt-1 block text-xs text-white/50">{date ? date.slice(0, 4) : 'Date inconnue'}{typeof item.vote_average === 'number' && item.vote_average > 0 ? ` · ★ ${item.vote_average.toFixed(1)}/10` : ''}</span>
+                      <span className="mt-1 block text-xs text-white/50">{item.mediaType === 'movie' ? 'FILM' : 'SÉRIE'} · {date ? date.slice(0, 4) : 'Date inconnue'}{typeof item.vote_average === 'number' && item.vote_average > 0 ? ` · ★ ${item.vote_average.toFixed(1)}/10` : ''}</span>
                     </span>
                     {selectingId === item.id ? <Loader2 className="h-4 w-4 animate-spin text-amber-300" /> : <Check className="h-4 w-4 text-white/35" />}
                   </button>
