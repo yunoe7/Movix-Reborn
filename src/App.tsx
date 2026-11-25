@@ -1817,9 +1817,10 @@ const AppWithIntro: React.FC = () => {
     currentPath.startsWith('/tv/') ||
     currentPath.startsWith('/provider/');
   const isWrappedRoute = currentPath === '/wrapped' || currentPath.startsWith('/wrapped/');
-  const shouldShowHeader = !isWatchRoute && !isWrappedRoute;
+  const isAdminRoute = currentPath === '/admin' || currentPath.startsWith('/admin/');
+  const shouldShowHeader = !isWatchRoute && !isWrappedRoute && !isAdminRoute;
   const isAprilFoolsAdminRouteEnabled = isAprilFoolsAdminEnabled(location.search);
-  const isNoFooterPage = isWatchRoute;
+  const isNoFooterPage = isWatchRoute || isAdminRoute;
 
   // Le plein écran du lecteur est porté par le conteneur racine de l'app (voir
   // `PLAYER_FULLSCREEN_HOST_ID`), pour qu'il survive au remontage du lecteur
@@ -1955,7 +1956,7 @@ const AppWithIntro: React.FC = () => {
             </Routes>
           )}
         </ProfileGate>
-        {!isWatchRoute && <Footer />}
+        {!isNoFooterPage && <Footer />}
       </div>
 
       {/* Screensaver */}
