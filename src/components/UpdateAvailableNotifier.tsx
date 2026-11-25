@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import { MAIN_API } from '../config/runtime';
 
@@ -216,7 +217,7 @@ function UpdateAvailableToast({
         <div className="h-px bg-gradient-to-r from-white/20 via-white/[0.06] to-transparent" />
       </section>
 
-      {showReleaseNotes && (
+      {showReleaseNotes && createPortal(
         <div
           className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/55 p-3 backdrop-blur-sm sm:p-4"
           role="presentation"
@@ -287,7 +288,8 @@ function UpdateAvailableToast({
               </button>
             </footer>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
