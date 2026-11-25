@@ -1028,7 +1028,6 @@ interface HLSPlayerProps {
   initialTime?: number; // Optional starting time in seconds
   selectedCoflixPlayerIndex?: number; // Optional index for Coflix player
   selectedOmegaPlayerIndex?: number; // Optional index for Omega player
-  isAnime?: boolean; // Nouvelle prop pour distinguer les animes des séries normales
 
   // New props for WatchPartyRoom integration
   videoRef?: React.RefObject<HTMLVideoElement>; // To pass video element ref to parent
@@ -1074,7 +1073,7 @@ interface HLSPlayerProps {
 
   /**
    * Catégorie de priorité utilisateur appliquée au tri des hosters dans le panel
-   * Serveurs. `'moviesTv'` pour WatchMovie/WatchTv, `'anime'` pour WatchAnime.
+   * Serveurs. `'moviesTv'` pour WatchMovie/WatchTv, `'anime'` pour les sources d'animes.
    * Par défaut `'moviesTv'` côté panel si non fourni.
    */
   priorityCategory?: 'moviesTv' | 'anime';
@@ -1286,7 +1285,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   onPreviousEpisode,
   title,
   initialTime,
-  isAnime = false,
   isWatchPartyGuest,
   episodes = [],
   seasons = [],
@@ -3447,14 +3445,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     }
   }, [selectedSeasonNumber, seasonNumber, episodesBySeasons, fetchEpisodesForSeason]);
 
-  // Adjust default settings tab for anime HLS mode
-  useEffect(() => {
-    if (isAnime && tvShowId && src.includes('.m3u8')) {
-      // Always set to format for anime HLS mode, regardless of current tab
-      setSettingsTab('format');
-    }
-  }, [isAnime, tvShowId, src]);
-
   // Fonction pour gérer le changement de source
   const handleSourceChange = (sourceType: string, sourceId: string, sourceUrl: string) => {
     // --- Dropdown Toggle Handling (Doesn't close settings) ---
@@ -4689,10 +4679,10 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   /**
    * Le changement d'épisode recharge complètement la page : on rejoue donc ici
    * l'état laissé par le lecteur précédent (plein écran, lecture en cours).
-   * Réservé aux séries et animes, pour qu'un film ouvert entre-temps ne
-   * consomme pas le marqueur laissé par un épisode.
+   * Réservé aux séries, pour qu'un film ouvert entre-temps ne consomme pas
+   * le marqueur laissé par un épisode.
    */
-  const isEpisodicPlayer = Boolean(tvShowId || isAnime);
+  const isEpisodicPlayer = Boolean(tvShowId);
 
   /**
    * La demande de PiP est publiée ici plutôt que passée directement au mécanisme
@@ -12217,27 +12207,14 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
           <motion.button
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Episodes button clicked. Episodes available:', episodes?.length || 0);
-              console.log('onShowEpisodesMenu available:', !!onShowEpisodesMenu);
-              console.log('tvShowId:', tvShowId);
-
-              // En mode anime (tvShowId présent), toujours utiliser le fallback externe
               if (tvShowId && onShowEpisodesMenu) {
-                console.log('Using external episodes menu for anime');
                 onShowEpisodesMenu();
               }
-              // Pour les séries normales, utiliser le menu interne si disponible
               else if (episodes && episodes.length > 0) {
-                console.log('Using internal episodes menu');
                 setShowInternalEpisodesMenu(!showInternalEpisodesMenu);
               }
-              // Fallback vers l'ancien système
               else if (onShowEpisodesMenu) {
-                console.log('Using fallback external episodes menu');
                 onShowEpisodesMenu();
-              }
-              else {
-                console.log('No episodes menu available');
               }
             }}
             whileHover={{ scale: 1.05, backgroundColor: "rgba(0, 0, 0, 0.9)" }}
@@ -13046,7 +13023,6 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
             t,
             setShowSettings,
             tabsContainerRef,
-            isAnime,
             tvShowId,
             src,
             settingsTab,

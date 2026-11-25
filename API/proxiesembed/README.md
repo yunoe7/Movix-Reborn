@@ -79,11 +79,6 @@ est demandé — un épisode, ou le film — jamais sur une saison entière.
 Chaque lecteur résolu reçoit un champ `m3u8Url` en plus de son lien embed, que
 le client conserve pour son repli (extension, lecteur iframe).
 
-**Anime-Sama** liste ses lecteurs en chaînes brutes (`players: ["https://…"]`)
-et non en objets : y greffer un champ casserait la forme de la réponse. Sa
-route joint donc à l'épisode une table parallèle `m3u8ByPlayer` (« lien →
-m3u8 »), demandée par `?resolve=1&season=N&episode=M`.
-
 **frenchstream en série** reste la seule source non résolue : sa réponse porte
 toutes les saisons et l'endpoint n'accepte pas d'épisode, donc résoudre
 reviendrait à extraire une série entière. Ses films sont couverts. Ces sources

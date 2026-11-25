@@ -192,30 +192,9 @@ const anime = {
   production_companies: [],
   credits: { cast: [{ id: 3, name: 'Acteur Anime', character: 'Personnage Anime', profile_path: '/profile.jpg' }], crew: [] },
 };
-const animeCandidate = {
-  name: anime.name,
-  alternative_names: [],
-  poster_path: anime.poster_path,
-  seasons: [{
-    number: 1,
-    season_number: 1,
-    name: 'Saison Anime 1',
-    episodes: [{
-      index: 1,
-      episode_number: 1,
-      name: 'Épisode Anime Fixture',
-      still_path: '/anime-still.jpg',
-      streaming_links: [{ language: 'vf', players: [] }],
-    }],
-  }],
-};
-
 function jsonFor(url) {
   const pathname = url.pathname;
-  if (url.hostname === 'main-api.test') {
-    if (/^\/anime\/tmdb\/tv\/99999$/.test(pathname)) return [animeCandidate];
-    return {};
-  }
+  if (url.hostname === 'main-api.test') return {};
   if (/\/movie\/42\/credits$/.test(pathname)) return movie.credits;
   if (/\/movie\/42\/release_dates$/.test(pathname)) return { results: [] };
   if (/\/movie\/42\/images$/.test(pathname)) return {
@@ -455,13 +434,17 @@ try {
     assert.equal(commentsCount, 1, 'anime: commentaires conservés');
     assert.ok(await page.locator('.seasons-section').isVisible(), 'anime: saisons et épisodes conservés');
     assert.ok(overflow <= 1, `anime: pas de débordement horizontal (${overflow}px)`);
+    const staleAnimeGrid = await page.locator('.anime-season-card').count();
+    const staleAnimeModeText = await page.getByText(/details\.(animeModeActiveBadge|backToStandardMode|animeModeLabel)|MODE ANIME ACTIF|Retour au mode standard|Mode anime/).count();
+    assert.equal(staleAnimeGrid, 0, 'anime: aucune grille Anime-Sama résiduelle');
+    assert.equal(staleAnimeModeText, 0, 'anime: aucun badge ni bouton de mode anime résiduel');
 
     const screenshot = path.join(artifactDir, 'anime-mobile.png');
     await page.screenshot({ path: screenshot, fullPage: true });
     observations.push({
       kind: 'anime', mode: 'mobile', heroCount, fixedBackdrops, actionCount, tabCount,
       playIconWidth, castCount, recommendations, commentsCount, overflow,
-      screenshot: path.basename(screenshot), errors,
+      staleAnimeGrid, staleAnimeModeText, screenshot: path.basename(screenshot), errors,
     });
     assert.deepEqual(errors, [], 'anime: erreurs navigateur');
     await context.close();

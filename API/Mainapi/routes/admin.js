@@ -1,6 +1,6 @@
 /**
  * Admin routes.
- * Extracted from server.js -- streaming links CRUD, VIP key management, admin checks, anime cache.
+ * Extracted from server.js -- streaming links CRUD, VIP key management, admin checks.
  * Mount point: app.use('/api', router)
  */
 
@@ -15,7 +15,6 @@ const { isAdmin, isUploaderOrAdmin } = require('../middleware/auth');
 const { getPool } = require('../mysqlPool');
 const { verifyAccessKey, invalidateVipCache } = require('../checkVip');
 const { buildResolvedMaps } = require('../utils/embedExtraction');
-const { ANIME_SAMA_CACHE_DIR } = require('../utils/cacheManager');
 const { createRedisRateLimitStore } = require('../utils/redisRateLimitStore');
 const { logDownloadLinkAction } = require('../utils/downloadLinksHistory');
 const { resolveAdminIdentity } = require('../utils/adminIdentity');
@@ -176,7 +175,7 @@ router.get('/links/:type/:id', async (req, res) => {
     //
     // Une entrée peut être une chaîne nue ou un objet {url, label, ...} : on ne
     // peut pas greffer un champ sur les premières, d'où la table parallèle
-    // `m3u8ByPlayer` (même convention qu'Anime-Sama).
+    // `m3u8ByPlayer` (table parallèle indexée par lien).
     //
     // Pour une série sans `season`+`episode`, la requête ci-dessus renvoie TOUS
     // les épisodes : on ne résout pas, sous peine d'extraire une saison entière

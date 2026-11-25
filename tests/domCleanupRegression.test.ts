@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { sourceEffect, sourceFunction } from './helpers/sourceFunction.mjs';
 
-for (const page of ['WatchMovie', 'WatchTv', 'WatchAnime']) {
+for (const page of ['WatchMovie', 'WatchTv']) {
   test(`${page} libère le défilement même si le document perd son body`, () => {
     const body = { style: { overflow: '', height: '' } };
     const document = { body: body as typeof body | null, documentElement: { style: { overflow: '', height: '' } } };

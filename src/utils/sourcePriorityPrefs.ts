@@ -76,7 +76,7 @@ const DEFAULT_MOVIES_TV_ORDER: readonly TopLevelSourceId[] = [
 
 /**
  * Ordre par défaut des hosters pour la catégorie Animes.
- * Scope volontairement restreint (anime-sama ne renvoie qu'un sous-ensemble) :
+ * Scope volontairement restreint aux hosters les plus utilisés sur les animes :
  * vidmoly, sibnet, smoothpre, seekstreaming (détection # incluse), minochinos.
  */
 const DEFAULT_ANIME_HOSTER_ORDER: readonly HosterId[] = [

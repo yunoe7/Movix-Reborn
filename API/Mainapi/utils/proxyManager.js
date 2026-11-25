@@ -22,9 +22,6 @@ const coflixProxyPolicy = createCoflixProxyPolicy();
 const { createSourceCircuitBreaker, isSourceDownStatus } = require("./sourceCircuitBreaker");
 const { redis } = require("../config/redis");
 const {
-  shouldRotateAnimeSamaResponse,
-} = require("./animeSamaProxyPolicy");
-const {
   WIFLIX_GLOBAL_MIN_INTERVAL_MS,
   WIFLIX_REQUEST_DEADLINE_MS,
   WIFLIX_RESPONSE_MAX_BYTES,
@@ -116,7 +113,6 @@ const COFLIX_ORIGIN = (
 ).replace(/\/$/, "");
 const ENABLE_FRENCH_STREAM_PROXY = true; // Active/d\u00e9sactive le proxy pour French-Stream
 const ENABLE_LECTEURVIDEO_PROXY = true; // Active/d\u00e9sactive le proxy pour LecteurVideo
-const ENABLE_ANIME_PROXY = true; // Active/d\u00e9sactive le proxy pour AnimeSama (CycleTLS + SOCKS5)
 const ENABLE_WIFLIX_PROXY = true; // Active/d\u00e9sactive le proxy pour Wiflix
 const WIFLIX_PROXY_BLOCK_WEBHOOK_ENABLED = !['0', 'false', 'no', 'off'].includes(
   String(process.env.WIFLIX_PROXY_BLOCK_WEBHOOK_ENABLED || 'true').trim().toLowerCase(),
@@ -804,7 +800,7 @@ async function makeLecteurVideoRequest(targetUrl, options = {}) {
 }
 
 // CineStream (Cloudflare-fronted Next.js) via CycleTLS + ProxyScrape rotation,
-// like LecteurVideo/AnimeSama. Plain axios + CF Workers gets hammered with 525
+// like LecteurVideo. Plain axios + CF Workers gets hammered with 525
 // (CF edge SSL errors under volume from one IP); a real Chrome JA3 over rotating
 // low-volume proxy IPs survives. Les pannes restent des erreurs temporaires,
 // jamais des pages vides à interpréter comme « film introuvable ». Deux proxies
@@ -1105,103 +1101,6 @@ async function requestCpasmalThroughProxies(targetUrl, options = {}) {
 
   if (lastResult) return lastResult;
   throw lastError || Object.assign(new Error('[CPASMAL] Proxies temporairement indisponibles'), { code: 'CPASMAL_PROXY_COOLDOWN' });
-}
-
-// Fonction AnimeSama avec CycleTLS (cloudscraper-style : JA3 Chrome pour bypass Cloudflare).
-// Utilise le SOCKS5_PROXIES env directement (proxies dédiés) -- pas le pool ProxyScrape.
-// Sans SOCKS5_PROXIES configuré : tentative directe en IP locale, comme les autres
-// helpers CycleTLS (Cpasmal, CineStream, 1jour1film).
-const MAX_ANIMESAMA_CYCLETLS_ATTEMPTS = 2;
-const ANIMESAMA_SOCKS5_PROXIES = dedupeProxyEntries(
-  parseProxyPayload(process.env.SOCKS5_PROXIES, "socks5")
-    .map((entry) => sanitizeProxyEntry(entry, "socks5"))
-    .filter(Boolean),
-);
-
-async function makeAnimeSamaRequest(targetUrl, options = {}) {
-  const {
-    headers = {},
-    timeout = 30,
-    method = "get",
-    body = "",
-  } = options;
-  const cleanTargetUrl = targetUrl.trim();
-  const lowerMethod = String(method).toLowerCase();
-
-  const defaultHeaders = {
-    Accept:
-      "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "fr-FR,fr;q=0.6",
-    ...headers,
-  };
-
-  const pool = [...ANIMESAMA_SOCKS5_PROXIES]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, MAX_ANIMESAMA_CYCLETLS_ATTEMPTS);
-
-  const cycleTLS = await getCycleTLS();
-
-  const asAxiosLike = (response) => {
-    const data =
-      typeof response.body === "string"
-        ? response.body
-        : JSON.stringify(response.body);
-    return { data, status: response.status, headers: response.headers || {} };
-  };
-
-  // Aucun proxy SOCKS5 configuré -> tentative directe en IP locale. Avant, on
-  // jetait une erreur ici, ce qui cassait AnimeSama sur toute installation
-  // sans SOCKS5_PROXIES au lieu de dégrader vers une requête directe.
-  if (pool.length === 0) {
-    const response = await cycleTLS(
-      cleanTargetUrl,
-      {
-        body,
-        ja3: CHROME_JA3,
-        userAgent: CHROME_UA,
-        headers: defaultHeaders,
-        timeout,
-      },
-      lowerMethod,
-    );
-    return asAxiosLike(response);
-  }
-
-  let lastError = null;
-  let lastResult = null;
-
-  for (let i = 0; i < pool.length; i++) {
-    const proxy = pool[i];
-    const auth = proxy.auth ? `${proxy.auth}@` : "";
-    const proxyUrl = `socks5h://${auth}${proxy.host}:${proxy.port}`;
-
-    try {
-      const response = await cycleTLS(
-        cleanTargetUrl,
-        {
-          body,
-          ja3: CHROME_JA3,
-          userAgent: CHROME_UA,
-          proxy: proxyUrl,
-          headers: defaultHeaders,
-          timeout,
-        },
-        lowerMethod,
-      );
-
-      const result = asAxiosLike(response);
-      if (shouldRotateAnimeSamaResponse(result.status, result.data)) {
-        lastResult = result;
-        continue;
-      }
-      return result;
-    } catch (err) {
-      lastError = err;
-    }
-  }
-
-  if (lastResult) return lastResult;
-  throw lastError || new Error("[ANIMESAMA CYCLETLS] tous les proxies ont echoue");
 }
 
 // === SOCKS5 PROXIES (from env) ===
@@ -2238,7 +2137,7 @@ const WIFLIX_FREE_PROXY_TIMEOUT = 5000; // 5s per proxy attempt (fail fast)
 // Cookie requis sur l'endpoint search (do=search) sinon réponse "Bot shield active.".
 // Le site vérifie h_check==25 exactement (posé par son JS). Bump ici si le site change la valeur.
 const WIFLIX_H_CHECK = "25";
-const wiflixConfiguredProxies = ANIMESAMA_SOCKS5_PROXIES
+const wiflixConfiguredProxies = configuredSocks5Env
   .map((proxy) => proxyToUrl(proxy, "socks5h"))
   .filter(Boolean);
 
@@ -2837,7 +2736,6 @@ module.exports = {
   ENABLE_COFLIX_PROXY,
   ENABLE_FRENCH_STREAM_PROXY,
   ENABLE_LECTEURVIDEO_PROXY,
-  ENABLE_ANIME_PROXY,
   ENABLE_WIFLIX_PROXY,
   darkiworld_premium,
 
@@ -2863,7 +2761,6 @@ module.exports = {
   makeCoflixRequest,
   isCoflixCircuitOpen,
   makeLecteurVideoRequest,
-  makeAnimeSamaRequest,
   makeCinestreamRequest,
   make1j1fRequest,
   makeCpasmalRequest,

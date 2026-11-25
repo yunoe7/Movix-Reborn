@@ -42,9 +42,6 @@ function loadRoute(relative, stubs, suffix = '', timerOverrides = {}) {
     '../utils/sharedSourceWork': require('../../utils/sharedSourceWork'),
     '../utils/concurrency': require('../../utils/concurrency'),
     '../utils/sourceCircuitBreaker': require('../../utils/sourceCircuitBreaker'),
-    '../utils/animeSamaDeadPlayers': require('../../utils/animeSamaDeadPlayers'),
-    '../utils/animeSamaPages': require('../../utils/animeSamaPages'),
-    '../utils/animeSamaLinks': require('../../utils/animeSamaLinks'),
     'write-file-atomic': (...args) => stubs.fs.promises.writeFile(...args),
     axios: { create: () => ({}) },
     '../utils/embedExtraction': {
@@ -68,7 +65,7 @@ function loadRoute(relative, stubs, suffix = '', timerOverrides = {}) {
 }
 const cacheStub = {
   CACHE_DIR: { CPASMAL: '/fixture/cpasmal', COFLIX: '/fixture/coflix' },
-  ANIME_SAMA_CACHE_DIR: '/fixture/anime', generateCacheKey: () => 'fixture-key'
+  generateCacheKey: () => 'fixture-key'
 };
 const basicFs = { access: async () => {}, mkdir: async () => {}, utimes: async () => {} };
 const lockStub = { acquireRedisLock: async () => ({ release: async () => {} }) };
@@ -378,126 +375,6 @@ test('Cpasmal: failed background retrieval surfaces on polling and retries after
     assert.equal(h.counts.scrapes, 2);
     assert.equal(h.counts.writes, 1);
   }
-});
-
-function animeHarness(fresh = false, cached = null, scanned = null) {
-  const episodes = [{ name: 'Episode 1', index: 1, streaming_links: [{ language: 'vostfr', players: ['https://fixture.invalid/play'] }] }];
-  let raw = JSON.stringify({ timestamp: now - 7200000, seasons: { 'Saison 1': { episodes: cached || episodes } } });
-  let mtime = now - (fresh ? 1000 : 7200000);
-  let fail = false;
-  const counts = { catalogs: 0, scans: 0, writes: 0, touches: 0 };
-  const loaded = loadRoute('API/Mainapi/routes/animeSama.js', {
-    fs: { promises: { ...basicFs, readdir: async () => ['Example Anime.json'], readFile: async () => raw, stat: async () => ({ mtime: new Date(mtime) }), utimes: async (_path, _atime, checkedAt) => { counts.touches++; mtime = checkedAt.getTime(); } } },
-    'write-file-atomic': async (_path, value) => { counts.writes++; raw = value; mtime = now; },
-    '../utils/cacheManager': cacheStub, '../config/redis': { memoryCache: { set: async () => {} } },
-  }, `module.exports.audit = { setScan(fn) { Season.prototype.episodes = fn; } };`);
-  loaded.exports.configure({
-    ANIME_SAMA_URL: 'https://anime-sama.invalid/',
-    getFromCacheNoExpiration: async () => [{ name: 'Example Anime', url: 'https://anime-sama.invalid/catalogue/example/' }],
-    axiosAnimeSamaRequest: async () => { counts.catalogs++; if (fail) throw new Error('timeout'); return { data: 'panneauAnime("Saison 1", "saison1/vostfr");' }; },
-    cleanupOldCacheFiles: async () => {},
-  });
-  loaded.exports.audit.setScan(async () => { counts.scans++; return scanned || episodes; });
-  const call = () => loaded.routes.get('get /search/:query')({ params: { query: 'example' }, query: {}, headers: {} }, response());
-  return { counts, call, set fail(value) { fail = value; }, get data() { return JSON.parse(raw); }, get mtime() { return mtime; } };
-}
-
-test('AnimeSama: fresh caches skip seasons entirely under 20 simultaneous searches', async () => {
-  const h = animeHarness(true);
-  await Promise.all(Array.from({ length: 20 }, () => h.call())); await settle();
-  assert.deepEqual(h.counts, { catalogs: 0, scans: 0, writes: 0, touches: 0 });
-});
-
-test('AnimeSama: expired unchanged catalogs are checked once and touch only the file freshness', async () => {
-  const h = animeHarness(); const original = h.data;
-  await Promise.all(Array.from({ length: 20 }, () => h.call())); await settle();
-  await h.call(); await settle();
-  assert.deepEqual(h.counts, { catalogs: 1, scans: 1, writes: 0, touches: 1 });
-  assert.deepEqual(h.data, original);
-  assert.equal(h.mtime, now);
-});
-
-test('AnimeSama: upstream failure retains usable data and retries only after backoff', async () => {
-  const h = animeHarness(); const original = h.data; h.fail = true;
-  await h.call(); await settle(); await h.call(); await settle();
-  assert.equal(h.counts.catalogs, 1); assert.equal(h.counts.writes, 0);
-  assert.deepEqual(h.data, original);
-  now += 60001; h.fail = false;
-  await h.call(); await settle();
-  assert.equal(h.counts.catalogs, 2); assert.equal(h.counts.writes, 0);
-  assert.equal(h.counts.touches, 1);
-});
-
-test('AnimeSama: removed players, languages and episodes leave the cache', async () => {
-  const ep = (index, links) => ({ name: `Episode ${index}`, serie_name: 'example', season_name: 'Saison 1', index, streaming_links: links });
-  const cached = [
-    ep(1, [{ language: 'vostfr', players: ['https://a.invalid/1', 'https://b.invalid/1'] }, { language: 'vf', players: ['https://a.invalid/vf1'] }]),
-    ep(2, [{ language: 'vostfr', players: ['https://a.invalid/2'] }]),
-  ];
-  const scanned = [ep(1, [{ language: 'vostfr', players: ['https://a.invalid/1'] }])];
-  const h = animeHarness(false, cached, scanned);
-  await h.call(); await settle();
-  assert.equal(h.counts.writes, 1);
-  assert.deepEqual(h.data.seasons['Saison 1'].episodes, scanned);
-});
-
-test('AnimeSama: older-format caches and empty languages do not force a rewrite', async () => {
-  const links = [{ language: 'vostfr', players: ['https://a.invalid/1'] }];
-  const cached = [{ name: 'Episode 1', index: 1, streaming_links: links, legacy: true }];
-  const scanned = [{ name: 'Episode 1', serie_name: 'example', season_name: 'Saison 1', index: 1, streaming_links: [...links, { language: 'vf', players: [] }] }];
-  const h = animeHarness(false, cached, scanned);
-  await h.call(); await settle();
-  assert.equal(h.counts.writes, 0);
-  assert.equal(h.counts.touches, 1);
-});
-
-test('AnimeSama: an empty season scan keeps the cached episodes', async () => {
-  const h = animeHarness(false, null, []); const original = h.data;
-  await h.call(); await settle();
-  assert.equal(h.counts.writes, 0);
-  assert.deepEqual(h.data, original);
-});
-
-test('AnimeSama: unchanged worker cannot replace episodes published after its version check', async () => {
-  const episode = { name: 'Episode 1', index: 1, streaming_links: [{ language: 'vostfr', players: ['https://fixture.invalid/play'] }] };
-  const newerEpisode = { ...episode, name: 'Episode 2', index: 2 };
-  let raw = JSON.stringify({ timestamp: now - 7200000, seasons: { 'Saison 1': { episodes: [episode] } } });
-  let mtime = now - 7200000;
-  const gate = deferred();
-  let delayedCheck = false;
-  const writes = [];
-  const touches = [];
-  function worker(name, episodes) {
-    let stats = 0;
-    const route = loadRoute('API/Mainapi/routes/animeSama.js', {
-      fs: { promises: { ...basicFs, readdir: async () => ['Example Anime.json'], readFile: async () => raw,
-        stat: async () => {
-          stats++; const value = { mtime: new Date(mtime) };
-          if (name === 'unchanged' && stats === 2) { delayedCheck = true; await gate.promise; }
-          return value;
-        },
-        utimes: async (_path, _atime, checkedAt) => { touches.push(name); mtime = checkedAt.getTime(); },
-      } },
-      'write-file-atomic': async (_path, value) => { writes.push(name); raw = value; mtime = now; },
-      '../utils/cacheManager': cacheStub, '../config/redis': { memoryCache: {} },
-    }, 'module.exports.scan = fn => { Season.prototype.episodes = fn; };');
-    route.exports.scan(async () => episodes);
-    route.exports.configure({
-      ANIME_SAMA_URL: 'https://anime-sama.invalid/',
-      getFromCacheNoExpiration: async () => [{ name: 'Example Anime', url: 'https://anime-sama.invalid/catalogue/example/' }],
-      axiosAnimeSamaRequest: async () => ({ data: 'panneauAnime("Saison 1", "saison1/vostfr");' }),
-      cleanupOldCacheFiles: async () => {},
-    });
-    return () => route.routes.get('get /search/:query')({ params: { query: 'example' }, query: {}, headers: {} }, response());
-  }
-  await worker('unchanged', [episode])(); await settle(); assert(delayedCheck);
-  await worker('changed', [episode, newerEpisode])(); await settle();
-  const newerPayload = raw;
-  gate.resolve(); await settle();
-  assert.equal(raw, newerPayload);
-  assert.equal(JSON.parse(raw).seasons['Saison 1'].episodes.length, 2);
-  assert.deepEqual(writes, ['changed']);
-  assert.deepEqual(touches, ['unchanged']);
 });
 
 test('Coflix: cold validation errors preserve HTTP 400 with the real enrichment helper', async () => {

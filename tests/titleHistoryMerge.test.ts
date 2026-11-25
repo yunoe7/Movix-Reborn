@@ -104,7 +104,7 @@ test('mergeEpisode : progression locale d’abord, sinon serveur ; coche = marqu
   assert.deepEqual(merge.mergeEpisode({ percent: 0, hasProgress: false, watched: false }, episode(1, 1, { watched: true, marked: true, estimated: true })).serverWatched, 'otherDevice');
 });
 
-test('série marquée « Déjà vu » en entier : chaque épisode affiché compte comme vu (hors animé)', () => {
+test('série marquée « Déjà vu » en entier : chaque épisode affiché compte comme vu (hors anciennes entrées animeMode)', () => {
   assert.equal(merge.seriesFullyMarked(server({ mediaType: 'tv', markedWatched: true })), true);
   assert.equal(merge.seriesFullyMarked(server({ mediaType: 'tv', markedWatched: true, animeMode: true })), false);
   assert.equal(merge.seriesFullyMarked(server({ mediaType: 'tv' })), false);
@@ -118,7 +118,7 @@ test('durée nulle ou négative = inconnue (cas 0/0 du serveur)', () => {
   assert.equal(merge.movieResume(null, server({ position: 1556, duration: 0 })), null);
   assert.deepEqual(merge.mergeEpisode({ percent: 0, hasProgress: false, watched: false }, episode(1, 1, { position: 0, duration: 0 })),
     { percent: 0, hasProgress: false, watched: false, serverWatched: null, estimated: false });
-  const result = merge.seriesResume(noLocalResume(), server({ mediaType: 'tv', season: 1, episode: 2, position: 0, duration: 0 }), { pageAnimeMode: false, availableSeasons: [], defaultStartSeason: 1 });
+  const result = merge.seriesResume(noLocalResume(), server({ mediaType: 'tv', season: 1, episode: 2, position: 0, duration: 0 }), { availableSeasons: [], defaultStartSeason: 1 });
   assert.equal(result.hasProgress, false);
   assert.equal(result.episodeNumber, 2);
 });
@@ -130,7 +130,7 @@ function noLocalResume() {
 // --- Série : reprise -------------------------------------------------------------------------
 
 const noLocal = { seasonNumber: 1, episodeNumber: 1, position: 0, duration: 0, hasProgress: false };
-const context = { pageAnimeMode: false, availableSeasons: [1, 2, 7], defaultStartSeason: 1 };
+const context = { availableSeasons: [1, 2, 7], defaultStartSeason: 1 };
 
 test('seriesResume : reprise locale d’abord', () => {
   const local = { seasonNumber: 2, episodeNumber: 3, position: 100, duration: 2000, hasProgress: true };
@@ -146,14 +146,11 @@ test('seriesResume : sans reprise locale, l’épisode courant du serveur', () =
   assert.deepEqual(marked, { seasonNumber: 7, episodeNumber: 6, position: 0, duration: 0, hasProgress: false, estimated: false, fromServer: true });
 });
 
-test('seriesResume : saison absente de la fiche ou numérotation animé différente → local inchangé', () => {
+test('seriesResume : saison absente de la fiche ou ancienne numérotation animeMode → local inchangé', () => {
   const remote = server({ mediaType: 'tv', season: 9, episode: 1, position: 100, duration: 2000 });
   assert.deepEqual(merge.seriesResume(noLocal, remote, context), { ...noLocal, estimated: false, fromServer: false });
-  const anime = server({ mediaType: 'tv', animeMode: true, season: 2, episode: 12, position: 100, duration: 1400 });
-  assert.deepEqual(merge.seriesResume(noLocal, anime, context), { ...noLocal, estimated: false, fromServer: false });
-  // Fiche en mode animé et serveur en mode animé : la reprise animé est gardée (saisons TMDB non vérifiées).
-  assert.deepEqual(merge.seriesResume(noLocal, anime, { ...context, pageAnimeMode: true }),
-    { seasonNumber: 2, episodeNumber: 12, position: 100, duration: 1400, hasProgress: true, estimated: false, fromServer: true });
+  const legacyAnime = server({ mediaType: 'tv', animeMode: true, season: 2, episode: 12, position: 100, duration: 1400 });
+  assert.deepEqual(merge.seriesResume(noLocal, legacyAnime, context), { ...noLocal, estimated: false, fromServer: false });
 });
 
 // --- Écriture de la reprise du serveur dans le stockage local (le lecteur lit progress_*) -----

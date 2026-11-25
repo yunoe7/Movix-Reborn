@@ -26,8 +26,8 @@ npm run wasm:watchparty-sync:build
 
 ## Ce que le frontend gère
 
-- découverte de films et de séries ; les anime liés à TMDB sont intégrés au catalogue Séries (notamment le genre Animation)
-- pages de lecture pour films et séries ; les anciens liens de lecture anime restent compatibles et utilisent le lecteur TV
+- découverte de films et de séries ; le catalogue anime vient uniquement de TMDB (genre Animation, signaux TMDB) et fait partie du catalogue Séries
+- pages de lecture pour films et séries ; toutes les séries, animes compris, utilisent le même lecteur VidRift (`src/components/VidRiftPlayer.tsx`) via `/watch/tv/...`
 - Live TV et providers annexes
 - WatchParty, création de room, join, liste publique et Sync Pro
 - comptes, auth, profils multiples et sessions
@@ -73,7 +73,7 @@ src/
 Le routeur principal est dans `src/App.tsx`. Les grandes familles de routes sont :
 
 - navigation catalogue : `/`, `/movies`, `/tv-shows`, `/collections`, `/movie/:id`, `/tv/:id` (`/anime` redirige vers `/tv-shows`)
-- lecture : `/watch/movie/:tmdbid`, `/watch/tv/:tmdbid/s/:season/e/:episode` ; `/watch/anime/...` reste une route de compatibilité pour les anciens liens
+- lecture : `/watch/movie/:tmdbid`, `/watch/tv/:tmdbid/s/:season/e/:episode` (animes inclus ; les anciens liens d'historique sont réécrits vers cette route)
 - social / communautaire : `/wishboard`, `/list/:shareCode`, `/top10`, `/wrapped`
 - compte / profils / VIP : `/profile`, `/profile-selection`, `/settings`, `/vip`, `/vip/don`
 - temps réel : `/watchparty/create`, `/watchparty/join`, `/watchparty/room/:roomId`

@@ -40,7 +40,7 @@ const HOSTER_PATTERNS = Object.freeze({
         '(?:lukesitturn|mariatheserepublican|marissasharecareer|matriculant401merited|matthewhotelscience|maxfinishseveral|metagnathtuggers|michaelapplysome|mikaylaarealike|nathanfromsubject|nectareousoverelate|nonesnanking|ogladaj|pamelachangemission|paulkitchendark|preferciseaccurate)\\.',
         '(?:prepareddare|ralphysuccessfull|realfinanceblogcenter|rebeccaneverbase|rebeccapracticeloss|reputationsheriffkennethsand|richardsignfish|roberteachfinal|robertordercharacter|robertplacespace|sandratableother|sandrataxeight|scatch176duplicities|sethniceletter|shannonpersonalcost|simpulumlamerop|smoki)\\.',
         '(?:stevenfamilyedge|stevenimaginelittle|strawberriesporail|telyn610zoanthropy|timberwoodanotia|timmaybealready|toddpartneranimal|toxitabellaeatrebates306|tracylocalschool|uptodatefinishconferenceroom|valeronevijao|walterprettytheir|wolfdyslectic|yodelswartlike)\\.',
-        // Domaines VOE des lecteurs d'anime-sama (table `lecteursInfos`, 2026-10-19).
+        // Domaines VOE observés (table `lecteursInfos`, 2026-10-19).
         '(?:claireguessthousand|derricknationtop|jamesbornmain|jeremyparticipantanything|megankiddifference|teresapoliticallearn)\\.',
     ],
     // `ansembed` sert le lecteur Vidmoly sous un autre nom : même extracteur.
@@ -414,9 +414,9 @@ async function extractPlayerList(players, options = {}) {
  * Résout une liste d'URLs et renvoie la table « lien -> m3u8 ».
  *
  * Pour les catalogues dont les lecteurs ne sont pas des objets auxquels on
- * pourrait ajouter un champ : chaînes brutes (Anime-Sama) ou listes mixtes
- * chaînes/objets (les liens communautaires stockés en MySQL). Le client lit
- * cette table par lien (cf. `registerServerResolvedSources` côté frontend).
+ * pourrait ajouter un champ : chaînes brutes ou listes mixtes chaînes/objets
+ * (les liens communautaires stockés en MySQL). Le client lit cette table par
+ * lien (cf. `registerServerResolvedSources` côté frontend).
  *
  * @returns {Promise<Object<string,string>>}
  */

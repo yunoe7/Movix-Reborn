@@ -22,8 +22,8 @@ export interface ContinueItem {
   episodeOverview: string | null;
   stillPath: string | null;
   /**
-   * Série lue en mode animé (anime-sama) : saison/épisode suivent anime-sama,
-   * pas TMDB (nom, résumé et image d'épisode à null). Absent → false.
+   * Ancienne série en mode anime (profils historiques) : saison/épisode ne
+   * suivent pas TMDB (nom, résumé et image d'épisode à null). Absent → false.
    */
   animeMode?: boolean;
 }
@@ -45,7 +45,7 @@ export interface HomeContinueItem {
   position: number;
   duration: number;
   lastAccessed: string;
-  /** Épisode numéroté par anime-sama (voir ContinueItem.animeMode). */
+  /** Épisode numéroté hors TMDB (ancien marqueur historique, voir ContinueItem). */
   animeMode: boolean;
 }
 
@@ -62,7 +62,7 @@ export interface HistoryListItem extends Omit<ContinueItem, 'position' | 'durati
   estimated: boolean;
   /** Titre marqué « Déjà vu » (film vu, série entière vue). */
   markedWatched: boolean;
-  /** Série en mode animé : episodesTotal à null, lien vers le lecteur animé. */
+  /** Ancienne entrée historique : episodesTotal à null, lien TV/VidRift. */
   animeMode: boolean;
   /** Série : épisodes vus (progression, marque « Déjà vu » ou estimé). Film : null. */
   episodesWatched: number | null;
@@ -385,7 +385,7 @@ export interface TitleHistory {
   episode: number | null;
   episodesWatched: number | null;
   episodesTotal: number | null;
-  /** Série : tous les épisodes connus ; en mode animé, numéros anime-sama. */
+  /** Série : tous les épisodes connus ; anciennes entrées historiques : numérotation hors TMDB. */
   episodes: TitleHistoryEpisode[];
 }
 

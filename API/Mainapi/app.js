@@ -35,10 +35,7 @@ const {
   CACHE_DIR,
 } = require("./utils/cacheManager");
 
-const {
-  limitConcurrency3,
-  limitConcurrency10,
-} = require("./utils/concurrency");
+const { limitConcurrency3 } = require("./utils/concurrency");
 
 const {
   CPASMAL_BASE_URL,
@@ -121,15 +118,6 @@ const axiosCoflix = axios.create({
   decompress: true,
 });
 
-const axiosAnimeSama = axios.create({
-  timeout: 30000,
-  headers: {
-    "User-Agent":
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-  },
-  decompress: true,
-});
-
 // Darkino session refresh — coordonné via Redis pour qu'un SEUL worker du
 // cluster pinge l'upstream toutes les 10 minutes (et pas N workers en parallèle,
 // ce qui ferait exploser la limite de session côté darkiworld).
@@ -183,8 +171,6 @@ axiosHelpers.configure({
   coflixHeaders,
   COFLIX_BASE_URL,
   axiosCoflix,
-  axiosAnimeSama,
-  ANIME_SAMA_URL: "https://anime-sama.to/",
 });
 
 // Les agents HTTP globaux sont configurés dans proxyManager, chargé ci-dessus.
@@ -269,8 +255,6 @@ const DOWNLOAD_CACHE_DIR = require("path").join(
   "cache",
   "darkinodownloadlink",
 );
-const ANIME_SAMA_URL = "https://anime-sama.to/";
-
 // Shared deps object for common dependencies
 const commonDeps = {
   TMDB_API_KEY,
@@ -306,40 +290,6 @@ const frenchstream = require("./routes/frenchstream");
 frenchstream.configure({
   axiosFrenchStreamRequest: axiosHelpers.axiosFrenchStreamRequest,
   // findTvSeriesOnTMDB will be injected after tmdb is configured
-});
-
-// --- Configure animeSama ---
-const animeSamaRouter = require("./routes/animeSama");
-const animeSamaShared = require("./utils/animeSamaShared");
-const animeSamaIndexModule = require("./utils/animeSamaIndex");
-// Index du catalogue (ID TMDB de chaque fiche, page Animes, planning). La tâche
-// de fond est lancée plus bas, une fois les tables créées, sur un seul worker.
-const animeSamaIndex = animeSamaIndexModule.createAnimeSamaIndex({
-  store: animeSamaIndexModule.createAnimeSamaStore({ getPool: () => require("./mysqlPool").getPool() }),
-  request: axiosHelpers.axiosAnimeSamaRequest,
-  siteUrl: ANIME_SAMA_URL,
-  acquireLock: animeSamaShared.createRefreshLock({ redis, ttlSeconds: 180 }),
-  // Fiche sans ID TMDB : celui que donne son ID AniList ou MyAnimeList.
-  resolveTmdb: require("./utils/animeSamaTmdbResolver").createArmTmdbResolver(),
-});
-animeSamaRouter.configure({
-  ANIME_SAMA_URL,
-  axiosAnimeSama,
-  axiosAnimeSamaRequest: axiosHelpers.axiosAnimeSamaRequest,
-  getFromCacheNoExpiration,
-  saveToCache,
-  cleanupOldCacheFiles: axiosHelpers.cleanupOldCacheFiles,
-  migrateOldCacheFiles: axiosHelpers.migrateOldCacheFiles,
-  limitConcurrency10,
-  // Table des lecteurs « hors service », relue sur une page de saison au plus 1 fois/h.
-  deadPlayerList: require("./utils/animeSamaDeadPlayers").createDeadPlayerList({
-    request: axiosHelpers.axiosAnimeSamaRequest,
-  }),
-  // Un seul worker actualise une œuvre à la fois, et tous partagent le débit
-  // des demandes d'adresses à /api/lien.php.
-  acquireRefreshLock: animeSamaShared.createRefreshLock({ redis, ttlSeconds: 120 }),
-  linkBudget: animeSamaShared.createLinkBudget({ redis, perSecond: 10 }),
-  animeIndex: animeSamaIndex,
 });
 
 // --- Configure tmdb ---
@@ -416,7 +366,6 @@ app.use("/api/shared-lists", sharedListsRouter);
 app.use("/api/livetv", require("./liveTvRoutes"));
 
 // New modular routes
-app.use('/anime', animeSamaRouter);
 app.use('/api', tmdbRouter);
 app.use('/', searchRouter);
 app.use('/api', downloadRouter);
@@ -707,22 +656,6 @@ const appReady = (async () => {
       } catch (error) {
         console.error('Hero promo tables init error:', error?.message || error);
       }
-
-      // Index du catalogue d'anime-sama (idempotent). Sans ces tables, la
-      // recherche par ID TMDB répond vide et le site retombe sur la recherche
-      // par nom : l'API démarre quand même.
-      try {
-        await ensureTableGroup(pool, 'animeSama');
-        console.log('Anime-Sama index tables initialized successfully');
-      } catch (error) {
-        console.error('Anime-Sama index tables init error:', error?.message || error);
-      }
-    });
-
-    // Lecture du catalogue et du planning d'anime-sama : un seul worker du
-    // cluster (emplacement 0), ou le processus lancé hors cluster.
-    animeSamaIndex.start({
-      isOwner: process.env.MOVIX_WORKER_SLOT === undefined || process.env.MOVIX_WORKER_SLOT === '0',
     });
   } catch (error) {
     console.error("MySQL connection error:", error.message);

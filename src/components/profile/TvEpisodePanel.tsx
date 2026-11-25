@@ -78,15 +78,11 @@ function groupBySeason(keys: string[]): Array<[number, string[]]> {
 }
 
 /**
- * Les animés gardent la liste détaillée même « série entière » : ancien format
- * d'épisodes, cache anime-sama, ou numéros d'épisode très élevés.
+ * Certaines séries gardent la liste détaillée même « série entière » : ancien
+ * format d'épisodes ou numéros d'épisode très élevés (anciens profils).
  */
-function isAnimeShow(showId: number): boolean {
+function needsDetailedEpisodeList(showId: number): boolean {
   if (readStoredArray<WatchItem>('watched_tv_episodes').some((entry) => entry?.id === showId)) return true;
-  const idText = String(showId);
-  try {
-    if (Object.keys(localStorage).some((key) => key.includes('anime-sama') && key.includes(idText))) return true;
-  } catch { /* stockage inaccessible */ }
   return Object.keys(readStoredRecord(`watched_episodes_tv_${showId}`)).some(
     (key) => (parseKey(key)?.episode ?? 0) > 50,
   );
@@ -201,7 +197,7 @@ export default function TvEpisodePanel({ showId, showTitle, listType, onClose, d
       : { episodes: [], isFullSeries: false },
   );
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set());
-  const isAnime = useMemo(() => isAnimeShow(showId), [showId]);
+  const keepDetailedList = useMemo(() => needsDetailedEpisodeList(showId), [showId]);
 
   // Relecture à chaque changement de série ou de liste.
   useEffect(() => {
@@ -278,7 +274,7 @@ export default function TvEpisodePanel({ showId, showTitle, listType, onClose, d
       return <p className="text-[15px] text-white/60">{t('profilePage.episodes.favoritesApplyToSeries')}</p>;
     }
 
-    if (state.isFullSeries && !isAnime) {
+    if (state.isFullSeries && !keepDetailedList) {
       const Icon = episodeList === 'watched' ? Eye : ListVideo;
       return (
         <p className="flex items-center gap-3 rounded-lg bg-black/40 px-4 py-3 text-[15px] text-white/80">

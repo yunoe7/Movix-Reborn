@@ -14,9 +14,6 @@ import { useWrappedTracker } from '../hooks/useWrappedTracker';
 import { getTmdbLanguage } from '../i18n';
 import { readSessionStorage, writeSessionStorage } from '../utils/browserStorage';
 import { getMinimumCarouselCategoryItems, makeExclusiveCategories } from '../utils/exclusiveCategories';
-import { fetchAnimeCatalogue } from '../services/animeSamaService';
-import { getNumericAge } from '../utils/certificationUtils';
-
 // Nombre de sections à charger immédiatement
 const IMMEDIATE_LOAD_COUNT = 2;
 
@@ -281,70 +278,6 @@ interface Category {
 
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
-const fetchLinkedAnimeShows = async (language: string): Promise<TVShow[]> => {
-  if (!TMDB_API_KEY) return [];
-  try {
-    // The index contains the full Anime-Sama catalogue. Read every page rather
-    // than sampling only the first 30 ongoing + 30 dubbed titles.
-    const firstPage = await fetchAnimeCatalogue({
-      type: 'tv', linked: true, sort: 'recent', page: 1, limit: 60,
-    });
-    const cataloguePages = [firstPage];
-    for (let page = 2; page <= firstPage.totalPages; page += 4) {
-      const pageNumbers = Array.from(
-        { length: Math.min(4, firstPage.totalPages - page + 1) },
-        (_, index) => page + index,
-      );
-      const nextPages = await Promise.all(pageNumbers.map((pageNumber) =>
-        fetchAnimeCatalogue({
-          type: 'tv', linked: true, sort: 'recent', page: pageNumber, limit: 60,
-        }),
-      ));
-      cataloguePages.push(...nextPages);
-    }
-
-    const ids = [...new Set(cataloguePages.flatMap((cataloguePage) =>
-      cataloguePage.items.flatMap((item) => item.tmdb?.type === 'tv' ? [item.tmdb.id] : []),
-    ))];
-    const shows: TVShow[] = [];
-    // Keep TMDB traffic bounded while checking every linked title's age rating.
-    for (let index = 0; index < ids.length; index += 10) {
-      const batch = ids.slice(index, index + 10);
-      const fetched = await Promise.all(batch.map(async (id) => {
-        try {
-          const { data } = await axios.get(`https://api.themoviedb.org/3/tv/${id}`, {
-            params: { api_key: TMDB_API_KEY, language, append_to_response: 'content_ratings' },
-          });
-          const ratings = data.content_ratings?.results ?? [];
-          const certification = ratings.find((item: any) => item.iso_3166_1 === 'FR' && item.rating)?.rating
-            || ratings.find((item: any) => item.iso_3166_1 === 'US' && item.rating)?.rating || '';
-          if (certification && getNumericAge(certification) >= 17) return null;
-          if (!data.name || !data.poster_path) return null;
-          return {
-            id,
-            name: data.name,
-            poster_path: data.poster_path,
-            backdrop_path: data.backdrop_path || '',
-            overview: data.overview || '',
-            vote_average: data.vote_average || 0,
-            first_air_date: data.first_air_date || '',
-            genre_ids: (data.genres || []).map((genre: { id: number }) => genre.id),
-            media_type: 'tv' as const,
-          };
-        } catch {
-          return null;
-        }
-      }));
-      shows.push(...fetched.filter((show): show is TVShow => Boolean(show)));
-    }
-    return shows;
-  } catch {
-    // The main TV catalogue remains available if the linked anime index is down.
-    return [];
-  }
-};
-
-
 const normalizeTVItem = <T extends { poster_path?: string | null; backdrop_path?: string | null; overview?: string | null }>(
   item: T
 ) => ({
@@ -548,6 +481,20 @@ const TVShows: React.FC = () => {
             }
           })
         ),
+        // Animes/séries d'animation TMDB (pages 1-3) : le catalogue anime vient
+        // uniquement de TMDB depuis la suppression de l'ancien index externe.
+        ...Array.from({ length: 3 }, (_, i) =>
+          axios.get(`https://api.themoviedb.org/3/discover/tv`, {
+            params: {
+              api_key: TMDB_API_KEY,
+              language: getTmdbLanguage(),
+              page: i + 1,
+              sort_by: 'popularity.desc',
+              with_genres: '16', // Animation
+              include_adult: false
+            }
+          })
+        ),
         // Séries crime (pages 1-3)
         ...Array.from({ length: 3 }, (_, i) =>
           axios.get(`https://api.themoviedb.org/3/discover/tv`, {
@@ -602,8 +549,7 @@ const TVShows: React.FC = () => {
         ),
       ];
 
-      // Le catalogue TMDB principal doit s'afficher sans attendre l'index
-      // Anime-Sama ni les vérifications de certification de chaque anime.
+      // Le catalogue TMDB principal s'affiche sans requête annexe.
       const genreResponses = await Promise.all(genreRequests);
       if (!isCurrent()) return;
 
@@ -624,8 +570,7 @@ const TVShows: React.FC = () => {
           }))
       );
 
-      // Combiner les séries TMDB et les animes liés au catalogue du site.
-      // Les deux sont des contenus TV : ils partagent les mêmes fiches et le lecteur VidRift.
+      // Les animes sont des séries TMDB (genre Animation) : même fiche, même lecteur VidRift.
       const allShows = [...validShows];
 
       additionalShows.forEach(newShow => {
@@ -740,27 +685,6 @@ const TVShows: React.FC = () => {
   useEffect(() => {
     fetchTVShows();
     return () => { fetchGeneration.current += 1; };
-  }, []);
-
-  // Charger les animes liés en arrière-plan : leur index peut être volumineux
-  // et ne doit jamais bloquer l'affichage initial du catalogue Séries.
-  useEffect(() => {
-    let cancelled = false;
-    fetchLinkedAnimeShows(getTmdbLanguage()).then((linkedShows) => {
-      if (cancelled || linkedShows.length === 0) return;
-      setTVShows((currentShows) => {
-        if (cancelled) return currentShows;
-        const mergedShows = [...currentShows];
-        linkedShows.forEach((show) => {
-          if (!mergedShows.some((current) => current.id === show.id)) {
-            mergedShows.push(show);
-          }
-        });
-        organizeContentByCategories(mergedShows);
-        return mergedShows;
-      });
-    });
-    return () => { cancelled = true; };
   }, []);
 
   // Fetch representative TMDB images for each TV genre and cache for 24h

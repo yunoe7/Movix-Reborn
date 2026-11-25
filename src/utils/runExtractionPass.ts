@@ -1,7 +1,7 @@
 // src/utils/runExtractionPass.ts
 //
 // Passe d'extraction m3u8 partagée entre tous les agrégateurs (wiflix, viper,
-// coflix, j1f, swiftflow, vox, firebase/custom, anime-sama…).
+// coflix, j1f, swiftflow, vox, firebase/custom, source anime…).
 //
 // Historique : chaque agrégateur avait son propre bloc d'extraction écrit à la
 // main, avec une couverture partielle et arbitraire des hosters (wiflix ne
@@ -46,7 +46,7 @@ export interface ExtractionPassSource {
   /**
    * Données libres recopiées telles quelles sur la source extraite. Sert aux
    * appelants qui doivent retrouver un champ d'origine que le helper ne
-   * modélise pas (la langue anime-sama, un identifiant d'épisode…).
+   * modélise pas (une langue d'origine, un identifiant d'épisode…).
    */
   meta?: Record<string, unknown>;
 }

@@ -11,10 +11,7 @@ const { redis } = require('../config/redis');
 
 // === CACHE DIRECTORIES ===
 // NOTE: __dirname is API/utils/, so we go up one level to reach API/
-const ANIME_SAMA_CACHE_DIR = path.join(__dirname, '..', 'cache', 'anime-sama');
-
 const CACHE_DIR = {
-  ANIME_SAMA: ANIME_SAMA_CACHE_DIR,
   COFLIX: path.join(__dirname, '..', 'cache', 'coflix'),
   CPASMAL: path.join(__dirname, '..', 'cache', 'cpasmal'),
   TVDIRECT: path.join(__dirname, '..', 'cache', 'tvdirect'),
@@ -283,7 +280,6 @@ const shouldUpdateCache48h = async (cacheDir, cacheKey) => {
 
 module.exports = {
   CACHE_DIR,
-  ANIME_SAMA_CACHE_DIR,
   generateCacheKey,
   correctStreamType,
   getFromCacheWithExpiration,

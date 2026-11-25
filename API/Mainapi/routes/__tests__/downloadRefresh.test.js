@@ -19,7 +19,7 @@ function fixture({ cachedData, axios, saveResult = true }) {
       path,
       fs: { promises: { unlink: async () => {} } },
       axios,
-      '../utils/cacheManager': { generateCacheKey: (key) => key, ANIME_SAMA_CACHE_DIR: 'anime', getCacheRefreshInfo: async () => ({}) },
+      '../utils/cacheManager': { generateCacheKey: (key) => key, getCacheRefreshInfo: async () => ({}) },
       '../utils/singleFlight': { createSingleFlight },
       '../utils/downloadM3u8': downloadM3u8,
     };

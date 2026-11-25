@@ -23,7 +23,6 @@ import {
   SOURCE_URL_TOKEN_PATTERN,
   STRIP_SITE_NAME_PATTERN,
   TMDB_IMAGE_BASE,
-  WATCH_ANIME_PATH_PATTERN,
   WATCH_MOVIE_PATH_PATTERN,
   WATCH_TITLE_NEW_PAGE_PATTERN,
   WATCH_TITLE_SKIP_PATTERN,
@@ -976,7 +975,7 @@ export function getWatchTitle(fallback: string): string {
 
 export function getFormattedWatchTitle(
   fallbackTitle: string,
-  mediaTypeFallback: 'movie' | 'tv' | 'anime',
+  mediaTypeFallback: 'movie' | 'tv',
   seasonFallback = '',
   episodeFallback = '',
 ): string {
@@ -985,7 +984,7 @@ export function getFormattedWatchTitle(
     = normalizeText(context.mediaType).toLowerCase() || mediaTypeFallback
   const title = sanitizeWatchTitle(context.title) || fallbackTitle
 
-  if (mediaType === 'tv' || mediaType === 'anime') {
+  if (mediaType === 'tv') {
     const season = normalizeText(context.season) || seasonFallback
     const episode = normalizeText(context.episode) || episodeFallback
     const episodeCode = season && episode ? `S${season}E${episode}` : ''
@@ -1006,17 +1005,13 @@ export function getWatchEpisodeHoverLabel(season: string, episode: string): stri
 
 export function getWatchMediaTypeForPath(
   pathname: string,
-): 'movie' | 'tv' | 'anime' | '' {
+): 'movie' | 'tv' | '' {
   if (WATCH_MOVIE_PATH_PATTERN.test(pathname)) {
     return 'movie'
   }
 
   if (WATCH_TV_PATH_PATTERN.test(pathname)) {
     return 'tv'
-  }
-
-  if (WATCH_ANIME_PATH_PATTERN.test(pathname)) {
-    return 'anime'
   }
 
   return ''

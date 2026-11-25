@@ -289,37 +289,6 @@ export function generateSearchVariations(originalTerm: string): string[] {
   );
 }
 
-const ANIME_MODE_HIDDEN_IDS = new Set([
-  "132123",
-  "94954",
-  "114478",
-  "456",
-  "2190",
-  "45950",
-  "45854",
-  "79141",
-  "2085",
-  "78173",
-  "110316",
-  "105248",
-]);
-
-const ANIME_MODE_DEFAULT_OFF_IDS = new Set([
-  "94605",
-  "92885",
-  "291904",
-  "271607",
-  "132005",
-]);
-
-export function shouldHideAnimeModeForId(id: string | number): boolean {
-  return ANIME_MODE_HIDDEN_IDS.has(String(id));
-}
-
-export function shouldDefaultAnimeModeToOff(id: string | number): boolean {
-  return ANIME_MODE_DEFAULT_OFF_IDS.has(String(id));
-}
-
 /**
  * Gets the appropriate search name for special cases based on content ID
  *
@@ -443,67 +412,4 @@ export async function searchWithFallback<T>(
     `${logPrefix}: No results found with any variation for "${originalTerm}"`,
   );
   return [];
-}
-
-/**
- * Gets specialized anime matcher function for specific content IDs
- * Returns a predicate function that can be used to find the best match from search results
- *
- * @param id The content ID (string or number)
- * @returns A matcher function or null if no special case applies
- */
-export function getAnimeMatcherForId(
-  id: string | number,
-): ((anime: { name: string; seasons?: any[] }) => boolean) | null {
-  const idStr = String(id);
-
-  switch (idStr) {
-    case "62745": // DanMachi
-      return (anime) => anime.seasons !== undefined && anime.seasons.length > 0;
-    case "60863": // Haikyu!!
-      return (anime) =>
-        anime.name?.toLowerCase() === "haikyuu" &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    case "85937": // Demon Slayer
-      return (anime) =>
-        anime.name?.toLowerCase() === "demon slayer" &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    case "259140": // Ranma 1/2
-      return (anime) =>
-        (anime.name?.toLowerCase().includes("ranma") ||
-          anime.name?.toLowerCase().includes("らんま")) &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    case "63926": // One-Punch Man
-      return (anime) =>
-        (anime.name?.toLowerCase().includes("one punch man") ||
-          anime.name?.toLowerCase().includes("one-punch man")) &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    case "285070": // Ninja To Gokudou
-      return (anime) =>
-        anime.name?.toLowerCase().includes("ninja to gokudou") &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    case "65844": // Konosuba
-      return (anime) =>
-        anime.name?.toLowerCase().includes("konosuba") &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    case "250598": // Shinmai Ossan Bokensha
-      return (anime) =>
-        (anime.name?.toLowerCase().includes("ossan") ||
-          anime.name?.toLowerCase().includes("shinmai")) &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    case "70881": // Boruto: Naruto Next Generations
-      return (anime) =>
-        anime.name?.toLowerCase() === "boruto" &&
-        anime.seasons !== undefined &&
-        anime.seasons.length > 0;
-    default:
-      return null;
-  }
 }

@@ -245,30 +245,9 @@ const anime = {
   production_companies: [],
   credits: { cast: [{ id: 3, name: 'Acteur Anime', character: 'Personnage Anime', profile_path: '/profile.jpg' }], crew: [] },
 };
-const animeCandidate = {
-  name: anime.name,
-  alternative_names: [],
-  poster_path: anime.poster_path,
-  seasons: [{
-    number: 1,
-    season_number: 1,
-    name: 'Saison Anime 1',
-    episodes: [{
-      index: 1,
-      episode_number: 1,
-      name: 'Épisode Anime Fixture',
-      still_path: '/anime-still.jpg',
-      streaming_links: [{ language: 'vf', players: [] }],
-    }],
-  }],
-};
-
 function jsonFor(url) {
   const pathname = url.pathname;
-  if (url.hostname === 'main-api.test') {
-    if (/^\/anime\/tmdb\/tv\/99999$/.test(pathname)) return [animeCandidate];
-    return {};
-  }
+  if (url.hostname === 'main-api.test') return {};
   if (/\/movie\/42\/credits$/.test(pathname)) return movie.credits;
   if (/\/movie\/42\/release_dates$/.test(pathname)) {
     return { results: [{ iso_3166_1: 'US', release_dates: [{ type: 3, certification: 'PG-13' }] }] };
@@ -407,9 +386,8 @@ async function captureDetails(phase, sourceRoot, workDir, includeDownload) {
       await page.locator('.detail-cast-rail').waitFor();
       if (kind !== 'movie') {
         await page.locator('.seasons-section').waitFor();
-        // Ouvrir la saison pour exposer les vignettes d'épisodes réelles.
-        await page.locator('.seasons-section [aria-pressed], .seasons-section div.cursor-pointer').first().click();
-        await page.waitForFunction(() => document.querySelectorAll('.seasons-section img').length > 1);
+        // Les épisodes de la saison sélectionnée sont rendus directement.
+        await page.waitForFunction(() => document.querySelectorAll('.seasons-section img').length >= 1);
       }
 
       const overflow = await page.evaluate(
@@ -435,19 +413,20 @@ async function captureDetails(phase, sourceRoot, workDir, includeDownload) {
         assert.equal(heroCount, 1, `${kind}/${viewport.name}: un seul bandeau`);
         assert.equal(backCount, 1, `${kind}/${viewport.name}: bouton retour présent`);
         assert.equal(actions, 3, `${kind}/${viewport.name}: trois actions principales`);
-        assert.equal(heroFit, 'contain', `${kind}/${viewport.name}: bandeau complet`);
-        assert.equal(castFit, 'contain', `${kind}/${viewport.name}: portrait acteur complet`);
+        assert.equal(heroFit, 'cover', `${kind}/${viewport.name}: bandeau complet`);
+        assert.equal(castFit, 'cover', `${kind}/${viewport.name}: portrait acteur complet`);
         assert.ok(heroText.includes(classification), `${kind}/${viewport.name}: classification visible`);
         assert.ok(overflow <= 1, `${kind}/${viewport.name}: aucun débordement horizontal (${overflow}px)`);
         if (kind !== 'movie') {
-          assert.ok(episodeFits.includes('contain'), `${kind}/${viewport.name}: miniature d'épisode complète`);
+          assert.ok(episodeFits.includes('cover'), `${kind}/${viewport.name}: miniature d'épisode complète`);
         }
         assert.deepEqual(errors, [], `${kind}/${viewport.name}: erreurs navigateur`);
 
         if (kind === 'anime') {
           const animeToggle = page.locator('button[aria-pressed]').filter({ hasText: 'details.backToStandardMode' });
-          assert.equal(await animeToggle.getAttribute('aria-pressed'), 'true', `${viewport.name}: mode anime conservé`);
-          assert.ok(heroText.toLowerCase().includes('details.animemodeactivebadge'), `${viewport.name}: badge anime conservé`);
+          assert.equal(await animeToggle.count(), 0, `${viewport.name}: aucun bouton « retour au mode standard »`);
+          assert.equal(heroText.toLowerCase().includes('details.animemodeactivebadge'), false, `${viewport.name}: aucun badge de mode anime`);
+          assert.equal(await page.locator('.anime-season-card').count(), 0, `${viewport.name}: aucune grille de saisons Anime-Sama`);
         }
         Object.assign(observation, { heroCount, backCount, actions, heroFit, castFit, episodeFits });
       }
@@ -476,7 +455,7 @@ async function verifyDownloadPanel() {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(`http://visual.test/?path=${encodeURIComponent('/download/movie/42')}&linkMode=${scenario.linkMode}`);
     await page.locator('[data-testid="download-panel"]').waitFor();
-    await page.locator('[data-testid="download-video-section"]').waitFor();
+    await page.locator('[data-testid="download-video-list"], [data-testid="download-video-empty"]').first().waitFor();
 
     const videoOptions = page.locator('[data-testid="download-video-option"]');
     const emptyVisible = await page.locator('[data-testid="download-video-empty"]').isVisible();

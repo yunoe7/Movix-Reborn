@@ -16,7 +16,6 @@ const supportedSources = [
   { name: 'SwiftFlow', color: '#818cf8' },
   { name: 'Coflix', color: '#3b82f6' },
   { name: 'Cpasmal', color: '#8b5cf6' },
-  { name: 'Anime-Sama', color: '#ec4899' },
   { name: 'France.tv', color: '#14b8a6' },
   { name: 'Northlive', color: '#f59e0b' },
   { name: 'Vavoo', color: '#10b981' },

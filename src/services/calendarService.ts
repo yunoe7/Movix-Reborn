@@ -38,7 +38,6 @@
  */
 import axios from 'axios';
 import { AlertService } from './alertService';
-import { fetchAnimePlanning } from './animeSamaService';
 import { getTmdbLanguage } from '../i18n';
 import { parseDateKey, toDateKey, todayKey } from '../utils/calendarEntries';
 import { readContinueWatchingShows, readWatchlist } from '../utils/calendarSources';
@@ -735,60 +734,6 @@ const airingEpisodesOf = async (
   return perShow.flat();
 };
 
-/**
- * Sorties d'animes annoncées par le planning d'anime-sama, la source anime du
- * site. TMDB donne la date de diffusion au Japon ; le planning donne l'heure à
- * laquelle l'épisode devient lisible ici, et dans quelle langue. Le Main API le
- * relit pour tout le monde (voir `services/animeSamaService.ts`) : une seule
- * requête, quelle que soit la fenêtre.
- *
- * Seules les œuvres reliées à une fiche TMDB sont gardées : sans fiche, la
- * ligne ne mènerait nulle part et resterait sans affiche.
- *
- * Le planning du site s'arrête au dimanche. Le Main API y ajoute la semaine
- * suivante, recopiée de la semaine connue (`estimated`) : ces sorties portent
- * la mention « Prévu » tant que le site ne les a pas annoncées.
- */
-const animeReleasesOf = async (fromKey: string, toKey: string): Promise<CalendarOccurrence[]> => {
-  // Le planning range chaque sortie au jour de la France. Un jour de marge de
-  // chaque côté, puis tri sur la date locale : une sortie de 23 h 30 à Paris
-  // tombe le lendemain plus à l'est.
-  const entries = await fetchAnimePlanning(shiftDateKey(fromKey, -1), shiftDateKey(toKey, 1));
-  if (entries === null) {
-    networkFailures += 1;
-    return [];
-  }
-
-  const twoDigits = (value: number): string => String(value).padStart(2, '0');
-  const occurrences: CalendarOccurrence[] = [];
-  for (const entry of entries) {
-    if (!entry.tmdb) continue;
-    const releasedAt = entry.releaseAt ? new Date(entry.releaseAt * 1000) : null;
-    const date = releasedAt ? toDateKey(releasedAt) : entry.day;
-    if (date < fromKey || date > toKey) continue;
-
-    const subtitle = [
-      entry.label,
-      entry.lang.toUpperCase(),
-      entry.state === 'delayed' ? i18n.t('calendar.animeRelease.delayed') : '',
-      entry.estimated ? i18n.t('calendar.animeRelease.estimated') : '',
-    ].filter(Boolean).join(' · ');
-
-    occurrences.push({
-      key: `animeReleases:${entry.slug}:${entry.seasonPath}:${entry.lang}:${entry.day}`,
-      source: 'animeReleases',
-      category: 'anime',
-      date,
-      time: releasedAt ? `${twoDigits(releasedAt.getHours())}:${twoDigits(releasedAt.getMinutes())}` : undefined,
-      title: entry.name,
-      subtitle,
-      posterPath: entry.posterPath ?? undefined,
-      href: `/${entry.tmdb.type}/${encodeId(entry.tmdb.id)}`,
-    });
-  }
-  return occurrences;
-};
-
 export interface BuildCalendarOptions {
   /** `YYYY-MM-DD` inclus. */
   fromKey: string;
@@ -907,7 +852,7 @@ export const buildCalendarOccurrences = async (
     collected.push(...perMovie);
   }
 
-  // ── Sorties du moment, séries en diffusion et sorties anime ───────────────
+  // ── Sorties du moment et séries en diffusion (animes TMDB compris) ────────
   // En dernier volontairement : le dédoublonnage ci-dessous garde la première
   // occurrence, donc un film déjà présent par la watchlist conserve sa source,
   // et le filtre « ma watchlist » continue de le montrer.
@@ -919,7 +864,6 @@ export const buildCalendarOccurrences = async (
     wanted.has('airingEpisodes')
       ? airingEpisodesOf(showCache, fromKey, toKey)
       : Promise.resolve([]),
-    wanted.has('animeReleases') ? animeReleasesOf(fromKey, toKey) : Promise.resolve([]),
   ]);
   for (const list of publicSources) collected.push(...list);
 

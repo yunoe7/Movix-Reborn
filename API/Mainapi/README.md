@@ -117,38 +117,6 @@ Routes sous `/api/history`, pour les comptes connectés (OAuth ou BIP39) :
 
 `routes/tvLink.js` relie l'appli TV à un compte avec un code à 5 caractères affiché sur la télé : `POST /api/tv/link/start` et `/poll` côté télé, `GET /info` et `POST /confirm` côté site. Nécessite Redis.
 
-## Source anime (anime-sama)
-
-Code : `routes/animeSama.js` (routes sous `/anime`), `utils/animeSamaPages.js` (lecture des pages du site), `utils/animeSamaLinks.js` (adresses des lecteurs), `utils/animeSamaIndex.js` (index du catalogue), `utils/animeSamaTmdbResolver.js` (ID TMDB des fiches qui n'en publient pas), tables du groupe `animeSama` (`db/schema/animeSama.js`).
-
-Depuis le 12/11/2026, le site ne publie plus `episodes.js` : la page de saison liste des repères `lien:<n°>`, et l'adresse d'un lecteur se demande à `/api/lien.php` avec le jeton de la page. Ce point d'entrée refuse tout au-delà d'environ 300 demandes par IP et par tranche de 10 minutes. Les adresses ne sont donc demandées que pour l'épisode qu'un visiteur ouvre, puis gardées dans un carnet par œuvre (`cache/anime-sama/liens/<slug>.json`).
-
-Une tâche de fond, sur un seul worker, lit le sitemap du site, chaque fiche une fois par jour et le planning de la semaine. Chaque fiche porte l'ID TMDB que le site publie : une œuvre se retrouve par cet ID, sans comparer de noms.
-
-Une cinquantaine de fiches ne publient pas d'ID TMDB, mais donnent leur ID AniList et MyAnimeList. `utils/animeSamaTmdbResolver.js` demande alors la correspondance au service ARM (`arm.haglund.dev`) et en déduit le type, série ou film ; un cas douteux reste sans lien. Ce lien ne remplace jamais l'ID que le site publie, et n'est pas posé quand une autre œuvre porte déjà cet ID TMDB. Si ARM ne répond pas, le lien déjà rangé reste.
-
-| Route | Rôle |
-| --- | --- |
-| `GET /anime/search/:query` | œuvres trouvées par nom, avec saisons et épisodes |
-| `GET /anime/tmdb/:type/:id` | œuvre dont la fiche porte cet ID TMDB (`tv` ou `movie`), même forme |
-| `GET /anime/episode/:slug?season=<chemin>&episode=<rang>` | adresses des lecteurs d'un épisode |
-| `GET /anime/catalogue`, `/anime/catalogue/genres` | catalogue indexé, paginé et filtrable |
-| `GET /anime/planning?from=&to=` | sorties annoncées entre deux jours, plus celles prévues la semaine suivante (`estimated: true`) |
-
-Dans la liste d'une œuvre, chaque langue d'un épisode donne `players` (adresses connues) et `pending` (lecteurs dont l'adresse reste à demander par `/anime/episode`). Un `pending > 0` suffit à rendre la saison disponible : l'absence d'adresse en cache n'est jamais un statut « Indisponible ».
-
-Une fiche peut commenter ses derniers panneaux (`<!--panneauAnime(…)-->`) alors que leurs pages publient encore des `lien:` (cas de Détective Conan). L'actualisation lit alors la page de chaque panneau masqué, sans demander d'adresse : des repères rouvrent la saison, une page vidée devient `unavailableReason: 'empty'`, une page introuvable reste `'hidden'`. Les caches écrits avant cette vérification sont relus une fois (`hiddenSeasonsChecked` dans le fichier de l'œuvre).
-
-Le planning du site ne couvre que la semaine en cours, du lundi au dimanche. `/anime/planning` y ajoute la semaine suivante : les sorties de la semaine connue, sept jours plus tard, avec le numéro d'épisode suivant et `estimated: true` (les films et OAV ne sont pas recopiés). Ces sorties prévues ne sont pas rangées en base : elles disparaissent dès que le site publie la semaine, et aucune n'est rendue pour un jour passé. Le statut « Terminé » des fiches ne sert pas de filtre : près de la moitié des séries en cours de diffusion le portent (il décrit souvent la première saison).
-
-Scénario de bout en bout contre le vrai site et une base MySQL de test (nom fini par `_test`), avec rapport (`report.md`, réponses, requêtes, logs) :
-
-```bash
-ANIME_SAMA_E2E_MYSQL=mysql://user:motdepasse@127.0.0.1:3306/movix_test node API/Mainapi/scripts/e2e/animeSamaLive.js <dossier du rapport>
-```
-
-Il lit une trentaine de fiches et fait une douzaine de demandes à `/api/lien.php` : sans effet sur le quota.
-
 ## À garder en tête
 
 - Le backend actif est ici, pas dans l'ancien contenu direct de `API/`.

@@ -220,7 +220,7 @@ test('listContinue : mode anime (dernière ligne wrapped « anime ») → animeM
   const items = await store.listContinue(OWNER, 'fr-FR');
   const byId = new Map(items.map((item) => [item.tmdbId, item]));
 
-  // Dernière ligne « anime » : mode anime, numéros anime-sama gardés, infos TMDB nulles.
+  // Dernière ligne « anime » : mode anime, numéros du lecteur gardés, infos TMDB nulles.
   assert.equal(byId.get(37854).animeMode, true);
   assert.deepEqual([byId.get(37854).season, byId.get(37854).episode, byId.get(37854).position], [1, 1000, 300]);
   assert.deepEqual([byId.get(37854).episodeName, byId.get(37854).episodeOverview, byId.get(37854).stillPath], [null, null, null]);
@@ -669,8 +669,8 @@ test('listHistory : numérotations jamais mêlées — épisodes estimés seulem
   const NEWER = new Date('2026-10-15T10:00:00Z');
   const show = (tmdbId, episodes) => ({ mediaType: 'tv', tmdbId, title: `Série ${tmdbId}`, runtimeMinutes: 24, seasons: [{ season: 1, episodes }] });
 
-  // Mode anime (lignes anime plus récentes) : E1-E3 en numérotation
-  // anime-sama ; une vieille ligne « tv » S1E5 (numérotation TMDB) est ignorée.
+  // Mode anime (lignes anime plus récentes) : E1-E3 dans la numérotation du
+  // lecteur anime ; une vieille ligne « tv » S1E5 (numérotation TMDB) est ignorée.
   const anime = overviewPool({
     history: [hist('tv', 37854, { season: 1, episode: 3, at: T(1) })],
     viewing: [
@@ -882,7 +882,7 @@ test('titleDetails (pur) : série — un épisode par progression exacte, estim�
   ]);
 });
 
-test('getTitle : même classement mémorisé que l\'onglet ; mode anime → numéros anime-sama tels quels, episodesTotal null', async () => {
+test('getTitle : même classement mémorisé que l\'onglet ; mode anime → numéros du lecteur tels quels, episodesTotal null', async () => {
   const fake = overviewPool({
     history: [hist('tv', 37854, { season: 1, episode: 1000, at: T(1) })],
     progress: [prog('tv', 37854, 1, 1000, 300, 1440)],

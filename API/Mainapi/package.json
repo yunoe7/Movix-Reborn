@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "test": "node --check routes/internalDiscord.js && node --test utils/__tests__/discordAdminRoles.test.js utils/__tests__/discordVipSync.test.js utils/__tests__/oauthProviderTokens.test.js middleware/__tests__/authPerformance.test.js middleware/__tests__/domainRestriction.test.js services/kisskh/__tests__/kisskhClient.directMode.test.js utils/__tests__/recommendationEngine.test.js utils/__tests__/likePattern.test.js utils/__tests__/animeSamaCache.test.js utils/__tests__/animeSamaPages.test.js routes/__tests__/animeSamaSource.test.js utils/__tests__/northliveCatalog.test.js routes/__tests__/top10Aggregation.test.js routes/__tests__/sharedListsSchemaMigration.test.js utils/__tests__/animeSamaFallback.test.js"
+    "test": "node --check routes/internalDiscord.js && node --test utils/__tests__/discordAdminRoles.test.js utils/__tests__/discordVipSync.test.js utils/__tests__/oauthProviderTokens.test.js middleware/__tests__/authPerformance.test.js middleware/__tests__/domainRestriction.test.js services/kisskh/__tests__/kisskhClient.directMode.test.js utils/__tests__/recommendationEngine.test.js utils/__tests__/likePattern.test.js utils/__tests__/northliveCatalog.test.js routes/__tests__/top10Aggregation.test.js routes/__tests__/sharedListsSchemaMigration.test.js"
   },
   "dependencies": {
     "@fastify/compress": "^8.3.1",

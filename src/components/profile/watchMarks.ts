@@ -228,9 +228,8 @@ const isInteger = (value: unknown): value is number => typeof value === 'number'
 
 /**
  * Actions du menu d'une ligne. Titre marqué → « Retirer de « Vu » ». Film →
- * « Marquer comme vu ». Série → épisode (s'il est connu), saison (sauf en
- * mode animé : la numérotation anime-sama ne suit pas les saisons TMDB),
- * série entière.
+ * « Marquer comme vu ». Série → épisode (s'il est connu), saison (sauf ancienne
+ * entrée historique : numérotation hors TMDB), série entière.
  */
 export function rowActions(item: ActionTarget): MarkAction[] {
   if (item.markedWatched) return ['unmark'];

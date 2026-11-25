@@ -5,7 +5,6 @@ import {
   FALLBACK_LOGO,
   ROUTE_WATCHPARTY_JOIN_PATTERN,
   ROUTE_WATCHPARTY_ROOM_PATTERN,
-  WATCH_ANIME_PATH_PATTERN,
   WATCH_MOVIE_PATH_PATTERN,
   WATCH_TV_PATH_PATTERN,
 } from '../../core/constants.js'
@@ -71,30 +70,6 @@ export async function handleWatchRoutes(
         season,
         episode,
         privacyDetails: s().watchSeries,
-        image: tmdbSummary?.image || contentImage,
-      }),
-      { allowPageTimestamp: false },
-    )
-  }
-
-  const watchAnimeMatch = pathname.match(WATCH_ANIME_PATH_PATTERN)
-  if (watchAnimeMatch) {
-    const animeId = getMatchPart(watchAnimeMatch, 1)
-    const season = getMatchPart(watchAnimeMatch, 2)
-    const episode = getMatchPart(watchAnimeMatch, 3)
-    const tmdbSummary = await getWatchTmdbSummary('tv', animeId)
-    const rawTitle = getWatchTitle(tmdbSummary?.title || s().fallbackAnime)
-    const title
-      = rawTitle.replace(EPISODE_CODE_SUFFIX_PATTERN, '').trim()
-        || s().fallbackAnime
-
-    return finalizeRoutePresence(
-      context,
-      createWatchingPresence({
-        title,
-        season,
-        episode,
-        privacyDetails: s().watchAnime,
         image: tmdbSummary?.image || contentImage,
       }),
       { allowPageTimestamp: false },
