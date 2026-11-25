@@ -1,4 +1,3 @@
-import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { TFunction } from 'i18next';
 import { Clapperboard, Flag, GalleryHorizontalEnd, Gift, HandCoins, HelpCircle, Home, KeyRound, LayoutGrid, Link2, ListOrdered, Megaphone, MessageSquare, Plug, ShieldCheck, Sparkles, Sprout, Users } from 'lucide-react';
