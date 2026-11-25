@@ -1527,7 +1527,6 @@ const TVDetails: React.FC = () => {
                       )}
                 </AnimatePresence>
                 </motion.div>
-          </div>
           <DetailCastRail
             items={cast}
             imageUrl={(posterPath, width) => getTmdbImageUrl(posterPath, {
