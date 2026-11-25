@@ -30,7 +30,7 @@ import {
   isSafeExternalUrl,
   scrollToDonationCard
 } from '@/components/vipDonation/donationUtils';
-import { IX_MATRIX_URL } from '@/config/community';
+import { DISCORD_INVITE_URL } from '@/config/community';
 import { useLightMode } from '@/context/LightModeContext';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import {
@@ -151,8 +151,7 @@ const VipPage: React.FC = () => {
   // Pas de règle affichée pendant une pause : rien ne peut être donné.
   const rule = ready?.settings.donationsEnabled ? getDonationRule(t, locale, ready.settings) : null;
   const contacts = (ready?.settings ?? DEFAULT_VIP_DONATION_SETTINGS).contacts;
-  const matrixUrl = isSafeExternalUrl(contacts.matrixRoomUrl) ? contacts.matrixRoomUrl.trim() : IX_MATRIX_URL;
-  const discordUrl = isSafeExternalUrl(contacts.discordUrl) ? contacts.discordUrl.trim() : null;
+  const discordUrl = isSafeExternalUrl(contacts.discordUrl) ? contacts.discordUrl.trim() : DISCORD_INVITE_URL;
 
   return (
     <SquareBackground
@@ -338,7 +337,7 @@ const VipPage: React.FC = () => {
                 </AnimatedBorderCard>
               )}
             </div>
-            <DonationLinks matrixUrl={matrixUrl} discordUrl={discordUrl} />
+            <DonationLinks discordUrl={discordUrl} />
           </div>
         </div>
 
