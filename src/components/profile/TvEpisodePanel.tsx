@@ -331,7 +331,7 @@ export default function TvEpisodePanel({ showId, showTitle, listType, onClose, d
       animate={{ opacity: 1, y: 0 }}
       exit={reduceMotion ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: -4 }}
       transition={{ duration: reduceMotion ? 0 : 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-      className="col-span-full rounded-xl bg-gray-900 p-5"
+      className="profile-raised col-span-full p-5"
     >
       <header className="mb-4 flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">

@@ -50,7 +50,7 @@ export default function HistoryStatusSwitch({ active, counts, onChange, panelId,
     <div
       role="tablist"
       aria-label={t('profilePage.history.statusLabel', 'Statut')}
-      className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-white/[0.07] bg-[#111827] p-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.18)] sm:inline-flex sm:w-auto sm:rounded-full"
+      className="grid w-full grid-cols-3 gap-1 rounded-2xl border border-white/[0.07] bg-[#111111] p-1.5 shadow-[0_10px_28px_rgba(0,0,0,0.18)] sm:inline-flex sm:w-auto sm:rounded-full"
     >
       {STATUSES.map((status, index) => {
         const selected = status === active;

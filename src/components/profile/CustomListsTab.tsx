@@ -69,6 +69,8 @@ import {
   PosterTicket,
   Spinner,
   buttonClass,
+  profileMenuContentClass,
+  profileMenuItemClass,
   ticketToneAt,
 } from './ui';
 
@@ -85,9 +87,6 @@ const DARK_ICON_BUTTON =
   'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/70 text-white ' +
   'transition-[background-color,transform] duration-150 hover:bg-black active:scale-[0.94] ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 cursor-grab active:cursor-grabbing';
-
-const MENU_CONTENT_CLASS = 'min-w-[200px] border-white/10 bg-gray-900 backdrop-blur-none';
-const MENU_ITEM_CLASS = 'gap-2 text-white/85 focus:text-white [&_svg]:text-white [&_svg]:opacity-85 focus:[&_svg]:opacity-100';
 
 type ListViewMode = 'items' | 'flat';
 
@@ -191,6 +190,41 @@ function DragHandle({ handle, label, className }: { handle: DragHandleProps; lab
     >
       <GripVertical className="h-4 w-4" aria-hidden="true" />
     </button>
+  );
+}
+
+// Aperçu d'une liste sur la vue d'ensemble : affiches réelles, ou état vide
+// explicite à la place des quatre cases grises.
+function ListPreview({ items }: { items: CustomListItem[] }) {
+  const { t } = useTranslation();
+  const previews = items.slice(0, 4);
+
+  if (previews.length === 0) {
+    return (
+      <div className="profile-list-preview profile-list-preview-empty" data-testid="list-preview-empty">
+        <span className="profile-list-preview-icon">
+          <List className="h-4 w-4" aria-hidden="true" />
+        </span>
+        <span className="profile-list-preview-label">{t('profilePage.sharing.listEmpty')}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="profile-list-preview" data-testid="list-preview">
+      {Array.from({ length: 4 }, (_, index) => {
+        const item = previews[index];
+        const src = item ? posterUrl(item.poster_path, 185) : '';
+        return (
+          <span key={index} className="profile-list-preview-slot">
+            {src && <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
+            {index === 3 && items.length > 4 && (
+              <span className="profile-list-preview-count" aria-hidden="true">+{items.length - 4}</span>
+            )}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
@@ -874,16 +908,17 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
   const renderListCard = (list: CustomList, handle: DragHandleProps) => {
     const shareInfo = sharedStatus[String(list.id)];
     const isRenaming = renamingListId === list.id;
-    const previews = list.items.slice(0, 4);
 
     return (
       <div
-        className="group cursor-pointer rounded-2xl border border-white/[0.07] bg-[#111111] p-5 shadow-[0_14px_36px_rgba(0,0,0,0.2)] transition-[transform,background-color,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-white/[0.13] hover:bg-[#181818] hover:shadow-[0_22px_48px_rgba(0,0,0,0.3)]"
+        data-testid="list-card"
+        data-list-name={list.name}
+        className="profile-surface profile-list-card group cursor-pointer"
         onClick={() => {
           if (!isRenaming && !activeListDragId) openList(list);
         }}
       >
-        {/* Planche des premières affiches de la liste */}
+        {/* Planche des premières affiches de la liste, ou état vide soigné. */}
         <button
           type="button"
           onClick={(event) => {
@@ -891,17 +926,9 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
             openList(list);
           }}
           aria-label={t('profilePage.lists.openList', 'Ouvrir {{name}}', { name: list.name })}
-          className="grid w-full grid-cols-4 gap-1.5 overflow-hidden rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+          className="block w-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
         >
-          {Array.from({ length: 4 }, (_, index) => {
-            const item = previews[index];
-            const src = item ? posterUrl(item.poster_path, 185) : '';
-            return (
-              <span key={index} className="block aspect-[2/3] overflow-hidden rounded-md bg-[#242424]">
-                {src && <img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
-              </span>
-            );
-          })}
+          <ListPreview items={list.items} />
         </button>
 
         <div className="mt-4 flex items-start gap-2">
@@ -940,6 +967,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
+                data-testid="list-actions"
                 aria-label={t('profilePage.lists.listActions', 'Actions de la liste')}
                 title={t('profilePage.lists.listActions', 'Actions de la liste')}
                 onClick={(event) => event.stopPropagation()}
@@ -949,8 +977,12 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
+              data-profile-menu="list"
               align="end"
-              className={MENU_CONTENT_CLASS}
+              side="bottom"
+              sideOffset={8}
+              collisionPadding={12}
+              className={profileMenuContentClass}
               // Les clics du menu (rendu en portail) remontent quand même jusqu'à la carte.
               onClick={(event) => event.stopPropagation()}
               onCloseAutoFocus={(event) => {
@@ -962,18 +994,18 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
                 }
               }}
             >
-              <DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={() => startRenaming(list.id, true)}>
+              <DropdownMenuItem className={profileMenuItemClass} onSelect={() => startRenaming(list.id, true)}>
                 <Pencil className="h-4 w-4" aria-hidden="true" />
                 {t('profilePage.customLists.rename')}
               </DropdownMenuItem>
               {shareInfo ? (
-                <DropdownMenuItem className={MENU_ITEM_CLASS} onSelect={() => { void copyShareLink(shareInfo.shareCode); }}>
+                <DropdownMenuItem className={profileMenuItemClass} onSelect={() => { void copyShareLink(shareInfo.shareCode); }}>
                   <Link2 className="h-4 w-4" aria-hidden="true" />
                   {t('profilePage.sharing.copyLink')}
                 </DropdownMenuItem>
               ) : (
                 <DropdownMenuItem
-                  className={MENU_ITEM_CLASS}
+                  className={profileMenuItemClass}
                   disabled={sharingListId === list.id}
                   onSelect={() => {
                     // Sans jeton (vérification Turnstile à faire), on ouvre la
@@ -988,7 +1020,7 @@ export default function CustomListsTab({ lists, saveLists, loading }: CustomList
               )}
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuItem
-                className="gap-2 text-white/80 focus:bg-[#555555] focus:text-white"
+                className={`${profileMenuItemClass} text-[#ff8a94] hover:bg-[#2a1416] focus:bg-[#2a1416] focus:text-[#ff8a94]`}
                 onSelect={() => deleteList(list)}
               >
                 <Trash2 className="h-4 w-4" aria-hidden="true" />

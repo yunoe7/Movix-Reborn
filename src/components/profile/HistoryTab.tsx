@@ -468,7 +468,7 @@ export default function HistoryTab() {
               busy ? <HistoryRowsSkeleton count={6} /> : <EmptyState icon={<History />} {...emptyText[status]} />
             ) : (
               <ul
-                className={`divide-y divide-white/[0.06] overflow-hidden rounded-xl bg-gray-900 transition-opacity duration-150 ${busy ? 'opacity-60' : 'opacity-100'}`}
+                className={`profile-history-list divide-y divide-white/[0.06] transition-opacity duration-150 ${busy ? 'opacity-60' : 'opacity-100'}`}
               >
                 {visible.map((item) => (
                   <HistoryRow
