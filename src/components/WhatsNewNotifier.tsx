@@ -1,6 +1,7 @@
 import React,{useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
 import {API_BASE_URL} from '../config/api';
+import { MovixMark } from './brand/MovixMark';
 
 type Post={id:string;title:string;summary:string;date:string;changes:{text:string;category:string}[]};
 const SEEN='movix-whats-new-seen';
@@ -20,7 +21,7 @@ export default function WhatsNewNotifier(){
    <section role="dialog" aria-modal="true" aria-labelledby="whats-new-title" className="relative flex max-h-[88vh] w-full max-w-[540px] flex-col overflow-hidden rounded-[22px] border border-[#cba66b]/35 bg-[#171511] text-white shadow-[0_28px_100px_rgba(0,0,0,.72),0_0_45px_rgba(203,166,107,.08)]">
     <div className="h-[3px] w-full shrink-0 bg-gradient-to-r from-[#8f6937] via-[#e2c18b] to-[#8f6937]"/>
     <div className="flex items-start gap-4 px-6 pb-5 pt-6 sm:px-7 sm:pt-7">
-     <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#cba66b]/25 bg-[#cba66b]/10 text-[23px] text-[#e4c38d] shadow-inner" aria-hidden="true">✦</div>
+     <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#cba66b]/25 bg-[#cba66b]/10 p-2 shadow-inner"><MovixMark className="h-full w-full object-contain" /></div>
      <div className="min-w-0 flex-1 pt-0.5">
       <div className="flex flex-wrap items-center gap-2">
        <span className="text-[10px] font-extrabold uppercase tracking-[.2em] text-[#d8b477]">Du nouveau sur Movix</span>
