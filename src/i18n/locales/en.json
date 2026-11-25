@@ -3981,6 +3981,14 @@
     "learnMore": "Learn more",
     "activationError": "Error activating VIP key",
     "accessMovixVip": "Access Movix VIP",
+    "accessModal": {
+      "subtitle": "Activate your VIP key to unlock all your benefits.",
+      "codeLabel": "VIP key",
+      "codePlaceholder": "Paste your VIP key here",
+      "submit": "Activate my VIP access",
+      "submitting": "Activating…",
+      "success": "VIP access activated."
+    },
     "noVipKey": "No VIP key yet?",
     "accessForPrice": "Donate to support Movix. As a thank-you, you get VIP and enjoy:",
     "accessForLifePrice": "Donate to support Movix. As a thank-you, you get VIP and enjoy:",
@@ -6981,10 +6989,7 @@
         "contacts": {
           "email": "Email",
           "discord": "Discord, private message",
-          "telegram": "Telegram, private message",
-          "matrixUser": "Matrix, private message",
-          "matrixRoom": "ix group Matrix space",
-          "matrixRoomHint": "For questions only. Never post your code there: the space is public."
+          "telegram": "Telegram, private message"
         },
         "copyAria": "Copy {{value}}",
         "write": "Write",
@@ -7004,7 +7009,6 @@
         "myDonations": "My donations",
         "haveKey": "Already have a key?",
         "help": "Need help?",
-        "matrix": "Matrix space",
         "discord": "Discord"
       },
       "paused": {
@@ -7106,8 +7110,7 @@
       "help": {
         "title": "Something wrong? Write to us",
         "text": "A question, or your donation isn't showing up? We're happy to help.",
-        "button": "Write to us",
-        "buttonMatrix": "Write to us on Matrix"
+        "button": "Write to us"
       }
     },
     "myDonations": {
@@ -7193,8 +7196,8 @@
       "supportEyebrow": "Movix VIP",
       "supportTitle": "Keep it safe",
       "supportText1": "Never share this key once the gift has been unsealed.",
-      "supportText2": "If you run into an activation issue or if the gift page looks wrong, contact Matrix support.",
-      "supportButton": "Matrix support",
+      "supportText2": "If you run into an activation issue or if the gift page looks wrong, contact our support team.",
+      "supportButton": "Contact support",
       "notFoundDescription": "This gift link does not exist or is no longer valid.",
       "loadError": "Unable to load this gift",
       "unsealSuccess": "The gift has been unsealed.",
@@ -7315,12 +7318,7 @@
         "discordUrlPlaceholder": "https://discord.com/users/...",
         "telegramUsernameLabel": "Telegram username",
         "telegramUsernamePlaceholder": "username",
-        "matrixUserIdLabel": "Matrix ID",
-        "matrixUserIdPlaceholder": "@username:matrix.org",
-        "matrixRoomUrlLabel": "Matrix room link",
-        "matrixRoomUrlPlaceholder": "https://matrix.to/#/...",
         "telegramWarning": "Enter only the username, not a link: the t.me link is built automatically.",
-        "matrixWarning": "Expected format: @username:server, for example @mysticsaba:matrix.org.",
         "testLink": "Test the link",
         "testLinkAria": "Test the link: {{field}}",
         "noContact": "No contact filled in: gift card donors won't know where to send their code."
@@ -8932,13 +8930,13 @@
       "step3": "By bank card, you finish on CryptoGate's secure page. In BTC or LTC, scan the QR code or copy the address and the exact amount.",
       "step4": "Your follow-up page updates on its own. As soon as the donation arrives (instantly by card, after 1 to 3 confirmations in crypto), your VIP key shows up there: just activate it.",
       "giftCardTitle": "Donate with a gift card (no bank card)",
-      "giftCardBody": "Google Play, Amazon, Paysafecard and Eneba cards are sold almost everywhere: tobacco shops, supermarkets, petrol stations or online. For Paysafecard, buy it in a shop or on another website, but not on paysafecard.com: a card bought there can only be used by your own Paysafecard account. Buy a card of any amount, then send us its code through one of the contacts shown on the <1>/vip</1> page (email, Discord, Telegram or Matrix). We check the card by hand, then email you your VIP key as a thank-you. Gift cards are for your own VIP: to offer VIP, use a bank card or crypto. Never send a card code anywhere other than these contacts.",
+      "giftCardBody": "Google Play, Amazon, Paysafecard and Eneba cards are sold almost everywhere: tobacco shops, supermarkets, petrol stations or online. For Paysafecard, buy it in a shop or on another website, but not on paysafecard.com: a card bought there can only be used by your own Paysafecard account. Buy a card of any amount, then send us its code through one of the contacts shown on the <1>/vip</1> page (email, Discord or Telegram). We check the card by hand, then email you your VIP key as a thank-you. Gift cards are for your own VIP: to offer VIP, use a bank card or crypto. Never send a card code anywhere other than these contacts.",
       "giftTitle": "Offer VIP to someone",
       "giftBody": "On the <1>/vip</1> page, choose « To offer », then a bank card or crypto (gift cards aren't offered for this): instead of a key for you, Movix gives you a gift link to send. The person opens the link, unseals their gift card and gets their VIP key. Handy to offer VIP without knowing their Movix account.",
       "invoicesTitle": "My donations",
       "invoicesBody": "All your donations show up on <1>/vip/invoices</1>: amount, date, method, status and a link to their follow-up page. Keep that link: it's where your key appears, and it's your proof if you contact support.",
       "limitsTitle": "Refunds",
-      "limitsBody": "A donation is final: there are no refunds, by card or in crypto. If it's your first time, start with €5 to check that VIP activates properly on your account. Rather try first? Write to us on Matrix: we can enable a free trial of about 3 days."
+      "limitsBody": "A donation is final: there are no refunds, by card or in crypto. If it's your first time, start with €5 to check that VIP activates properly on your account. Rather try first? Write to us on Discord: we can enable a free trial of about 3 days."
     },
     "debrid": {
       "title": "Debrid 1fichier links",

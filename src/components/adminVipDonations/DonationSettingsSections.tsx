@@ -767,6 +767,12 @@ export const GiftCardsSection: React.FC<DonationSettingsSectionProps> = ({ setti
 
 // ─── 7. Contacts affichés ──────────────────────────────────────────────────
 
+// Les champs Matrix restent dans le contrat de réglages pour compatibilité,
+// mais ne sont plus proposés ni affichés dans l'interface VIP.
+const VISIBLE_CONTACT_FIELDS = VIP_CONTACT_FIELDS.filter(
+  (field) => field !== 'matrixUserId' && field !== 'matrixRoomUrl'
+);
+
 const CONTACT_FIELD_META: Record<keyof VipDonationContacts, {
   icon: LucideIcon;
   type: 'email' | 'url' | 'text';
@@ -789,19 +795,16 @@ const getContactWarningKey = (field: keyof VipDonationContacts, value: string): 
   if (field === 'telegramUsername' && /[/:]|t\.me/i.test(value)) {
     return 'vipDonations.settings.contacts.telegramWarning';
   }
-  if (field === 'matrixUserId' && !/^@?[^\s:@]+:\S+$/.test(value)) {
-    return 'vipDonations.settings.contacts.matrixWarning';
-  }
   return null;
 };
 
 export const ContactsSection: React.FC<DonationSettingsSectionProps> = ({ settings, errors, modified, onChange }) => {
   const { t, issueText, modifiedLabel } = useSettingsText();
   const trimmedContacts = Object.fromEntries(
-    VIP_CONTACT_FIELDS.map((field) => [field, settings.contacts[field].trim()])
+    VISIBLE_CONTACT_FIELDS.map((field) => [field, settings.contacts[field].trim()])
   ) as Record<keyof VipDonationContacts, string>;
   const links = getVipDonationContactLinks(trimmedContacts);
-  const hasAnyContact = VIP_CONTACT_FIELDS.some((field) => trimmedContacts[field] !== '');
+  const hasAnyContact = VISIBLE_CONTACT_FIELDS.some((field) => trimmedContacts[field] !== '');
 
   return (
     <SettingsSection
@@ -817,7 +820,7 @@ export const ContactsSection: React.FC<DonationSettingsSectionProps> = ({ settin
         )}
 
         <div className="grid gap-4 md:grid-cols-2">
-          {VIP_CONTACT_FIELDS.map((field) => {
+          {VISIBLE_CONTACT_FIELDS.map((field) => {
             const meta = CONTACT_FIELD_META[field];
             const Icon = meta.icon;
             const fieldId = `vip-settings-contact-${field}`;

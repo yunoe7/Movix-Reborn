@@ -3981,6 +3981,14 @@
     "learnMore": "En savoir plus",
     "activationError": "Erreur lors de l'activation de la clé VIP",
     "accessMovixVip": "Accès Movix VIP",
+    "accessModal": {
+      "subtitle": "Active ta clé VIP pour débloquer tous tes avantages.",
+      "codeLabel": "Clé VIP",
+      "codePlaceholder": "Colle ta clé VIP ici",
+      "submit": "Activer mon accès VIP",
+      "submitting": "Activation en cours…",
+      "success": "Accès VIP activé."
+    },
     "noVipKey": "Pas encore de clé VIP ?",
     "accessForPrice": "Fais un don pour soutenir Movix. En remerciement, tu reçois du VIP et tu profites de :",
     "accessForLifePrice": "Fais un don pour soutenir Movix. En remerciement, tu reçois du VIP et tu profites de :",
@@ -6981,10 +6989,7 @@
         "contacts": {
           "email": "Email",
           "discord": "Discord, en message privé",
-          "telegram": "Telegram, en message privé",
-          "matrixUser": "Matrix, en message privé",
-          "matrixRoom": "Espace Matrix du groupe ix",
-          "matrixRoomHint": "Pour poser une question. N'y envoie jamais ton code : l'espace est public."
+          "telegram": "Telegram, en message privé"
         },
         "copyAria": "Copier {{value}}",
         "write": "Écrire",
@@ -7004,7 +7009,6 @@
         "myDonations": "Mes dons",
         "haveKey": "Déjà une clé ?",
         "help": "Besoin d'aide ?",
-        "matrix": "Espace Matrix",
         "discord": "Discord"
       },
       "paused": {
@@ -7106,8 +7110,7 @@
       "help": {
         "title": "Un souci ? Écris-nous",
         "text": "Une question, ou ton don n'apparaît pas ? On t'aide volontiers.",
-        "button": "Nous écrire",
-        "buttonMatrix": "Nous écrire sur Matrix"
+        "button": "Nous écrire"
       }
     },
     "myDonations": {
@@ -7193,8 +7196,8 @@
       "supportEyebrow": "Movix VIP",
       "supportTitle": "À conserver soigneusement",
       "supportText1": "Ne partage jamais cette clé une fois le cadeau descellé.",
-      "supportText2": "Si tu rencontres un souci avec l'activation ou si la page cadeau te semble incorrecte, contacte le support Matrix.",
-      "supportButton": "Support Matrix",
+      "supportText2": "Si tu rencontres un souci avec l'activation ou si la page cadeau te semble incorrecte, contacte notre support.",
+      "supportButton": "Nous écrire",
       "notFoundDescription": "Ce lien cadeau n'existe pas ou n'est plus valide.",
       "loadError": "Impossible de charger ce cadeau",
       "unsealSuccess": "Le cadeau a été descellé.",
@@ -7315,12 +7318,7 @@
         "discordUrlPlaceholder": "https://discord.com/users/...",
         "telegramUsernameLabel": "Pseudo Telegram",
         "telegramUsernamePlaceholder": "pseudo",
-        "matrixUserIdLabel": "Identifiant Matrix",
-        "matrixUserIdPlaceholder": "@pseudo:matrix.org",
-        "matrixRoomUrlLabel": "Lien du salon Matrix",
-        "matrixRoomUrlPlaceholder": "https://matrix.to/#/...",
         "telegramWarning": "Indique seulement le pseudo, sans lien : le lien t.me est créé automatiquement.",
-        "matrixWarning": "Format attendu : @pseudo:serveur, par exemple @mysticsaba:matrix.org.",
         "testLink": "Tester le lien",
         "testLinkAria": "Tester le lien : {{field}}",
         "noContact": "Aucun contact renseigné : les donateurs par carte cadeau ne sauront pas où envoyer leur code."
@@ -8932,13 +8930,13 @@
       "step3": "Par carte bancaire, tu termines sur la page sécurisée de CryptoGate. En BTC ou LTC, scanne le QR code ou copie l'adresse et le montant exact.",
       "step4": "Ta page de suivi se met à jour toute seule. Dès que le don est reçu (tout de suite par carte, après 1 à 3 confirmations en crypto), ta clé VIP s'y affiche : il ne reste qu'à l'activer.",
       "giftCardTitle": "Don par carte cadeau (sans carte bancaire)",
-      "giftCardBody": "Les cartes Google Play, Amazon, Paysafecard et Eneba s'achètent presque partout : bureau de tabac, supermarché, station-service ou en ligne. Pour Paysafecard, achète-la en magasin ou sur un autre site, mais pas sur paysafecard.com : une carte achetée sur leur site ne peut servir qu'à ton propre compte Paysafecard. Achète une carte du montant de ton choix, puis envoie-nous son code via un des contacts affichés sur la page <1>/vip</1> (email, Discord, Telegram ou Matrix). On vérifie la carte à la main, puis on t'envoie ta clé VIP par email, en remerciement. La carte cadeau sert pour ton propre VIP : pour offrir, passe par la carte bancaire ou la crypto. N'envoie jamais un code de carte ailleurs que sur ces contacts.",
+      "giftCardBody": "Les cartes Google Play, Amazon, Paysafecard et Eneba s'achètent presque partout : bureau de tabac, supermarché, station-service ou en ligne. Pour Paysafecard, achète-la en magasin ou sur un autre site, mais pas sur paysafecard.com : une carte achetée sur leur site ne peut servir qu'à ton propre compte Paysafecard. Achète une carte du montant de ton choix, puis envoie-nous son code via un des contacts affichés sur la page <1>/vip</1> (email, Discord ou Telegram). On vérifie la carte à la main, puis on t'envoie ta clé VIP par email, en remerciement. La carte cadeau sert pour ton propre VIP : pour offrir, passe par la carte bancaire ou la crypto. N'envoie jamais un code de carte ailleurs que sur ces contacts.",
       "giftTitle": "Offrir le VIP à quelqu'un",
       "giftBody": "Sur la page <1>/vip</1>, choisis « Pour offrir » puis la carte bancaire ou la crypto (la carte cadeau n'est pas proposée pour offrir) : au lieu d'une clé pour toi, Movix te donne un lien cadeau à envoyer. La personne ouvre le lien, descelle sa carte cadeau et récupère sa clé VIP. Pratique pour offrir le VIP sans connaître son compte Movix.",
       "invoicesTitle": "Mes dons",
       "invoicesBody": "Tous tes dons apparaissent sur <1>/vip/invoices</1> : montant, date, moyen, état et lien vers leur page de suivi. Garde ce lien : c'est là que ta clé apparaît, et il sert de preuve si tu contactes le support.",
       "limitsTitle": "Remboursements",
-      "limitsBody": "Un don est définitif : il n'y a pas de remboursement, par carte comme en crypto. Si c'est ta première fois, commence par 5 € pour vérifier que le VIP s'active bien sur ton compte. Tu préfères tester avant ? Écris-nous sur Matrix : on peut activer un essai gratuit d'environ 3 jours."
+      "limitsBody": "Un don est définitif : il n'y a pas de remboursement, par carte comme en crypto. Si c'est ta première fois, commence par 5 € pour vérifier que le VIP s'active bien sur ton compte. Tu préfères tester avant ? Écris-nous sur Discord : on peut activer un essai gratuit d'environ 3 jours."
     },
     "debrid": {
       "title": "Débrider des liens 1fichier",

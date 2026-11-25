@@ -1,4 +1,3 @@
-import { IX_MATRIX_ADDRESS, IX_MATRIX_URL } from '@/config/community';
 import React, { useState, useEffect } from "react";
 import { useTranslation, Trans } from 'react-i18next';
 import { createPortal } from "react-dom";
@@ -162,17 +161,6 @@ const DonButton: React.FC = () => {
                   <div className="space-y-2">
                     <p className="text-sm">
                       📱 <span className="font-medium">Discord:</span> mysticsaba_alt
-                    </p>
-                    <p className="text-sm">
-                      📱 <span className="font-medium">Matrix:</span>{" "}
-                      <a
-                        href={IX_MATRIX_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 underline transition-colors"
-                      >
-                        {IX_MATRIX_ADDRESS}
-                      </a>
                     </p>
                     <p className="text-sm">
                       📱 <span className="font-medium">Telegram:</span> MysticSaba2
