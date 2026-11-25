@@ -103,11 +103,9 @@ export interface PresenceStrings {
   externalPlayer: string
   watchMovie: string
   watchSeries: string
-  watchAnime: string
   watchContent: string
   fallbackMovie: string
   fallbackSeries: string
-  fallbackAnime: string
   btnViewPage: string
   btnWatch: string
   btnJoinRoom: string
@@ -216,11 +214,9 @@ const FR: PresenceStrings = {
   externalPlayer: 'Lecture via un lecteur externe',
   watchMovie: 'Regarde un film',
   watchSeries: 'Regarde une série',
-  watchAnime: 'Regarde un anime',
   watchContent: 'Regarde un contenu',
   fallbackMovie: 'Film',
   fallbackSeries: 'Série',
-  fallbackAnime: 'Anime',
   btnViewPage: 'Voir la page',
   btnWatch: 'Regarder',
   btnJoinRoom: 'Rejoindre le salon',
@@ -329,11 +325,9 @@ const EN: PresenceStrings = {
   externalPlayer: 'Playing via an external player',
   watchMovie: 'Watching a movie',
   watchSeries: 'Watching a TV show',
-  watchAnime: 'Watching an anime',
   watchContent: 'Watching content',
   fallbackMovie: 'Movie',
   fallbackSeries: 'TV show',
-  fallbackAnime: 'Anime',
   btnViewPage: 'View page',
   btnWatch: 'Watch',
   btnJoinRoom: 'Join the room',

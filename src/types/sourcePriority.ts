@@ -31,7 +31,7 @@ export const BUILTIN_HOSTER_IDS = [
 export type BuiltinHosterId = typeof BUILTIN_HOSTER_IDS[number];
 export type HosterId = BuiltinHosterId | string; // string = custom_...
 
-/** Langues supportées par les animes (anime-sama). */
+/** Langues supportées par les sources d'animes. */
 export const LANGUAGE_IDS = ['vf', 'vostfr', 'vj', 'va', 'vkr', 'vcn'] as const;
 export type LanguageId = typeof LANGUAGE_IDS[number] | string;
 

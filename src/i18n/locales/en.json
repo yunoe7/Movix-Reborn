@@ -654,7 +654,6 @@
     "source": {
       "newReleases": "New releases",
       "airingEpisodes": "Airing now",
-      "animeReleases": "Anime releases",
       "watchlistEpisodes": "Episodes from my watchlist",
       "watchlistMovies": "Movies from my watchlist",
       "alerts": "My alerts",
@@ -665,10 +664,6 @@
       "movie": "In theaters",
       "movieDigital": "Digital release",
       "tv": "New series"
-    },
-    "animeRelease": {
-      "delayed": "Delayed",
-      "estimated": "Expected"
     },
     "category": {
       "movie": "Movie",
@@ -825,18 +820,6 @@
     "onTheAir": "On The Air",
     "filterByGenre": "Filter by genre",
     "filterByYear": "Filter by year"
-  },
-  "animePage": {
-    "title": "Anime",
-    "trending": "Trending anime",
-    "availableOnAnimeSama": "Available on Anime-Sama",
-    "recentAnime": "Recent anime",
-    "airingOnSite": "Currently airing",
-    "recentDubbed": "Recent French dubs",
-    "popularNow": "Popular anime",
-    "topRated": "Top rated anime",
-    "keywordHighlights": "Anime ranked by keyword",
-    "keywordRecent": "Recent keyword anime"
   },
   "details": {
     "overview": "Overview",
@@ -1103,10 +1086,6 @@
     "broadcastNetworks": "Networks",
     "imagesCount_one": "{{count}} image",
     "imagesCount_other": "{{count}} images",
-    "languages": {
-      "vf": "VF",
-      "vostfr": "VOSTFR"
-    },
     "overviewTab": "Overview",
     "detailsTab": "Details",
     "videosTab": "Videos",
@@ -1228,11 +1207,6 @@
     "seasonLayout": "Season list:",
     "episodeListTvmazeHint": "TVmaze split ({{count}} episodes instead of {{tmdb}} on TMDB)",
     "episodeListSwitchHint": "Missing episodes, or an episode that is already out won't play? Switch the list.",
-    "standardMode": "Standard mode",
-    "animeModeLabel": "Anime mode",
-    "animeModeActiveBadge": "ANIME MODE ACTIVE",
-    "backToStandardMode": "Back to standard mode",
-    "standardModeAvailable": "Standard Mode available. Try it if episodes/seasons are missing.",
     "cinemaModeEnabled": "Cinema Mode enabled",
     "enableCinemaMode": "Enable Cinema Mode",
     "cinemaModeOnDesc": "Cinema Mode enabled: Access to all players and advanced features. Redirect to the full viewing page. It is recommended to keep it enabled.",
@@ -1952,10 +1926,6 @@
     "verifyingAccess": "Verifying access...",
     "unknownSeries": "Unknown series",
     "loadingEpisode": "Fetching your episode… our snail's on the case.",
-    "animeLoadError": "Unable to load anime details",
-    "noAnimeSource": "No anime source found for this anime",
-    "animeLinksUnavailable": "This episode's players are not responding right now. Try again in a minute.",
-    "animeDataError": "Error loading anime data",
     "languageFrench": "French",
     "loadingSources": "Rounding up the best streams for you…",
     "finalizingSearch": "Almost there — tidying up the results…",
@@ -1977,8 +1947,6 @@
     "seasonUnavailableShort": "Unavailable",
     "episodesCount": "{{count}} episodes",
     "invalidId": "Invalid ID",
-    "animeInvalidIdDesc": "The provided anime ID is not valid or cannot be decoded.",
-    "backToAnimes": "Back to animes",
     "extractionPlayer": "Extracting {{player}}...",
     "errorTitle": "Error",
     "availableSeasons": "Available seasons:",
@@ -1987,7 +1955,6 @@
     "versionLabel": "Version",
     "playersLabel": "Players",
     "currentSource": "Current source",
-    "cannotLoadAnimeDetails": "Unable to load anime details",
     "episodeNotFoundInSeason": "Episode {{episode}} not found in season {{season}}. This season has {{maxEpisodes}} episodes.",
     "seasonNotFound": "Season {{season}} not found. Available seasons: {{availableSeasons}}",
     "estimatedBitrateTooltip": "Bitrate is estimated from file size (content-length) and stream duration. This is an approximate value.",

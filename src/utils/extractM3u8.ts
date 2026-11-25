@@ -63,8 +63,8 @@ export function registerServerResolvedSources(payload: unknown, depth = 0): void
     }
   }
 
-  // Anime-Sama liste ses lecteurs en chaînes brutes : ses m3u8 arrivent dans
-  // une table parallèle « lien -> m3u8 » plutôt que sur l'objet lecteur.
+  // Certains lecteurs sont des chaînes brutes : leurs m3u8 arrivent dans une
+  // table parallèle « lien -> m3u8 » plutôt que sur l'objet lecteur.
   const byPlayer = record.m3u8ByPlayer;
   if (byPlayer && typeof byPlayer === 'object' && !Array.isArray(byPlayer)) {
     // Liens communautaires : sous-titres Uqload dans une table parallèle.

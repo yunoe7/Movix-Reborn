@@ -11,7 +11,7 @@ import {
  *
  * Utilisé dans :
  *  - rangée des boutons de source top-level (HLSPlayerSettingsPanel)
- *  - sélecteur de langue (WatchAnime)
+ *  - sélecteur de langue (sources d'animes)
  *  - menu serveurs par hoster (HLSPlayerSettingsPanel)
  *  - cards du panneau Settings (Milestone 5+)
  *

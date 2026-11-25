@@ -6,7 +6,7 @@ import { safePlay } from './safePlay';
  * ## Pourquoi ça ne marchait pas
  *
  * Les changements d'épisode passaient par un rechargement complet de la page
- * (`window.location.href` dans `WatchTv` / `WatchAnime`). Le document était
+ * (`window.location.href` dans les pages de lecture). Le document était
  * déchargé : le navigateur quittait le plein écran **et** perdait l'activation
  * utilisateur. Or `requestFullscreen()` exige une activation utilisateur
  * récente et *authentique* : Firefox refuse toute demande faite hors d'un

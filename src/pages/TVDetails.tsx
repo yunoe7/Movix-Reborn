@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import axios from 'axios';
-import { Loader, Star, Calendar, List, Check, ChevronRight, AlertTriangle, Play, X, Download, EyeOff, Tv, Search, ArrowDownUp, LayoutGrid } from '../components/icons/Icons8';
+import { Loader, Star, Calendar, List, Check, ChevronRight, X, Download, Search, ArrowDownUp } from '../components/icons/Icons8';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
@@ -12,22 +12,10 @@ import DetailsSkeleton from '../components/skeletons/DetailsSkeleton';
 import CustomDropdown from '../components/CustomDropdown';
 import { useAdFreePopup } from '../context/AdFreePopupContext';
 import AlertButton from '../components/AlertButton';
-import {
-  searchWithFallback,
-  getSearchNameForId,
-  getAnimeMatcherForId,
-  shouldHideAnimeModeForId,
-} from '../utils/searchUtils';
 import { isLikelyAnime, type TmdbKeywordsResponse } from '../utils/animeSignals';
 import { loadDetailCharacters, type DetailCharacters } from '../services/detailCharacters';
 import { normalizeAlternateTitles, normalizeKeywords } from '../utils/tmdbMetadata';
 import { rememberMedia } from '../utils/mediaSearchIndex';
-import {
-  pickBestAnimeMatch,
-  collectTmdbNames,
-  type AnimeSamaCandidate,
-} from '../utils/animeMatcher';
-import { fetchAnimeByTmdb } from '../services/animeSamaService';
 import { encodeId, getTmdbId } from '../utils/idEncoder';
 import { buildSiteUrl } from '../config/runtime';
 import LikeDislikeButton, { type LikeDislikeStats } from '../components/LikeDislikeButton';
@@ -57,8 +45,8 @@ import {
   type EpisodeListKind,
   type ShowEpisodeLists,
 } from '@/utils/tvmazeEpisodes';
-import { formatAiringDate, getAiringLabel, getEpisodeTimeline, resolveEpisodeAiring, resolveShowAiring } from '@/utils/tvAiring';
-import type { TvEpisodeDate, TvExternalIds } from '@/types/tvAiring';
+import { formatAiringDate, getAiringLabel, resolveEpisodeAiring, resolveShowAiring } from '@/utils/tvAiring';
+import type { TvExternalIds } from '@/types/tvAiring';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useImageQuality, useImageViewport } from '../hooks/useImageQuality';
 import { useImageSlot } from '../hooks/useImageSlot';
@@ -67,7 +55,6 @@ import { readLocalStorage, writeLocalStorage } from '../utils/browserStorage';
 import { useTitleHistory } from '../hooks/useTitleHistory';
 import { mergeEpisode, seedProgress, serverEpisodeMap, seriesFullyMarked, seriesResume } from '../utils/titleHistoryMerge';
 
-const MAIN_API = import.meta.env.VITE_MAIN_API;
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
 interface TVShow {
@@ -180,38 +167,6 @@ interface TMDBImage {
 // Use shared certification utility
 const getClassificationLabel = getClassificationLabelUtil;
 
-const getAnimeLanguageLabel = (language: string, t: TFunction): string =>
-  t(`details.languages.${language.toLowerCase()}`, { defaultValue: language.toUpperCase() });
-
-interface AnimeEpisodeImageData {
-  name?: string | null;
-  streaming_links?: Array<{ language?: string | null }> | null;
-  still_path?: string | null;
-  still_url?: string | null;
-  tmdb_episode_number?: number | string | null;
-  tmdbEpisodeNumber?: number | string | null;
-  episode_number?: number | string | null;
-  episodeNumber?: number | string | null;
-  index?: number | string | null;
-}
-
-interface AnimeSeasonImageData {
-  name?: string | null;
-  poster_path?: string | null;
-  posterPath?: string | null;
-  image?: string | null;
-  available?: boolean;
-  status?: string;
-  number?: number | string | null;
-  season_number?: number | string | null;
-  seasonNumber?: number | string | null;
-  episodes?: AnimeEpisodeImageData[];
-}
-
-interface AnimeImageData {
-  seasons?: readonly unknown[];
-}
-
 const getSeasonDisplayName = (
   seasonNumber: number,
   t: TFunction,
@@ -221,13 +176,6 @@ const getSeasonDisplayName = (
 // 1. Update DEFAULT_IMAGE to a custom SVG string for fallback
 const getSeasonFallbackSvg = (label: string) =>
   `data:image/svg+xml;utf8,<svg width="500" height="750" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 750" preserveAspectRatio="xMidYMid meet"><rect width="100%" height="100%" fill="%23222"/><g><rect x="80" y="180" width="340" height="260" rx="32" fill="%23333" stroke="%23555" stroke-width="8"/><rect x="120" y="220" width="260" height="180" rx="16" fill="%23444"/><rect x="180" y="420" width="140" height="20" rx="8" fill="%23555"/></g><text x="50%" y="70%" fill="%23777" font-size="48" font-family="Arial, sans-serif" text-anchor="middle" dy=".3em">${encodeURIComponent(label)}</text></svg>`;
-
-type SeasonPosterSource = {
-  number?: number;
-  poster_path?: string | null;
-  posterPath?: string | null;
-  image?: string | null;
-};
 
 /** Première source d'image utilisable, sans confondre les chemins TMDB et les URL complètes. */
 const firstNonEmptyImage = (...sources: Array<string | null | undefined>): string | null =>
@@ -337,6 +285,8 @@ const fetchSeasonDetails = async (
 
 const TVDetails: React.FC = () => {
   const { t } = useTranslation();
+  const tRef = useRef(t);
+  tRef.current = t;
   const { effectiveImageQuality } = useImageQuality();
   const { width: viewportWidth, height: viewportHeight, dpr } = useImageViewport();
   const imageDpr = Math.min(dpr, effectiveImageQuality === 'high' ? 3 : 2);
@@ -436,12 +386,10 @@ const TVDetails: React.FC = () => {
   const [showSimilarModal, setShowSimilarModal] = useState(false);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [recommendationsLoaded, setRecommendationsLoaded] = useState<boolean>(false);
-  const animeMode = false; // Separate Anime playback mode removed; anime episode catalogue remains.
-  // Anime presentation controls are separate from the optional Anime-Sama playback mode.
-  const [animeEpisodeSearchOpen, setAnimeEpisodeSearchOpen] = useState(false);
-  const [animeEpisodeSearch, setAnimeEpisodeSearch] = useState('');
-  const [animeEpisodeSortDescending, setAnimeEpisodeSortDescending] = useState(false);
-  const [animeEpisodeView, setAnimeEpisodeView] = useState<'list' | 'grid'>('list');
+  const [episodeSearchOpen, setEpisodeSearchOpen] = useState(false);
+  const [episodeSearch, setEpisodeSearch] = useState('');
+  const [episodeSortDescending, setEpisodeSortDescending] = useState(false);
+  const [episodeView, setEpisodeView] = useState<'list' | 'grid'>('list');
   const [seasonPickerOpen, setSeasonPickerOpen] = useState(false);
   const seasonPickerMenuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -454,8 +402,6 @@ const TVDetails: React.FC = () => {
     document.addEventListener('pointerdown', closeOnOutsideClick);
     return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
   }, [seasonPickerOpen]);
-  const [animeData, setAnimeData] = useState<any>(null);
-  const [, setLoadingAnimeData] = useState<boolean>(false);
   const [tmdbKeywords, setTmdbKeywords] = useState<TmdbKeywordsResponse | null>(null);
   const [characters, setCharacters] = useState<DetailCharacters | null>(null);
   const [, setCharactersLoading] = useState(false);
@@ -464,9 +410,6 @@ const TVDetails: React.FC = () => {
   const [tmdbAlternativeTitles, setTmdbAlternativeTitles] = useState<
     Array<{ iso_3166_1?: string; title?: string }>
   >([]);
-  const [, setSelectedAnimeEpisode] = useState<any>(null);
-  const [, setSelectedLanguage] = useState<string | null>(null);
-  const [, setSelectedPlayer] = useState<string | null>(null);
   // Ajout de l'état pour stocker les détails complets des saisons et épisodes
   const [tmdbSeasonsDetails, setSeasonsDetails] = useState<Record<number, any>>({});
   // Liste TVmaze (ex. 21 chapitres au lieu de 10 épisodes) ou découpage
@@ -573,7 +516,6 @@ const TVDetails: React.FC = () => {
   // États pour les vidéos multi-langues par saison
   const [, setSeasonMultiLangVideos] = useState<{ [key: number]: any[] }>({});  const [, setShowSeasonMultiLangView] = useState<{ [key: number]: boolean }>({});
   const [, setSeasonAutoMultiLang] = useState<{ [key: number]: boolean }>({});
-  const [, setShowAnimeNotFoundMessage] = useState(false);
   // Ajoute ce state en haut du composant TVDetails, avec les autres useState :
   const [dropdownMode, setDropdownMode] = useState<boolean | null>(null); // null = utiliser le mode par défaut basé sur le nombre d'épisodes
   const [certifications, setCertifications] = useState<{ [key: string]: string }>({});
@@ -705,7 +647,7 @@ const TVDetails: React.FC = () => {
       setTmdbKeywords(tmdbResponse.data?.keywords ?? null);
       setTmdbAlternativeTitles(tmdbResponse.data?.alternative_titles?.results || []);
 
-      // Nom anglais pour nourrir le matching anime (original_name est souvent en japonais/kanji)
+      // Nom anglais pour la recherche des personnages AniList (original_name est souvent en japonais/kanji)
       if (getTmdbLanguage() !== 'en-US') {
         axios
           .get(`https://api.themoviedb.org/3/tv/${id}`, {
@@ -852,7 +794,7 @@ const TVDetails: React.FC = () => {
 
     } catch (error) {
       console.error('Error fetching TV show details:', error);
-      setError(t('details.loadError'));
+      setError(tRef.current('details.loadError'));
       setIsAvailable(true); // Assume available on error? Or false?
     } finally {
       setLoading(false);
@@ -882,14 +824,10 @@ const TVDetails: React.FC = () => {
       setSeasonsDetails({});
       setEpisodeWarningOpen(false);
       setPendingEpisode(null);
-      setAnimeEpisodeSearchOpen(false);
-      setAnimeEpisodeSearch('');
-      setAnimeEpisodeSortDescending(false);
-      setAnimeEpisodeView('list');
-      setAnimeData(null);
-      setSelectedAnimeEpisode(null);
-      setSelectedLanguage(null);
-      setSelectedPlayer(null);
+      setEpisodeSearchOpen(false);
+      setEpisodeSearch('');
+      setEpisodeSortDescending(false);
+      setEpisodeView('list');
       setRecommendationsLoaded(false);
       setRecommendations([]);
       setShowCast(false);
@@ -958,7 +896,7 @@ const TVDetails: React.FC = () => {
         ]);
       } catch (error) {
         console.error('Error fetching data on ID change:', error);
-        setError(t('details.loadError'));
+        setError(tRef.current('details.loadError'));
       } finally {
         setIsLoading(false);
       }
@@ -990,8 +928,8 @@ const TVDetails: React.FC = () => {
     setSelectedSeason(season);
     setSelectedEpisode(null);
     setDropdownMode(null);
-    setAnimeEpisodeSearch('');
-    setAnimeEpisodeSearchOpen(false);
+    setEpisodeSearch('');
+    setEpisodeSearchOpen(false);
     setSeasonPickerOpen(false);
 
     // Scroll vers le bouton de menu déroulant pour qu'il soit au centre de l'écran
@@ -1315,7 +1253,7 @@ const TVDetails: React.FC = () => {
               Number(progressData.position) || 0,
               Number(progressData.duration) || 0
             );
-          } catch (_) {
+          } catch {
             // ignore malformed entries
           }
         }
@@ -1325,7 +1263,7 @@ const TVDetails: React.FC = () => {
           let effectiveSeason = latestSeason;
           let effectiveEpisode = latestEpisode;
 
-          if (!animeMode && availableSeasons.length > 0 && !availableSeasons.includes(effectiveSeason)) {
+          if (availableSeasons.length > 0 && !availableSeasons.includes(effectiveSeason)) {
             effectiveSeason = defaultStartSeason;
             effectiveEpisode = 1;
           }
@@ -1352,7 +1290,7 @@ const TVDetails: React.FC = () => {
         console.error('Error parsing continue watching data:', error);
       }
     }
-  }, [id, animeMode, availableSeasons, defaultStartSeason]);
+  }, [id, availableSeasons, defaultStartSeason]);
 
   // Historique serveur de la série (autre appareil, lecteurs web, « Déjà vu ») :
   // le stockage local gagne toujours, le serveur comble ce qui manque.
@@ -1360,7 +1298,6 @@ const TVDetails: React.FC = () => {
   const serverEpisodes = useMemo(() => serverEpisodeMap(titleHistory), [titleHistory]);
   const seriesMarked = seriesFullyMarked(titleHistory);
   const resumeData = seriesResume(continueWatchingData, titleHistory, {
-    pageAnimeMode: animeMode,
     availableSeasons,
     defaultStartSeason,
   });
@@ -1372,26 +1309,7 @@ const TVDetails: React.FC = () => {
     let seasonToWatch = resumeData.hasProgress || resumeData.fromServer ? resumeData.seasonNumber : defaultStartSeason;
     let episodeToWatch = resumeData.hasProgress || resumeData.fromServer ? resumeData.episodeNumber : 1;
 
-    // En mode anime, la reprise et la navigation ne considèrent que les
-    // saisons qui possèdent réellement des épisodes lisibles.
-    const animeSeasonNumbers = animeMode && animeData?.seasons
-      ? (animeData.seasons as any[])
-          .map((season, index) => ({ season, index }))
-          .filter(({ season }) =>
-            season?.available !== false &&
-            season?.status !== 'unavailable' &&
-            Array.isArray(season?.episodes) &&
-            season.episodes.length > 0
-          )
-          .map(({ season, index }) => Number(season?.number ?? (index + 1)))
-      : null;
-
-    if (animeSeasonNumbers && animeSeasonNumbers.length > 0) {
-      if (!animeSeasonNumbers.includes(seasonToWatch)) {
-        seasonToWatch = animeSeasonNumbers[0];
-        episodeToWatch = 1;
-      }
-    } else if (availableSeasons.length > 0 && !availableSeasons.includes(seasonToWatch)) {
+    if (availableSeasons.length > 0 && !availableSeasons.includes(seasonToWatch)) {
       seasonToWatch = defaultStartSeason;
       episodeToWatch = 1;
     }
@@ -1408,15 +1326,9 @@ const TVDetails: React.FC = () => {
       if (seed && !readLocalStorage(progressKey)) writeLocalStorage(progressKey, seed);
     }
 
-    // Check if Cinema Mode is active
+    // Toutes les séries utilisent le même lecteur TV/VidRift.
     if (cinemaMode && id) {
-      // Check if it's Anime Mode
-      if (animeMode) {
-        navigate(`/watch/anime/${encodeId(id)}/season/${seasonToWatch}/episode/${episodeToWatch}`);
-      } else {
-        // Navigate to the dedicated TV watch page
-        handleEpisodeChange(episodeToWatch, seasonToWatch);
-      }
+      handleEpisodeChange(episodeToWatch, seasonToWatch);
       return;
     }
 
@@ -1461,7 +1373,1083 @@ const TVDetails: React.FC = () => {
             title={tvShow?.name || ''}
             posterPath={tvShow?.poster_path || ''}
           />
+          {(!ENABLE_VIP_DOWNLOAD_CHECK || readLocalStorage('is_vip') === 'true') && (
+            <motion.button
+              whileHover={{ y: -2, scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+              onClick={() => navigate(`/download/tv/${tvShow?.id}?season=${resumeData.seasonNumber || defaultStartSeason}&episode=${resumeData.episodeNumber || 1}`, { state: { backgroundLocation: location } })}
+              className="inline-flex min-h-11 min-w-[138px] flex-row items-center justify-center gap-2.5 rounded-lg border border-white/15 bg-white/[0.19] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)] backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.27]"
+            >
+              <Download className="h-5 w-5 flex-shrink-0 text-white" />
+              <span className="text-left">{t('details.downloadBtn')}</span>
+            </motion.button>
+          )}
           </div>
+      </div>
+    );
+  };
+
+  useEffect(() => {
+    const fetchShow = async () => {
+      setIsLoading(true);
+      try {
+        const response = await axios.get(
+          `https://api.themoviedb.org/3/tv/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits,videos,content_ratings,networks,external_ids&language=${getTmdbLanguage()}`
+        );
+        setShow(response.data);
+        // Set cast state
+        if (response.data.credits && response.data.credits.cast) {
+          setCast(response.data.credits.cast);
+        }
+        // Set crew state (using the grouping function)
+        if (response.data.credits && response.data.credits.crew) {
+          setCrew(groupCrewMembers(response.data.credits.crew));
+        }
+      } catch (error) {
+        console.error('Error fetching TV show:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchShow();
+  }, [id]);
+
+  const fetchRecommendations = useCallback(async () => {
+    if (recommendationsLoaded) return; // Éviter de refaire la requête si déjà chargé
+
+    setLoadingSimilar(true);
+    try {
+      const response = await axios.get(
+        `https://api.themoviedb.org/3/tv/${id}/recommendations?api_key=${TMDB_API_KEY}&language=${getTmdbLanguage()}`
+      );
+
+      const results = response.data.results || [];
+      setRecommendations(results.slice(0, 20));
+      setRecommendationsLoaded(true); // Marquer comme chargé même si vide
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      setRecommendationsLoaded(true); // Marquer comme chargé même en cas d'erreur
+    } finally {
+      setLoadingSimilar(false);
+    }
+  }, [id, recommendationsLoaded]);
+
+  // Charger automatiquement les séries similaires lors du chargement de la page
+  useEffect(() => {
+    if (id && tvShow && !recommendationsLoaded) {
+      fetchRecommendations();
+    }
+  }, [id, tvShow, recommendationsLoaded, fetchRecommendations]);
+
+
+  useEffect(() => {
+    if (tvShow) {
+      // Simple TV show title
+      document.title = `${tvShow.name} - Movix`;
+    } else {
+      document.title = tRef.current('details.tvShowDefaultTitle');
+    }
+  }, [tvShow, id]);
+
+  const looksLikeAnime = useCallback(() => {
+    if (!tvShow) return false;
+    // Scoring multi-signaux TMDB: origin_country, original_language, studio japonais,
+    // keywords "anime"/"manga" (avec garde JP/ja), genre Animation. Seuil 40.
+    return isLikelyAnime(tvShow as unknown as Parameters<typeof isLikelyAnime>[0], tmdbKeywords);
+  }, [tvShow, tmdbKeywords]);
+
+  /**
+   * Les personnages de la fiche. AniList quand la série a le profil d'un anime
+   * — elle rend les personnages eux-mêmes, là où TMDB ne rend que des
+   * comédiens — et le générique TMDB sinon, ou si AniList ne connaît pas
+   * l'œuvre. Les titres sont proposés du plus prometteur au moins : l'original
+   * japonais, puis l'anglais, tous deux mieux indexés chez eux que le titre
+   * traduit affiché.
+   */
+  useEffect(() => {
+    if (!tvShow) return;
+    let stale = false;
+    setCharactersLoading(true);
+
+    void loadDetailCharacters({
+      looksLikeAnime: looksLikeAnime(),
+      anilistTitles: [tvShow.original_name, tmdbEnglishName, tvShow.name]
+        .filter((title): title is string => Boolean(title)),
+      cast: fullCast,
+    })
+      .then((result) => { if (!stale) setCharacters(result); })
+      .catch(() => { if (!stale) setCharacters(null); })
+      .finally(() => { if (!stale) setCharactersLoading(false); });
+
+    return () => { stale = true; };
+  }, [tvShow, tmdbEnglishName, fullCast, looksLikeAnime]);
+
+  /** Mots-clés et titres alternatifs, mis à plat pour l'affichage. */
+  const extraKeywords = useMemo(
+    () => normalizeKeywords(tmdbKeywords, getTmdbLanguage()),
+    [tmdbKeywords],
+  );
+  const extraAlternateTitles = useMemo(
+    () => normalizeAlternateTitles(
+      { results: tmdbAlternativeTitles },
+      [tvShow?.name, tvShow?.original_name, tmdbEnglishName],
+    ),
+    [tmdbAlternativeTitles, tvShow?.name, tvShow?.original_name, tmdbEnglishName],
+  );
+
+  /**
+   * Ce que la fiche vient de récupérer alimente le catalogue local de
+   * recherche. Titres alternatifs, mots-clés, thèmes et noms de personnages
+   * sont exactement ce que `search/multi` ne sait pas trouver : les garder
+   * rend la fiche retrouvable par ces mots-là (voir `utils/mediaSearchIndex`).
+   */
+  useEffect(() => {
+    if (!tvShow || !id) return;
+    rememberMedia({
+      mediaType: 'tv',
+      id: Number(id),
+      title: tvShow.name,
+      posterPath: tvShow.poster_path,
+      backdropPath: tvShow.backdrop_path,
+      date: tvShow.first_air_date,
+      voteAverage: tvShow.vote_average,
+      genreIds: tvShow.genres?.map((genre) => genre.id),
+      overview: tvShow.overview,
+      terms: [
+        tvShow.original_name,
+        tmdbEnglishName,
+        ...extraAlternateTitles.map((entry) => entry.title),
+        ...extraKeywords,
+        ...(characters?.themes ?? []),
+        ...(characters?.groups.flatMap((group) => group.characters.map((item) => item.name)) ?? []),
+      ].filter((term): term is string => Boolean(term)),
+    });
+  }, [tvShow, id, tmdbEnglishName, extraAlternateTitles, extraKeywords, characters]);
+
+
+  // Les séries classiques doivent afficher leur première saison dès l'ouverture
+  // de la fiche. Auparavant selectedSeason restait null jusqu'au clic sur
+  // « Lecture », ce qui masquait toute la liste des épisodes.
+  // On attend les détails TMDB pour respecter les saisons réellement disponibles
+  // et on conserve la saison demandée dans l'URL lorsqu'elle existe.
+  useEffect(() => {
+    const seasonNumbers = Object.entries(seasonsDetails)
+      .filter(([, details]) => Array.isArray(details?.episodes) && details.episodes.length > 0)
+      .map(([seasonNumber]) => Number(seasonNumber))
+      .filter((seasonNumber) => Number.isInteger(seasonNumber) && seasonNumber >= 0)
+      .sort((a, b) => a - b);
+
+    if (seasonNumbers.length === 0) return;
+    if (selectedSeason !== null && seasonNumbers.includes(Number(selectedSeason))) return;
+
+    const nextSeason = seasonNumbers.includes(defaultStartSeason)
+      ? defaultStartSeason
+      : seasonNumbers.find((seasonNumber) => seasonNumber > 0) ?? seasonNumbers[0];
+
+    setSelectedSeason(nextSeason);
+    setSelectedEpisode(null);
+  }, [seasonsDetails, selectedSeason, defaultStartSeason]);
+
+  const fetchBackdropAndTrailer = useCallback(async () => {
+    try {
+      console.log('Fetching backdrop and trailer for TV show:', id);
+
+      // Récupérer les images
+      const imagesResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}/images`, {
+        params: { api_key: TMDB_API_KEY }
+      });
+
+      // Trouver la meilleure image de fond
+      const backdrops = imagesResponse.data.backdrops;
+      if (backdrops && backdrops.length > 0) {
+        const largestBackdrop = backdrops.sort((a: TMDBImage, b: TMDBImage) => b.width - a.width)[0];
+        setBestBackdrop(largestBackdrop);
+      }
+
+      // Récupérer la bande-annonce
+      const videosResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}/videos`, {
+        params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() }
+      });
+
+      console.log('French videos response:', videosResponse.data.results);
+      let trailer = videosResponse.data.results.find((video: any) => video.type === 'Trailer');
+
+      // Si pas de bande-annonce en français, essayer en anglais
+      if (!trailer) {
+        console.log('No French trailer found, trying English...');
+        const enVideosResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}/videos`, {
+          params: { api_key: TMDB_API_KEY, language: 'en-US' }
+        });
+        console.log('English videos response:', enVideosResponse.data.results);
+        trailer = enVideosResponse.data.results.find((video: any) => video.type === 'Trailer');
+      }
+
+      if (trailer) {
+        console.log('Trailer found:', trailer);
+        setTrailerVideo(trailer);
+      } else {
+        console.log('No trailer found for this TV show');
+        setTrailerVideo(null);
+      }
+    } catch (error) {
+      console.error('Error fetching backdrop and trailer:', error);
+      setTrailerVideo(null);
+    }
+  }, [id]);
+
+  // Function to fetch multi-language videos for TV shows
+
+  // Function to fetch multi-language videos for a specific season
+
+  useEffect(() => {
+    setBestBackdrop(null);
+    if (id) {
+      fetchBackdropAndTrailer();
+    }
+  }, [id, fetchBackdropAndTrailer]);
+
+  if (loading) {
+    return <DetailsSkeleton mediaType="tv" />;
+  }
+
+  if (error) return <div className="text-center text-red-500">{error}</div>;
+  if (!tvShow) return <div className="text-left">{t('details.tvNotFound')}</div>;
+
+  // Age restriction check
+  const contentCert = certifications['FR'] || certifications['US'] || '';
+  const profileAgeRestriction = currentProfile?.ageRestriction ?? 0;
+  if (contentCert && profileAgeRestriction > 0 && !isContentAllowed(contentCert, profileAgeRestriction)) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-3">{t('details.contentBlocked')}</h2>
+          <p className="text-gray-400 mb-6">
+            {t('details.contentBlockedDesc', { rating: getClassificationLabel(contentCert, t), age: profileAgeRestriction })}
+          </p>
+          <button
+            onClick={() => navigate(-1)}
+            className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium"
+          >
+            {t('details.goBack')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Function to render episodes (dropdown or grid)
+  const renderEpisodes = (episodes: any[]) => {
+    // Filter out empty episodes first to avoid issues
+    const nonEmptyEpisodes = episodes.filter((episode) => Boolean(episode));
+    const episodeQuery = episodeSearch.trim().toLocaleLowerCase();
+    const visibleEpisodes = [...nonEmptyEpisodes]
+      .filter((episode: any) => {
+        if (!episodeQuery) return true;
+        return [episode.name, episode.episode_number]
+          .some((value) => String(value ?? '').toLocaleLowerCase().includes(episodeQuery));
+      })
+      .sort((left: any, right: any) => {
+        const leftNumber = Number(left.episode_number ?? 0);
+        const rightNumber = Number(right.episode_number ?? 0);
+        return episodeSortDescending ? rightNumber - leftNumber : leftNumber - rightNumber;
+      });
+
+    if (nonEmptyEpisodes.length === 0) {
+      return (
+        <div className="text-center p-4 bg-gray-800/50 border border-gray-700 rounded-lg">
+          <p>{t('details.noEpisodesForSeason')}</p>
+        </div>
+      );
+    }
+
+    const currentSeason = seasonsDetails[selectedSeason as number]
+      || seasonCards.find((item) => item.season_number === selectedSeason);
+    const episodeSeasonPoster = firstNonEmptyImage(
+      currentSeason?.poster_path,
+      currentSeason?.posterPath,
+    );
+    const episodeSeriesPoster = firstNonEmptyImage(tvShow?.poster_path);
+    const episodeFallbackPoster = episodeSeasonPoster || episodeSeriesPoster;
+
+    // Déterminer le mode par défaut basé sur le nombre d'épisodes
+    const defaultDropdownMode = false;
+
+    const dropdownOptions = nonEmptyEpisodes.map((ep: any) => {
+      const airing = getEpisodeAiring(selectedSeason!, ep.episode_number);
+      const name = `${ep.episode_number}. ${ep.name}`;
+      return {
+        value: ep.episode_number.toString(),
+        label: airing.kind !== 'aired' && (airing.date || airing.timestamp !== null)
+          ? `${name} — ${getAiringLabel(airing, t, i18n.language, airingNow)}` : name,
+      };
+    });
+
+    const handleDropdownChange = (valueStr: string) => {
+      handleEpisodeChange(Number(valueStr));
+    };
+
+    // Bascule immédiate menu ↔ grille : un AnimatePresence « wait » laissait
+    // un instant vide (sortie puis entrée) qui faisait clignoter la section.
+    return (
+      <>
+        {(
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div ref={seasonPickerMenuRef} className="relative inline-flex" onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setSeasonPickerOpen(false);
+              }}>
+                <button
+                  ref={dropdownToggleButtonRef}
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded={seasonPickerOpen}
+                  aria-label={t('details.season')}
+                  data-testid="season-picker-trigger"
+                  onClick={() => setSeasonPickerOpen((open) => !open)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Escape') setSeasonPickerOpen(false);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-md text-left text-xl font-bold tracking-tight text-white transition-colors hover:text-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                >
+                  <span>{t('details.season')} {selectedSeason ?? 1}</span>
+                  <ChevronRight className={`h-4 w-4 rotate-90 text-white/55 transition-transform ${seasonPickerOpen ? 'rotate-[270deg]' : ''}`} aria-hidden="true" />
+                </button>
+                {seasonPickerOpen && (
+                  <div
+                    role="listbox"
+                    aria-label={t('details.seasonsLabel')}
+                    data-testid="season-picker-options"
+                    className="absolute left-0 top-full z-40 mt-2 max-h-64 min-w-40 overflow-y-auto rounded-xl border border-white/[0.09] bg-[#181818] p-1 shadow-2xl"
+                  >
+                    {Object.keys(seasonsDetails).map((season) => Number(season))
+                      .sort((a, b) => a - b).filter((seasonNumber, index, seasons) => seasons.indexOf(seasonNumber) === index).map((seasonNumber) => (
+                      <button
+                        key={seasonNumber}
+                        type="button"
+                        role="option"
+                        aria-selected={Number(selectedSeason) === seasonNumber}
+                        data-testid={`season-option-${seasonNumber}`}
+                        onClick={() => {
+                          handleSeasonChange(seasonNumber);
+                          setSeasonPickerOpen(false);
+                        }}
+                        className={`flex min-h-9 w-full items-center rounded-lg px-3 py-2 text-left text-sm transition-colors ${Number(selectedSeason) === seasonNumber ? 'bg-[#303033] text-white font-semibold' : 'text-white/70 hover:bg-white/[0.07] hover:text-white'}`}
+                      >
+                        <span>{t('details.season')} {seasonNumber}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="mt-0.5 text-xs font-medium text-white/45">
+                {nonEmptyEpisodes.length} {t('details.episodes').toLocaleLowerCase()}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {episodeListOptions.length > 0 && id && (
+                <div
+                  className="flex items-center rounded-full bg-white/[0.07] p-0.5"
+                  role="group"
+                  aria-label={t('details.episodeListSource')}
+                  title={episodeListKind === 'tvmaze' && tvmazeSeasons ? t('details.episodeListTvmazeHint', {
+                    count: tvmazeSeasons[selectedSeason as number]?.length ?? 0,
+                    tmdb: tmdbSeasonsDetails[selectedSeason as number]?.episodes?.length ?? 0,
+                  }) : undefined}
+                >
+                  {episodeListOptions.map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={episodeListKind === kind}
+                      onClick={() => chooseEpisodeList(kind)}
+                      className={`h-8 rounded-full px-3 text-xs font-semibold transition-colors ${episodeListKind === kind ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                    >
+                      {t(kind === 'tvmaze' ? 'details.episodeListTvmaze' : 'details.episodeListTmdb')}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {hasNetflixLayout && id && (
+                <div className="hidden items-center rounded-full bg-white/[0.07] p-0.5 sm:flex" role="group" aria-label={t('details.seasonLayout')}>
+                  {([false, true] as const).map((netflix) => (
+                    <button
+                      key={netflix ? 'netflix' : 'tmdb'}
+                      type="button"
+                      aria-pressed={usesNetflixLayout === netflix}
+                      onClick={() => chooseSeasonLayout(netflix)}
+                      className={`h-8 rounded-full px-3 text-xs font-semibold transition-colors ${usesNetflixLayout === netflix ? 'bg-white text-[#171719]' : 'text-white/55 hover:text-white'}`}
+                    >
+                      {t(netflix ? 'details.episodeListNetflix' : 'details.episodeListTmdb')}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {episodeSearchOpen ? (
+                <div className="flex h-9 w-52 items-center gap-2 rounded-lg border border-white/10 bg-[#19191b] px-2.5 focus-within:border-white/25 sm:w-64">
+                  <Search className="h-4 w-4 shrink-0 text-white/45" />
+                  <input
+                    autoFocus
+                    value={episodeSearch}
+                    onChange={(event) => setEpisodeSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        setEpisodeSearch('');
+                        setEpisodeSearchOpen(false);
+                      }
+                    }}
+                    placeholder={t('details.selectEpisode')}
+                    aria-label={t('details.selectEpisode')}
+                    className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEpisodeSearch('');
+                      setEpisodeSearchOpen(false);
+                    }}
+                    aria-label={t('common.close')}
+                    className="rounded p-0.5 text-white/45 transition-colors hover:text-white"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEpisodeSearchOpen(true)}
+                  aria-label={t('details.selectEpisode')}
+                  title={t('details.selectEpisode')}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.07] text-white/75 transition-colors hover:bg-white/[0.13] hover:text-white"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setEpisodeSortDescending((value) => !value)}
+                aria-label={episodeSortDescending ? t('common.sortAscending', 'Tri croissant') : t('common.sortDescending', 'Tri décroissant')}
+                title={episodeSortDescending ? t('common.sortAscending', 'Tri croissant') : t('common.sortDescending', 'Tri décroissant')}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.07] text-white/75 transition-colors hover:bg-white/[0.13] hover:text-white"
+              >
+                <ArrowDownUp className="h-4 w-4" />
+              </button>
+
+            </div>
+          </div>
+        )}
+        {visibleEpisodes.length === 0 && episodeSearch.trim() ? (
+          <p className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-8 text-center text-sm text-white/50">
+            {t('details.noEpisodesForSeason')}
+          </p>
+        ) : (dropdownMode !== null ? dropdownMode : defaultDropdownMode) ? (
+          // Dropdown mode (si > 15 épisodes par défaut, ou si activé manuellement)
+          <motion.div
+            key="dropdown"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div className="flex justify-start mb-6">  {/* Alignement à gauche */}
+              <div className="w-full max-w-md">
+                <label className="block text-sm font-medium text-gray-400 mb-2">
+                  {t('details.selectEpisode')}
+                </label>
+                <CustomDropdown
+                  options={dropdownOptions}
+                  value={selectedEpisode ? selectedEpisode.toString() : ""}
+                  onChange={handleDropdownChange}
+                  placeholder={t('details.chooseEpisode')}
+                  searchable={false}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          // Grid mode (mode par défaut ou si toggle activé)
+          <motion.div
+            key="grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
+          >
+            <div className={episodeView === 'grid'
+              ? "mb-6 grid grid-cols-1 gap-3 xl:grid-cols-2"
+              : "mb-6 flex flex-col gap-2"}>
+              {visibleEpisodes.map((ep: any, index: number) => {
+                  const episodeKey = `s${selectedSeason}e${ep.episode_number}`;
+                  const isSelected = selectedEpisode === ep.episode_number;
+                  const airing = getEpisodeAiring(selectedSeason!, ep.episode_number);
+
+                  // Compute per-episode progress from localStorage if present
+                  let progressPercentage = 0;
+                  let hasProgress = false;
+                  try {
+                    if (typeof window !== 'undefined' && id) {
+                      const progressKey = `progress_tv_${id}_s${selectedSeason}_e${ep.episode_number}`;
+                      const saved = localStorage.getItem(progressKey);
+                      if (saved) {
+                        const parsed = JSON.parse(saved);
+                        if (parsed && parsed.position && parsed.duration && parsed.duration > 0) {
+                          progressPercentage = Math.round((parsed.position / parsed.duration) * 100);
+                          // consider progress only if at least 1% watched
+                          hasProgress = parsed.position > 0 && progressPercentage > 0;
+                        }
+                      }
+                    }
+                  } catch {
+                    // ignore localStorage/parsing errors
+                  }
+                  // Serveur (autre appareil, lecteur web, série marquée en entier) :
+                  // comble seulement ce que le stockage local n'a pas.
+                  const mergedEpisode = mergeEpisode(
+                    { percent: progressPercentage, hasProgress, watched: Boolean(watchStatus?.episodeWatched?.[episodeKey]) },
+                    serverEpisodes.get(`${selectedSeason}:${ep.episode_number}`),
+                    seriesMarked,
+                  );
+                  progressPercentage = mergedEpisode.percent;
+                  hasProgress = mergedEpisode.hasProgress;
+                  // Coche : la marque locale seule. Vu d'après le serveur seulement :
+                  // indication à part (seenOnServer), la coche n'est pas allumée.
+                  const isEpisodeWatched = mergedEpisode.watched;
+                  const seenOnServer = mergedEpisode.serverWatched;
+                  // If watched, show a full green bar; otherwise show actual progress
+                  const displayProgress = isEpisodeWatched || seenOnServer ? 100 : progressPercentage;
+
+                  return (
+                    <motion.div
+                      key={`${selectedSeason}-${ep.episode_number}`}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
+                        // Délai plafonné : sans ça, la 21e carte d'une liste
+                        // TVmaze attendait plus d'une seconde avant d'apparaître.
+                        transition: { delay: Math.min(index * 0.03, 0.25), duration: 0.25 }
+                      }}
+                      className={`group relative flex min-h-[112px] flex-row items-stretch overflow-hidden rounded-xl border border-white/[0.075] bg-[#151517] transition-[background,border-color] duration-200 hover:border-white/20 hover:bg-[#1b1b1e] md:min-h-[132px] ${isSelected ? 'border-white/25 ring-1 ring-white/10' : ''}`}
+                      whileHover={{ y: -2, transition: { duration: 0.18 } }}
+                      layout={false}
+                    >
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="flex w-full min-w-0 flex-1 flex-row items-center gap-3 p-2 text-left cursor-pointer md:gap-4 md:p-3"
+                        onClick={() => handleEpisodeChange(ep.episode_number)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            handleEpisodeChange(ep.episode_number);
+                          }
+                        }}
+                      >
+                        {/* ... Grid item content for standard episodes ... */}
+                        <div className="flex min-w-0 flex-1 flex-row items-center gap-3 md:gap-4"><span className="hidden w-7 shrink-0 text-center text-xl font-semibold text-white/45 sm:inline-flex">{ep.episode_number}</span>
+                          <div className="relative aspect-video w-[36%] min-w-[108px] max-w-[220px] shrink-0 overflow-hidden rounded-lg bg-black/30">
+                            {(() => {
+
+                              const stillSource = firstNonEmptyImage(ep.still_path, ep.still_url);
+                              const imageSource = stillSource || episodeFallbackPoster;
+                              const fallbackSvg = getSeasonFallbackSvg(`${t('details.season').toUpperCase()} ${selectedSeason || ''}`.trim());
+                              if (!imageSource) {
+                                return (
+                                  <div className="w-full h-full bg-white/5 flex items-center justify-center min-h-[150px]">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-tv h-8 w-8 text-white opacity-20"><rect width="20" height="15" x="2" y="7" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+                                  </div>
+                                );
+                              }
+
+                              // `still_url` : image TVmaze complète, laissée telle quelle.
+                              // Le repli utilise la même logique TMDB/URL que les affiches.
+                              const imageUrl = detailsMediaSlot.width > 0
+                                ? getTmdbImageUrl(imageSource, {
+                                  kind: stillSource ? 'still' : 'poster',
+                                  quality: effectiveImageQuality,
+                                  width: Math.ceil(episodeCardCssWidth * imageDpr),
+                                  role: 'card',
+                                  fallback: fallbackSvg,
+                                })
+                                : fallbackSvg;
+                              // Source dans la clé : un échec TVmaze ne doit pas masquer l'image TMDB.
+                              const sourceKey = stillSource
+                                ? (ep.still_path ? 'tmdb-still' : 'tvmaze-still')
+                                : (episodeSeasonPoster ? 'season-poster' : 'series-poster');
+                              const imageKey = `episode-s${selectedSeason || 'unknown'}-e${ep.episode_number}-${sourceKey}`;
+                              const hasFailed = failedImages[imageKey];
+                              const retryUrl = hasFailed ? `${imageUrl}?retry=${Date.now()}` : imageUrl;
+                              const episodeLabel = (ep.name || `${t('details.episode')} ${ep.episode_number}`);
+                              return (
+                                <CompleteImage
+                                  src={hasFailed ? fallbackSvg : retryUrl}
+                                  alt={episodeLabel}
+                                  fit="cover"
+                                  ambient={false}
+                                  className="absolute inset-0"
+                                  onError={() => {
+                                    if (!hasFailed) {
+                                      setFailedImages(prev => ({ ...prev, [imageKey]: true }));
+                                    }
+                                  }}
+                                />
+                              );
+                            })()}
+                            {Number(ep.vote_average) > 0 && (
+                              <span className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                {Number(ep.vote_average).toFixed(1)}
+                              </span>
+                            )}
+                            {airing.kind !== 'unconfirmed' && (
+                              <div className={`absolute top-2 left-2 max-w-[calc(100%-1rem)] text-xs px-2 py-1 rounded-full ${airing.kind === 'aired' ? 'bg-green-700 text-white' : 'bg-yellow-800 text-yellow-50'}`}>
+                                {t(`details.airing.${airing.kind}`)}
+                              </div>
+                            )}
+
+                            {/* Progress badges */}
+                            {((isEpisodeWatched) || (hasProgress && displayProgress >= 95)) ? (
+                              <span className="px-3 py-1.5 absolute top-2 right-2 rounded-lg whitespace-nowrap text-xs font-medium flex gap-1 items-center bg-green-500 text-green-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" aria-hidden="true" className="w-3.5 h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                {t('details.alreadyWatched')}
+                              </span>
+                            ) : (hasProgress && displayProgress > 0 && displayProgress < 95 && (
+                              <span className="px-3 py-1.5 absolute top-2 right-2 rounded-lg whitespace-nowrap text-xs font-medium flex gap-1 items-center bg-yellow-500 text-yellow-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" aria-hidden="true" className="w-3.5 h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                </svg>
+                                {t('details.currentlyWatching')}
+                              </span>
+                            ))}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="bg-red-600/90 rounded-full p-3 transform scale-0 group-hover:scale-100 transition-transform duration-300">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-play h-6 w-6 text-white"><polygon points="6 3 20 12 6 21 6 3"></polygon></svg>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Add progress bar */}
+                            {displayProgress > 0 && (
+                              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
+                                <div
+                                  className={`h-full ${displayProgress >= 95 ? 'bg-green-500' : 'bg-red-600'} transition-all`}
+                                  style={{ width: `${displayProgress}%` }}
+                                />
+                              </div>
+                            )}
+
+                          </div>
+                          <div className="flex min-w-0 flex-1 items-center justify-between gap-3 p-2 md:gap-5 md:p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                {/* Hauteur fixe de deux lignes : la date reste au même niveau sur toutes les cartes. */}
+                                <h4 className="text-lg leading-7 h-14 line-clamp-2 font-medium group-hover:text-white/85 transition-colors" title={ep.name}>
+                                  {`${ep.episode_number}. ${ep.name}`}
+                                </h4>
+                                <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-white/60">
+                                  {(airing.date || airing.timestamp !== null) && (
+                                    <div className="flex items-start gap-1.5">
+                                      <Calendar className="h-3.5 w-3.5 shrink-0 mt-1 text-white/35" />
+                                      <span>{airing.kind === 'aired' ? formatAiringDate(airing, i18n.language) : getAiringLabel(airing, t, i18n.language, airingNow)}</span>
+                                    </div>
+                                  )}
+                                  {ep.runtime && (
+                                    <div className="flex items-center gap-1.5">
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-clock h-3.5 w-3.5 text-white/35"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                                      <span>{Math.floor(ep.runtime / 60)}h {ep.runtime % 60}m</span>
+                                    </div>
+                                  )}
+                                </div>
+                                {ep.overview && (
+                                  <EpisodeOverview
+                                    text={ep.overview}
+                                    expanded={!!expandedCards[`s${selectedSeason}e${ep.episode_number}`]}
+                                    onToggle={toggleCardExpansion(`s${selectedSeason}e${ep.episode_number}`)}
+                                    t={t}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-auto pt-3 justify-end opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (watchStatus && watchStatus.episodeWatchlist) {
+                                    updateWatchStatus('episodeWatchlist', !watchStatus.episodeWatchlist[episodeKey], episodeKey);
+                                  }
+                                }}
+                                className={`p-2 rounded ${watchStatus?.episodeWatchlist?.[episodeKey] ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                title={t('details.addToWatchlistTitle')}
+                              >
+                                <List className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (watchStatus && watchStatus.episodeWatched) {
+                                    updateWatchStatus('episodeWatched', !watchStatus.episodeWatched[episodeKey], episodeKey);
+                                  }
+                                }}
+                                className={`p-2 rounded ${isEpisodeWatched ? 'text-red-600' : 'text-gray-400'} hover:bg-gray-800`}
+                                title={t('details.markAsWatched')}
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              {seenOnServer && (
+                                // Indication, pas un bouton : cocher reste le geste qui marque pour de vrai.
+                                <span
+                                  role="img"
+                                  aria-label={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
+                                  title={seenOnServer === 'estimated' ? t('details.watchedEstimatedBtn', 'Vu (estimé)') : t('details.watchedOtherDevice', 'Vu sur un autre appareil')}
+                                  className="inline-flex h-8 items-center gap-1 self-center rounded border border-dashed border-white/25 px-1.5 text-[11px] text-white/60"
+                                >
+                                  <Check className="w-3.5 h-3.5" aria-hidden="true" />
+                                  {seenOnServer === 'estimated' ? t('details.estimatedShort', 'estimé') : t('details.otherDeviceShort', 'autre appareil')}
+                                </span>
+                              )}
+                              {(() => {
+                                const reminderAt = airing.timestamp ?? (airing.date ? Date.parse(`${airing.date}T00:00:00Z`) : NaN);
+                                // Ne pas proposer un rappel dont l'instant est déjà passé.
+                                if (reminderAt > airingNow && airing.date && id && tvShow?.name) {
+                                  return (
+                                    <AlertButton
+                                      showId={id}
+                                      showName={tvShow.name}
+                                      season={selectedSeason!}
+                                      episode={ep.episode_number}
+                                      episodeName={ep.name}
+                                      airDate={airing.timestamp !== null ? new Date(airing.timestamp).toISOString() : airing.date}
+                                    />
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={`${t('download.episode')} ${ep.episode_number}`}
+                        title={`${t('download.episode')} ${ep.episode_number}`}
+                        data-testid={`episode-download-${selectedSeason}-${ep.episode_number}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          navigate(`/download/tv/${encodeURIComponent(String(tvShow?.id ?? id))}?season=${selectedSeason}&episode=${ep.episode_number}`, { state: { backgroundLocation: location } });
+                        }}
+                        className="absolute right-3 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/[0.08] text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white"
+                      >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    </motion.div>
+                  );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </>
+    );
+  };
+  const tvYear = tvShow.first_air_date && !isNaN(new Date(tvShow.first_air_date).getTime())
+    ? Number(tvShow.first_air_date.slice(0, 4))
+    : null;
+  const showAiring = resolveShowAiring(tvShow.first_air_date, airingSchedule, airingNow);
+  const pendingAiring = pendingEpisode ? getEpisodeAiring(pendingEpisode.season, pendingEpisode.episode) : null;
+  const tvTitle = tvYear ? `${tvShow.name} (${tvYear}) - Movix` : `${tvShow.name} - Movix`;
+  const tvCanonicalUrl = buildSiteUrl(`/tv/${encodedId || id}`);
+  const tvSocialImage = tvShow.backdrop_path || tvShow.poster_path
+    ? `https://image.tmdb.org/t/p/original${tvShow.backdrop_path || tvShow.poster_path}`
+    : undefined;
+  const tvDescription = tvShow.overview?.trim() || `Découvrez ${tvShow.name} sur Movix.`;
+  const posterCssWidth = viewportWidth < 768
+    ? viewportWidth - 32
+    : viewportWidth < 1024
+      ? (viewportWidth - 128) / 3
+      : (viewportWidth - 192) / 3;
+  const mainPosterUrl = getTmdbImageUrl(tvShow.poster_path, {
+    kind: 'poster',
+    quality: effectiveImageQuality,
+    width: Math.ceil(Math.max(1, posterCssWidth) * imageDpr),
+    role: 'detail',
+    fallback: DEFAULT_IMAGE,
+  });
+  const backdropImage = bestBackdrop
+    ? getTmdbImageUrl(bestBackdrop.file_path, {
+      kind: 'backdrop',
+      quality: effectiveImageQuality,
+      width: getCoverImageWidth(viewportWidth, viewportHeight, bestBackdrop.aspect_ratio, imageDpr),
+      role: 'background',
+    })
+    : null;
+  const measuredDetailsWidth = Math.max(1, detailsMediaSlot.width);
+  const gridCardWidth = (columns: number) => Math.max(1, (measuredDetailsWidth - 16 * (columns - 1)) / columns);
+  const episodeCardCssWidth = gridCardWidth(viewportWidth < 768 ? 1 : viewportWidth < 1024 ? 3 : 4);
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <SEO
+        title={tvTitle}
+        description={tvDescription}
+        ogType="video.tv_show"
+        ogUrl={tvCanonicalUrl}
+        ogImage={tvSocialImage}
+        canonical={tvCanonicalUrl}
+      />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="detail-page relative z-10 min-h-screen bg-black text-white px-4 md:px-8 lg:px-16 py-6"
+      >
+        <style>{`
+        /* Netflix-style poster hover effects - COPIED FROM MovieDetails.tsx */
+        .content-row-container {
+          padding: 5px 0px 40px 0px;
+          margin-top: -30px;
+          overflow: visible !important;
+          position: relative;
+          z-index: 1;
+        }
+        .poster-row {
+          display: flex;
+          gap: 10px;
+          transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          padding: 5rem 0.5rem;
+          margin: 0 -0.5rem -5rem -0.5rem;
+          overflow-x: auto !important;
+          overflow-y: visible !important;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          position: relative;
+          z-index: 5;
+        }
+        .poster-row::-webkit-scrollbar {
+          display: none;
+        }
+        .poster-container {
+          position: relative;
+          transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          margin: 0;
+          flex-shrink: 0;
+          z-index: 10;
+          overflow: visible;
+          padding: 0;
+        }
+        .poster-container:hover {
+          z-index: 50;
+          overflow: visible;
+          transform: translateZ(0);
+        }
+        .poster-container:hover ~ .poster-container {
+          transform: translateX(0);
+        }
+        .poster-card {
+          position: relative;
+          transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          transform-origin: 0% 0%;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+          overflow: visible;
+          cursor: pointer;
+          z-index: 10;
+          margin-bottom: 3rem;
+          margin-top: 1rem;
+        }
+        .poster-card:hover {
+          transform: scale(1.5);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          z-index: 100;
+          overflow: visible;
+          transform-style: preserve-3d;
+          position: relative;
+        }
+        .poster-container:has(.poster-card:hover) ~ .poster-container {
+          transform: translateX(100px);
+        }
+        .poster-container:hover ~ .poster-container {
+          transition-delay: 0.12s;
+          transform: translateX(100px);
+        }
+        .poster-card .hover-content {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: #141414;
+          opacity: 0;
+          display: flex;
+          flex-direction: column;
+          border-radius: 8px;
+          transition: opacity 0.3s ease;
+          overflow: hidden;
+        }
+        .poster-card:hover .hover-content {
+          opacity: 1;
+        }
+        .poster-card:hover img.poster {
+          opacity: 0;
+        }
+        .section-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          position: relative;
+          background: linear-gradient(90deg, #ffffff, #e2e2e2);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3);
+          letter-spacing: 0.5px;
+          padding-bottom: 0.5rem;
+          text-transform: uppercase;
+          display: inline-block;
+          animation: fadeInTitle 0.8s ease-out forwards;
+          transition: all 0.3s ease;
+        }
+        .section-title:hover {
+          background: linear-gradient(90deg, #ff3333, #ff9999);
+          -webkit-background-clip: text;
+          background-clip: text;
+          transform: translateY(-2px);
+          text-shadow: 0px 4px 8px rgba(255, 51, 51, 0.4);
+        }
+        .section-title::after {
+          content: '';
+          position: absolute;
+          left: 0;
+          bottom: 0;
+          width: 40px;
+          height: 3px;
+          background: linear-gradient(90deg, #f11 0%, #f66 100%);
+          border-radius: 3px;
+          animation: expandWidth 0.6s ease-out forwards 0.3s;
+          transform-origin: left;
+          transition: all 0.3s ease;
+        }
+        .section-title:hover::after {
+          width: 100%;
+          background: linear-gradient(90deg, #ff3333, #ff9999);
+        }
+        @keyframes fadeInTitle {
+          0% { opacity: 0; transform: translateY(10px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes expandWidth {
+          0% { width: 0; }
+          100% { width: 40px; }
+        }
+
+        /* Styles pour no-scroll (copié de MovieDetails) */
+        .no-scroll {
+          overflow: hidden !important; /* Cache TOUT overflow, pas seulement horizontal */
+          pointer-events: none !important; /* Désactive TOUS les événements de souris sur le conteneur */
+          touch-action: none !important; /* Désactive les événements tactiles */
+          user-select: none !important; /* Empêche la sélection de texte */
+          isolation: isolate; /* Crée un nouveau contexte d'empilement */
+        }
+        /* Réactiver uniquement pour les enfants directs (les poster-container) */
+        .no-scroll > * {
+          pointer-events: auto !important;
+        }
+
+      `}</style>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="text-white px-4 md:px-8 lg:px-16 py-6"
+      >
+        {/* Titre sémantique conservé pour l'accessibilité ; le titre visible est dans le hero. */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="hidden"
+        >
+          <h1 className="section-title text-4xl md:text-5xl font-bold">
+            {tvShow.name} {tvYear && <>({tvYear})</>}
+          </h1>
+          {(showAiring.kind !== 'unconfirmed' || showAiring.date) && (
+            <p className="mt-3">
+              <span className={`inline-block max-w-full text-sm font-medium ${showAiring.kind === 'unconfirmed' ? 'text-gray-300' : `px-2 py-1 rounded-md ${showAiring.kind === 'aired' ? 'bg-green-700 text-white' : 'bg-yellow-800 text-yellow-50'}`}`}>
+                {getAiringLabel(showAiring, t, i18n.language, airingNow)}
+              </span>
+            </p>
+          )}
+          {airingSchedule && (
+            <p className="mt-2 text-xs text-gray-400">
+              {t('details.airing.source')}{' '}
+              <a href={airingSchedule.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2">
+                TVmaze
+              </a>
+            </p>
+          )}
+        </motion.div>
+        {/* Hero série pleine largeur, puis synopsis, saisons et épisodes en dessous. */}
+        <div className="grid grid-cols-1 gap-8">
+          <DetailHero
+            title={tvShow.name}
+            year={tvYear}
+            rating={tvShow.vote_average}
+            seasons={tvShow.number_of_seasons}
+            episodes={tvShow.number_of_episodes}
+            runtime={tvShow.episode_run_time?.[0] ? `${tvShow.episode_run_time[0]} ${t('details.minutesLabel')}` : null}
+            classification={contentCert ? getClassificationLabel(contentCert, t) : null}
+            seasonLabel={t('details.seasonsLabel')}
+            episodeLabel={t('details.episodesLabel')}
+            genres={(tvShow.genres || []).map((genre) => ({
+              id: genre.id,
+              name: t('genres.id_' + genre.id, { defaultValue: String(genre.id) }),
+            }))}
+            synopsis={tvShow.overview}
+            imageUrl={location.state?.heroImageUrl || backdropImage}
+            imagePosition={location.state?.heroImagePosition || 'center top'}
+            fallbackImageUrl={mainPosterUrl}
+            genreHref={(genreId) => `/genre/tv/${genreId}`}
+            badges={
+              <>
+
+                {(showAiring.kind !== 'unconfirmed' || showAiring.date) && (
+                  <span className={showAiring.kind === 'unconfirmed'
+                    ? 'inline-flex max-w-full rounded-md bg-black/40 px-2.5 py-1 text-xs font-semibold text-white/80'
+                    : showAiring.kind === 'aired'
+                      ? 'inline-flex max-w-full rounded-md bg-emerald-600/90 px-2.5 py-1 text-xs font-bold text-white'
+                      : 'inline-flex max-w-full rounded-md bg-amber-500/90 px-2.5 py-1 text-xs font-bold text-black'}>
+                    {getAiringLabel(showAiring, t, i18n.language, airingNow)}
+                  </span>
+                )}
+              </>
+            }
+            note={airingSchedule ? (
+              <p>
+                {t('details.airing.source')}{' '}
+                <a href={airingSchedule.sourceUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-white">TVmaze</a>
+              </p>
+            ) : undefined}
+            actions={<WatchButtons />}
+          />
+
+
+        <div className="detail-content-shell mx-auto w-full max-w-[1720px] px-0 sm:px-2">
+          <div className="detail-section flex flex-wrap items-center gap-3 border-b border-white/[0.08] pb-4">
+            <LikeDislikeButton
+              contentType="tv"
+              contentId={id || ''}
+              onStatsChange={setMovixVoteStats}
+            />
+
+
+          </div>
+
 
                   {/* Saisons et épisodes : choix direct dans l'en-tête, sans galerie de posters. */}
                   <motion.div
@@ -1471,7 +2459,7 @@ const TVDetails: React.FC = () => {
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.25 }}
                   >
-                    {/* Compact episode list for Anime and standard series. */}
+                    {/* Liste compacte des épisodes de la saison sélectionnée. */}
                     <AnimatePresence mode="wait">
                       {selectedSeason !== null && (
                         <motion.div
@@ -1483,34 +2471,16 @@ const TVDetails: React.FC = () => {
                           transition={{ duration: 0.4 }}
                           className="w-full episodes-section"
                         >
-                          {/* AnimatePresence pour la transition anime/standard */}
-                          <AnimatePresence mode="wait">
-                            {useAnimeSeasonLayout ? (
-                              <motion.div
-                                key="anime-view"
-                                initial={{ opacity: 0, y: -10 }} // Départ légèrement au-dessus
-                                animate={{ opacity: 1, y: 0 }}   // Arrivée à la position normale
-                                exit={{ opacity: 0, y: 10 }}    // Sortie légèrement vers le bas
-                                transition={{ duration: 0.3 }}
-                              >
-                                {renderEpisodes(
-                                  animeSeasonCards.find((seasonCard) => seasonCard.seasonNumber === Number(selectedSeason))?.season.episodes || [],
-                                  'anime'
-                                )}
-                              </motion.div>
-                            ) : (
-                              <motion.div
-                                key="standard-view"
-                                initial={{ opacity: 0, y: -10 }} // Départ légèrement au-dessus
-                                animate={{ opacity: 1, y: 0 }}   // Arrivée à la position normale
-                                exit={{ opacity: 0, y: 10 }}    // Sortie légèrement vers le bas
-                                transition={{ duration: 0.3 }}
-                              >
-                                {/* Render the same episode rows for every season source. */}
-                                {renderEpisodes(seasonsDetails[selectedSeason]?.episodes || [], 'standard')}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
+                          <motion.div
+                            key="episodes"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            {/* Même liste d'épisodes, quelle que soit la source de saison. */}
+                            {renderEpisodes(seasonsDetails[selectedSeason]?.episodes || [])}
+                          </motion.div>
                         </motion.div>
                       )}
                 </AnimatePresence>

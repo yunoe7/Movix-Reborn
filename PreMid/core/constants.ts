@@ -81,7 +81,6 @@ export const QUOTED_TEXT_PATTERNS = [
 ]
 export const WATCH_MOVIE_PATH_PATTERN = /^\/watch\/movie\/([^/]+)$/i
 export const WATCH_TV_PATH_PATTERN = /^\/watch\/tv\/([^/]+)\/s\/([^/]+)\/e\/([^/]+)$/i
-export const WATCH_ANIME_PATH_PATTERN = /^\/watch\/anime\/([^/]+)\/season\/([^/]+)\/episode\/([^/]+)$/i
 export const ROUTE_COLLECTION_PATTERN = /^\/collection\/([^/]+)$/i
 export const ROUTE_MOVIE_PATTERN = /^\/movie\/([^/]+)$/i
 export const ROUTE_TV_PATTERN = /^\/tv\/([^/]+)$/i

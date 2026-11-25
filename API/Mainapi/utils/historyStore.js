@@ -247,7 +247,7 @@ function createHistoryStore({ pool, mediaStore, now = () => Date.now() }) {
 
     const seasonKeys = new Map();
     for (const entry of entries) {
-      // Mode anime : numéros anime-sama, pas d'épisode TMDB à lire.
+      // Mode anime : numéros du lecteur anime, pas d'épisode TMDB à lire.
       if (entry.mediaType !== 'tv' || entry.season === null || entry.animeMode) continue;
       const key = `${entry.tmdbId}:${entry.season}`;
       if (!seasonKeys.has(key)) seasonKeys.set(key, { tmdbId: entry.tmdbId, season: entry.season });

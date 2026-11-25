@@ -141,9 +141,9 @@ export function seriesMeta(item: SeriesProgress): SeriesMeta {
 }
 
 /**
- * Fin de ligne d'un titre : série TMDB → épisodes (seriesMeta) ; animé
- * (numérotation anime-sama, pas TMDB) → nombre d'épisodes vus seul, sans
- * total ni pourcentage ; film → movieMeta.
+ * Fin de ligne d'un titre : série TMDB → épisodes (seriesMeta) ; ancienne
+ * entrée historique (numérotation hors TMDB) → nombre d'épisodes vus seul,
+ * sans total ni pourcentage ; film → movieMeta.
  */
 export function progressMeta(
   item: MovieProgress & SeriesProgress & { mediaType: 'movie' | 'tv'; animeMode: boolean },
@@ -177,14 +177,14 @@ interface WatchTarget {
   tmdbId: number;
   season: number | null;
   episode: number | null;
-  /** Série lue en mode animé (anime-sama) : lecteur animé. */
+  /** Ancien marqueur de profil : numérotation hors TMDB, sans lecteur dédié. */
   animeMode?: boolean;
 }
 
 /**
  * Lien du lecteur, comme le panneau « Reprendre » du profil : film →
- * /watch/movie/{id} ; série → /watch/tv/{id}/s/{saison}/e/{épisode} ; animé
- * → /watch/anime/{id}/season/{saison}/episode/{épisode} (comme TVDetails).
+ * /watch/movie/{id} ; série → /watch/tv/{id}/s/{saison}/e/{épisode}, y compris
+ * pour les anciennes entrées historiques (le lecteur TV/VidRift est le seul).
  * Saison 1 et épisode 1 à la place de ce qui manque (S00E03 gardé).
  */
 export function watchPath(item: WatchTarget, encode: (id: number) => string): string {
@@ -193,7 +193,6 @@ export function watchPath(item: WatchTarget, encode: (id: number) => string): st
   const target = episodeTarget(item.season, item.episode);
   const season = target.season ?? 1;
   const episode = target.episode ?? 1;
-  if (item.animeMode) return `/watch/anime/${id}/season/${season}/episode/${episode}`;
   return `/watch/tv/${id}/s/${season}/e/${episode}`;
 }
 

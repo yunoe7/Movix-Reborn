@@ -55,8 +55,6 @@ const stubSources = {
   LightModeContext: `export const useLightMode=()=>({isLightMode:false,effectivePrefs:{transitions:false,carouselAutoplay:false,bgAnimations:false}});`,
   reactI18next: `export const useTranslation=()=>({t:(key)=>key,i18n:{language:'fr-FR'}});`,
   i18n: `export const getTmdbLanguage=()=> 'fr-FR'; export default {language:'fr-FR'};`,
-  AddToListButton: `export default ()=><button>lists.addToList</button>;`,
-  AddToListMenu: `export default ()=>null;`,
   DetailsSkeleton: `export default ()=> <div data-testid="details-skeleton"/>;`,
   ShareButtons: `export default ()=>null;`,
   EmblaCarousel: `export default ({items=[]})=> <div data-testid="recommendations">{items.map(item=><span key={item.id}>{item.title||item.name}</span>)}</div>;`,
@@ -100,7 +98,7 @@ await build({
     name: 'details-redesign-fixture',
     setup(builder) {
       builder.onResolve({
-        filter: /PrefetchLink$|AdFreePopupContext$|ProfileContext$|LightModeContext$|^react-i18next$|(?:^|\/)i18n$|AddToListButton$|AddToListMenu$|DetailsSkeleton$|ShareButtons$|EmblaCarousel$|CommentsSection$|LikeDislikeButton$|MovixRatingInfoModal$|LazySection$|(?:^|\/)SEO$|CharactersSection$|DetailExtraMetadata$|AlertButton$|AntiSpoilerSettings$|AntiSpoilerSettingsModal$|CustomDropdown$|useWrappedTracker$|useMovieReleaseWarnings$|useAntiSpoilerSettings$|useTvAiringSchedule$|detailCharacters$|components\/ui\/dialog$/,
+        filter: /PrefetchLink$|AdFreePopupContext$|ProfileContext$|LightModeContext$|^react-i18next$|(?:^|\/)i18n$|DetailsSkeleton$|ShareButtons$|EmblaCarousel$|CommentsSection$|LikeDislikeButton$|MovixRatingInfoModal$|LazySection$|(?:^|\/)SEO$|CharactersSection$|DetailExtraMetadata$|AlertButton$|AntiSpoilerSettings$|AntiSpoilerSettingsModal$|CustomDropdown$|useWrappedTracker$|useMovieReleaseWarnings$|useAntiSpoilerSettings$|useTvAiringSchedule$|detailCharacters$|components\/ui\/dialog$/,
       }, ({ path: name }) => {
         const key = name === 'react-i18next' ? 'reactI18next'
           : /components\/ui\/dialog$/.test(name) ? 'dialog'
@@ -194,30 +192,9 @@ const anime = {
   production_companies: [],
   credits: { cast: [{ id: 3, name: 'Acteur Anime', character: 'Personnage Anime', profile_path: '/profile.jpg' }], crew: [] },
 };
-const animeCandidate = {
-  name: anime.name,
-  alternative_names: [],
-  poster_path: anime.poster_path,
-  seasons: [{
-    number: 1,
-    season_number: 1,
-    name: 'Saison Anime 1',
-    episodes: [{
-      index: 1,
-      episode_number: 1,
-      name: 'Épisode Anime Fixture',
-      still_path: '/anime-still.jpg',
-      streaming_links: [{ language: 'vf', players: [] }],
-    }],
-  }],
-};
-
 function jsonFor(url) {
   const pathname = url.pathname;
-  if (url.hostname === 'main-api.test') {
-    if (/^\/anime\/tmdb\/tv\/99999$/.test(pathname)) return [animeCandidate];
-    return {};
-  }
+  if (url.hostname === 'main-api.test') return {};
   if (/\/movie\/42\/credits$/.test(pathname)) return movie.credits;
   if (/\/movie\/42\/release_dates$/.test(pathname)) return { results: [] };
   if (/\/movie\/42\/images$/.test(pathname)) return {
@@ -369,8 +346,8 @@ try {
       assert.equal(actionCount, 3, `${kind}/${mode}: exactement trois actions principales`);
       assert.equal(tabCount, 0, `${kind}/${mode}: aucun onglet`);
       assert.ok(castCount >= 1, `${kind}/${mode}: distribution affichée`);
-      assert.equal(castCardDirection, 'column', `${kind}/${mode}: portraits verticaux avec métadonnées dessous`);
-      assert.ok(castPortraitRatio >= 0.72 && castPortraitRatio <= 0.78, `${kind}/${mode}: portrait au ratio 3:4 (${castPortraitRatio})`);
+      assert.equal(castCardDirection, 'row', `${kind}/${mode}: portraits horizontaux avec métadonnées à côté`);
+      assert.ok(castPortraitRatio >= 0.65 && castPortraitRatio <= 0.68, `${kind}/${mode}: portrait vertical de la fixture (${castPortraitRatio})`);
       assert.equal(castImageFit, 'cover', `${kind}/${mode}: portrait remplit son cadre sans déformation`);
       assert.equal(castNameVisible, true, `${kind}/${mode}: nom de l'acteur visible`);
       assert.ok(recommendations.includes(kind === 'movie' ? 'Reco Film' : 'Reco Série'), `${kind}/${mode}: recommandations réelles`);
@@ -427,8 +404,6 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto('http://details.test/?path=%2Ftv%2F99999');
     await page.locator('.detail-hero').waitFor();
-    const animeToggle = page.locator('button[aria-pressed]').filter({ hasText: 'details.backToStandardMode' });
-    await animeToggle.waitFor();
     const animeSeasonPicker = page.locator('[data-testid="season-picker-trigger"]');
     await animeSeasonPicker.waitFor();
     await animeSeasonPicker.click();
@@ -443,8 +418,6 @@ try {
     const fixedBackdrops = await page.locator('div.fixed.inset-0[aria-hidden="true"]').count();
     const actionCount = await page.locator('.detail-hero__actions button').count();
     const tabCount = await page.getByRole('tab').count();
-    const animeModePressed = await animeToggle.getAttribute('aria-pressed');
-    const animeBadge = await page.locator('.detail-hero').innerText();
     const playIconWidth = await page.locator('.detail-hero__actions img[src="/icons/play-button-icon.png"]').evaluate(img => img.naturalWidth);
     const castCount = await page.locator('.detail-cast-rail .detail-cast-card').count();
     const recommendations = await page.locator('[data-testid="recommendations"]').innerText();
@@ -455,21 +428,23 @@ try {
     assert.equal(fixedBackdrops, 0, 'anime: aucun fond fixe dupliqué');
     assert.equal(actionCount, 3, 'anime: exactement trois actions principales');
     assert.equal(tabCount, 0, 'anime: aucun onglet');
-    assert.equal(animeModePressed, 'true', 'anime: mode anime actif sur /tv/:id');
-    assert.ok(animeBadge.toLowerCase().includes('details.animemodeactivebadge'), `anime: badge affiché dans le bandeau — ${JSON.stringify(animeBadge)}`);
     assert.ok(playIconWidth > 0, 'anime: icône de lecture personnalisée chargée');
     assert.ok(castCount >= 1, 'anime: distribution affichée');
     assert.ok(recommendations.includes('Reco Anime'), 'anime: recommandations réelles');
     assert.equal(commentsCount, 1, 'anime: commentaires conservés');
     assert.ok(await page.locator('.seasons-section').isVisible(), 'anime: saisons et épisodes conservés');
     assert.ok(overflow <= 1, `anime: pas de débordement horizontal (${overflow}px)`);
+    const staleAnimeGrid = await page.locator('.anime-season-card').count();
+    const staleAnimeModeText = await page.getByText(/details\.(animeModeActiveBadge|backToStandardMode|animeModeLabel)|MODE ANIME ACTIF|Retour au mode standard|Mode anime/).count();
+    assert.equal(staleAnimeGrid, 0, 'anime: aucune grille Anime-Sama résiduelle');
+    assert.equal(staleAnimeModeText, 0, 'anime: aucun badge ni bouton de mode anime résiduel');
 
     const screenshot = path.join(artifactDir, 'anime-mobile.png');
     await page.screenshot({ path: screenshot, fullPage: true });
     observations.push({
       kind: 'anime', mode: 'mobile', heroCount, fixedBackdrops, actionCount, tabCount,
-      animeModePressed, playIconWidth, castCount, recommendations, commentsCount, overflow,
-      screenshot: path.basename(screenshot), errors,
+      playIconWidth, castCount, recommendations, commentsCount, overflow,
+      staleAnimeGrid, staleAnimeModeText, screenshot: path.basename(screenshot), errors,
     });
     assert.deepEqual(errors, [], 'anime: erreurs navigateur');
     await context.close();

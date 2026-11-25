@@ -3,7 +3,7 @@
  * Extracted from server.js — wraps proxy logic with site-specific headers and cookies.
  *
  * Some helpers depend on axios instances / session state that live in route modules
- * (e.g. axiosAnimeSama, axiosCoflix, cookieJar).
+ * (e.g. axiosCoflix, cookieJar).
  * Call `configure(deps)` once at startup to inject those dependencies.
  */
 
@@ -18,13 +18,11 @@ const {
   ENABLE_COFLIX_PROXY,
   ENABLE_FRENCH_STREAM_PROXY,
   ENABLE_LECTEURVIDEO_PROXY,
-  ENABLE_ANIME_PROXY,
   DARKINO_PROXIES,
   getDarkinoHttpProxyAgent,
   makeCoflixRequest,
   makeLecteurVideoRequest,
   makeWiflixRequest,
-  makeAnimeSamaRequest,
 } = require('./proxyManager');
 
 // Lazy-bound dependencies injected via configure()
@@ -33,9 +31,7 @@ let deps = {
   coflixHeaders: {},
   cookieJar: null,
   axiosCoflix: null,
-  axiosAnimeSama: null,
   COFLIX_BASE_URL: '',
-  ANIME_SAMA_URL: '',
 };
 
 const WIFLIX_BASE_URL = process.env.WIFLIX_BASE_URL || 'https://flemmix.land';
@@ -571,122 +567,6 @@ async function axiosLecteurVideoRequest(config) {
   }
 }
 
-function isAnimeSamaRetriableError(error) {
-  const statusCode = error?.response?.status;
-  const errorCode = error?.code;
-  const message = String(error?.message || '').toLowerCase();
-
-  if (statusCode === 403 || statusCode === 407 || statusCode === 408 || statusCode === 425 || statusCode === 429) {
-    return true;
-  }
-
-  if (statusCode >= 500 && statusCode < 600) {
-    return true;
-  }
-
-  if (
-    errorCode === 'ECONNABORTED' ||
-    errorCode === 'ETIMEDOUT' ||
-    errorCode === 'ECONNRESET' ||
-    errorCode === 'ECONNREFUSED' ||
-    errorCode === 'EHOSTUNREACH' ||
-    errorCode === 'ENETUNREACH' ||
-    errorCode === 'EAI_AGAIN'
-  ) {
-    return true;
-  }
-
-  return (
-    message.includes('socks5 authentication failed') ||
-    message.includes('proxy authentication') ||
-    message.includes('tunneling socket could not be established')
-  );
-}
-
-// Fonction utilitaire pour requ\u00eates AnimeSama via CycleTLS (JA3 Chrome) + proxies
-async function axiosAnimeSamaRequest(config) {
-  const debugAnimeSama = process.env.DEBUG_ANIMESAMA === 'true';
-  let urlStr = config.url || '';
-
-  const isAnimeSama = urlStr.includes('anime-sama.to') || urlStr.includes('anime-sama.si') || urlStr.includes('anime-sama.fr') ||
-    (config.baseURL && (config.baseURL.includes('anime-sama.to') || config.baseURL.includes('anime-sama.si') || config.baseURL.includes('anime-sama.fr')));
-
-  if (!ENABLE_ANIME_PROXY || !isAnimeSama) {
-    return deps.axiosAnimeSama({ ...config, timeout: 30000, proxy: false });
-  }
-
-  // Construire l'URL compl\u00e8te
-  let absoluteUrl = urlStr;
-  if (config.baseURL && !urlStr.startsWith('http')) {
-    absoluteUrl = config.baseURL + urlStr;
-  } else if (!urlStr.startsWith('http') && !absoluteUrl.startsWith('http')) {
-    // Si l'URL n'est pas compl\u00e8te et qu'on n'a pas de baseURL, utiliser ANIME_SAMA_URL
-    absoluteUrl = deps.ANIME_SAMA_URL + (urlStr.startsWith('/') ? urlStr.substring(1) : urlStr);
-  }
-
-  // Headers pour les requ\u00eates Anime-Sama via proxy
-  const animeSamaHeaders = {
-    'Accept-Language': 'fr-FR,fr;q=0.6',
-    'Cache-Control': 'no-cache',
-    'Pragma': 'no-cache',
-    'Priority': 'u=0, i',
-    'Sec-CH-UA': '"Chromium";v="142", "Brave";v="142", "Not_A Brand";v="99"',
-    'Sec-CH-UA-Mobile': '?0',
-    'Sec-CH-UA-Platform': '"Windows"',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-User': '?1',
-    'Sec-GPC': '1',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36'
-  };
-
-  // Supprimer les headers li\u00e9s \u00e0 l'IP d'origine pour \u00e9viter de les transmettre
-  const headersToRemove = ['X-Forwarded-For', 'X-Real-IP', 'X-Client-IP', 'CF-Connecting-IP', 'True-Client-IP', 'X-Original-Forwarded-For'];
-  const cleanHeaders = { ...animeSamaHeaders };
-
-  // Si config.headers existe, le nettoyer aussi
-  if (config.headers) {
-    const configHeaders = { ...config.headers };
-    headersToRemove.forEach(header => {
-      delete configHeaders[header];
-      delete configHeaders[header.toLowerCase()];
-    });
-    Object.assign(cleanHeaders, configHeaders);
-  }
-
-  // CycleTLS (JA3 Chrome) + rotation sur pool SOCKS5/HTTP
-  const method = String(config.method || 'get').toLowerCase();
-  let cycleBody = '';
-  if (config.data !== undefined && config.data !== null) {
-    cycleBody = typeof config.data === 'string' ? config.data : JSON.stringify(config.data);
-  }
-  const res = await makeAnimeSamaRequest(absoluteUrl, {
-    headers: cleanHeaders,
-    timeout: 30,
-    method,
-    body: cycleBody,
-  });
-
-  if (res.status >= 200 && res.status < 400) {
-    return {
-      data: res.data,
-      status: res.status,
-      headers: res.headers,
-      statusText: '',
-      config,
-    };
-  }
-
-  const cycleErr = new Error(`[ANIMESAMA CYCLETLS] status ${res.status}`);
-  cycleErr.response = { data: res.data, status: res.status, headers: res.headers };
-  if (debugAnimeSama) {
-    console.warn(`[ANIMESAMA REQUEST] cycletls returned ${res.status}`, summarizeRequestErrorForLog(cycleErr));
-  }
-  throw cycleErr;
-}
-
 // Fonction utilitaire pour requ\u00eates Wiflix avec proxy
 // Délègue à makeWiflixRequest (proxys uniquement, sans relais Cloudflare)
 async function axiosWiflixRequest(config) {
@@ -832,9 +712,6 @@ module.exports = {
 
   // LecteurVideo
   axiosLecteurVideoRequest,
-
-  // AnimeSama
-  axiosAnimeSamaRequest,
 
   // Wiflix
   axiosWiflixRequest,

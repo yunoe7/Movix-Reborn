@@ -654,7 +654,6 @@
     "source": {
       "newReleases": "Sorties du moment",
       "airingEpisodes": "Séries en diffusion",
-      "animeReleases": "Sorties anime",
       "watchlistEpisodes": "\u00c9pisodes de ma watchlist",
       "watchlistMovies": "Films de ma watchlist",
       "alerts": "Mes alertes",
@@ -665,10 +664,6 @@
       "movie": "Sortie cin\u00e9ma",
       "movieDigital": "Sortie num\u00e9rique",
       "tv": "Nouvelle s\u00e9rie"
-    },
-    "animeRelease": {
-      "delayed": "Reporté",
-      "estimated": "Prévu"
     },
     "category": {
       "movie": "Film",
@@ -825,18 +820,6 @@
     "onTheAir": "En cours de diffusion",
     "filterByGenre": "Filtrer par genre",
     "filterByYear": "Filtrer par année"
-  },
-  "animePage": {
-    "title": "Anime",
-    "trending": "Les anime du moment",
-    "availableOnAnimeSama": "Disponibles sur Anime-Sama",
-    "recentAnime": "Animes récentes",
-    "airingOnSite": "En cours de diffusion",
-    "recentDubbed": "Récents en VF",
-    "popularNow": "Les anime les plus populaires",
-    "topRated": "Les anime les mieux notés",
-    "keywordHighlights": "Anime triés par mot-clé",
-    "keywordRecent": "Anime récents du mot-clé"
   },
   "details": {
     "overview": "Synopsis",
@@ -1103,10 +1086,6 @@
     "broadcastNetworks": "Diffuseurs",
     "imagesCount_one": "{{count}} image",
     "imagesCount_other": "{{count}} images",
-    "languages": {
-      "vf": "VF",
-      "vostfr": "VOSTFR"
-    },
     "overviewTab": "Aperçu",
     "detailsTab": "Détails",
     "videosTab": "Vidéos",
@@ -1228,11 +1207,6 @@
     "seasonLayout": "Liste des saisons :",
     "episodeListTvmazeHint": "Découpage TVmaze ({{count}} épisodes au lieu de {{tmdb}} sur TMDB)",
     "episodeListSwitchHint": "Il manque des épisodes, ou un épisode déjà sorti ne se lance pas ? Change de liste.",
-    "standardMode": "Mode standard",
-    "animeModeLabel": "Mode anime",
-    "animeModeActiveBadge": "MODE ANIME ACTIF",
-    "backToStandardMode": "Retour au mode standard",
-    "standardModeAvailable": "Mode Standard disponible. Essayez-le si des épisodes/saisons manquent.",
     "cinemaModeEnabled": "Mode Cinéma activé",
     "enableCinemaMode": "Activer Mode Cinéma",
     "cinemaModeOnDesc": "Mode Cinéma activé : Accès à tous les lecteurs et fonctionnalités avancées. Redirection vers la page de visionnage complète. Il est conseillé de le laisser activé.",
@@ -1952,10 +1926,6 @@
     "verifyingAccess": "Vérification des accès...",
     "unknownSeries": "Série inconnue",
     "loadingEpisode": "On va chercher ton épisode… l'escargot s'en occupe.",
-    "animeLoadError": "Impossible de charger les détails de l'anime",
-    "noAnimeSource": "Aucune source anime trouvée pour cet anime",
-    "animeLinksUnavailable": "Les lecteurs de cet épisode ne répondent pas pour le moment. Réessayez dans une minute.",
-    "animeDataError": "Erreur lors du chargement des données anime",
     "languageFrench": "Français",
     "loadingSources": "On rassemble les meilleurs flux pour toi…",
     "finalizingSearch": "Presque fini, on range les résultats…",
@@ -1977,8 +1947,6 @@
     "seasonUnavailableShort": "Indisponible",
     "episodesCount": "{{count}} épisodes",
     "invalidId": "ID invalide",
-    "animeInvalidIdDesc": "L'ID de l'anime fourni n'est pas valide ou ne peut pas être décodé.",
-    "backToAnimes": "Retour aux animes",
     "extractionPlayer": "Extraction {{player}}...",
     "errorTitle": "Erreur",
     "availableSeasons": "Saisons disponibles :",
@@ -1987,7 +1955,6 @@
     "versionLabel": "Version",
     "playersLabel": "Lecteurs",
     "currentSource": "Source actuelle",
-    "cannotLoadAnimeDetails": "Impossible de charger les détails de l'anime",
     "episodeNotFoundInSeason": "Épisode {{episode}} non trouvé dans la saison {{season}}. Cette saison contient {{maxEpisodes}} épisodes.",
     "seasonNotFound": "Saison {{season}} non trouvée. Saisons disponibles : {{availableSeasons}}",
     "estimatedBitrateTooltip": "Le bitrate est estimé à partir de la taille du fichier (content-length) et de la durée du flux. C'est une valeur approximative.",

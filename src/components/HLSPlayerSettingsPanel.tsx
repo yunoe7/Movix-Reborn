@@ -133,7 +133,6 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
     t,
     setShowSettings,
     tabsContainerRef,
-    isAnime,
     tvShowId,
     src,
     settingsTab,
@@ -335,7 +334,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
   // ===== Milestone 4 — pinned source / hoster ids for PinButton UI =====
   // Ces états reflètent en live l'état épinglé dans les prefs et se mettent
   // à jour via `subscribeToPriorityChanges` (custom event + storage cross-onglets).
-  // `pinnedSourceId` n'existe que pour `moviesTv` (langue côté anime → géré dans WatchAnime).
+  // `pinnedSourceId` n'existe que pour `moviesTv` (les langues ont leur propre priorité).
   const [pinnedSourceId, setPinnedSourceId] = useState<TopLevelSourceId | null>(
     () => getSourcePriorityPrefs().categories.moviesTv.pinnedSource?.id ?? null,
   );
@@ -551,18 +550,15 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
 
                   {/* Right Scroll Indicator */}
                   <div className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-l from-gray-900 to-transparent pointer-events-none z-10 md:hidden" />
-                  {/* Only show Quality tab if not in anime HLS mode */}
-                  {!(isAnime && tvShowId && src.includes('.m3u8')) && (
-                    <motion.button
-                      onClick={() => setSettingsTab('quality')}
-                      className={`relative py-2 px-3 text-sm font-medium rounded-t-md transition-colors duration-200 ease-out flex-shrink-0 min-w-max ${settingsTab === 'quality' ? 'text-white' : 'text-gray-400 hover:text-gray-200'
-                        }`}
-                      whileTap={tapProp({ scale: 0.97 })}
-                    >
-                      {t('watch.qualityTab')}
-                      {settingsTab === 'quality' && <motion.div layoutId="activeSettingsTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600" />}
-                    </motion.button>
-                  )}
+                  <motion.button
+                    onClick={() => setSettingsTab('quality')}
+                    className={`relative py-2 px-3 text-sm font-medium rounded-t-md transition-colors duration-200 ease-out flex-shrink-0 min-w-max ${settingsTab === 'quality' ? 'text-white' : 'text-gray-400 hover:text-gray-200'
+                      }`}
+                    whileTap={tapProp({ scale: 0.97 })}
+                  >
+                    {t('watch.qualityTab')}
+                    {settingsTab === 'quality' && <motion.div layoutId="activeSettingsTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-red-600" />}
+                  </motion.button>
                   <motion.button
                     onClick={() => setSettingsTab('format')}
                     className={`relative py-2 px-3 text-sm font-medium rounded-t-md transition-colors duration-200 ease-out flex-shrink-0 min-w-max ${settingsTab === 'format' ? 'text-white' : 'text-gray-400 hover:text-gray-200'
@@ -734,7 +730,7 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                           // Milestone 4 — TopLevelSourceId mappé depuis le `source_main`
                           // pour les boutons de rangée top-level (Films/Séries uniquement).
                           // `nexus_main` est exclu (agrégat ambigu) et le pin ne s'affiche que
-                          // pour la catégorie `moviesTv` (langue anime gérée dans WatchAnime).
+                          // pour la catégorie `moviesTv` (les langues ont leur propre priorité).
                           const topLevelForPin: TopLevelSourceId | null = category === 'moviesTv'
                             ? (SOURCE_MAIN_TO_TOP_LEVEL[source.type] ?? null)
                             : null;
@@ -2170,8 +2166,8 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                       <p className="text-xs text-gray-400 mt-1 px-1">{t('watch.autoNextEpisodeDesc')}</p>
                     </div>
 
-                    {/* Toggle Keep Fullscreen On Episode Change (séries / animes uniquement) */}
-                    {(tvShowId || isAnime) && (
+                    {/* Toggle Keep Fullscreen On Episode Change (séries uniquement) */}
+                    {tvShowId && (
                       <div className="mb-3 pt-4 border-t border-gray-700/60">
                         <h3 className="text-base font-semibold text-white mb-2">{t('watch.keepFullscreen')}</h3>
                         <button
@@ -2193,8 +2189,8 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                       </div>
                     )}
 
-                    {/* Toggle Resume Playback On Episode Change (séries / animes uniquement) */}
-                    {(tvShowId || isAnime) && (
+                    {/* Toggle Resume Playback On Episode Change (séries uniquement) */}
+                    {tvShowId && (
                       <div className="mb-3 pt-4 border-t border-gray-700/60">
                         <h3 className="text-base font-semibold text-white mb-2">{t('watch.resumePlayback')}</h3>
                         <button
@@ -2216,8 +2212,8 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
                       </div>
                     )}
 
-                    {/* Toggle Keep PiP On Episode Change (séries / animes uniquement) */}
-                    {(tvShowId || isAnime) && (
+                    {/* Toggle Keep PiP On Episode Change (séries uniquement) */}
+                    {tvShowId && (
                       <div className="mb-3 pt-4 border-t border-gray-700/60">
                         <h3 className="text-base font-semibold text-white mb-2">{t('watch.keepPip')}</h3>
                         <button

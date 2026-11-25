@@ -12,7 +12,7 @@ function fixture({ dedicated = [], shared = [httpProxy], transport }) {
   const filename = path.resolve(__dirname, '../proxyManager.js');
   const source = fs.readFileSync(filename, 'utf8');
   const start = source.indexOf('async function makeCpasmalRequest(');
-  const end = source.indexOf('// Fonction AnimeSama', start);
+  const end = source.indexOf('// === SOCKS5 PROXIES (from env) ===', start);
   const calls = [];
   const context = {
     URL,

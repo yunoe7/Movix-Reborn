@@ -5261,7 +5261,7 @@
       "|simpulumlamerop|smoki|stevenfamilyedge|stevenimaginelittle|strawberriesporail|telyn610zoanthropy" +
       "|timberwoodanotia|timmaybealready|toddpartneranimal|toxitabellaeatrebates306|tracylocalschool" +
       "|uptodatefinishconferenceroom|valeronevijao|walterprettytheir|wolfdyslectic|yodelswartlike" +
-      // Domaines VOE des lecteurs d'anime-sama (2026-10-19)
+      // Domaines VOE supplémentaires (2026-10-19)
       "|claireguessthousand|derricknationtop|jamesbornmain|jeremyparticipantanything|megankiddifference" +
       "|teresapoliticallearn)\\.",
     "i",

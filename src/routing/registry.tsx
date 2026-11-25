@@ -60,7 +60,6 @@ export const ROUTES: RouteEntry[] = [
   // Version alternative (ex. Encore) : chemin distinct pour remonter le lecteur.
   { path: '/watch/movie/:tmdbid/version/:version',        loader: lz(() => import('../pages/Watch/WatchMovie')) },
   { path: '/watch/tv/:tmdbid/s/:season/e/:episode',       loader: lz(() => import('../pages/Watch/WatchTv')) },
-  { path: '/watch/anime/:id/season/:season/episode/:episode', loader: lz(() => import('../pages/Watch/WatchAnime')) },
 
   // Watch party
 

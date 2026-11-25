@@ -44,7 +44,7 @@ export function scoreAnimeSignals(
   const origin = detail.origin_country || [];
   const lang = detail.original_language || '';
   const isJpLike = origin.includes('JP') || lang === 'ja';
-  // Donghua = animation chinoise (CN/TW/HK, langue zh). anime-sama en héberge une partie.
+  // Donghua = animation chinoise (CN/TW/HK, langue zh), comptée comme anime.
   const isCnLike =
     origin.includes('CN') || origin.includes('TW') || origin.includes('HK') || lang === 'zh';
 

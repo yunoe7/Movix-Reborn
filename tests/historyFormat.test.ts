@@ -117,11 +117,11 @@ test('watchPath : épisode spécial S00E03 gardé, saison 0 sans épisode → S1
   assert.equal(format.watchPath(target('tv', 0, null), encode), '/watch/tv/x1399/s/1/e/1');
 });
 
-// --- Animés (numérotation anime-sama, pas TMDB) ----------------------------------
+// --- Anciennes entrées « animeMode » : le lecteur TV reste le seul ---------------
 
-test('watchPath : animé → lecteur animé /watch/anime/{id}/season/{s}/episode/{e}', () => {
-  assert.equal(format.watchPath({ ...target('tv', 2, 12), animeMode: true }, encode), '/watch/anime/x1399/season/2/episode/12');
-  assert.equal(format.watchPath({ ...target('tv', null, null), animeMode: true }, encode), '/watch/anime/x1399/season/1/episode/1');
+test('watchPath : animeMode true → lecteur TV /watch/tv/{id}/s/{saison}/e/{épisode}', () => {
+  assert.equal(format.watchPath({ ...target('tv', 2, 12), animeMode: true }, encode), '/watch/tv/x1399/s/2/e/12');
+  assert.equal(format.watchPath({ ...target('tv', null, null), animeMode: true }, encode), '/watch/tv/x1399/s/1/e/1');
   assert.equal(format.watchPath({ ...target('tv', 2, 12), animeMode: false }, encode), '/watch/tv/x1399/s/2/e/12');
 });
 

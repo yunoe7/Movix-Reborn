@@ -109,7 +109,6 @@ const COPY = {
       "Consultez la biographie et la filmographie de {{title}} sur Movix.",
     watchMovieLabel: "Regarder le film",
     watchSeriesLabel: "Regarder la série",
-    watchAnimeLabel: "Regarder l’anime",
     watchPartyRoomLabel: "Watch Party",
     watchPartyJoinLabel: "Rejoindre la Watch Party",
     downloadMovieLabel: "Télécharger le film",
@@ -224,7 +223,6 @@ const COPY = {
     personFallback: "See the biography and filmography of {{title}} on Movix.",
     watchMovieLabel: "Watch movie",
     watchSeriesLabel: "Watch series",
-    watchAnimeLabel: "Watch anime",
     watchPartyRoomLabel: "Watch Party",
     watchPartyJoinLabel: "Join Watch Party",
     downloadMovieLabel: "Download movie",
@@ -755,22 +753,9 @@ function buildWatchMovieMetadata(requestUrl, payload, previewLanguage) {
   return metadata;
 }
 
-function buildWatchAnimeMetadata(requestUrl, payload, previewLanguage) {
-  const copy = COPY[previewLanguage];
-  const metadata = buildMovieOrTvMetadata(
-    requestUrl,
-    payload,
-    "tv",
-    previewLanguage,
-  );
-  metadata.title = `${copy.watchAnimeLabel}: ${metadata.title}`;
-  return metadata;
-}
-
 function buildWatchEpisodeMetadata(
   requestUrl,
   payload,
-  watchType,
   previewLanguage,
   seasonNumber,
   episodeNumber,
@@ -801,11 +786,8 @@ function buildWatchEpisodeMetadata(
   const descriptionBody = collapseWhitespace(
     episodePayload?.overview || payload.overview || fallback,
   );
-  const label =
-    watchType === "anime" ? copy.watchAnimeLabel : copy.watchSeriesLabel;
-
   return buildBaseMetadata(requestUrl, previewLanguage, {
-    title: `${label}: ${titleText} - ${episodeCode}${episodeName ? ` - ${episodeName}` : ""} - ${SITE_NAME}`,
+    title: `${copy.watchSeriesLabel}: ${titleText} - ${episodeCode}${episodeName ? ` - ${episodeName}` : ""} - ${SITE_NAME}`,
     description: buildStructuredDescription(facts, descriptionBody),
     imageUrl: buildImageUrl(requestUrl.origin, {
       backdrop_path: episodePayload?.still_path || payload.backdrop_path,
@@ -1236,22 +1218,6 @@ async function resolveRouteMetadata(
     }
 
     if (
-      segments[1] === "anime" &&
-      segments[3] === "season" &&
-      segments[5] === "episode" &&
-      segments[6]
-    ) {
-      const tmdbId = getTmdbId(segments[2]);
-      if (!tmdbId) return buildStaticMetadata(requestUrl, previewLanguage);
-      const payload = await fetchTmdbPayload(
-        "/tv/" + tmdbId,
-        apiKey,
-        copy.tmdbLanguage,
-      );
-      return buildWatchAnimeMetadata(requestUrl, payload, previewLanguage);
-    }
-
-    if (
       segments[1] === "tv" &&
       segments[3] === "s" &&
       segments[5] === "e" &&
@@ -1283,7 +1249,6 @@ async function resolveRouteMetadata(
       return buildWatchEpisodeMetadata(
         requestUrl,
         payload,
-        segments[1] === "anime" ? "anime" : "tv",
         previewLanguage,
         seasonNumber,
         episodeNumber,

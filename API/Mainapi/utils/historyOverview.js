@@ -157,16 +157,16 @@ function buildIndex({ historyRows = [], progressRows = [], markRows = [], viewin
 
   const animeTitles = animeModeTitles(viewingRows);
   for (const row of viewingRows) {
-    // Lecteur anime (WatchAnime.tsx) : même id TMDB de série que « tv ».
+    // Anciennes lignes « anime » : même id TMDB de série que « tv ».
     const mediaType = row.content_type === 'anime' ? 'tv' : row.content_type;
     if (mediaType !== 'movie' && mediaType !== 'tv') continue;
     const tmdbId = toInt(typeof row.content_id === 'number' ? row.content_id : String(row.content_id ?? ''), 1, MAX_INT);
     const seconds = Number(row.seconds);
     // Temps réel sur la page du lecteur (même source que Wrapped) : toutes
-    // les lignes film/série/anime comptent, même celles qu'on ne sait pas attribuer.
+    // les lignes film/série comptent, même celles qu'on ne sait pas attribuer.
     if (seconds > 0) trackedSeconds += seconds;
     if (!tmdbId || !(seconds > 0)) continue;
-    // Épisodes : numérotation TMDB pour « tv », anime-sama pour « anime ».
+    // Épisodes : numérotation TMDB pour « tv », numérotation du lecteur anime pour « anime ».
     // On ne garde que les lignes du mode de la série, jamais les deux mêlées.
     if (mediaType === 'tv' && (row.content_type === 'anime') !== animeTitles.has(tmdbId)) continue;
     let key = MOVIE_EPISODE;
@@ -185,9 +185,9 @@ function buildIndex({ historyRows = [], progressRows = [], markRows = [], viewin
 }
 
 /**
- * Séries regardées en « mode anime » (lecteur anime-sama : saisons et
- * épisodes dans la numérotation anime-sama, pas celle de TMDB). Rien ne le
- * dit dans les données enregistrées : on le déduit du temps du lecteur web.
+ * Séries regardées en « mode anime » (lecteur anime : saisons et épisodes
+ * dans leur numérotation propre, pas celle de TMDB). Rien ne le dit dans les
+ * données enregistrées : on le déduit du temps du lecteur web.
  * Une série est en mode anime si sa ligne wrapped la plus récente
  * (`last_at` = MAX(created_at)) est de type `anime` plutôt que `tv`.
  * @returns {Set<number>} ids TMDB des séries en mode anime
@@ -244,7 +244,7 @@ function lookupsFor(index) {
     const viewing = index.viewing.get(title.key) || EMPTY;
     if (title.mediaType === 'tv') {
       mediaItems.push({ mediaType: 'tv', tmdbId: title.tmdbId });
-      // Mode anime : numéros anime-sama, les saisons TMDB ne correspondent pas.
+      // Mode anime : numéros du lecteur anime, les saisons TMDB ne correspondent pas.
       if (index.animeTitles && index.animeTitles.has(title.tmdbId)) continue;
       const seen = new Set();
       for (const key of viewing.keys()) {
@@ -310,7 +310,7 @@ function classifyMovie(title, progress, viewing, info) {
  * Épisodes connus d'une série pour sa fiche : un par progression exacte,
  * estimé (temps de lecteur web avec durée connue) ou marque, triés par
  * saison puis épisode. `watched` = la règle de l'onglet (ensemble `watched`
- * déjà calculé). Numéros tels qu'enregistrés (anime-sama en mode anime).
+ * déjà calculé). Numéros tels qu'enregistrés (mode anime).
  */
 function episodeList(progress, viewing, marks, watched, runtimeOf) {
   const keys = new Set();
@@ -354,7 +354,7 @@ function lastEpisodeOf(keys) {
   return best;
 }
 
-// Mode anime (`animeMode`) : numéros anime-sama, donc pas de total TMDB
+// Mode anime (`animeMode`) : numérotation propre au lecteur anime, donc pas de total TMDB
 // (`episodesTotal` null, jamais « terminée » par le compte d'épisodes) ;
 // `episodesWatched` compte les épisodes vus sans plafond.
 function classifySeries(title, progress, viewing, info, runtimeOf, animeMode = false) {

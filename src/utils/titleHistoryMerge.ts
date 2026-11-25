@@ -2,7 +2,7 @@
 // stockage local, pour les fiches film et série. Règle du contrat : le local
 // est toujours le plus frais et gagne ; le serveur comble seulement ce qui
 // manque (positions exactes d'un autre appareil, estimés des lecteurs web,
-// marques « Déjà vu »). En mode animé, les numéros du serveur (anime-sama) ne
+// marques « Déjà vu »). Les numéros des anciennes entrées historiques ne
 // s'appliquent pas aux épisodes TMDB de la fiche.
 // Module pur (imports de types seulement), testé par node --test.
 
@@ -81,7 +81,7 @@ export function movieResume(
 
 // --- Série : épisodes ------------------------------------------------------------------
 
-/** Épisodes du serveur par « saison:épisode » ; vide en mode animé (numérotation différente). */
+/** Épisodes du serveur par « saison:épisode » ; vide pour les anciennes entrées historiques. */
 export function serverEpisodeMap(server: TitleHistory | null): Map<string, TitleHistoryEpisode> {
   const map = new Map<string, TitleHistoryEpisode>();
   if (!server || server.animeMode) return map;
@@ -91,7 +91,7 @@ export function serverEpisodeMap(server: TitleHistory | null): Map<string, Title
 
 /**
  * Série marquée « Déjà vu » en entier : le serveur ne détaille pas ses
- * épisodes, chacun compte comme vu. Hors mode animé (numérotation différente).
+ * épisodes, chacun compte comme vu. Hors anciennes entrées historiques.
  */
 export function seriesFullyMarked(server: TitleHistory | null): boolean {
   return Boolean(server && server.mediaType === 'tv' && server.markedWatched && !server.animeMode);
@@ -138,19 +138,19 @@ export interface SeriesResume {
 /**
  * Épisode à reprendre : celui du stockage local s'il y en a un, sinon
  * l'épisode courant du serveur — seulement si sa numérotation est celle de
- * la fiche (même mode animé) et, hors animé, si la saison est affichée.
+ * la fiche (pas une ancienne entrée historique) et si la saison est affichée.
  */
 export function seriesResume(
   local: SeriesResume,
   server: TitleHistory | null,
-  context: { pageAnimeMode: boolean; availableSeasons: number[]; defaultStartSeason: number },
+  context: { availableSeasons: number[]; defaultStartSeason: number },
 ): SeriesResume & { estimated: boolean; fromServer: boolean } {
   const keepLocal = { ...local, estimated: false, fromServer: false };
   if (local.hasProgress || !server) return keepLocal;
   const { season, episode } = server;
   if (season === null || episode === null || season < 0 || episode < 1) return keepLocal;
-  if (server.animeMode !== context.pageAnimeMode) return keepLocal;
-  if (!context.pageAnimeMode && context.availableSeasons.length > 0 && !context.availableSeasons.includes(season)) return keepLocal;
+  if (server.animeMode) return keepLocal;
+  if (context.availableSeasons.length > 0 && !context.availableSeasons.includes(season)) return keepLocal;
   const hasPosition = positive(server.position) && positive(server.duration);
   return {
     seasonNumber: season,
