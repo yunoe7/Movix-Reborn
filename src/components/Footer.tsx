@@ -1,165 +1,41 @@
-import { Discord, Euro, Globe, Github, Info, Scale, Shield, type LucideIcon } from './icons/Icons8';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
-import { useLightMode } from '@/context/LightModeContext';
 import { DISCORD_INVITE_URL } from '@/config/community';
-import reactLogo from '@/assets/technology-logos/react.svg';
-import typescriptLogo from '@/assets/technology-logos/typescript.svg';
-import tailwindLogo from '@/assets/technology-logos/tailwindcss.svg';
-import viteLogo from '@/assets/technology-logos/vite.svg';
-import motionLogo from '@/assets/technology-logos/motion.svg';
-import nodeLogo from '@/assets/technology-logos/nodedotjs.svg';
-import expressLogo from '@/assets/technology-logos/express.svg';
-import pythonLogo from '@/assets/technology-logos/python.svg';
-import mysqlLogo from '@/assets/technology-logos/mysql.svg';
-import redisLogo from '@/assets/technology-logos/redis.svg';
-import socketLogo from '@/assets/technology-logos/socketdotio.svg';
-import rustLogo from '@/assets/technology-logos/rust.svg';
-import webassemblyLogo from '@/assets/technology-logos/webassembly.svg';
 import { MovixWordmark } from './brand/MovixWordmark';
 import './Footer.css';
 
-// Développé avec ❤️ par @mysticsaba, projet commencé à 14 ans.
-
-type FooterLink = {
-  label: string;
-  icon: LucideIcon;
-} & ({ to: string; href?: never } | { href: string; to?: never });
-
-const linkGroups: { title: string; links: FooterLink[] }[] = [
-  {
-    title: 'footer.movix',
-    links: [
-      { label: 'footer.about', to: '/about', icon: Info },
-    ],
-  },
-  {
-    title: 'footer.community',
-    links: [
-      { label: 'footer.discord', href: DISCORD_INVITE_URL, icon: Discord },
-      { label: 'footer.sourceCode', href: 'https://github.com/movixstream/MovixOpenSource', icon: Github },
-      { label: 'costs.navLabel', to: '/frais', icon: Euro },
-    ],
-  },
-  {
-    title: 'footer.information',
-    links: [
-      { label: 'nav.privacy', to: '/privacy', icon: Shield },
-      { label: 'auth.termsOfService', to: '/terms-of-service', icon: Scale },
-      { label: 'footer.ourUrls', href: 'https://movix.online', icon: Globe },
-    ],
-  },
-];
-
-const technologies = [
-  { name: 'React', href: 'https://react.dev/', logo: reactLogo },
-  { name: 'TypeScript', href: 'https://www.typescriptlang.org/', logo: typescriptLogo },
-  { name: 'Tailwind CSS', href: 'https://tailwindcss.com/', logo: tailwindLogo, wide: true },
-  { name: 'Vite', href: 'https://vite.dev/', logo: viteLogo },
-  { name: 'Framer Motion', href: 'https://motion.dev/docs/react', logo: motionLogo, wide: true },
-  { name: 'Node.js', href: 'https://nodejs.org/', logo: nodeLogo },
-  { name: 'Express', href: 'https://expressjs.com/', logo: expressLogo },
-  { name: 'Python', href: 'https://www.python.org/', logo: pythonLogo },
-  { name: 'MySQL', href: 'https://www.mysql.com/', logo: mysqlLogo },
-  { name: 'Redis', href: 'https://redis.io/', logo: redisLogo },
-  { name: 'Socket.IO', href: 'https://socket.io/', logo: socketLogo },
-  { name: 'Rust', href: 'https://www.rust-lang.org/', logo: rustLogo },
-  { name: 'WebAssembly', href: 'https://webassembly.org/', logo: webassemblyLogo },
-];
-
-const linkClassName = 'inline-flex min-h-11 items-center gap-2.5 rounded-sm py-2 text-sm text-gray-400 transition-colors hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400 motion-reduce:transition-none';
-
 const Footer = () => {
   const { t } = useTranslation();
-  const { effectivePrefs } = useLightMode();
 
   return (
-    <footer data-site-footer className="relative z-10 border-t border-gray-800 bg-black py-8 text-gray-300 sm:py-10">
-      <div className="mx-auto max-w-6xl px-6 text-left sm:px-10 lg:px-12">
-        <nav aria-label={t('footer.navigation')} className="grid grid-cols-2 gap-x-6 gap-y-7 sm:grid-cols-3 sm:gap-x-10">
-          {linkGroups.map((group, index) => (
-            <div key={group.title} className={`min-w-0 ${index === 2 ? 'col-span-2 sm:col-span-1' : ''}`}>
-              <h2 className="mb-2 text-base font-semibold text-white">
-                {/* La colonne Movix porte le logo long, à la hauteur d'une ligne de titre. */}
-                {group.title === 'footer.movix' ? <MovixWordmark className="block h-6 w-auto" /> : t(group.title)}
-              </h2>
-              <ul>
-                {group.links.map(({ label, icon: Icon, to, href }) => (
-                  <li key={label}>
-                    {to !== undefined ? (
-                      <Link to={to} className={`footer-navigation-link ${linkClassName}`}>
-                        <Icon size={20} absoluteStrokeWidth className="footer-navigation-icon shrink-0" aria-hidden="true" />
-                        <span>{t(label)}</span>
-                      </Link>
-                    ) : (
-                      <a href={href} target="_blank" rel="noopener noreferrer" className={`footer-navigation-link ${linkClassName}`}>
-                        <Icon size={20} absoluteStrokeWidth className="footer-navigation-icon shrink-0" aria-hidden="true" />
-                        <span>{t(label)}</span>
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+    <footer data-site-footer className="site-footer">
+      <div className="site-footer__inner">
+        <nav aria-label={t('footer.navigation')} className="site-footer__links">
+          <Link to="/about">{t('footer.about')}</Link>
+          <Link to="/terms-of-service">{t('auth.termsOfService')}</Link>
+          <Link to="/privacy">{t('nav.privacy')}</Link>
+          <a href="https://github.com/movixstream/MovixOpenSource" target="_blank" rel="noopener noreferrer">{t('footer.sourceCode')}</a>
+          <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">{t('footer.discord')}</a>
+          <Link to="/frais">{t('costs.navLabel')}</Link>
+          <a href="https://movix.online" target="_blank" rel="noopener noreferrer">{t('footer.ourUrls')}</a>
         </nav>
 
-        <section aria-labelledby="footer-technologies" className="mt-7 border-t border-gray-800 pt-6">
-          <h2 id="footer-technologies" className="text-sm font-semibold text-gray-300">{t('footer.builtWith')}</h2>
-          <ul className="mt-2 flex flex-wrap gap-x-5">
-            {technologies.map(({ name, href, logo, wide }) => (
-              <li key={name}>
-                <a href={href} target="_blank" rel="noopener noreferrer" className={linkClassName}>
-                  <img
-                    src={logo}
-                    alt=""
-                    width={wide ? 32 : 24}
-                    height={24}
-                    className="footer-technology-logo"
-                    data-wide={wide || undefined}
-                    aria-hidden="true"
-                    decoding="async"
-                  />
-                  {name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <p className="site-footer__disclaimer">{t('footer.contentText')}</p>
 
-        <section aria-labelledby="footer-content" className="mt-6 max-w-prose">
-          <h2 id="footer-content" className="mb-2 text-sm font-semibold text-gray-300">{t('footer.contentTitle')}</h2>
-          <p className="text-sm leading-relaxed text-gray-400">{t('footer.contentText')}</p>
-        </section>
-
-        <div className="mt-7 border-t border-gray-800 pt-6 text-sm leading-relaxed text-gray-400">
-          <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
-          <p className="mt-1 text-xs text-gray-500">
-            Icons by <a href="https://icons8.com" target="_blank" rel="noopener noreferrer" className="text-gray-400 underline-offset-4 hover:text-white hover:underline">Icons8</a>
-          </p>
-          <p className="mt-2">
-            <Trans
-              t={t}
-              i18nKey="footer.credits"
-              components={{
-                author: (
-                  <a
-                    href="https://github.com/yunoe7"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-sm text-indigo-400 underline-offset-4 hover:text-indigo-300 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400"
-                  />
-                ),
-              }}
-            />
-          </p>
-          <p className="mt-2 font-semibold">
-            <span className="footer-vibe-text" data-animated={effectivePrefs.bgAnimations}>
-              ✨ {t('footer.vibeCoded')} ✨
-            </span>
-          </p>
+        <div className="site-footer__bottom">
+          <p>© {new Date().getFullYear()} <span className="site-footer__brand"><MovixWordmark className="inline-block h-4 w-auto align-middle" /></span>. {t('footer.copyright', { year: new Date().getFullYear() }).replace(/^©?\s*\d{4}\s*/, '')}</p>
         </div>
       </div>
+
+      <button
+        type="button"
+        className="site-footer__back-to-top"
+        aria-label={t('footer.backToTop', 'Retour en haut')}
+        title={t('footer.backToTop', 'Retour en haut')}
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      >
+        <span aria-hidden="true">↑</span>
+      </button>
     </footer>
   );
 };
