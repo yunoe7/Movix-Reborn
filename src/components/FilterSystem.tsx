@@ -202,7 +202,7 @@ const FilterSystem: React.FC<FilterSystemProps> = ({
             aria-label={t('filter.searchByName')}
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full h-11 pl-10 pr-10 rounded-full border border-white/[0.08] bg-[#111827] text-[15px] text-white shadow-inner shadow-black/10 placeholder:text-white/45 transition-[border-color,box-shadow] focus:outline-none focus:border-red-500/40 focus:ring-2 focus:ring-red-500/20"
+            className="w-full h-11 pl-10 pr-10 rounded-full border border-[#383838] bg-[#111111] text-[15px] text-slate-100 shadow-inner shadow-black/10 placeholder:text-slate-400 transition-[border-color,box-shadow] focus:outline-none focus:border-white/40 focus:ring-2 focus:ring-white/15"
           />
           {searchInput && (
             <button
@@ -233,7 +233,7 @@ const FilterSystem: React.FC<FilterSystemProps> = ({
                 } ${
                   isActive
                     ? 'bg-white text-black'
-                    : 'bg-[#111827] text-white/70 hover:border-white/15 hover:bg-[#1b2536] hover:text-white'
+                    : 'bg-[#111111] text-slate-300 hover:border-[#555555] hover:bg-[#242424] hover:text-white'
                 }`}
               >
                 {/* Couleur pleine + opacity sur l'icône : une couleur transparente ferait foncer les croisements de traits */}
@@ -263,7 +263,7 @@ const FilterSystem: React.FC<FilterSystemProps> = ({
              disabled={isSorting}
              type="button"
              aria-label={`${filters.sortOrder === 'asc' ? t('filter.sortOrderDesc') : t('filter.sortOrderAsc')}`}
-             className={`inline-flex h-10 w-10 items-center justify-center bg-gray-900 rounded-full text-white hover:bg-gray-800 transition-colors ${
+             className={`inline-flex h-10 w-10 items-center justify-center bg-[#111111] border border-[#383838] rounded-full text-slate-100 hover:bg-[#242424] transition-colors ${
                isSorting ? 'opacity-50 cursor-not-allowed' : ''
              }`}
              title={`${filters.sortOrder === 'asc' ? t('filter.sortOrderDesc') : t('filter.sortOrderAsc')}`}
@@ -286,7 +286,7 @@ const FilterSystem: React.FC<FilterSystemProps> = ({
           className={`group h-10 px-3.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2 ${
             showAdvancedFilters
               ? 'bg-white text-black'
-              : 'bg-gray-900 text-white/70 hover:bg-gray-800 hover:text-white'
+              : 'bg-[#111111] text-slate-300 border border-[#383838] hover:bg-[#242424] hover:text-white'
           }`}
         >
           <Filter className={`w-4 h-4 ${showAdvancedFilters ? 'text-black' : 'text-white opacity-70 group-hover:opacity-100'}`} aria-hidden="true" />
@@ -314,7 +314,7 @@ const FilterSystem: React.FC<FilterSystemProps> = ({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="mt-3 rounded-2xl border border-white/[0.07] bg-[#111827] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.2)]"
+            className="mt-3 rounded-2xl border border-[#383838] bg-[#111111] p-4 shadow-[0_16px_40px_rgba(0,0,0,0.2)]"
           >
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Date Range Filter */}

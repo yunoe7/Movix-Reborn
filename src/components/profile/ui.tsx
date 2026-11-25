@@ -9,11 +9,11 @@ import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-red-600 text-white hover:bg-red-500',
-  secondary: 'bg-white/10 text-white hover:bg-white/[0.16]',
+  primary: 'bg-[#555555] text-white hover:bg-[#777777]',
+  secondary: 'bg-[#242424] text-slate-100 ring-1 ring-[#484848] hover:bg-[#383838]',
   // Icônes en couleur pleine + opacity (une couleur transparente fait foncer les croisements de traits).
-  ghost: 'text-white/70 hover:bg-white/[0.06] hover:text-white [&_svg]:text-white [&_svg]:opacity-70 hover:[&_svg]:opacity-100',
-  danger: 'bg-white/10 text-red-300 hover:bg-red-600 hover:text-white',
+  ghost: 'text-slate-300 hover:bg-[#242424] hover:text-white [&_svg]:text-slate-200 [&_svg]:opacity-90 hover:[&_svg]:opacity-100',
+  danger: 'bg-[#242424] text-[#eeeeee] ring-1 ring-[#484848] hover:bg-[#555555] hover:text-white',
   light: 'bg-white text-black hover:bg-white/85',
 };
 
@@ -69,7 +69,7 @@ export function IconButton({ label, tone = 'dark', className = '', children, typ
   const tones = {
     dark: 'bg-black/70 text-white hover:bg-black',
     light: 'bg-white/10 text-white hover:bg-white/[0.16] [&_svg]:opacity-80 hover:[&_svg]:opacity-100',
-    danger: 'bg-black/70 text-white hover:bg-red-600',
+    danger: 'bg-black/70 text-white hover:bg-[#555555]',
   };
   return (
     <button
@@ -87,7 +87,7 @@ export function IconButton({ label, tone = 'dark', className = '', children, typ
 export function Spinner({ label }: { label?: string }) {
   return (
     <div className="flex items-center justify-center gap-3 py-20 text-sm text-white/60" role="status">
-      <Loader2 className="h-6 w-6 animate-spin text-red-500" aria-hidden="true" />
+      <Loader2 className="h-6 w-6 animate-spin text-white/80" aria-hidden="true" />
       {label && <span>{label}</span>}
     </div>
   );
@@ -104,7 +104,7 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
     <div className="group relative isolate flex flex-col items-start gap-5 overflow-hidden rounded-[24px] border border-[#303030] bg-[#202020] px-6 py-8 shadow-[0_18px_48px_rgba(0,0,0,0.16)] sm:flex-row sm:items-center sm:px-8 sm:py-9">
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#e73545]/10 text-[#f04455] ring-1 ring-[#f04455]/15 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-6 [&>svg]:w-6">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#d0d0d0]/10 text-[#eeeeee] ring-1 ring-[#eeeeee]/15 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-6 [&>svg]:w-6">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
@@ -112,9 +112,9 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         <p className="mt-1 max-w-xl text-[15px] leading-relaxed text-white/60">{description}</p>
       </div>
       {action && (action.to ? (
-        <Link to={action.to} className={buttonClass('primary', 'md', '!bg-[#e73545] hover:!bg-[#f04455]')}>{action.label}</Link>
+        <Link to={action.to} className={buttonClass('primary', 'md', '!bg-[#d0d0d0] hover:!bg-[#eeeeee]')}>{action.label}</Link>
       ) : (
-        <Button variant="primary" className="!bg-[#e73545] hover:!bg-[#f04455]" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
+        <Button variant="primary" className="!bg-[#d0d0d0] hover:!bg-[#eeeeee]" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
       ))}
     </div>
   );
@@ -126,9 +126,9 @@ export type TicketTone = 'default' | 'accent' | 'light';
 export const ticketToneAt = (index: number): TicketTone => (index % 7 === 3 ? 'accent' : index % 7 === 6 ? 'light' : 'default');
 
 const STRIP_TONES: Record<TicketTone, { strip: string; meta: string }> = {
-  default: { strip: 'bg-[#202020] text-white', meta: 'text-[#929292]' },
-  accent: { strip: 'bg-[#e73545] text-white', meta: 'text-white/85' },
-  light: { strip: 'bg-[#292929] text-white', meta: 'text-[#b0b0b0]' },
+  default: { strip: 'bg-[#111111] text-white', meta: 'text-slate-300' },
+  accent: { strip: 'bg-[#d0d0d0] text-white', meta: 'text-white/85' },
+  light: { strip: 'bg-[#242424] text-white', meta: 'text-slate-200' },
 };
 
 interface PosterTicketProps {
@@ -194,7 +194,7 @@ export function PosterTicket({
       )}
       {typeof progress === 'number' && progress > 0 && (
         <span className="absolute inset-x-0 bottom-0 h-1 bg-black/60" aria-hidden="true">
-          <span className="block h-full bg-[#e73545]" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+          <span className="block h-full bg-[#d0d0d0]" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
         </span>
       )}
     </div>
@@ -203,7 +203,7 @@ export function PosterTicket({
   const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-t-lg';
 
   return (
-    <article className={`group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.07] shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(0,0,0,0.28)] ${selected ? 'ring-2 ring-red-600 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
+    <article className={`group relative flex flex-col overflow-hidden rounded-2xl border border-[#383838] shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(0,0,0,0.28)] ${selected ? 'ring-2 ring-white/30 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
       {to ? (
         <Link to={to} aria-label={title} className={`block ${focusRing}`}>{art}</Link>
       ) : onOpen ? (

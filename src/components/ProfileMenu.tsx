@@ -61,9 +61,9 @@ const ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-white/45 transition-colors d
 const SHEET_HOVER = '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-white/[0.045]';
 
 const rowClass = (variant: MenuVariant, extra?: string) => cn(
-  'group relative flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[background,color,transform] duration-200 active:scale-[0.99] active:bg-white/[0.08] focus-visible:ring-1 focus-visible:ring-white/40',
-  variant === 'sheet' ? cn('py-3 text-[13px] font-medium tracking-[0.005em]', SHEET_HOVER) : 'py-[11px] text-[13px] font-medium tracking-[0.005em] hover:bg-white/[0.055]',
-  extra ?? 'text-white/85',
+  'group relative flex w-full items-center gap-3 rounded-xl px-3 text-left outline-none transition-[background,color,transform] duration-200 active:scale-[0.99] active:bg-[#383838] focus-visible:ring-2 focus-visible:ring-white/30',
+  variant === 'sheet' ? cn('py-3.5 text-sm font-medium tracking-[0.005em]', SHEET_HOVER) : 'py-3 text-sm font-medium tracking-[0.005em] hover:bg-[#242424]',
+  extra ?? 'text-slate-100',
 );
 
 /** Liste du menu : sur ordinateur, un même fond glisse de ligne en ligne. */
@@ -317,7 +317,7 @@ const ProfileMenu: React.FC = () => {
   };
 
   const vipLine = (className?: string) => (
-    <p className={cn('flex items-center gap-1 text-xs text-[#e2b13c]', className)}>
+    <p className={cn('flex items-center gap-1 text-xs text-white/80', className)}>
       <Crown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
       <span className="truncate">{vipStatus()}</span>
     </p>
@@ -327,7 +327,7 @@ const ProfileMenu: React.FC = () => {
     <LiquidButton
       tone="gold"
       onClick={handleOpenVipModal}
-      className="h-12 w-full gap-3 rounded-xl border border-[#8b6b27]/55 bg-gradient-to-r from-[#1a160d] via-[#141109] to-[#0d0c09] px-5 text-[13px] font-bold tracking-[0.01em] text-[#e8bd5a] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-[#d0a744]/70 hover:shadow-[0_0_26px_rgba(226,177,60,0.10)]"
+      className="h-12 w-full gap-3 rounded-xl border border-[#383838] bg-[#181818] px-5 text-[13px] font-bold tracking-[0.01em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all hover:border-white/35 hover:shadow-[0_0_26px_rgba(255,255,255,0.06)]"
     >
       <Crown className="h-[19px] w-[19px] shrink-0 text-amber-300" aria-hidden="true" />
       <span>{t('vip.becomeVip')}</span>
@@ -375,7 +375,7 @@ const ProfileMenu: React.FC = () => {
           >
             <Bell className="h-[17px] w-[17px]" aria-hidden="true" />
             {notificationsUnreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#555555] px-1 text-[10px] font-bold text-white">
                 {notificationsUnreadCount > 9 ? '9+' : notificationsUnreadCount}
               </span>
             )}
@@ -431,8 +431,8 @@ const ProfileMenu: React.FC = () => {
             doneIcon={<LogOut className="h-4 w-4" aria-hidden="true" />}
             doneLabel={t('auth.logout')}
             backgroundColor="rgba(255, 255, 255, 0)"
-            fillColor="#dc2626"
-            textColor="#ef4444"
+            fillColor="#777777"
+            textColor="#ffffff"
             fillTextColor="#ffffff"
             radius={12}
             holdTime={1200}
@@ -510,7 +510,7 @@ const ProfileMenu: React.FC = () => {
             key={profileImage}
           />
           {isVip && (
-            <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-black bg-[#e2b13c] text-[#241a06]">
+            <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-black bg-[#777777] text-white">
               <Crown className="h-2 w-2" strokeWidth={3} />
             </span>
           )}
@@ -538,7 +538,7 @@ const ProfileMenu: React.FC = () => {
               panelRadius={20}
               neckWidth={36}
               align="end"
-              panelClassName="relative isolate w-[284px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[22px] border border-white/[0.10] bg-[#090a0c] shadow-[0_28px_80px_rgba(0,0,0,0.82),0_1px_0_rgba(255,255,255,0.035)_inset]"
+              panelClassName="relative isolate w-[284px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[22px] border border-[#383838] bg-[#111111] shadow-[0_28px_80px_rgba(0,0,0,0.82),0_1px_0_rgba(255,255,255,0.035)_inset]"
             >
               {renderContent('panel')}
             </LiquidDropdown>

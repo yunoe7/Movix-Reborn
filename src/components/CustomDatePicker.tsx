@@ -142,8 +142,8 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         type="button"
         onClick={handleToggle}
         disabled={disabled}
-        className={`w-full flex items-center justify-between px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-          disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-600'
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-[#242424] border border-[#484848] rounded-xl text-slate-100 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-white/40 transition-colors ${
+          disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#383838]'
         }`}
       >
         <div className="flex items-center gap-2">
@@ -179,14 +179,14 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className={`absolute ${
               position === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
-            } left-0 right-0 z-[99999] bg-gray-800 border border-gray-600 rounded-lg shadow-xl overflow-hidden w-full min-w-[280px] sm:min-w-[320px]`}
+            } left-0 right-0 z-[99999] bg-[#111111] border border-[#383838] rounded-xl shadow-[0_18px_50px_rgba(0,0,0,0.55)] overflow-hidden w-full min-w-[280px] sm:min-w-[320px]`}
             style={{ zIndex: 99999 }}
           >
             {/* En-tête du calendrier */}
-            <div className="flex items-center justify-between p-3 border-b border-gray-600">
+            <div className="flex items-center justify-between p-3 border-b border-[#383838]">
               <button
                 onClick={() => navigateMonth('prev')}
-                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                className="p-1 hover:bg-[#383838] rounded-lg transition-colors"
               >
                 <ChevronDown className="w-4 h-4 rotate-90 text-gray-400" />
               </button>
@@ -195,7 +195,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
               </h3>
               <button
                 onClick={() => navigateMonth('next')}
-                className="p-1 hover:bg-gray-700 rounded transition-colors"
+                className="p-1 hover:bg-[#383838] rounded-lg transition-colors"
               >
                 <ChevronDown className="w-4 h-4 -rotate-90 text-gray-400" />
               </button>
@@ -230,10 +230,10 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
                       isDisabled
                         ? 'text-gray-500 cursor-not-allowed'
                         : isSelected
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-[#555555] text-white font-semibold'
                         : isTodayDate
-                        ? 'bg-blue-600/20 text-blue-300'
-                        : 'text-white hover:bg-gray-700'
+                        ? 'bg-[#3a3a3a] text-[#f0f0f0] font-medium'
+                        : 'text-slate-100 hover:bg-[#383838]'
                     }`}
                   >
                     {date.getDate()}
@@ -251,7 +251,7 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
                     handleDateSelect(today);
                   }
                 }}
-                className="px-3 py-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="px-3 py-1 text-xs text-[#f0f0f0] hover:text-white transition-colors"
               >
                 {t('common.today')}
               </button>
