@@ -1,0 +1,487 @@
+/* Admin Movix — système visuel noir / anthracite.
+   La palette est volontairement fermée : noir, gris, blanc et rouge uniquement
+   pour les actions destructives ou les états d'alerte. */
+
+.admin-console {
+  color-scheme: dark;
+  background: #000;
+  color: #f5f5f5;
+  font-feature-settings: "cv11", "ss01";
+}
+
+.admin-console *,
+.admin-console *::before,
+.admin-console *::after {
+  box-sizing: border-box;
+}
+
+.admin-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  width: 268px;
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: #070708;
+}
+
+.admin-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.admin-brand-mark {
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: #111113;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.admin-sidebar-nav {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 18px 12px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+
+.admin-nav-group + .admin-nav-group {
+  margin-top: 22px;
+}
+
+.admin-nav-group-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.admin-nav-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.admin-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.admin-nav-item.is-active {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+}
+
+.admin-nav-item:focus-visible,
+.admin-icon-button:focus-visible,
+.admin-text-button:focus-visible,
+.admin-quick-action:focus-visible,
+.admin-range-button:focus-visible,
+.admin-sidebar-link:focus-visible,
+.admin-search-result:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+.admin-sidebar-foot {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 12px;
+}
+
+.admin-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-sidebar-link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.admin-drawer {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 1;
+  display: flex;
+  width: min(300px, 88vw);
+  flex-direction: column;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: #070708;
+  box-shadow: 24px 0 80px rgba(0, 0, 0, 0.75);
+}
+
+.admin-main {
+  min-width: 0;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  gap: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.92);
+  padding: 10px 16px;
+  backdrop-filter: blur(12px);
+}
+
+@media (min-width: 1024px) {
+  .admin-topbar {
+    padding-inline: 32px;
+  }
+}
+
+.admin-search-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  margin-left: auto;
+}
+
+.admin-search-input {
+  height: 38px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: #0d0d0f;
+  padding: 0 12px 0 36px;
+  font-size: 13px;
+  color: #fff;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.admin-search-input:focus {
+  border-color: rgba(255, 255, 255, 0.24);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.admin-search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: #0a0a0b;
+  padding: 5px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+
+.admin-search-result {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  border-radius: 8px;
+  padding: 8px 9px;
+  transition: background-color 140ms ease;
+}
+
+.admin-search-result:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.admin-search-empty {
+  padding: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.admin-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.admin-icon-button {
+  display: inline-flex;
+  height: 36px;
+  width: 36px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.7);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-icon-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.admin-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-range {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 2px;
+}
+
+.admin-range-button {
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.admin-range-button:hover {
+  color: #fff;
+}
+
+.admin-range-button.is-active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.admin-text-button {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.admin-text-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.admin-quick-action {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 11px 12px;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.admin-quick-action:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.admin-panel {
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+.admin-section-content {
+  min-width: 0;
+  animation: admin-section-in 180ms ease-out;
+}
+
+@keyframes admin-section-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Harmonisation des sections existantes sans réécrire leurs contrats API. */
+.admin-console .admin-section-content h1,
+.admin-console .admin-section-content h2,
+.admin-console .admin-section-content h3 {
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.admin-console .admin-section-content p,
+.admin-console .admin-section-content span,
+.admin-console .admin-section-content label {
+  text-shadow: none;
+}
+
+.admin-console .admin-section-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-console .admin-section-content th {
+  background: #0b0b0d;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-console .admin-section-content th,
+.admin-console .admin-section-content td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 11px 12px;
+}
+
+.admin-console .admin-section-content input,
+.admin-console .admin-section-content textarea,
+.admin-console .admin-section-content select {
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: #0d0d0f;
+  color: #fff;
+}
+
+.admin-console .admin-section-content input::placeholder,
+.admin-console .admin-section-content textarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.admin-console .admin-section-content [class*="bg-gradient-to-"] {
+  background-image: none !important;
+}
+
+.admin-console .admin-section-content [class*="text-sky-"],
+.admin-console .admin-section-content [class*="text-blue-"],
+.admin-console .admin-section-content [class*="text-indigo-"],
+.admin-console .admin-section-content [class*="text-purple-"],
+.admin-console .admin-section-content [class*="text-fuchsia-"],
+.admin-console .admin-section-content [class*="text-emerald-"],
+.admin-console .admin-section-content [class*="text-green-"],
+.admin-console .admin-section-content [class*="text-teal-"],
+.admin-console .admin-section-content [class*="text-lime-"],
+.admin-console .admin-section-content [class*="text-orange-"],
+.admin-console .admin-section-content [class*="text-amber-"],
+.admin-console .admin-section-content [class*="text-yellow-"],
+.admin-console .admin-section-content [class*="text-pink-"],
+.admin-console .admin-section-content [class*="text-rose-"] {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.admin-console .admin-section-content [class*="bg-sky-"],
+.admin-console .admin-section-content [class*="bg-blue-"],
+.admin-console .admin-section-content [class*="bg-indigo-"],
+.admin-console .admin-section-content [class*="bg-purple-"],
+.admin-console .admin-section-content [class*="bg-fuchsia-"],
+.admin-console .admin-section-content [class*="bg-emerald-"],
+.admin-console .admin-section-content [class*="bg-green-"],
+.admin-console .admin-section-content [class*="bg-teal-"],
+.admin-console .admin-section-content [class*="bg-lime-"],
+.admin-console .admin-section-content [class*="bg-orange-"],
+.admin-console .admin-section-content [class*="bg-amber-"],
+.admin-console .admin-section-content [class*="bg-yellow-"],
+.admin-console .admin-section-content [class*="bg-pink-"],
+.admin-console .admin-section-content [class*="bg-rose-"] {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.admin-console .admin-section-content [class*="border-sky-"],
+.admin-console .admin-section-content [class*="border-blue-"],
+.admin-console .admin-section-content [class*="border-indigo-"],
+.admin-console .admin-section-content [class*="border-purple-"],
+.admin-console .admin-section-content [class*="border-fuchsia-"],
+.admin-console .admin-section-content [class*="border-emerald-"],
+.admin-console .admin-section-content [class*="border-green-"],
+.admin-console .admin-section-content [class*="border-teal-"],
+.admin-console .admin-section-content [class*="border-lime-"],
+.admin-console .admin-section-content [class*="border-orange-"],
+.admin-console .admin-section-content [class*="border-amber-"],
+.admin-console .admin-section-content [class*="border-yellow-"],
+.admin-console .admin-section-content [class*="border-pink-"],
+.admin-console .admin-section-content [class*="border-rose-"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-console .admin-section-content [class*="shadow-[0_0_"] {
+  box-shadow: none !important;
+}
+
+.admin-console .admin-section-content [class*="ring-rose-"],
+.admin-console .admin-section-content [class*="ring-sky-"],
+.admin-console .admin-section-content [class*="ring-indigo-"],
+.admin-console .admin-section-content [class*="ring-purple-"],
+.admin-console .admin-section-content [class*="ring-emerald-"],
+.admin-console .admin-section-content [class*="ring-green-"],
+.admin-console .admin-section-content [class*="ring-teal-"],
+.admin-console .admin-section-content [class*="ring-lime-"],
+.admin-console .admin-section-content [class*="ring-orange-"],
+.admin-console .admin-section-content [class*="ring-amber-"],
+.admin-console .admin-section-content [class*="ring-yellow-"],
+.admin-console .admin-section-content [class*="ring-pink-"] {
+  --tw-ring-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-section-content {
+    animation: none;
+  }
+}
+
+
+/* Harmonise legacy controls inside the admin console: neutral anthracite, clear active state. */
+.admin-console .admin-section-content button[class*="bg-blue-"],
+.admin-console .admin-section-content button[class*="bg-gray-"],
+.admin-console .admin-section-content button[class*="bg-slate-"] {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background-color: #242426 !important;
+  color: #f5f5f5 !important;
+}
+
+.admin-console .admin-section-content button[class*="bg-blue-"]:hover,
+.admin-console .admin-section-content button[class*="bg-gray-"]:hover,
+.admin-console .admin-section-content button[class*="bg-slate-"]:hover {
+  background-color: #343438 !important;
+}
+
+.admin-console .admin-section-content button[class*="bg-blue-"]:disabled,
+.admin-console .admin-section-content button[class*="bg-gray-"]:disabled,
+.admin-console .admin-section-content button[class*="bg-slate-"]:disabled {
+  opacity: 0.55;
+}
