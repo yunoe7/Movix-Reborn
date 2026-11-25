@@ -1408,15 +1408,9 @@ const TVDetails: React.FC = () => {
       if (seed && !readLocalStorage(progressKey)) writeLocalStorage(progressKey, seed);
     }
 
-    // Check if Cinema Mode is active
+    // All series, including anime catalogues, use the standard TV player.
     if (cinemaMode && id) {
-      // Check if it's Anime Mode
-      if (animeMode) {
-        navigate(`/watch/anime/${encodeId(id)}/season/${seasonToWatch}/episode/${episodeToWatch}`);
-      } else {
-        // Navigate to the dedicated TV watch page
-        handleEpisodeChange(episodeToWatch, seasonToWatch);
-      }
+      handleEpisodeChange(episodeToWatch, seasonToWatch);
       return;
     }
 
@@ -1474,6 +1468,17 @@ const TVDetails: React.FC = () => {
             </motion.button>
           )}
           </div>
+      </div>
+    );
+  };
+
+  return (
+    <MotionConfig>
+      <div className="min-h-screen w-full">
+        <WatchButtons />
+        <motion.div>
+          <motion.div>
+            <div>
 
                   {/* Saisons et épisodes : choix direct dans l'en-tête, sans galerie de posters. */}
                   <motion.div
