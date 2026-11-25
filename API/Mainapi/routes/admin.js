@@ -20,6 +20,7 @@ const { logDownloadLinkAction } = require('../utils/downloadLinksHistory');
 const { resolveAdminIdentity } = require('../utils/adminIdentity');
 const { isHttpUrl, isHttpLinkEntry, isHttpLinkInput } = require('../utils/safeLinkUrl');
 const { readUserData } = require('./sync');
+const { redis } = require('../config/redis');
 
 function parseAccessKeyExpiresAt(value) {
   if (value === undefined || value === null || value === '') {
@@ -1629,6 +1630,169 @@ router.get('/admin/download-links/:type/:id', isUploaderOrAdmin, async (req, res
     console.error('Error fetching download links:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch download links' });
   }
+});
+
+
+
+// === Notes de version Movix ===
+// Les brouillons sont stockés dans Redis : l'admin peut préparer les notes
+// avant une publication, sans modifier les fichiers du frontend.
+const RELEASE_NOTES_KEY = 'movix:release-notes:published';
+const DEFAULT_RELEASE_NOTES = {
+  version: '',
+  severity: 'normal',
+  mandatory: false,
+  summary: 'La notification de mise à jour est maintenant plus claire et plus sûre.',
+  changes: [
+    'Consulte les nouveautés de chaque publication et retrouve les versions précédentes dans l\'historique.',
+    'Le bouton « Plus tard » masque la notification pendant quatre heures pour cette version.',
+    'Movix t\'avertit avant de recharger si une vidéo est en cours ou si un formulaire contient des modifications.',
+  ],
+  history: [],
+};
+
+function normalizeReleaseNotes(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const severity = ['normal', 'important', 'critical'].includes(source.severity)
+    ? source.severity
+    : 'normal';
+  const cleanLines = (items, maxItems = 30) => Array.isArray(items)
+    ? items.filter((item) => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, maxItems)
+    : [];
+  const history = Array.isArray(source.history) ? source.history.slice(0, 20).map((entry) => ({
+    version: typeof entry?.version === 'string' ? entry.version.trim().slice(0, 40) : '',
+    date: typeof entry?.date === 'string' ? entry.date.trim().slice(0, 40) : '',
+    summary: typeof entry?.summary === 'string' ? entry.summary.trim().slice(0, 500) : '',
+    changes: cleanLines(entry?.changes, 20),
+  })).filter((entry) => entry.version || entry.summary || entry.changes.length) : [];
+
+  return {
+    version: typeof source.version === 'string' ? source.version.trim().slice(0, 40) : '',
+    severity,
+    mandatory: source.mandatory === true || severity === 'critical',
+    summary: typeof source.summary === 'string' ? source.summary.trim().slice(0, 500) : '',
+    changes: cleanLines(source.changes),
+    history,
+  };
+}
+
+// Public : les clients récupèrent les notes dynamiques, tandis que le buildId
+// continue de provenir de /version.json (déploiement réel).
+router.get('/version/release-notes', async (_req, res) => {
+  try {
+    const stored = await redis.get(RELEASE_NOTES_KEY);
+    const metadata = stored ? normalizeReleaseNotes(JSON.parse(stored)) : DEFAULT_RELEASE_NOTES;
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ success: true, metadata });
+  } catch (error) {
+    console.error('[RELEASE-NOTES] Lecture impossible:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Notes de version temporairement indisponibles' });
+  }
+});
+
+// Admin only : lecture et sauvegarde du brouillon de notes de version.
+router.get('/admin/release-notes', isAdmin, async (_req, res) => {
+  try {
+    const stored = await redis.get(RELEASE_NOTES_KEY);
+    const metadata = stored ? normalizeReleaseNotes(JSON.parse(stored)) : DEFAULT_RELEASE_NOTES;
+    return res.json({ success: true, metadata });
+  } catch (error) {
+    console.error('[RELEASE-NOTES] Lecture admin impossible:', error.message || error);
+    return res.status(500).json({ success: false, error: 'Impossible de charger les notes de version' });
+  }
+});
+
+router.put('/admin/release-notes', isAdmin, async (req, res) => {
+  try {
+    const metadata = normalizeReleaseNotes(req.body);
+    if (!metadata.summary && metadata.changes.length === 0) {
+      return res.status(400).json({ success: false, error: 'Ajoutez un résumé ou au moins une nouveauté.' });
+    }
+    await redis.set(RELEASE_NOTES_KEY, JSON.stringify(metadata));
+    return res.json({ success: true, metadata });
+  } catch (error) {
+    console.error('[RELEASE-NOTES] Sauvegarde impossible:', error.message || error);
+    return res.status(500).json({ success: false, error: 'Impossible d’enregistrer les notes de version' });
+  }
+});
+
+
+// === Centre de nouveautés (publications indépendantes des déploiements) ===
+const WHATS_NEW_KEY = 'movix:whats-new:posts';
+const readWhatsNew = async () => {
+  const raw = await redis.get(WHATS_NEW_KEY);
+  if (!raw) return [];
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? parsed : [];
+};
+const cleanWhatsNewPost = (value, previous = {}) => {
+  const source = value && typeof value === 'object' ? value : {};
+  const fallbackCategory = ['new', 'modified', 'fix'].includes(source.category) ? source.category : 'new';
+  const changes = Array.isArray(source.changes)
+    ? source.changes.map((item) => {
+      if (typeof item === 'string') return { text: item.trim(), category: fallbackCategory };
+      if (!item || typeof item !== 'object') return null;
+      const category = ['new', 'modified', 'fix'].includes(item.category) ? item.category : fallbackCategory;
+      return { text: typeof item.text === 'string' ? item.text.trim() : '', category };
+    }).filter((item) => item && item.text).slice(0, 40)
+    : [];
+  return {
+    id: previous.id || (typeof source.id === 'string' ? source.id.slice(0, 80) : require('crypto').randomUUID()),
+    title: String(source.title || '').trim().slice(0, 160),
+    summary: String(source.summary || '').trim().slice(0, 600),
+    date: previous.date || (typeof source.date === 'string' && source.date ? source.date.slice(0, 40) : new Date().toISOString()),
+    status: source.status === 'published' ? 'published' : 'draft',
+    changes,
+    updatedAt: new Date().toISOString(),
+  };
+};
+router.get('/whats-new', async (_req, res) => {
+  try {
+    const posts = await readWhatsNew();
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ success: true, posts: posts.filter((post) => post.status === 'published').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) });
+  } catch (error) {
+    console.error('[WHATS-NEW] Lecture impossible:', error.message || error);
+    return res.status(503).json({ success: false, error: 'Nouveautés temporairement indisponibles' });
+  }
+});
+router.get('/admin/whats-new', isAdmin, async (_req, res) => {
+  try { return res.json({ success: true, posts: await readWhatsNew() }); }
+  catch (error) { return res.status(500).json({ success: false, error: 'Impossible de charger les publications' }); }
+});
+router.post('/admin/whats-new', isAdmin, async (req, res) => {
+  try {
+    const post = cleanWhatsNewPost(req.body);
+    if (!post.title || !post.summary) return res.status(400).json({ success: false, error: 'Le titre et le résumé sont obligatoires.' });
+    const posts = await readWhatsNew();
+    posts.unshift(post);
+    await redis.set(WHATS_NEW_KEY, JSON.stringify(posts.slice(0, 100)));
+    return res.status(201).json({ success: true, post });
+  } catch (error) {
+    console.error('[WHATS-NEW] Création impossible:', error.message || error);
+    return res.status(500).json({ success: false, error: 'Impossible de créer la publication' });
+  }
+});
+router.put('/admin/whats-new/:id', isAdmin, async (req, res) => {
+  try {
+    const posts = await readWhatsNew();
+    const index = posts.findIndex((post) => post.id === req.params.id);
+    if (index < 0) return res.status(404).json({ success: false, error: 'Publication introuvable' });
+    const post = cleanWhatsNewPost(req.body, posts[index]);
+    if (!post.title || !post.summary) return res.status(400).json({ success: false, error: 'Le titre et le résumé sont obligatoires.' });
+    posts[index] = post;
+    await redis.set(WHATS_NEW_KEY, JSON.stringify(posts));
+    return res.json({ success: true, post });
+  } catch (error) { return res.status(500).json({ success: false, error: 'Impossible de modifier la publication' }); }
+});
+router.delete('/admin/whats-new/:id', isAdmin, async (req, res) => {
+  try {
+    const posts = await readWhatsNew();
+    const next = posts.filter((post) => post.id !== req.params.id);
+    if (next.length === posts.length) return res.status(404).json({ success: false, error: 'Publication introuvable' });
+    await redis.set(WHATS_NEW_KEY, JSON.stringify(next));
+    return res.json({ success: true });
+  } catch (error) { return res.status(500).json({ success: false, error: 'Impossible de supprimer la publication' }); }
 });
 
 module.exports = router;

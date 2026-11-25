@@ -9,6 +9,52 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 const buildId = process.env.VITE_APP_BUILD_ID || process.env.CF_PAGES_COMMIT_SHA || process.env.COMMIT_REF || new Date().toISOString()
 process.env.VITE_APP_BUILD_ID = buildId
 
+const releaseNotesPath = resolve(__dirname, 'public', 'release-notes.json')
+
+function readReleaseMetadata() {
+  try {
+    const raw = JSON.parse(readFileSync(releaseNotesPath, 'utf-8')) as Record<string, unknown>
+    const validSeverity = ['normal', 'important', 'critical'].includes(String(raw.severity))
+      ? String(raw.severity)
+      : 'normal'
+    const history = Array.isArray(raw.history)
+      ? raw.history.filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+        .map((entry) => ({
+          version: typeof entry.version === 'string' ? entry.version : '',
+          date: typeof entry.date === 'string' ? entry.date : '',
+          summary: typeof entry.summary === 'string' ? entry.summary : '',
+          changes: Array.isArray(entry.changes)
+            ? entry.changes.filter((change): change is string => typeof change === 'string')
+            : [],
+        }))
+      : []
+
+    return {
+      version: typeof raw.version === 'string' && raw.version.trim() ? raw.version.trim() : buildId.slice(0, 8),
+      severity: validSeverity,
+      mandatory: raw.mandatory === true,
+      summary: typeof raw.summary === 'string' ? raw.summary : '',
+      changes: Array.isArray(raw.changes)
+        ? raw.changes.filter((change): change is string => typeof change === 'string')
+        : [],
+      history,
+    }
+  } catch {
+    return {
+      version: buildId.slice(0, 8),
+      severity: 'normal',
+      mandatory: false,
+      summary: '',
+      changes: [],
+      history: [],
+    }
+  }
+}
+
+function createPublishedVersion() {
+  return { buildId, ...readReleaseMetadata() }
+}
+
 // Chromium 68 = navigateur des TV LG sous webOS 5 (gamme 2020, ex. OLED CX) :
 // sans `?.`/`??` abaissés, le bundle y lève un SyntaxError et l'app reste noire.
 // Cible du service worker compilé séparément ; concerne la syntaxe, pas les API.
@@ -99,7 +145,7 @@ function injectPublicConfig(): Plugin {
       mkdirSync(distDirectory, { recursive: true })
       const bundledServiceWorker = replacePlaceholders(await bundleServiceWorker(true))
       writeFileSync(resolve(distDirectory, 'sw.js'), bundledServiceWorker, 'utf-8')
-      writeFileSync(resolve(distDirectory, 'version.json'), JSON.stringify({ buildId }), 'utf-8')
+      writeFileSync(resolve(distDirectory, 'version.json'), JSON.stringify(createPublishedVersion()), 'utf-8')
 
       for (const fileName of ['sitemap.xml', 'robots.txt', 'llms.txt']) {
         const outputPath = resolve(distDirectory, fileName)
@@ -152,7 +198,7 @@ function injectPublicConfig(): Plugin {
           const contents = pathOnly === '/sw.js'
             ? await (devServiceWorker ??= bundleServiceWorker(false))
             : pathOnly === '/version.json'
-              ? JSON.stringify({ buildId })
+              ? JSON.stringify(createPublishedVersion())
               : readFileSync(publicPath, 'utf-8')
           res.setHeader('Content-Type', publicFile.contentType)
           res.setHeader('Cache-Control', 'no-store')

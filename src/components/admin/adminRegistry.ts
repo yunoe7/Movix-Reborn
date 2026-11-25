@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import type { TFunction } from 'i18next';
-import { Clapperboard, Flag, GalleryHorizontalEnd, Gift, HandCoins, HelpCircle, Home, KeyRound, LayoutGrid, Link2, ListOrdered, Megaphone, MessageSquare, Plug, ShieldCheck, Sparkles, Sprout, Users } from 'lucide-react';
+import { Clapperboard, Flag, GalleryHorizontalEnd, Gift, HandCoins, HelpCircle, Home, KeyRound, LayoutGrid, Link2, ListOrdered, Megaphone, MessageSquare, Plug, ShieldCheck, Sparkles, Sprout, Users, FileText } from 'lucide-react';
 
 export type AdminRole = 'admin' | 'moderator' | 'uploader';
 
@@ -21,7 +21,9 @@ export type AdminSectionId =
   | 'referral'
   | 'oauth-apps'
   | 'team'
-  | 'help-feedback';
+  | 'help-feedback'
+  | 'release-notes'
+  | 'whats-new';
 
 export type AdminGroupId = 'overview' | 'moderation' | 'catalog' | 'revenue' | 'platform';
 
@@ -238,6 +240,28 @@ export function getAdminSections(t: Translate): AdminSectionMeta[] {
       allowedRoles: ADMIN,
     },
     {
+      id: 'whats-new',
+      titleKey: 'admin.whatsNew.title',
+      titleDefault: 'Gestion des nouveautés',
+      descriptionKey: 'admin.whatsNew.description',
+      descriptionDefault: 'Publier les annonces visibles par les utilisateurs',
+      group: 'platform',
+      icon: FileText,
+      keywords: ['nouveautes', 'annonces', 'publication', 'changelog'],
+      allowedRoles: ADMIN,
+    },
+    {
+      id: 'release-notes',
+      titleKey: 'admin.releaseNotes.title',
+      titleDefault: 'Notes de version',
+      descriptionKey: 'admin.releaseNotes.description',
+      descriptionDefault: 'Rédiger les nouveautés et corrections',
+      group: 'platform',
+      icon: FileText,
+      keywords: ['release', 'notes', 'version', 'nouveautes', 'corrections', 'mise a jour'],
+      allowedRoles: ADMIN,
+    },
+    {
       id: 'help-feedback',
       titleKey: 'admin.helpFeedback.sectionTitle',
       titleDefault: 'Feedback /help',
@@ -309,6 +333,7 @@ export function getSectionIcon(id: AdminSectionId): LucideIcon {
   if (id === 'referral') return Gift;
   if (id === 'oauth-apps') return Plug;
   if (id === 'team') return Users;
+  if (id === 'release-notes' || id === 'whats-new') return FileText;
   return HelpCircle;
 }
 
