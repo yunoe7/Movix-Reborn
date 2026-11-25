@@ -4096,6 +4096,14 @@
       "verifyKeyError": "Error verifying key",
       "activateError": "Error activating VIP",
       "createKeyError": "Error creating VIP key"
+    },
+    "accessModal": {
+      "subtitle": "Activate your VIP key to unlock all your benefits.",
+      "codeLabel": "VIP key",
+      "codePlaceholder": "Paste your VIP key here",
+      "submit": "Activate my VIP access",
+      "submitting": "Activating…",
+      "success": "VIP access activated."
     }
   },
   "extension": {
