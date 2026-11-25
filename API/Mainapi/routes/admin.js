@@ -1642,8 +1642,12 @@ const DEFAULT_RELEASE_NOTES = {
   version: '',
   severity: 'normal',
   mandatory: false,
-  summary: '',
-  changes: [],
+  summary: 'La notification de mise à jour est maintenant plus claire et plus sûre.',
+  changes: [
+    'Consulte les nouveautés de chaque publication et retrouve les versions précédentes dans l\'historique.',
+    'Le bouton « Plus tard » masque la notification pendant quatre heures pour cette version.',
+    'Movix t\'avertit avant de recharger si une vidéo est en cours ou si un formulaire contient des modifications.',
+  ],
   history: [],
 };
 
