@@ -1,6 +1,5 @@
-// Briques visuelles de la page profil : un seul accent (rouge thémable),
-// surfaces plates en gray-900, boutons en pilule, aucune ombre ni dégradé
-// (sauf le voile sombre posé sur une photo pour lire le texte).
+// Briques visuelles de la page profil : surfaces anthracite, texte lisible et
+// un seul accent rouge. Les classes `profile-*` vivent dans profile-console.css.
 
 import React from 'react';
 import { Loader2 } from '../icons/Icons8';
@@ -9,22 +8,20 @@ import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'light';
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: 'bg-[#555555] text-white hover:bg-[#777777]',
-  secondary: 'bg-[#242424] text-slate-100 ring-1 ring-[#484848] hover:bg-[#383838]',
-  // Icônes en couleur pleine + opacity (une couleur transparente fait foncer les croisements de traits).
-  ghost: 'text-slate-300 hover:bg-[#242424] hover:text-white [&_svg]:text-slate-200 [&_svg]:opacity-90 hover:[&_svg]:opacity-100',
-  danger: 'bg-[#242424] text-[#eeeeee] ring-1 ring-[#484848] hover:bg-[#555555] hover:text-white',
-  light: 'bg-white text-black hover:bg-white/85',
+  primary: 'profile-btn profile-btn-primary',
+  secondary: 'profile-btn profile-btn-secondary',
+  ghost: 'profile-btn profile-btn-quiet',
+  danger: 'profile-btn profile-btn-quiet hover:!border-[#e11d2e] hover:!bg-[#2a1416]',
+  light: 'profile-btn bg-white text-[#141414] border border-white hover:bg-[#e9e9e9]',
 };
 
 const BASE_BUTTON =
-  'inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-sm font-medium ' +
-  'transition-[background-color,color,transform,opacity] duration-150 ease-out active:scale-[0.97] ' +
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ' +
+  'inline-flex shrink-0 items-center justify-center gap-2 ' +
+  'transition-[background-color,color,border-color,transform,opacity] duration-150 ease-out active:scale-[0.98] ' +
   'disabled:pointer-events-none disabled:opacity-50';
 
 export function buttonClass(variant: ButtonVariant = 'secondary', size: 'sm' | 'md' = 'md', extra = '') {
-  const sizing = size === 'sm' ? 'h-9 px-3.5' : 'h-10 px-4';
+  const sizing = size === 'sm' ? 'text-[13px]' : 'text-sm';
   return `${BASE_BUTTON} ${sizing} ${VARIANTS[variant]} ${extra}`.trim();
 }
 
@@ -67,16 +64,16 @@ interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
 /** Bouton rond à icône seule ; `label` sert d'aria-label et d'infobulle. */
 export function IconButton({ label, tone = 'dark', className = '', children, type = 'button', ...rest }: IconButtonProps) {
   const tones = {
-    dark: 'bg-black/70 text-white hover:bg-black',
-    light: 'bg-white/10 text-white hover:bg-white/[0.16] [&_svg]:opacity-80 hover:[&_svg]:opacity-100',
-    danger: 'bg-black/70 text-white hover:bg-[#555555]',
+    dark: '',
+    light: '',
+    danger: 'profile-icon-button-danger',
   };
   return (
     <button
       type={type}
       aria-label={label}
       title={label}
-      className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-[background-color,color,transform] duration-150 active:scale-[0.94] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 ${tones[tone]} ${className}`}
+      className={`profile-icon-button ${tones[tone]} ${className}`.trim()}
       {...rest}
     >
       {children}
@@ -86,8 +83,8 @@ export function IconButton({ label, tone = 'dark', className = '', children, typ
 
 export function Spinner({ label }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-3 py-20 text-sm text-white/60" role="status">
-      <Loader2 className="h-6 w-6 animate-spin text-white/80" aria-hidden="true" />
+    <div className="flex items-center justify-center gap-3 py-20 text-sm text-[#d0d0d0]" role="status">
+      <Loader2 className="h-6 w-6 animate-spin text-white" aria-hidden="true" />
       {label && <span>{label}</span>}
     </div>
   );
@@ -103,18 +100,18 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
   return (
-    <div className="group relative isolate flex flex-col items-start gap-5 overflow-hidden rounded-[24px] border border-[#303030] bg-[#202020] px-6 py-8 shadow-[0_18px_48px_rgba(0,0,0,0.16)] sm:flex-row sm:items-center sm:px-8 sm:py-9">
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#d0d0d0]/10 text-[#eeeeee] ring-1 ring-[#eeeeee]/15 transition-transform duration-300 group-hover:scale-105 [&>svg]:h-6 [&>svg]:w-6">
+    <div className="profile-empty sm:flex-row sm:items-center">
+      <span className="profile-empty-icon [&>span]:!h-6 [&>span]:!w-6 [&>svg]:h-6 [&>svg]:w-6">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
-        <p className="mt-1 max-w-xl text-[15px] leading-relaxed text-white/60">{description}</p>
+        <h3 className="profile-empty-title">{title}</h3>
+        <p className="profile-empty-description">{description}</p>
       </div>
       {action && (action.to ? (
-        <Link to={action.to} className={buttonClass('primary', 'md', '!bg-[#d0d0d0] hover:!bg-[#eeeeee]')}>{action.label}</Link>
+        <Link to={action.to} className={buttonClass('primary', 'md')}>{action.label}</Link>
       ) : (
-        <Button variant="primary" className="!bg-[#d0d0d0] hover:!bg-[#eeeeee]" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
+        <Button variant="primary" onClick={action.onClick} pending={action.pending}>{action.label}</Button>
       ))}
     </div>
   );
@@ -126,9 +123,9 @@ export type TicketTone = 'default' | 'accent' | 'light';
 export const ticketToneAt = (index: number): TicketTone => (index % 7 === 3 ? 'accent' : index % 7 === 6 ? 'light' : 'default');
 
 const STRIP_TONES: Record<TicketTone, { strip: string; meta: string }> = {
-  default: { strip: 'bg-[#111111] text-white', meta: 'text-slate-300' },
-  accent: { strip: 'bg-[#d0d0d0] text-white', meta: 'text-white/85' },
-  light: { strip: 'bg-[#242424] text-white', meta: 'text-slate-200' },
+  default: { strip: 'profile-poster-strip', meta: 'profile-poster-meta' },
+  accent: { strip: 'profile-poster-strip profile-poster-strip-accent', meta: 'profile-poster-meta !text-white' },
+  light: { strip: 'profile-poster-strip profile-poster-strip-light', meta: 'profile-poster-meta' },
 };
 
 interface PosterTicketProps {
@@ -176,7 +173,7 @@ export function PosterTicket({
   const showImage = poster && !failed;
 
   const art = (
-    <div className="relative aspect-[2/3] overflow-hidden rounded-t-lg bg-[#202020]">
+    <div className="relative aspect-[2/3] overflow-hidden bg-[#202020]">
       {showImage ? (
         <img
           src={poster}
@@ -188,43 +185,37 @@ export function PosterTicket({
         />
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center">
-          <span className="text-white opacity-40 [&>svg]:h-9 [&>svg]:w-9">{fallbackIcon}</span>
-          <span className="line-clamp-3 text-sm font-medium text-white/80">{title}</span>
+          <span className="text-white [&>span]:!h-9 [&>span]:!w-9 [&>svg]:h-9 [&>svg]:w-9">{fallbackIcon}</span>
+          <span className="line-clamp-3 text-sm font-semibold text-[#e4e4e4]">{title}</span>
         </div>
       )}
       {typeof progress === 'number' && progress > 0 && (
-        <span className="absolute inset-x-0 bottom-0 h-1 bg-black/60" aria-hidden="true">
-          <span className="block h-full bg-[#d0d0d0]" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+        <span className="absolute inset-x-0 bottom-0 h-1 bg-black/70" aria-hidden="true">
+          <span className="profile-progress-fill block" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
         </span>
       )}
     </div>
   );
 
-  const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-t-lg';
-
   return (
-    <article className={`group relative flex flex-col overflow-hidden rounded-2xl border border-[#383838] shadow-[0_12px_30px_rgba(0,0,0,0.18)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:shadow-[0_20px_42px_rgba(0,0,0,0.28)] ${selected ? 'ring-2 ring-white/30 ring-offset-2 ring-offset-black rounded-lg' : ''}`}>
+    <article data-testid="poster-ticket" className={`profile-poster group relative flex flex-col ${selected ? '!border-[#e11d2e]' : ''}`}>
       {to ? (
-        <Link to={to} aria-label={title} className={`block ${focusRing}`}>{art}</Link>
+        <Link to={to} aria-label={title} className="block">{art}</Link>
       ) : onOpen ? (
-        <button type="button" onClick={onOpen} aria-label={title} aria-expanded={selected} className={`block w-full text-left ${focusRing}`}>{art}</button>
+        <button type="button" onClick={onOpen} aria-label={title} aria-expanded={selected} className="block w-full text-left">{art}</button>
       ) : art}
 
       {badge && <div className="pointer-events-none absolute left-2 top-2">{badge}</div>}
       {actions && (
-        <div className="absolute right-2 top-2 flex gap-1.5 opacity-100 transition-opacity duration-150 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+        <div className="absolute right-2 top-2 flex gap-1.5">
           {actions}
         </div>
       )}
 
-      <div className={`relative rounded-b-2xl px-3 pb-3 pt-3 ${colors.strip}`}>
-        {/* Perforation et encoches du talon */}
-        <span aria-hidden="true" className="absolute inset-x-3 top-0 border-t border-white/10" />
-        <span aria-hidden="true" className="hidden" />
-        <span aria-hidden="true" className="hidden" />
-        <p className="line-clamp-1 text-sm font-medium" title={title}>{title}</p>
+      <div className={colors.strip}>
+        <p className="line-clamp-1 text-sm font-bold" title={title}>{title}</p>
         {(metaLeft || metaRight) && (
-          <p className={`mt-0.5 flex items-center justify-between gap-2 text-[13px] tabular-nums ${colors.meta}`}>
+          <p className={`mt-1 flex items-center justify-between gap-2 tabular-nums ${colors.meta}`}>
             <span className="truncate">{metaLeft}</span>
             {metaRight && <span className="shrink-0">{metaRight}</span>}
           </p>
@@ -237,7 +228,7 @@ export function PosterTicket({
 
 /** Pastille sombre lisible sur une affiche. */
 export function PosterBadge({ children }: { children: React.ReactNode }) {
-  return <span className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2.5 py-1 text-xs font-medium text-white tabular-nums">{children}</span>;
+  return <span className="inline-flex items-center gap-1 rounded-full bg-black/85 px-2.5 py-1 text-xs font-semibold text-white tabular-nums">{children}</span>;
 }
 
 /** Grille d'affiches commune à tous les onglets. */

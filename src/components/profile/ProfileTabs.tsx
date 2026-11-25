@@ -1,7 +1,8 @@
 // Barre d'onglets de la bibliothèque : défile au doigt sur téléphone,
 // soulignement rouge qui glisse d'un onglet à l'autre, flèches au clavier.
+// Les identifiants ARIA et la navigation clavier sont conservés tels quels.
 
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { nextTabIndex } from './tabNavigation';
 import type { ProfileTabId } from './types';
@@ -26,6 +27,11 @@ export const tabPanelId = 'profile-tab-panel';
 export default function ProfileTabs({ tabs, active, onChange, label }: ProfileTabsProps) {
   const reduceMotion = useReducedMotion();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
+  const activeIndex = Math.max(0, tabs.findIndex((tab) => tab.id === active));
+
+  useEffect(() => {
+    buttons.current[activeIndex]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeIndex]);
 
   const handleKeyDown = (event: React.KeyboardEvent, index: number) => {
     const next = nextTabIndex(event.key, index, tabs.length);
@@ -36,8 +42,8 @@ export default function ProfileTabs({ tabs, active, onChange, label }: ProfileTa
   };
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-      <div role="tablist" aria-label={label} className="flex min-w-max gap-1 rounded-[18px] border border-[#303030] bg-[#171717] p-1.5 sm:gap-2">
+    <div className="profile-tabs-shell -mx-1 px-1 sm:mx-0 sm:px-0" data-testid="profile-tabs">
+      <div role="tablist" aria-label={label} className="profile-tab-list">
         {tabs.map((tab, index) => {
           const selected = tab.id === active;
           return (
@@ -54,17 +60,18 @@ export default function ProfileTabs({ tabs, active, onChange, label }: ProfileTa
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.id)}
               onKeyDown={(event) => handleKeyDown(event, index)}
-              className={`relative flex h-12 items-center gap-2 rounded-xl px-4 text-[15px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#f04455] ${selected ? 'text-white' : 'text-white/55 hover:text-white'}`}
+              data-testid={`tab-${tab.id}`}
+              className="profile-tab"
             >
               <span className="whitespace-nowrap">{tab.label}</span>
               {typeof tab.count === 'number' && (
-                <span className={`tabular-nums text-sm ${selected ? 'text-white/70' : 'text-white/35'}`}>{tab.count}</span>
+                <span className="profile-tab-count">{tab.count}</span>
               )}
               {selected && (
                 <motion.span
                   layoutId="profile-tab-underline"
                   transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 36 }}
-                  className="absolute inset-x-4 bottom-0 h-[2px] rounded-full bg-[#f04455]"
+                  className="profile-tab-underline"
                   aria-hidden="true"
                 />
               )}
