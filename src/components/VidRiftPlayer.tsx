@@ -110,7 +110,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     // settings menus (including source/language mode selectors), and do not
     // enable the optional exit/back control.
     url.searchParams.set('download', '1');
-    url.searchParams.set('hide', 'server,settings');
+    url.searchParams.set('hide', 'server');
     if (title) url.searchParams.set('title', title);
     if (posterPath?.startsWith('https://')) url.searchParams.set('poster', posterPath);
     return url.toString();
