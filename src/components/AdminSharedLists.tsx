@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Trash2, Loader2, RefreshCw, List, AlertCircle, CheckCircle, Sparkles, ExternalLink, Globe
+    Trash2, Loader2, RefreshCw, List, CheckCircle, Sparkles, ExternalLink, Globe
 } from './icons/Icons8';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import ReusableModal from './ui/reusable-modal';
 import ConfirmDialog from './ui/confirm-dialog';
 
 interface SharedListItem {
