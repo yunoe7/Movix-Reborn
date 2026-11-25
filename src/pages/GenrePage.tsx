@@ -353,7 +353,7 @@ const GenrePage: React.FC = () => {
                 whileHover={{ x: -3 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate(-1)}
-                className="p-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 hover:bg-white/10 transition-all"
+                className="p-2 rounded-xl bg-[#111827] border border-[#263449] hover:border-[#3b506d] hover:bg-[#1d293b] transition-all"
               >
           <ArrowLeft className="w-5 h-5 text-white opacity-70" />
               </motion.button>
@@ -385,7 +385,7 @@ const GenrePage: React.FC = () => {
           <AnimatePresence>
             {isFilterOpen && (
               <motion.div
-                className="mb-8 p-5 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10"
+                className="mb-8 p-5 rounded-2xl bg-[#111827] backdrop-blur-md border border-[#263449]"
                 initial={{ opacity: 0, y: -20, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: 'auto' }}
                 exit={{ opacity: 0, y: -20, height: 0 }}
