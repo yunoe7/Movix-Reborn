@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { PauseCircle } from '../icons/Icons8';
+import { PauseCircle } from 'lucide-react';
 
 // Squelette léger affiché dans la carte de don pendant le chargement des
 // réglages : mêmes blocs que le formulaire, pour éviter un saut de mise en page.
@@ -8,13 +8,13 @@ export const DonationSkeleton: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <div aria-busy="true" className="animate-pulse space-y-8">
+    <div data-testid="vip-skeleton" aria-busy="true" className="animate-pulse space-y-8">
       <span className="sr-only" role="status">{t('vipDonations.donate.loading')}</span>
       <div aria-hidden="true">
         <div className="h-4 w-20 rounded bg-white/[0.08]" />
         <div className="mt-3 grid grid-cols-3 gap-2">
           {[0, 1, 2].map((index) => (
-            <div key={index} className="h-[4.25rem] rounded-xl bg-white/[0.05]" />
+            <div key={index} className="h-[4.75rem] rounded-xl bg-white/[0.05]" />
           ))}
         </div>
         <div className="mt-4 h-12 rounded-xl bg-white/[0.05]" />
@@ -38,9 +38,13 @@ export const DonationPausedCard: React.FC<{ message: string }> = ({ message }) =
   const adminMessage = message.trim();
 
   return (
-    <div className="rounded-[1.25rem] border border-white/10 bg-[#0c0c0c] p-6 text-center sm:p-8">
-      <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white/[0.06] text-yellow-300">
-        <PauseCircle className="h-6 w-6" aria-hidden="true" />
+    <div data-testid="vip-paused-card" className="rounded-[1.5rem] border border-white/10 bg-[#0c0c0c] p-6 text-center sm:p-8">
+      <span
+        data-vip-icon="vip-paused"
+        className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-400/10 text-yellow-300 ring-1 ring-inset ring-yellow-400/20"
+        aria-hidden="true"
+      >
+        <PauseCircle className="h-6 w-6" />
       </span>
       <h2 className="mt-4 text-lg font-semibold text-white">{t('vipDonations.donate.paused.title')}</h2>
       {adminMessage && (
