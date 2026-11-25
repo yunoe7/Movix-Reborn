@@ -136,7 +136,7 @@ const AdminReleaseNotes: React.FC = () => {
           </label>
           <label>
             <span className={labelClass}>Importance de la mise à jour</span>
-            <select className={inputClass} value={notes.severity} onChange={(e) => update('severity', e.target.value as ReleaseNotes['severity'])}>
+            <select className={inputClass} value={notes.severity} onChange={(e) => { const severity = e.target.value as ReleaseNotes['severity']; setNotes((current) => ({ ...current, severity, mandatory: severity === 'critical' ? true : current.mandatory })); }}>
               <option value="normal">Normale</option>
               <option value="important">Importante</option>
               <option value="critical">Critique</option>
