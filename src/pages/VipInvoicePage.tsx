@@ -940,7 +940,7 @@ const VipInvoicePage: React.FC = () => {
                 className={`mt-4 h-10 w-full ${OUTLINE_LINK_CLASS}`}
               >
                 <ExternalLink className="h-4 w-4" />
-                {supportButtonLabel}
+                {t('vipDonations.track.help.button')}
               </a>
             </div>
           </div>
