@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useState, useRef, lazy, Suspense } f
 import axios from 'axios';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType, useNavigate } from 'react-router-dom';
 import { Toaster } from './components/ui/sonner';
+import UpdateAvailableNotifier from './components/UpdateAvailableNotifier';
 import { TooltipProvider } from './components/ui/tooltip';
 import Header from './components/Header';
 import Home from './pages/Home';
@@ -2058,6 +2059,7 @@ function App() {
                       <AppWithIntro />
                       <TopProgressBar />
                       <Toaster position="bottom-right" richColors />
+                      <UpdateAvailableNotifier />
                       <DnsBlockBanner />
                       <RequireUsernameChange />
                       <ReferralManager />
