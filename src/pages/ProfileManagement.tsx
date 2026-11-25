@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useProfile } from '../context/ProfileContext';
 import AvatarSelector from '../components/AvatarSelector';
-import { Edit, Crown, Plus, ShieldCheck, ChevronDown } from '../components/icons/Icons8';
+import { Edit, Plus, ShieldCheck, ChevronDown } from '../components/icons/Icons8';
 
 const ProfileManagement: React.FC = () => {
   const { t } = useTranslation();
@@ -171,12 +171,6 @@ const ProfileManagement: React.FC = () => {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    {/* Icône profil par défaut */}
-                    {profile.isDefault && (
-                      <div className="absolute -top-0.5 -right-0.5 xs:-top-1 xs:-right-1 bg-yellow-500 rounded-full p-0.5 xs:p-1 z-10">
-                        <Crown className="w-2.5 h-2.5 xs:w-3 xs:h-3 text-white" />
-                      </div>
-                    )}
 
                     {/* Badge restriction d'âge */}
                     {(profile.ageRestriction ?? 0) > 0 && (
@@ -399,12 +393,6 @@ const ProfileManagement: React.FC = () => {
                       )}
                     </motion.div>
 
-                    {/* Big crown badge for default profile */}
-                    {!isCreating && editingProfileId && profiles.find(p => p.id === editingProfileId)?.isDefault && (
-                      <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-2 shadow-lg shadow-yellow-500/40">
-                        <Crown className="w-6 h-6 text-white" />
-                      </div>
-                    )}
 
                     {/* Big age restriction badge */}
                     {modalAgeRestriction > 0 && (
