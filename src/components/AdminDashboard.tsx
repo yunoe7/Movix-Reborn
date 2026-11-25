@@ -9,6 +9,7 @@ import AdminMonetizationSettings from './AdminMonetizationSettings';
 import AdminLinkSubmissions from './Greenlight/AdminLinkSubmissions';
 import AdminWishboard from './Greenlight/AdminWishboard';
 import AdminOAuthApps from './AdminOAuthApps';
+import AdminReleaseNotes from './AdminReleaseNotes';
 import AdminReferralSettings from './AdminReferralSettings';
 import AdminReports from './AdminReports';
 import AdminSharedLists from './AdminSharedLists';
@@ -91,6 +92,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role, identity = null }
         return <AdminTeam />;
       case 'help-feedback':
         return <AdminHelpFeedback />;
+      case 'release-notes':
+        return <AdminReleaseNotes />;
       default:
         return (
           <AdminStateBlock
