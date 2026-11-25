@@ -20,6 +20,7 @@ import {
 import ReusableModal from './ui/reusable-modal';
 import { getTmdbLanguage } from '../i18n';
 import { copyText } from '../utils/clipboard';
+import { useAdminConfirm } from './admin/AdminConfirmProvider';
 
 interface Comment {
     id: number;
@@ -126,6 +127,7 @@ const AdminIconButton: React.FC<AdminIconButtonProps> = ({
 
 const AdminComments: React.FC = () => {
     const { t, i18n } = useTranslation();
+    const { confirm } = useAdminConfirm();
     const [comments, setComments] = useState<Comment[]>([]);
     const [stats, setStats] = useState<AdminStats>({
         total: 0,
@@ -365,7 +367,12 @@ const AdminComments: React.FC = () => {
 
     // Delete permanently (for moderated)
     const handlePermanentDelete = async (comment: Comment) => {
-        if (!confirm(t('admin.confirmDeleteContent'))) return;
+        if (!await confirm({
+            title: t('common.delete', 'Supprimer'),
+            message: t('admin.confirmDeleteContent'),
+            confirmLabel: t('common.delete', 'Supprimer'),
+            destructive: true,
+        })) return;
 
         setSubmitting(true);
         try {
@@ -486,7 +493,14 @@ const AdminComments: React.FC = () => {
 
     // Unban all
     const handleUnbanAll = async (restore: boolean) => {
-        if (!confirm(restore ? t('admin.unbanAllRestoreConfirm') : t('admin.unbanAllConfirm'))) return;
+        if (!await confirm({
+            title: restore
+                ? t('admin.unban', 'Débannir')
+                : t('admin.unbanAll', 'Débannir tous'),
+            message: restore ? t('admin.unbanAllRestoreConfirm') : t('admin.unbanAllConfirm'),
+            confirmLabel: restore ? t('admin.unban', 'Débannir') : t('common.confirm', 'Confirmer'),
+            destructive: !restore,
+        })) return;
         try {
             const authToken = localStorage.getItem('auth_token');
             const response = await fetch(`${API_URL}/api/comments/admin/bans?restore=${restore}`, {
@@ -509,7 +523,12 @@ const AdminComments: React.FC = () => {
 
     // Delete all by user
     const handleDeleteAllByUser = async (comment: Comment) => {
-        if (!confirm(t('admin.deleteAllByUserConfirm', { username: comment.username }))) return;
+        if (!await confirm({
+            title: t('admin.delete', 'Supprimer'),
+            message: t('admin.deleteAllByUserConfirm', { username: comment.username }),
+            confirmLabel: t('common.delete', 'Supprimer'),
+            destructive: true,
+        })) return;
 
         setSubmitting(true);
         try {

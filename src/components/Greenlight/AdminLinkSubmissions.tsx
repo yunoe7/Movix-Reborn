@@ -21,6 +21,7 @@ import {
 import ReusableModal from '../ui/reusable-modal';
 import { getTmdbLanguage } from '../../i18n';
 import { openInNewTab } from '../../utils/openInNewTab';
+import { toast } from 'sonner';
 
 const MAIN_API = import.meta.env.VITE_MAIN_API;
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
@@ -146,6 +147,7 @@ const AdminLinkSubmissions: React.FC = () => {
     const [submissions, setSubmissions] = useState<LinkSubmission[]>([]);
     const [stats, setStats] = useState<SubmissionStats>({ total: 0, pending: 0, approved: 0, rejected: 0 });
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('pending');
@@ -173,6 +175,7 @@ const AdminLinkSubmissions: React.FC = () => {
     // Fetch submissions
     const fetchSubmissions = useCallback(async () => {
         setLoading(true);
+        setFetchError(null);
         try {
             const authToken = localStorage.getItem('auth_token');
             const params = new URLSearchParams();
@@ -210,6 +213,8 @@ const AdminLinkSubmissions: React.FC = () => {
             setSelectedIds(new Set());
         } catch (error) {
             console.error('Error fetching submissions:', error);
+            setFetchError(t('admin.console.linkSubmissionsLoadError', 'Impossible de charger les soumissions.'));
+            toast.error(t('admin.console.linkSubmissionsLoadError', 'Impossible de charger les soumissions.'));
         } finally {
             setLoading(false);
         }
@@ -231,6 +236,7 @@ const AdminLinkSubmissions: React.FC = () => {
             setStats(prev => ({ ...prev, pending: prev.pending - 1, approved: prev.approved + 1 }));
         } catch (error) {
             console.error('Error approving:', error);
+            toast.error(t('admin.genericError', 'Erreur'));
         } finally {
             setProcessingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
         }
@@ -248,6 +254,7 @@ const AdminLinkSubmissions: React.FC = () => {
             setStats(prev => ({ ...prev, pending: prev.pending - 1, rejected: prev.rejected + 1 }));
         } catch (error) {
             console.error('Error rejecting:', error);
+            toast.error(t('admin.genericError', 'Erreur'));
         } finally {
             setProcessingIds(prev => { const s = new Set(prev); s.delete(id); return s; });
             setRejectModal(null);
@@ -268,6 +275,7 @@ const AdminLinkSubmissions: React.FC = () => {
             fetchSubmissions();
         } catch (error) {
             console.error('Error bulk approving:', error);
+            toast.error(t('admin.genericError', 'Erreur'));
         }
     };
 
@@ -284,6 +292,7 @@ const AdminLinkSubmissions: React.FC = () => {
             fetchSubmissions();
         } catch (error) {
             console.error('Error bulk rejecting:', error);
+            toast.error(t('admin.genericError', 'Erreur'));
         } finally {
             setBulkRejectModal(false);
             setBulkRejectReason('');
@@ -300,6 +309,7 @@ const AdminLinkSubmissions: React.FC = () => {
             setSubmissions(prev => prev.filter(s => s.id !== id));
         } catch (error) {
             console.error('Error deleting:', error);
+            toast.error(t('admin.genericError', 'Erreur'));
         }
     };
 
@@ -479,6 +489,14 @@ const AdminLinkSubmissions: React.FC = () => {
             )}
 
             {/* Grouped submissions list */}
+            {fetchError && (
+                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-500/25 bg-red-500/[0.06] px-4 py-3" role="alert">
+                    <span className="text-[13px] font-semibold text-white">{fetchError}</span>
+                    <Button size="sm" variant="secondary" onClick={() => fetchSubmissions()}>
+                        <RefreshCw className="w-4 h-4 mr-1" /> {t('common.retry', 'Réessayer')}
+                    </Button>
+                </div>
+            )}
             {loading ? (
                 <div className="flex justify-center items-center py-20">
                     <Loader2 className="w-8 h-8 animate-spin text-green-400" />

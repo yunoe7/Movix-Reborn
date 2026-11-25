@@ -44,8 +44,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         >
             <DialogContent className="max-w-md overflow-hidden rounded-[1.5rem] border border-white/[0.11] bg-[#08090b] p-0 text-white shadow-[0_32px_100px_rgba(0,0,0,0.82)]">
                 <div className="relative overflow-hidden border-b border-white/[0.08] bg-[#0b0c0f] px-6 pb-5 pt-5">
-                    <div className="pointer-events-none absolute -right-12 -top-16 h-40 w-40 rounded-full bg-red-500/[0.07] blur-3xl" />
-                    <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.25em] text-[#ef777e]/85">
+                    <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.25em] text-white/40">
                         Movix / Control
                     </p>
                     <DialogHeader className="space-y-0 text-left">
@@ -58,7 +57,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 <div className="bg-[#08090b] px-6 py-5">
                     <div className="flex items-start gap-3">
                         {isDestructive && (
-                            <span className="mt-0.5 shrink-0 rounded-full border border-red-400/25 bg-red-500/[0.09] p-2.5 text-[#ff666d] shadow-[0_0_28px_rgba(248,65,75,0.12)]">
+                            <span className="mt-0.5 shrink-0 rounded-full border border-red-400/25 bg-red-500/[0.09] p-2.5 text-[#ff666d]">
                                 <AlertTriangle className="h-5 w-5" aria-hidden="true" />
                             </span>
                         )}
@@ -83,8 +82,8 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                             onClick={onConfirm}
                             disabled={busy}
                             className={isDestructive
-                                ? 'h-10 rounded-xl border border-red-400/30 bg-[#a91f2b] px-5 text-[13px] font-bold text-white shadow-[0_8px_24px_rgba(220,38,38,0.18)] transition-all hover:-translate-y-0.5 hover:border-red-300/50 hover:bg-[#c12735] hover:shadow-[0_12px_30px_rgba(220,38,38,0.28)]'
-                                : 'h-10 rounded-xl border border-white/10 bg-white/[0.09] px-5 text-[13px] font-bold text-white transition-all hover:bg-white/[0.15]'}
+                                ? 'h-10 rounded-xl border border-red-400/30 bg-[#a91f2b] px-5 text-[13px] font-bold text-white transition-colors hover:border-red-300/50 hover:bg-[#c12735]'
+                                : 'h-10 rounded-xl border border-white/10 bg-white/[0.09] px-5 text-[13px] font-bold text-white transition-colors hover:bg-white/[0.15]'}
                         >
                             {confirmLabel ?? t('common.confirm')}
                         </Button>
