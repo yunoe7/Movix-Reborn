@@ -147,11 +147,13 @@ function injectPublicConfig(): Plugin {
         if (!publicFile) return next()
 
         const publicPath = resolve(__dirname, 'public', publicFile.fileName)
-        if (!existsSync(publicPath)) return next()
+        if (pathOnly !== '/version.json' && !existsSync(publicPath)) return next()
         try {
           const contents = pathOnly === '/sw.js'
             ? await (devServiceWorker ??= bundleServiceWorker(false))
-            : readFileSync(publicPath, 'utf-8')
+            : pathOnly === '/version.json'
+              ? JSON.stringify({ buildId })
+              : readFileSync(publicPath, 'utf-8')
           res.setHeader('Content-Type', publicFile.contentType)
           res.setHeader('Cache-Control', 'no-store')
           res.end(replacePlaceholders(contents))
