@@ -463,3 +463,25 @@
     animation: none;
   }
 }
+
+
+/* Harmonise legacy controls inside the admin console: neutral anthracite, clear active state. */
+.admin-console .admin-section-content button[class*="bg-blue-"],
+.admin-console .admin-section-content button[class*="bg-gray-"],
+.admin-console .admin-section-content button[class*="bg-slate-"] {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background-color: #242426 !important;
+  color: #f5f5f5 !important;
+}
+
+.admin-console .admin-section-content button[class*="bg-blue-"]:hover,
+.admin-console .admin-section-content button[class*="bg-gray-"]:hover,
+.admin-console .admin-section-content button[class*="bg-slate-"]:hover {
+  background-color: #343438 !important;
+}
+
+.admin-console .admin-section-content button[class*="bg-blue-"]:disabled,
+.admin-console .admin-section-content button[class*="bg-gray-"]:disabled,
+.admin-console .admin-section-content button[class*="bg-slate-"]:disabled {
+  opacity: 0.55;
+}
