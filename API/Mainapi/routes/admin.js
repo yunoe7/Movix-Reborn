@@ -1727,9 +1727,14 @@ const readWhatsNew = async () => {
 };
 const cleanWhatsNewPost = (value, previous = {}) => {
   const source = value && typeof value === 'object' ? value : {};
-  const category = ['new', 'modified', 'fix'].includes(source.category) ? source.category : 'new';
-  const lines = Array.isArray(source.changes)
-    ? source.changes.filter((line) => typeof line === 'string').map((line) => line.trim()).filter(Boolean).slice(0, 40)
+  const fallbackCategory = ['new', 'modified', 'fix'].includes(source.category) ? source.category : 'new';
+  const changes = Array.isArray(source.changes)
+    ? source.changes.map((item) => {
+      if (typeof item === 'string') return { text: item.trim(), category: fallbackCategory };
+      if (!item || typeof item !== 'object') return null;
+      const category = ['new', 'modified', 'fix'].includes(item.category) ? item.category : fallbackCategory;
+      return { text: typeof item.text === 'string' ? item.text.trim() : '', category };
+    }).filter((item) => item && item.text).slice(0, 40)
     : [];
   return {
     id: previous.id || (typeof source.id === 'string' ? source.id.slice(0, 80) : require('crypto').randomUUID()),
@@ -1737,7 +1742,7 @@ const cleanWhatsNewPost = (value, previous = {}) => {
     summary: String(source.summary || '').trim().slice(0, 600),
     date: previous.date || (typeof source.date === 'string' && source.date ? source.date.slice(0, 40) : new Date().toISOString()),
     status: source.status === 'published' ? 'published' : 'draft',
-    changes: lines.map((text) => ({ text, category })),
+    changes,
     updatedAt: new Date().toISOString(),
   };
 };
