@@ -57,8 +57,8 @@ import {
   type EpisodeListKind,
   type ShowEpisodeLists,
 } from '@/utils/tvmazeEpisodes';
-import { formatAiringDate, getAiringLabel, getEpisodeTimeline, resolveEpisodeAiring, resolveShowAiring } from '@/utils/tvAiring';
-import type { TvEpisodeDate, TvExternalIds } from '@/types/tvAiring';
+import { formatAiringDate, getAiringLabel, resolveEpisodeAiring, resolveShowAiring } from '@/utils/tvAiring';
+import type { TvExternalIds } from '@/types/tvAiring';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { useImageQuality, useImageViewport } from '../hooks/useImageQuality';
 import { useImageSlot } from '../hooks/useImageSlot';
@@ -337,6 +337,8 @@ const fetchSeasonDetails = async (
 
 const TVDetails: React.FC = () => {
   const { t } = useTranslation();
+  const tRef = useRef(t);
+  tRef.current = t;
   const { effectiveImageQuality } = useImageQuality();
   const { width: viewportWidth, height: viewportHeight, dpr } = useImageViewport();
   const imageDpr = Math.min(dpr, effectiveImageQuality === 'high' ? 3 : 2);
@@ -436,8 +438,8 @@ const TVDetails: React.FC = () => {
   const [showSimilarModal, setShowSimilarModal] = useState(false);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [recommendationsLoaded, setRecommendationsLoaded] = useState<boolean>(false);
-  const animeMode = false; // Separate Anime playback mode removed; anime episode catalogue remains.
-  // Anime presentation controls are separate from the optional Anime-Sama playback mode.
+  const animeMode = false;
+  // Les contrôles de présentation anime restent indépendants du lecteur.
   const [animeEpisodeSearchOpen, setAnimeEpisodeSearchOpen] = useState(false);
   const [animeEpisodeSearch, setAnimeEpisodeSearch] = useState('');
   const [animeEpisodeSortDescending, setAnimeEpisodeSortDescending] = useState(false);
@@ -852,7 +854,7 @@ const TVDetails: React.FC = () => {
 
     } catch (error) {
       console.error('Error fetching TV show details:', error);
-      setError(t('details.loadError'));
+      setError(tRef.current('details.loadError'));
       setIsAvailable(true); // Assume available on error? Or false?
     } finally {
       setLoading(false);
@@ -958,7 +960,7 @@ const TVDetails: React.FC = () => {
         ]);
       } catch (error) {
         console.error('Error fetching data on ID change:', error);
-        setError(t('details.loadError'));
+        setError(tRef.current('details.loadError'));
       } finally {
         setIsLoading(false);
       }
@@ -1315,7 +1317,7 @@ const TVDetails: React.FC = () => {
               Number(progressData.position) || 0,
               Number(progressData.duration) || 0
             );
-          } catch (_) {
+          } catch {
             // ignore malformed entries
           }
         }
@@ -1372,8 +1374,6 @@ const TVDetails: React.FC = () => {
     let seasonToWatch = resumeData.hasProgress || resumeData.fromServer ? resumeData.seasonNumber : defaultStartSeason;
     let episodeToWatch = resumeData.hasProgress || resumeData.fromServer ? resumeData.episodeNumber : 1;
 
-    // En mode anime, la reprise et la navigation ne considèrent que les
-    // saisons qui possèdent réellement des épisodes lisibles.
     const animeSeasonNumbers = animeMode && animeData?.seasons
       ? (animeData.seasons as any[])
           .map((season, index) => ({ season, index }))
@@ -1498,20 +1498,7 @@ const TVDetails: React.FC = () => {
     fetchShow();
   }, [id]);
 
-  const checkFrembedAvailability = async () => {
-    setLoadingSimilar(true);
-    try {
-      // Simplement définir tous les shows comme disponibles
-      const availableShows = recommendations.map(show => ({ ...show, isAvailable: true }));
-      setRecommendations(availableShows);
-    } catch (error) {
-      console.error('Error checking availability:', error);
-    } finally {
-      setLoadingSimilar(false);
-    }
-  };
-
-  const fetchRecommendations = async () => {
+  const fetchRecommendations = useCallback(async () => {
     if (recommendationsLoaded) return; // Éviter de refaire la requête si déjà chargé
 
     setLoadingSimilar(true);
@@ -1529,23 +1516,14 @@ const TVDetails: React.FC = () => {
     } finally {
       setLoadingSimilar(false);
     }
-  };
-
-  const _handleShowSimilar = async () => {
-    // Charge les recommandations mais n'ouvre plus la modale
-    if (!recommendationsLoaded) {
-      await fetchRecommendations();
-      await checkFrembedAvailability();
-    }
-  };
-  void _handleShowSimilar;
+  }, [id, recommendationsLoaded]);
 
   // Charger automatiquement les séries similaires lors du chargement de la page
   useEffect(() => {
     if (id && tvShow && !recommendationsLoaded) {
       fetchRecommendations();
     }
-  }, [id, tvShow, recommendationsLoaded]);
+  }, [id, tvShow, recommendationsLoaded, fetchRecommendations]);
 
 
   useEffect(() => {
@@ -1553,13 +1531,13 @@ const TVDetails: React.FC = () => {
       // Simple TV show title
       document.title = `${tvShow.name} - Movix`;
     } else {
-      document.title = t('details.tvShowDefaultTitle');
+      document.title = tRef.current('details.tvShowDefaultTitle');
     }
   }, [tvShow, id]);
 
   const isAnime = useCallback(() => {
     if (!tvShow) return false;
-    // Exclure spécifiquement certaines séries du mode anime
+    // Conserver l'exclusion historique pour ne pas modifier la détection du catalogue.
     if (shouldHideAnimeModeForId(id || '')) return false;
     // Scoring multi-signaux TMDB: origin_country, original_language, studio japonais,
     // keywords "anime"/"manga" (avec garde JP/ja), genre Animation. Seuil 40.
@@ -1785,8 +1763,7 @@ const TVDetails: React.FC = () => {
     });
   }, [availableAnimeSeasons, animeData?.poster_path, animeData?.posterPath, animeData?.image, tvShow?.poster_path, tvShow?.seasons, t]);
 
-  // The Anime catalog is a presentation choice. The Anime playback toggle only
-  // controls the source/player; it must not decide which season/episode UI is shown.
+  // Le catalogue anime est un choix de présentation, indépendant du lecteur vidéo.
   const useAnimeSeasonLayout = animeSeasonCards.length > 0;
 
   useEffect(() => {
@@ -1916,7 +1893,7 @@ const TVDetails: React.FC = () => {
     } finally {
       setLoadingAnimeData(false);
     }
-  }, [tvShow?.id, tvShow?.name, tvShow, tmdbEnglishName, tmdbAlternativeTitles, MAIN_API, attachTmdbStillsToAnime]);
+  }, [tvShow, tmdbEnglishName, tmdbAlternativeTitles, attachTmdbStillsToAnime]);
 
 
   useEffect(() => {
@@ -1935,15 +1912,7 @@ const TVDetails: React.FC = () => {
     };
   }, [id, isAnime, loadAnimeData]);
 
-  const _scrollToSeasons = () => {
-    const seasonsSection = seasonsSectionRef.current;
-    if (seasonsSection) {
-      seasonsSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
-  void _scrollToSeasons;
-
-  const fetchBackdropAndTrailer = async () => {
+  const fetchBackdropAndTrailer = useCallback(async () => {
     try {
       console.log('Fetching backdrop and trailer for TV show:', id);
 
@@ -1988,7 +1957,7 @@ const TVDetails: React.FC = () => {
       console.error('Error fetching backdrop and trailer:', error);
       setTrailerVideo(null);
     }
-  };
+  }, [id]);
 
   // Function to fetch multi-language videos for TV shows
 
@@ -1999,7 +1968,7 @@ const TVDetails: React.FC = () => {
     if (id) {
       fetchBackdropAndTrailer();
     }
-  }, [id]);
+  }, [id, fetchBackdropAndTrailer]);
 
   if (loading) {
     return <DetailsSkeleton mediaType="tv" />;
@@ -2061,7 +2030,7 @@ const TVDetails: React.FC = () => {
       );
     }
 
-    const showToggle = !isAnime; // Les anime restent sur la liste de streaming, quel que soit le mode de lecture.
+    const showToggle = !isAnime; // Les anime restent sur la liste de streaming.
 
     // Le fallback affiche de saison/série reste réservé aux séries classiques.
     // Pour un anime, une vignette absente reste un placeholder : aucune fausse image répétée.
@@ -2461,7 +2430,7 @@ const TVDetails: React.FC = () => {
                             )}
                             {isSelected && (
                               <span className="absolute left-2 top-2 rounded-md bg-white px-2 py-1 text-[11px] font-semibold text-[#171719] shadow-sm">
-                                Suivant
+                                {t('common.next')}
                               </span>
                             )}
                             {Number(ep.vote_average) > 0 && (
@@ -2563,7 +2532,7 @@ const TVDetails: React.FC = () => {
                         }
                       }
                     }
-                  } catch (err) {
+                  } catch {
                     // ignore localStorage/parsing errors
                   }
                   // Serveur (autre appareil, lecteur web, série marquée en entier) :
@@ -2823,12 +2792,6 @@ const TVDetails: React.FC = () => {
     : null;
   const showAiring = resolveShowAiring(tvShow.first_air_date, airingSchedule, airingNow);
   const pendingAiring = pendingEpisode ? getEpisodeAiring(pendingEpisode.season, pendingEpisode.episode) : null;
-  const timelineEpisodes: Array<TvEpisodeDate & { name: string }> = Object.entries(seasonsDetails).flatMap(([season, details]) =>
-    (details.episodes ?? []).map((episode: TvEpisodeDate & { name: string }) => ({ ...episode, season_number: Number(season) })),
-  );
-  if (tvShow.last_episode_to_air) timelineEpisodes.push(tvShow.last_episode_to_air);
-  if (tvShow.next_episode_to_air) timelineEpisodes.push(tvShow.next_episode_to_air);
-  getEpisodeTimeline(timelineEpisodes,airingSchedule,airingNow);
   const tvTitle = tvYear ? `${tvShow.name} (${tvYear}) - Movix` : `${tvShow.name} - Movix`;
   const tvCanonicalUrl = buildSiteUrl(`/tv/${encodedId || id}`);
   const tvSocialImage = tvShow.backdrop_path || tvShow.poster_path
