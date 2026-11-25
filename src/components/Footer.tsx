@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { DISCORD_INVITE_URL } from '@/config/community';
-import { MovixWordmark } from './brand/MovixWordmark';
 import './Footer.css';
 
 const Footer = () => {
@@ -11,7 +10,7 @@ const Footer = () => {
     <footer data-site-footer className="site-footer">
       <div className="site-footer__inner">
         <nav aria-label={t('footer.navigation')} className="site-footer__links">
-          <Link to="/about">{t('footer.about')}</Link>
+          <Link to="/about">Aide</Link>
           <Link to="/terms-of-service">{t('auth.termsOfService')}</Link>
           <Link to="/privacy">{t('nav.privacy')}</Link>
           <a href="https://github.com/movixstream/MovixOpenSource" target="_blank" rel="noopener noreferrer">{t('footer.sourceCode')}</a>
