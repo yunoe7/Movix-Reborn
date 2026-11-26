@@ -756,6 +756,14 @@ watchpartyIO.on('connection', (socket) => {
     if (socket.id !== r.hostId) return;
     if (mode === 'host-only' || mode === 'democratic') {
       r.controlMode = mode;
+      if (mode === 'host-only') {
+        // Switching back from democratic mode must really lock the room.
+        const previouslyGranted = [...r.coHosts];
+        r.coHosts = [];
+        previouslyGranted.forEach((participantId) => {
+          watchpartyIO.sockets.get(participantId)?.emit('control:revoked');
+        });
+      }
       const systemMsg = systemMessage(r, mode === 'democratic'
         ? '🎮 Mode démocratique activé - Tout le monde peut contrôler la lecture !'
         : '🔒 Mode hôte activé - Seul l\'hôte contrôle la lecture.');
