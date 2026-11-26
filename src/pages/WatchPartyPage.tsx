@@ -221,7 +221,6 @@ const WatchPartyPage: React.FC = () => {
   const [publicQuery, setPublicQuery] = useState('');
   const [publicTypeFilter, setPublicTypeFilter] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
   const [publicSort, setPublicSort] = useState<'recent' | 'popular'>('recent');
-  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false);
   const [selfId, setSelfId] = useState('');
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [copyDone, setCopyDone] = useState(false);
@@ -660,6 +659,7 @@ const WatchPartyPage: React.FC = () => {
         });
         socket.on('pause:timerStarted', (payload: PauseTimer) => setPauseTimer(payload));
         socket.on('pause:timerCancelled', () => setPauseTimer(null));
+        socket.on('pause:timerFinished', () => setPauseTimer(null));
         socket.on('vote:started', (payload: PauseVote) => setPauseVote(payload));
         socket.on('vote:update', (payload: { yesVotes: number; noVotes: number; totalVotes: number; totalParticipants: number }) => {
           setPauseVote(current => current ? { ...current, ...payload } : current);
