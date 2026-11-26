@@ -4,7 +4,7 @@ import { io, type Socket } from 'socket.io-client';
 import Hls from 'hls.js';
 import {
   ArrowLeft, Check, Copy, Film, Globe2, KeyRound, LoaderCircle, LockKeyhole,
-  MessageCircle, Play, Plus, RefreshCw, Send, Users, Video, X,
+  MessageCircle, Play, Plus, RefreshCw, Send, Users, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
 
