@@ -236,7 +236,7 @@ const WatchPartyPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
   const roomRef = useRef<Room | null>(null);
-  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true, updatedAt: 0 });
+  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 });
   const hlsRef = useRef<Hls | null>(null);
   const applyingRemoteRef = useRef(false);
   const lastHeartbeatRef = useRef(0);
@@ -646,6 +646,35 @@ const WatchPartyPage: React.FC = () => {
         });
         socket.on('room:info', (nextRoom: Room) => setRoom(current => current ? { ...current, ...nextRoom } : nextRoom));
         socket.on('room:participants', (next: Participant[]) => setParticipants(next || []));
+        socket.on('ready:state', (next: Record<string, boolean>) => setReadyState(next || {}));
+        socket.on('room:countdown', (payload: { startAt: number }) => setCountdownTarget(payload.startAt));
+        socket.on('room:countdownCancelled', () => setCountdownTarget(null));
+        socket.on('room:countdownFinished', () => setCountdownTarget(null));
+        socket.on('room:startCountdownDenied', (payload: { message?: string }) => setControlNotice(payload?.message || 'Tout le monde doit être prêt.'));
+        socket.on('room:chatToggled', (payload: { enabled: boolean }) => {
+          setRoom(current => current ? { ...current, chatEnabled: payload.enabled } : current);
+        });
+        socket.on('pause:timerStarted', (payload: PauseTimer) => setPauseTimer(payload));
+        socket.on('pause:timerCancelled', () => setPauseTimer(null));
+        socket.on('vote:started', (payload: PauseVote) => setPauseVote(payload));
+        socket.on('vote:update', (payload: { yesVotes: number; noVotes: number; totalVotes: number; totalParticipants: number }) => {
+          setPauseVote(current => current ? { ...current, ...payload } : current);
+        });
+        socket.on('vote:ended', () => setPauseVote(null));
+        socket.on('reaction:received', (reaction: FloatingReaction) => {
+          setReactions(current => [...current.slice(-7), reaction]);
+          window.setTimeout(() => setReactions(current => current.filter(item => item.id !== reaction.id)), 3200);
+        });
+        socket.on('message:deleted', (payload: { messageId: string }) => {
+          setMessages(current => current.map(message => message.id === payload.messageId ? { ...message, deleted: true, text: 'Message supprimé par la modération.' } : message));
+        });
+        socket.on('host:transferred', (payload: { hostId: string }) => {
+          setRoom(current => current ? { ...current, hostId: payload.hostId } : current);
+          setControlNotice(payload.hostId === socket.id ? 'Tu es maintenant l’hôte de cette Watch Party.' : 'Le rôle d’hôte a été transféré.');
+        });
+        socket.on('sync:modeChanged', (payload: { mode: 'classic' | 'pro' }) => {
+          setRoom(current => current ? { ...current, syncMode: payload.mode } : current);
+        });
         socket.on('control:state', (state: { controlMode: 'host-only' | 'democratic'; coHosts: string[]; pendingRequests: ControlRequest[] }) => {
           setRoom(current => current ? { ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] } : current);
           setControlRequests(state.pendingRequests || []);
@@ -663,6 +692,10 @@ const WatchPartyPage: React.FC = () => {
           if (sentAt === undefined) return;
           pendingClockProbesRef.current.delete(result.probeId);
           const receivedAt = Date.now();
+          syncWorkerRef.current?.postMessage({
+            type: 'probe-result',
+            result: { ...result, clientReceivedAt: receivedAt } satisfies SyncProbeResult
+          });
           const roundTripMs = receivedAt - sentAt;
           if (!Number.isFinite(roundTripMs) || roundTripMs < 0 || roundTripMs > 5000) return;
           const offsetMs = (
@@ -680,8 +713,29 @@ const WatchPartyPage: React.FC = () => {
             .sort((a, b) => a - b);
           clockOffsetRef.current = bestSamples[Math.floor(bestSamples.length / 2)] ?? 0;
         });
-        socket.on('room:playback', applyRemotePlayback);
-        socket.on('playback:state', applyRemotePlayback);
+        const handleAuthoritativePlayback = (state: PlaybackSnapshot) => {
+          authoritativePlaybackRef.current = state;
+          pendingPlaybackRef.current = state;
+          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
+            syncWorkerRef.current.postMessage({ type: 'master-state', state });
+          } else {
+            void applyRemotePlayback(state);
+          }
+        };
+        socket.on('room:playback', handleAuthoritativePlayback);
+        socket.on('playback:state', handleAuthoritativePlayback);
+        socket.on('playback:schedule', (schedule: ScheduledPlaybackEvent) => {
+          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
+            syncWorkerRef.current.postMessage({ type: 'schedule', event: schedule });
+          } else {
+            void applyRemotePlayback({
+              isPlaying: schedule.action === 'play' || (schedule.action === 'seek' && authoritativePlaybackRef.current?.isPlaying === true),
+              position: schedule.position,
+              updatedAt: schedule.scheduledAt,
+              updatedBy: schedule.updatedBy
+            });
+          }
+        });
         socket.on('room:chat', (message: ChatMessage) => {
           setMessages(current => current.some(item => item.id === message.id) ? current : [...current.slice(-99), message]);
         });
@@ -752,6 +806,139 @@ const WatchPartyPage: React.FC = () => {
   const isCoHost = Boolean(selfId && room?.coHosts?.includes(selfId));
   const canControl = isHost || isCoHost || room?.controlMode === 'democratic';
   const hasPendingControlRequest = Boolean(selfId && controlRequests.some(request => request.participantId === selfId));
+  const allParticipantsReady = participants.length > 1 && participants.every(person => readyState[person.id] === true);
+  const countdownSeconds = countdownTarget === null
+    ? null
+    : Math.max(0, Math.ceil((countdownTarget - countdownNow) / 1000));
+
+  const applySyncCommand = useCallback((command: {
+    action: 'play' | 'pause' | 'seek' | 'setPlaybackRate' | 'resetPlaybackRate';
+    value?: number;
+  }) => {
+    const isVidRift = roomRef.current?.media.playbackType === 'vidrift';
+    const target = vidriftFrameRef.current?.contentWindow;
+    const video = videoRef.current;
+    if (isVidRift && target) {
+      if (command.action === 'play') target.postMessage({ type: 'vidrift:play' }, VIDRIFT_ORIGIN);
+      if (command.action === 'pause') target.postMessage({ type: 'vidrift:pause' }, VIDRIFT_ORIGIN);
+      if (command.action === 'seek' && Number.isFinite(command.value)) {
+        target.postMessage({ type: 'vidrift:resume', currentTime: Math.max(0, command.value as number) }, VIDRIFT_ORIGIN);
+      }
+      if (command.action === 'setPlaybackRate' && Number.isFinite(command.value)) {
+        target.postMessage({ type: 'vidrift:set', speed: command.value }, VIDRIFT_ORIGIN);
+      }
+      if (command.action === 'resetPlaybackRate') {
+        target.postMessage({ type: 'vidrift:set', speed: 1 }, VIDRIFT_ORIGIN);
+      }
+      return;
+    }
+    if (!video) return;
+    if (command.action === 'play') void video.play().catch(() => setRequiresUserGesture(true));
+    if (command.action === 'pause') video.pause();
+    if (command.action === 'seek' && Number.isFinite(command.value)) video.currentTime = Math.max(0, command.value as number);
+    if (command.action === 'setPlaybackRate' && Number.isFinite(command.value)) video.playbackRate = command.value as number;
+    if (command.action === 'resetPlaybackRate') video.playbackRate = 1;
+  }, []);
+
+  useEffect(() => {
+    if (!roomId || !room) return;
+    const worker = new Worker(new URL('../workers/watchpartySync.worker.ts', import.meta.url), { type: 'module' });
+    syncWorkerRef.current = worker;
+    worker.onmessage = (event: MessageEvent) => {
+      const message = event.data as {
+        type: 'status' | 'engine' | 'command';
+        status?: 'classic' | 'calibrating' | 'perfect' | 'adjusting' | 'unstable';
+        implementation?: 'js' | 'wasm';
+        action?: 'play' | 'pause' | 'seek' | 'setPlaybackRate' | 'resetPlaybackRate';
+        value?: number;
+      };
+      if (message.type === 'status' && message.status) setSyncStatus(message.status);
+      if (message.type === 'engine' && message.implementation) setSyncEngine(message.implementation);
+      if (message.type === 'command' && message.action) {
+        applySyncCommand({ action: message.action, value: message.value });
+      }
+    };
+    worker.postMessage({
+      type: 'init',
+      mode: room.syncMode,
+      state: authoritativePlaybackRef.current || room.playbackState || null
+    });
+    return () => {
+      worker.terminate();
+      if (syncWorkerRef.current === worker) syncWorkerRef.current = null;
+    };
+  }, [roomId]);
+
+  useEffect(() => {
+    if (!roomId || !room) return;
+    syncWorkerRef.current?.postMessage({ type: 'set-mode', mode: room.syncMode });
+    setSyncStatus(room.syncMode === 'pro' ? 'calibrating' : 'classic');
+  }, [roomId, room?.syncMode]);
+
+  useEffect(() => {
+    if (!roomId || !room || room.syncMode !== 'pro' || isHost) {
+      if (syncTickTimerRef.current !== null) {
+        window.clearInterval(syncTickTimerRef.current);
+        syncTickTimerRef.current = null;
+      }
+      return;
+    }
+    if (!syncWorkerRef.current) return;
+
+    const tick = () => {
+      const now = performance.now();
+      if (roomRef.current?.media.playbackType === 'vidrift') {
+        const snapshot = vidriftPlaybackRef.current;
+        const elapsed = !snapshot.paused && snapshot.updatedAt > 0
+          ? Math.max(0, now - snapshot.updatedAt) / 1000
+          : 0;
+        syncWorkerRef.current?.postMessage({
+          type: 'local-state',
+          state: {
+            now: Date.now(),
+            currentTime: Math.max(0, snapshot.currentTime + elapsed * snapshot.playbackRate),
+            isPlaying: !snapshot.paused,
+            playbackRate: snapshot.playbackRate
+          }
+        });
+      } else {
+        const video = videoRef.current;
+        if (!video) return;
+        syncWorkerRef.current?.postMessage({
+          type: 'local-state',
+          state: {
+            now: Date.now(),
+            currentTime: video.currentTime,
+            isPlaying: !video.paused,
+            playbackRate: video.playbackRate
+          }
+        });
+      }
+    };
+    syncTickTimerRef.current = window.setInterval(tick, 250);
+    return () => {
+      if (syncTickTimerRef.current !== null) {
+        window.clearInterval(syncTickTimerRef.current);
+        syncTickTimerRef.current = null;
+      }
+    };
+  }, [roomId, room?.syncMode, room?.media?.src, isHost]);
+
+  useEffect(() => {
+    if (!roomId || !isHost || socketState !== 'connected') return;
+    const heartbeat = window.setInterval(() => sendPlayback('heartbeat'), 1000);
+    return () => window.clearInterval(heartbeat);
+  }, [roomId, isHost, socketState, sendPlayback]);
+
+  useEffect(() => {
+    if (countdownTarget === null) return;
+    const timer = window.setInterval(() => setCountdownNow(Date.now()), 100);
+    return () => window.clearInterval(timer);
+  }, [countdownTarget]);
+
+  useEffect(() => {
+    if (room?.countdown?.startAt) setCountdownTarget(room.countdown.startAt);
+  }, [room?.countdown?.startAt]);
 
   useEffect(() => {
     if (!canControl && !vidRiftActivationOpen) vidriftFrameRef.current?.blur();
@@ -851,6 +1038,7 @@ const WatchPartyPage: React.FC = () => {
         paused?: boolean;
         volume?: number;
         muted?: boolean;
+        speed?: number;
         season?: number;
         episode?: number;
       };
@@ -879,7 +1067,12 @@ const WatchPartyPage: React.FC = () => {
         // state/progress message, otherwise metadata changes can look like seeks.
         const positionChanged = Math.abs(nextTime - expectedTime) > 1.5;
 
-        vidriftPlaybackRef.current = { currentTime: nextTime, paused: nextPaused, updatedAt: now };
+        vidriftPlaybackRef.current = {
+          currentTime: nextTime,
+          paused: nextPaused,
+          updatedAt: now,
+          playbackRate: Number.isFinite(data.speed) ? Number(data.speed) : previous.playbackRate
+        };
 
         if (!canControl && vidRiftActivationOpen && (pauseChanged || positionChanged)) {
           const authoritative = authoritativePlaybackRef.current;
@@ -908,6 +1101,9 @@ const WatchPartyPage: React.FC = () => {
         if (Number.isFinite(currentTime) && currentTime >= 0) {
           vidriftPlaybackRef.current.currentTime = currentTime;
           vidriftPlaybackRef.current.updatedAt = performance.now();
+        }
+        if (typeof data.speed === 'number' && Number.isFinite(data.speed)) {
+          vidriftPlaybackRef.current.playbackRate = data.speed;
         }
         if (isHost && Date.now() - lastHeartbeatRef.current > 2500) {
           lastHeartbeatRef.current = Date.now();
