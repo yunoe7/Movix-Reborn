@@ -232,6 +232,7 @@ const WatchPartyPage: React.FC = () => {
   const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
+  const vidRiftHasReportedStateRef = useRef(false);
   const roomRef = useRef<Room | null>(null);
   const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 });
   const hlsRef = useRef<Hls | null>(null);
@@ -913,6 +914,7 @@ const WatchPartyPage: React.FC = () => {
     const tick = () => {
       const now = performance.now();
       if (roomRef.current?.media.playbackType === 'vidrift') {
+        if (!vidRiftHasReportedStateRef.current) return;
         const snapshot = vidriftPlaybackRef.current;
         const elapsed = !snapshot.paused && snapshot.updatedAt > 0
           ? Math.max(0, now - snapshot.updatedAt) / 1000
@@ -1047,6 +1049,7 @@ const WatchPartyPage: React.FC = () => {
   const handleVidRiftLoad = () => {
     const target = vidriftFrameRef.current?.contentWindow;
     if (!target) return;
+    vidRiftHasReportedStateRef.current = false;
     target.postMessage({ type: 'vidrift:get-state' }, VIDRIFT_ORIGIN);
     if (hasCustomLocalVolumeRef.current) {
       target.postMessage({ type: 'vidrift:set', volume: localVolume, muted: localMuted }, VIDRIFT_ORIGIN);
@@ -1079,6 +1082,7 @@ const WatchPartyPage: React.FC = () => {
 
       const currentTime = Number(data.currentTime);
       if (data.type === 'vidrift:state') {
+        vidRiftHasReportedStateRef.current = true;
         // Mirror VidRift's local volume settings into this participant's UI only.
         if (typeof data.volume === 'number' && Number.isFinite(data.volume)) {
           setLocalVolume(Math.max(0, Math.min(1, data.volume)));
