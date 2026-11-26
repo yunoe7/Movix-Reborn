@@ -516,6 +516,7 @@ const WatchPartyPage: React.FC = () => {
           <div>
             <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Watch Party</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">Lance une session privée, invite tes amis avec un code et synchronisez votre lecture en temps réel.</p>
+            <label className="mt-4 block max-w-sm space-y-1.5"><span className="text-xs font-semibold text-white/65">Ton pseudo pour les sessions</span><input value={nickname} onChange={e => setNickname(e.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} /></label>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-white/50">
             <Users className="h-4 w-4 text-red-400" /> Jusqu’à 50 participants
@@ -532,7 +533,6 @@ const WatchPartyPage: React.FC = () => {
             <div><h2 className="text-lg font-bold">Créer un salon</h2><p className="text-xs text-white/40">Tu seras l’hôte et tu partageras le lien.</p></div>
           </div>
           <form onSubmit={handleCreate} className="space-y-4">
-            <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Ton pseudo</span><input value={nickname} onChange={e => setNickname(e.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} /></label>
             <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Titre du contenu</span><input value={title} onChange={e => setTitle(e.target.value)} maxLength={200} placeholder="Nom du film ou de la série" className={inputClass} /></label>
             <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Lien vidéo direct</span><input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} /><span className="block text-[11px] leading-5 text-white/35">Formats compatibles : MP4, WebM ou HLS (.m3u8). Les pages d’un lecteur externe ne permettent pas une synchronisation fiable.</span></label>
             <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Affiche (facultatif)</span><input value={posterUrl} onChange={e => setPosterUrl(e.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} /></label>
