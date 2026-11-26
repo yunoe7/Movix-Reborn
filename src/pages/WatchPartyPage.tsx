@@ -1,5 +1,5 @@
 import React, { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import Hls from 'hls.js';
 import {
@@ -18,8 +18,10 @@ type Media = {
   poster?: string | null;
   mediaType: 'movie' | 'tv';
   mediaId?: string;
+  playbackType?: 'direct' | 'vidrift';
   seasonNumber?: number;
   episodeNumber?: number;
+  position?: number;
 };
 
 type Participant = {
@@ -56,6 +58,17 @@ type Room = {
 
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
+type WatchPartyLaunchContext = {
+  kind: 'movie' | 'tv';
+  tmdbId: string;
+  title: string;
+  posterPath?: string;
+  season?: number;
+  episode?: number;
+  position?: number;
+  isPlaying?: boolean;
+};
+
 type PublicRoom = {
   id: string;
   code: string;
@@ -65,12 +78,34 @@ type PublicRoom = {
   participantCount: number;
   maxParticipants: number;
   syncMode: 'classic' | 'pro';
+  playbackType?: 'direct' | 'vidrift';
+  mediaId?: string | null;
   mediaTitle?: string;
   hostNickname?: string;
   seasonNumber?: number;
   episodeNumber?: number;
   createdAt: number;
 };
+
+const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
+
+function buildVidRiftEmbedUrl(media: Media): string {
+  const tmdbId = String(media.mediaId || '');
+  if (!/^\d+$/.test(tmdbId)) return '';
+  const season = Math.max(0, Number(media.seasonNumber) || 1);
+  const episode = Math.max(1, Number(media.episodeNumber) || 1);
+  const path = media.mediaType === 'tv'
+    ? `/embed/tv/${encodeURIComponent(tmdbId)}/${season}/${episode}`
+    : `/embed/movie/${encodeURIComponent(tmdbId)}`;
+  const url = new URL(path, VIDRIFT_ORIGIN);
+  url.searchParams.set('brand', 'Movix');
+  url.searchParams.set('brandColor', 'DC2626');
+  url.searchParams.set('download', '1');
+  url.searchParams.set('exit', '1');
+  if (media.title) url.searchParams.set('title', media.title);
+  if (media.poster?.startsWith('https://')) url.searchParams.set('poster', media.poster);
+  return url.toString();
+}
 
 const panelClass = 'rounded-2xl border border-white/[0.08] bg-[#111214] shadow-[0_18px_60px_rgba(0,0,0,.28)]';
 const inputClass = 'h-11 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-red-500/60 focus:ring-2 focus:ring-red-500/10';
@@ -100,6 +135,7 @@ function isDirectVideoUrl(value: string): boolean {
 
 const WatchPartyPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { code: routeCode, roomId } = useParams<{ code?: string; roomId?: string }>();
   const [nickname, setNickname] = useState(() => {
     try { return sessionStorage.getItem('watchPartyNickname') || ''; } catch { return ''; }
@@ -107,6 +143,7 @@ const WatchPartyPage: React.FC = () => {
   const [joinCode, setJoinCode] = useState((routeCode || '').toUpperCase());
   const [title, setTitle] = useState('');
   const [roomName, setRoomName] = useState('');
+  const [watchPartyContext, setWatchPartyContext] = useState<WatchPartyLaunchContext | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [sourceUrl, setSourceUrl] = useState('');
@@ -129,6 +166,9 @@ const WatchPartyPage: React.FC = () => {
   const [requiresUserGesture, setRequiresUserGesture] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
+  const roomRef = useRef<Room | null>(null);
+  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true });
   const hlsRef = useRef<Hls | null>(null);
   const applyingRemoteRef = useRef(false);
   const lastHeartbeatRef = useRef(0);
@@ -139,6 +179,32 @@ const WatchPartyPage: React.FC = () => {
     setJoinCode(routeCode.toUpperCase());
     setShowJoin(true);
   }, [routeCode]);
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
+
+  useEffect(() => {
+    const context = (location.state as { watchPartyMedia?: WatchPartyLaunchContext } | null)?.watchPartyMedia;
+    if (!context || !/^\d+$/.test(String(context.tmdbId || ''))) return;
+    const cleanContext: WatchPartyLaunchContext = {
+      ...context,
+      tmdbId: String(context.tmdbId),
+      title: String(context.title || 'Contenu Movix'),
+      kind: context.kind === 'tv' ? 'tv' : 'movie',
+      season: Math.max(1, Number(context.season) || 1),
+      episode: Math.max(1, Number(context.episode) || 1),
+      position: Math.max(0, Number(context.position) || 0),
+      isPlaying: context.isPlaying === true,
+    };
+    setWatchPartyContext(cleanContext);
+    setTitle(cleanContext.title);
+    setPosterUrl(cleanContext.posterPath || '');
+    setMediaType(cleanContext.kind);
+    setRoomName(current => current || `Watch Party · ${cleanContext.title}`);
+    setError('');
+    setShowCreate(true);
+  }, [location.key, location.state]);
 
   const refreshPublicRooms = useCallback(async () => {
     setIsLoadingRooms(true);
@@ -197,21 +263,26 @@ const WatchPartyPage: React.FC = () => {
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
     const cleanNickname = nickname.trim();
+    const launchContext = watchPartyContext;
+    const useVidRift = Boolean(launchContext && /^\d+$/.test(launchContext.tmdbId));
+    const contentTitle = launchContext?.title.trim() || title.trim();
+    const contentPoster = launchContext?.posterPath || posterUrl.trim();
+
     if (cleanNickname.length < 2) {
       setError('Choisis un pseudo d’au moins 2 caractères.');
       return;
     }
-    if (!title.trim()) {
+    if (!contentTitle) {
       setError('Ajoute un titre pour le film ou la série.');
       return;
     }
-    if (!isDirectVideoUrl(sourceUrl.trim())) {
-      setError('Ajoute un lien vidéo direct en MP4, WebM ou M3U8 (HLS). Les liens de pages ou lecteurs externes ne sont pas synchronisables.');
+    if (!useVidRift && !isDirectVideoUrl(sourceUrl.trim())) {
+      setError('Ajoute un lien vidéo direct en MP4, WebM ou M3U8 (HLS).');
       return;
     }
-    if (posterUrl.trim()) {
+    if (contentPoster) {
       try {
-        const poster = new URL(posterUrl.trim());
+        const poster = new URL(contentPoster);
         if (!['http:', 'https:'].includes(poster.protocol)) throw new Error();
       } catch {
         setError('Le lien de l’affiche doit être une URL valide.');
@@ -230,11 +301,23 @@ const WatchPartyPage: React.FC = () => {
           roomName: roomName.trim(),
           isPublic,
           syncMode: 'classic',
-          media: {
+          media: useVidRift ? {
+            src: 'vidrift',
+            playbackType: 'vidrift',
+            mediaId: launchContext!.tmdbId,
+            title: contentTitle,
+            poster: contentPoster || undefined,
+            mediaType: launchContext!.kind,
+            seasonNumber: launchContext!.kind === 'tv' ? launchContext!.season : undefined,
+            episodeNumber: launchContext!.kind === 'tv' ? launchContext!.episode : undefined,
+            position: launchContext!.position || 0,
+            isPlaying: launchContext!.isPlaying === true,
+          } : {
             src: sourceUrl.trim(),
-            title: title.trim(),
-            poster: posterUrl.trim() || undefined,
+            title: contentTitle,
+            poster: contentPoster || undefined,
             mediaType,
+            playbackType: 'direct',
           },
         }),
       });
@@ -260,14 +343,34 @@ const WatchPartyPage: React.FC = () => {
     }
   };
 
-  const leaveRoom = () => {
+  const leaveRoom = useCallback(() => {
     socketRef.current?.disconnect();
     socketRef.current = null;
     if (roomId) clearRoomToken(roomId);
     navigate('/watchparty');
-  };
+  }, [roomId, navigate]);
 
   const applyRemotePlayback = useCallback(async (state: { isPlaying: boolean; position: number }) => {
+    if (roomRef.current?.media.playbackType === 'vidrift') {
+      const target = vidriftFrameRef.current?.contentWindow;
+      if (!target) {
+        pendingPlaybackRef.current = state;
+        return;
+      }
+      applyingRemoteRef.current = true;
+      try {
+        if (Number.isFinite(state.position) && Math.abs(vidriftPlaybackRef.current.currentTime - state.position) > 1) {
+          target.postMessage({ type: 'vidrift:resume', currentTime: Math.max(0, state.position) }, VIDRIFT_ORIGIN);
+        }
+        target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
+        vidriftPlaybackRef.current.paused = !state.isPlaying;
+        vidriftPlaybackRef.current.currentTime = Math.max(0, state.position || 0);
+      } finally {
+        window.setTimeout(() => { applyingRemoteRef.current = false; }, 1200);
+      }
+      return;
+    }
+
     const video = videoRef.current;
     if (!video) {
       pendingPlaybackRef.current = state;
@@ -302,6 +405,7 @@ const WatchPartyPage: React.FC = () => {
           headers: { 'x-watchparty-token': token },
         });
         if (!active) return;
+        roomRef.current = result.room;
         setRoom(result.room);
         setParticipants(result.room.participants || []);
         if (result.room.playbackState) pendingPlaybackRef.current = result.room.playbackState;
@@ -327,11 +431,11 @@ const WatchPartyPage: React.FC = () => {
           setRoom(current => current ? { ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] } : current);
           setControlRequests(state.pendingRequests || []);
         });
+        socket.on('room:playback', applyRemotePlayback);
+        socket.on('playback:state', applyRemotePlayback);
         socket.on('room:chat', (message: ChatMessage) => {
           setMessages(current => current.some(item => item.id === message.id) ? current : [...current.slice(-99), message]);
         });
-        socket.on('room:playback', applyRemotePlayback);
-        socket.on('playback:state', applyRemotePlayback);
         socket.on('media:updated', (media: Media) => setRoom(current => current ? { ...current, media } : current));
         socket.on('host:token', (payload: { token: string }) => storeRoomToken(roomId, payload.token));
         socket.on('room:kicked', (payload: { reason?: string }) => {
@@ -390,16 +494,25 @@ const WatchPartyPage: React.FC = () => {
   const isHost = Boolean(selfId && room?.hostId === selfId);
   const canControl = isHost || Boolean(selfId && room?.coHosts?.includes(selfId)) || room?.controlMode === 'democratic';
 
-  const sendPlayback = (reason: 'play' | 'pause' | 'seek' | 'heartbeat') => {
-    const video = videoRef.current;
+  const sendPlayback = useCallback((reason: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended') => {
     const socket = socketRef.current;
-    if (!video || !socket || !socket.connected || !canControl || applyingRemoteRef.current) return;
+    if (!socket?.connected || !canControl || applyingRemoteRef.current) return;
+    if (roomRef.current?.media.playbackType === 'vidrift') {
+      socket.emit('playback:update', {
+        isPlaying: !vidriftPlaybackRef.current.paused,
+        position: Number.isFinite(vidriftPlaybackRef.current.currentTime) ? vidriftPlaybackRef.current.currentTime : 0,
+        reason,
+      });
+      return;
+    }
+    const video = videoRef.current;
+    if (!video) return;
     socket.emit('playback:update', {
       isPlaying: !video.paused,
       position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
       reason,
     });
-  };
+  }, [canControl]);
 
   const handleTimeUpdate = () => {
     const now = Date.now();
@@ -416,6 +529,104 @@ const WatchPartyPage: React.FC = () => {
       void applyRemotePlayback(pending);
     }
   };
+
+  const handleVidRiftLoad = () => {
+    const target = vidriftFrameRef.current?.contentWindow;
+    if (!target) return;
+    target.postMessage({ type: 'vidrift:get-state' }, VIDRIFT_ORIGIN);
+    socketRef.current?.emit('playback:getState');
+  };
+
+  useEffect(() => {
+    const media = room?.media;
+    if (!roomId || media?.playbackType !== 'vidrift' || !media.mediaId) return;
+
+    const handleVidRiftMessage = (event: MessageEvent) => {
+      const frame = vidriftFrameRef.current;
+      if (event.origin !== VIDRIFT_ORIGIN || event.source !== frame?.contentWindow) return;
+      if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string') return;
+
+      const data = event.data as {
+        type: string;
+        tmdbId?: number | string;
+        mediaType?: string;
+        currentTime?: number;
+        paused?: boolean;
+        season?: number;
+        episode?: number;
+      };
+      if (Number(data.tmdbId) !== Number(media.mediaId) || data.mediaType !== media.mediaType) return;
+
+      const currentTime = Number(data.currentTime);
+      if (data.type === 'vidrift:state') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        if (typeof data.paused === 'boolean') vidriftPlaybackRef.current.paused = data.paused;
+        const pending = pendingPlaybackRef.current;
+        if (pending) {
+          pendingPlaybackRef.current = null;
+          void applyRemotePlayback(pending);
+        }
+        return;
+      }
+
+      if (data.type === 'vidrift:progress') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        if (canControl && Date.now() - lastHeartbeatRef.current > 2500) {
+          lastHeartbeatRef.current = Date.now();
+          sendPlayback('heartbeat');
+        }
+        return;
+      }
+
+      if (data.type === 'vidrift:paused' || data.type === 'vidrift:unpaused') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        vidriftPlaybackRef.current.paused = data.type === 'vidrift:paused';
+        if (!applyingRemoteRef.current && canControl) {
+          sendPlayback(data.type === 'vidrift:paused' ? 'pause' : 'play');
+        }
+        return;
+      }
+
+      if (data.type === 'vidrift:ended') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        vidriftPlaybackRef.current.paused = true;
+        if (!applyingRemoteRef.current && canControl) sendPlayback('ended');
+        return;
+      }
+
+      if (data.type === 'vidrift:episode' && media.mediaType === 'tv') {
+        if (!Number.isInteger(data.season) || data.season! < 1
+          || !Number.isInteger(data.episode) || data.episode! < 1) return;
+        if (!isHost) return;
+        socketRef.current?.emit('media:change', {
+          ...media,
+          src: 'vidrift',
+          playbackType: 'vidrift',
+          seasonNumber: data.season,
+          episodeNumber: data.episode,
+          position: 0,
+          isPlaying: false,
+        });
+        return;
+      }
+
+      if (data.type === 'vidrift:exit') leaveRoom();
+      if (data.type === 'vidrift:command-error') {
+        setError('Le lecteur VidRift n’a pas pu appliquer une commande de synchronisation.');
+      }
+    };
+
+    window.addEventListener('message', handleVidRiftMessage);
+    return () => window.removeEventListener('message', handleVidRiftMessage);
+  }, [
+    roomId,
+    room?.media,
+    canControl,
+    isHost,
+    applyRemotePlayback,
+    sendPlayback,
+    leaveRoom,
+  ]);
 
   const handleSendMessage = (event: FormEvent) => {
     event.preventDefault();
@@ -459,25 +670,38 @@ const WatchPartyPage: React.FC = () => {
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
               <section className={`${panelClass} overflow-hidden`}>
                 <div className="relative aspect-video bg-black">
-                  <video
-                    ref={videoRef}
-                    className="h-full w-full bg-black object-contain"
-                    poster={room.media.poster || undefined}
-                    controls={canControl}
-                    playsInline
-                    onLoadedMetadata={handleVideoReady}
-                    onCanPlay={handleVideoReady}
-                    onPlay={() => { setRequiresUserGesture(false); sendPlayback('play'); }}
-                    onPause={() => sendPlayback('pause')}
-                    onSeeked={() => sendPlayback('seek')}
-                    onTimeUpdate={handleTimeUpdate}
-                  />
+                  {room.media.playbackType === 'vidrift' ? (
+                    <iframe
+                      key={buildVidRiftEmbedUrl(room.media)}
+                      ref={vidriftFrameRef}
+                      src={buildVidRiftEmbedUrl(room.media)}
+                      title={room.media.title ? `VidRift — ${room.media.title}` : 'Lecteur VidRift'}
+                      className="h-full w-full border-0 bg-black"
+                      allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
+                      allowFullScreen
+                      onLoad={handleVidRiftLoad}
+                    />
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      className="h-full w-full bg-black object-contain"
+                      poster={room.media.poster || undefined}
+                      controls={canControl}
+                      playsInline
+                      onLoadedMetadata={handleVideoReady}
+                      onCanPlay={handleVideoReady}
+                      onPlay={() => { setRequiresUserGesture(false); sendPlayback('play'); }}
+                      onPause={() => sendPlayback('pause')}
+                      onSeeked={() => sendPlayback('seek')}
+                      onTimeUpdate={handleTimeUpdate}
+                    />
+                  )}
                   {!canControl && (
                     <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-black/70 px-3 py-2 text-xs text-white/75 backdrop-blur">
                       Lecture synchronisée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
                     </div>
                   )}
-                  {requiresUserGesture && (
+                  {requiresUserGesture && room.media.playbackType !== 'vidrift' && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
                       <button onClick={() => { void videoRef.current?.play().catch(() => setError('Impossible de démarrer la lecture sur cet appareil.')); }} className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-red-500">
                         <Play className="h-4 w-4 fill-current" /> Activer la lecture synchronisée
@@ -689,24 +913,46 @@ const WatchPartyPage: React.FC = () => {
                 <span className="text-xs font-semibold text-white/70">Ton pseudo</span>
                 <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} />
               </label>
-              <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-white/70">Film ou série à regarder</span>
-                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="Titre du contenu" className={inputClass} />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-white/70">Lien vidéo direct</span>
-                <input value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} />
-                <span className="block text-[11px] leading-5 text-white/35">Formats compatibles : MP4, WebM ou HLS (.m3u8). Les pages de lecteurs externes ne sont pas synchronisables.</span>
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-white/70">Affiche (facultatif)</span>
-                <input value={posterUrl} onChange={event => setPosterUrl(event.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} />
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-semibold text-white/70">Type</span>
-                  <select value={mediaType} onChange={event => setMediaType(event.target.value as 'movie' | 'tv')} className={inputClass}><option value="movie">Film</option><option value="tv">Série</option></select>
-                </label>
+              {watchPartyContext ? (
+                <div className="flex items-center gap-4 rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3">
+                  {watchPartyContext.posterPath ? (
+                    <img src={watchPartyContext.posterPath} alt="" className="h-20 w-14 shrink-0 rounded-lg bg-black object-cover" />
+                  ) : (
+                    <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]"><Film className="h-5 w-5 text-white/35" /></div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[.16em] text-red-300">Contenu récupéré automatiquement</p>
+                    <h3 className="mt-1 truncate text-sm font-bold text-white">{watchPartyContext.title}</h3>
+                    <p className="mt-1 text-xs text-white/50">
+                      {watchPartyContext.kind === 'tv'
+                        ? `Série · Saison ${watchPartyContext.season} · Épisode ${watchPartyContext.episode}`
+                        : 'Film'}
+                    </p>
+                    <p className="mt-2 text-[11px] leading-4 text-white/40">Le même lecteur VidRift sera ouvert chez chaque participant. Aucun lien vidéo à copier.</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Film ou série à regarder</span>
+                    <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="Titre du contenu" className={inputClass} />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Lien vidéo direct</span>
+                    <input value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} />
+                    <span className="block text-[11px] leading-5 text-white/35">Pour les vidéos hébergées en dehors du lecteur Movix, MP4, WebM et HLS (.m3u8) sont acceptés.</span>
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Affiche (facultatif)</span>
+                    <input value={posterUrl} onChange={event => setPosterUrl(event.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Type</span>
+                    <select value={mediaType} onChange={event => setMediaType(event.target.value as 'movie' | 'tv')} className={inputClass}><option value="movie">Film</option><option value="tv">Série</option></select>
+                  </label>
+                </>
+              )}
+              <div className="grid grid-cols-1 gap-3">
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold text-white/70">Places</span>
                   <select value={maxParticipants} onChange={event => setMaxParticipants(event.target.value)} className={inputClass}>{[2,4,6,8,10,15,20,30,50].map(value => <option key={value} value={value}>{value} personnes</option>)}</select>
