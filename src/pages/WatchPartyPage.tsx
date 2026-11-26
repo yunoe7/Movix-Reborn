@@ -263,21 +263,26 @@ const WatchPartyPage: React.FC = () => {
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
     const cleanNickname = nickname.trim();
+    const launchContext = watchPartyContext;
+    const useVidRift = Boolean(launchContext && /^\\d+$/.test(launchContext.tmdbId));
+    const contentTitle = launchContext?.title.trim() || title.trim();
+    const contentPoster = launchContext?.posterPath || posterUrl.trim();
+
     if (cleanNickname.length < 2) {
       setError('Choisis un pseudo d’au moins 2 caractères.');
       return;
     }
-    if (!title.trim()) {
+    if (!contentTitle) {
       setError('Ajoute un titre pour le film ou la série.');
       return;
     }
-    if (!isDirectVideoUrl(sourceUrl.trim())) {
-      setError('Ajoute un lien vidéo direct en MP4, WebM ou M3U8 (HLS). Les liens de pages ou lecteurs externes ne sont pas synchronisables.');
+    if (!useVidRift && !isDirectVideoUrl(sourceUrl.trim())) {
+      setError('Ajoute un lien vidéo direct en MP4, WebM ou M3U8 (HLS).');
       return;
     }
-    if (posterUrl.trim()) {
+    if (contentPoster) {
       try {
-        const poster = new URL(posterUrl.trim());
+        const poster = new URL(contentPoster);
         if (!['http:', 'https:'].includes(poster.protocol)) throw new Error();
       } catch {
         setError('Le lien de l’affiche doit être une URL valide.');
@@ -296,11 +301,23 @@ const WatchPartyPage: React.FC = () => {
           roomName: roomName.trim(),
           isPublic,
           syncMode: 'classic',
-          media: {
+          media: useVidRift ? {
+            src: 'vidrift',
+            playbackType: 'vidrift',
+            mediaId: launchContext!.tmdbId,
+            title: contentTitle,
+            poster: contentPoster || undefined,
+            mediaType: launchContext!.kind,
+            seasonNumber: launchContext!.kind === 'tv' ? launchContext!.season : undefined,
+            episodeNumber: launchContext!.kind === 'tv' ? launchContext!.episode : undefined,
+            position: launchContext!.position || 0,
+            isPlaying: launchContext!.isPlaying === true,
+          } : {
             src: sourceUrl.trim(),
-            title: title.trim(),
-            poster: posterUrl.trim() || undefined,
+            title: contentTitle,
+            poster: contentPoster || undefined,
             mediaType,
+            playbackType: 'direct',
           },
         }),
       });
