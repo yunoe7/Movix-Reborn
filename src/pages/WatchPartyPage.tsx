@@ -670,25 +670,38 @@ const WatchPartyPage: React.FC = () => {
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
               <section className={`${panelClass} overflow-hidden`}>
                 <div className="relative aspect-video bg-black">
-                  <video
-                    ref={videoRef}
-                    className="h-full w-full bg-black object-contain"
-                    poster={room.media.poster || undefined}
-                    controls={canControl}
-                    playsInline
-                    onLoadedMetadata={handleVideoReady}
-                    onCanPlay={handleVideoReady}
-                    onPlay={() => { setRequiresUserGesture(false); sendPlayback('play'); }}
-                    onPause={() => sendPlayback('pause')}
-                    onSeeked={() => sendPlayback('seek')}
-                    onTimeUpdate={handleTimeUpdate}
-                  />
+                  {room.media.playbackType === 'vidrift' ? (
+                    <iframe
+                      key={buildVidRiftEmbedUrl(room.media)}
+                      ref={vidriftFrameRef}
+                      src={buildVidRiftEmbedUrl(room.media)}
+                      title={room.media.title ? `VidRift — ${room.media.title}` : 'Lecteur VidRift'}
+                      className="h-full w-full border-0 bg-black"
+                      allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
+                      allowFullScreen
+                      onLoad={handleVidRiftLoad}
+                    />
+                  ) : (
+                    <video
+                      ref={videoRef}
+                      className="h-full w-full bg-black object-contain"
+                      poster={room.media.poster || undefined}
+                      controls={canControl}
+                      playsInline
+                      onLoadedMetadata={handleVideoReady}
+                      onCanPlay={handleVideoReady}
+                      onPlay={() => { setRequiresUserGesture(false); sendPlayback('play'); }}
+                      onPause={() => sendPlayback('pause')}
+                      onSeeked={() => sendPlayback('seek')}
+                      onTimeUpdate={handleTimeUpdate}
+                    />
+                  )}
                   {!canControl && (
                     <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-black/70 px-3 py-2 text-xs text-white/75 backdrop-blur">
                       Lecture synchronisée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
                     </div>
                   )}
-                  {requiresUserGesture && (
+                  {requiresUserGesture && room.media.playbackType !== 'vidrift' && (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
                       <button onClick={() => { void videoRef.current?.play().catch(() => setError('Impossible de démarrer la lecture sur cet appareil.')); }} className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-red-500">
                         <Play className="h-4 w-4 fill-current" /> Activer la lecture synchronisée
