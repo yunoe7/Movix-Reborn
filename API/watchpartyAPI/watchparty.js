@@ -602,6 +602,16 @@ watchpartyIO.on('connection', (socket) => {
   }
   room.messages.filter(m => !m.deleted).forEach(m => socket.emit('room:chat', m));
 
+  // A client can load or reload its iframe after the Socket.IO connection.
+  // Return the authoritative snapshot on demand so a newly mounted VidRift
+  // player never keeps its local autoplay/position instead of the room state.
+  socket.on('playback:getState', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (!r.participants.some((participant) => participant.id === socket.id)) return;
+    socket.emit('room:playback', r.playbackState);
+  });
+
   // Chat
   socket.on('chat:message', (data) => {
     if (!watchpartyRooms.has(roomId)) return;
