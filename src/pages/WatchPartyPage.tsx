@@ -932,10 +932,10 @@ const WatchPartyPage: React.FC = () => {
   }, [roomId, room?.syncMode, room?.media?.src, isHost]);
 
   useEffect(() => {
-    if (countdownTarget === null) return;
-    const timer = window.setInterval(() => setCountdownNow(Date.now()), 100);
+    if (countdownTarget === null && !pauseTimer && !pauseVote) return;
+    const timer = window.setInterval(() => setCountdownNow(Date.now()), 250);
     return () => window.clearInterval(timer);
-  }, [countdownTarget]);
+  }, [countdownTarget, pauseTimer?.endTime, pauseVote?.endTime]);
 
   useEffect(() => {
     if (room?.countdown?.startAt) setCountdownTarget(room.countdown.startAt);
