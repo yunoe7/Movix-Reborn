@@ -1,5 +1,5 @@
 import React, { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import Hls from 'hls.js';
 import {
@@ -18,8 +18,10 @@ type Media = {
   poster?: string | null;
   mediaType: 'movie' | 'tv';
   mediaId?: string;
+  playbackType?: 'direct' | 'vidrift';
   seasonNumber?: number;
   episodeNumber?: number;
+  position?: number;
 };
 
 type Participant = {
@@ -56,6 +58,17 @@ type Room = {
 
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
+type WatchPartyLaunchContext = {
+  kind: 'movie' | 'tv';
+  tmdbId: string;
+  title: string;
+  posterPath?: string;
+  season?: number;
+  episode?: number;
+  position?: number;
+  isPlaying?: boolean;
+};
+
 type PublicRoom = {
   id: string;
   code: string;
@@ -65,12 +78,34 @@ type PublicRoom = {
   participantCount: number;
   maxParticipants: number;
   syncMode: 'classic' | 'pro';
+  playbackType?: 'direct' | 'vidrift';
+  mediaId?: string | null;
   mediaTitle?: string;
   hostNickname?: string;
   seasonNumber?: number;
   episodeNumber?: number;
   createdAt: number;
 };
+
+const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
+
+function buildVidRiftEmbedUrl(media: Media): string {
+  const tmdbId = String(media.mediaId || '');
+  if (!/^\\d+$/.test(tmdbId)) return '';
+  const season = Math.max(0, Number(media.seasonNumber) || 1);
+  const episode = Math.max(1, Number(media.episodeNumber) || 1);
+  const path = media.mediaType === 'tv'
+    ? `/embed/tv/${encodeURIComponent(tmdbId)}/${season}/${episode}`
+    : `/embed/movie/${encodeURIComponent(tmdbId)}`;
+  const url = new URL(path, VIDRIFT_ORIGIN);
+  url.searchParams.set('brand', 'Movix');
+  url.searchParams.set('brandColor', 'DC2626');
+  url.searchParams.set('download', '1');
+  url.searchParams.set('exit', '1');
+  if (media.title) url.searchParams.set('title', media.title);
+  if (media.poster?.startsWith('https://')) url.searchParams.set('poster', media.poster);
+  return url.toString();
+}
 
 const panelClass = 'rounded-2xl border border-white/[0.08] bg-[#111214] shadow-[0_18px_60px_rgba(0,0,0,.28)]';
 const inputClass = 'h-11 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-red-500/60 focus:ring-2 focus:ring-red-500/10';
@@ -100,6 +135,7 @@ function isDirectVideoUrl(value: string): boolean {
 
 const WatchPartyPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { code: routeCode, roomId } = useParams<{ code?: string; roomId?: string }>();
   const [nickname, setNickname] = useState(() => {
     try { return sessionStorage.getItem('watchPartyNickname') || ''; } catch { return ''; }
@@ -107,6 +143,7 @@ const WatchPartyPage: React.FC = () => {
   const [joinCode, setJoinCode] = useState((routeCode || '').toUpperCase());
   const [title, setTitle] = useState('');
   const [roomName, setRoomName] = useState('');
+  const [watchPartyContext, setWatchPartyContext] = useState<WatchPartyLaunchContext | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [sourceUrl, setSourceUrl] = useState('');
@@ -129,6 +166,9 @@ const WatchPartyPage: React.FC = () => {
   const [requiresUserGesture, setRequiresUserGesture] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
+  const roomRef = useRef<Room | null>(null);
+  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true });
   const hlsRef = useRef<Hls | null>(null);
   const applyingRemoteRef = useRef(false);
   const lastHeartbeatRef = useRef(0);
@@ -139,6 +179,32 @@ const WatchPartyPage: React.FC = () => {
     setJoinCode(routeCode.toUpperCase());
     setShowJoin(true);
   }, [routeCode]);
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
+
+  useEffect(() => {
+    const context = (location.state as { watchPartyMedia?: WatchPartyLaunchContext } | null)?.watchPartyMedia;
+    if (!context || !/^\\d+$/.test(String(context.tmdbId || ''))) return;
+    const cleanContext: WatchPartyLaunchContext = {
+      ...context,
+      tmdbId: String(context.tmdbId),
+      title: String(context.title || 'Contenu Movix'),
+      kind: context.kind === 'tv' ? 'tv' : 'movie',
+      season: Math.max(1, Number(context.season) || 1),
+      episode: Math.max(1, Number(context.episode) || 1),
+      position: Math.max(0, Number(context.position) || 0),
+      isPlaying: context.isPlaying === true,
+    };
+    setWatchPartyContext(cleanContext);
+    setTitle(cleanContext.title);
+    setPosterUrl(cleanContext.posterPath || '');
+    setMediaType(cleanContext.kind);
+    setRoomName(current => current || `Watch Party · ${cleanContext.title}`);
+    setError('');
+    setShowCreate(true);
+  }, [location.key, location.state]);
 
   const refreshPublicRooms = useCallback(async () => {
     setIsLoadingRooms(true);
