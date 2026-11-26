@@ -1,12 +1,16 @@
 import React, { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
+import axios from 'axios';
+import { getTmdbLanguage } from '../i18n';
 import Hls from 'hls.js';
 import {
   ArrowLeft, Check, Copy, Film, Globe2, KeyRound, Loader2, LockKeyhole,
   MessageCircle, Play, Plus, RefreshCw, Send, Users, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
+
+const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
 const WATCHPARTY_API = String(
   import.meta.env.VITE_WATCHPARTY_API || 'https://watchparty-api-production.up.railway.app',
@@ -58,15 +62,32 @@ type Room = {
 
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
-type WatchPartyLaunchContext = {
-  kind: 'movie' | 'tv';
-  tmdbId: string;
-  title: string;
-  posterPath?: string;
-  season?: number;
-  episode?: number;
-  position?: number;
-  isPlaying?: boolean;
+type TmdbMedia = {
+  id: number;
+  media_type: 'movie' | 'tv';
+  title?: string;
+  name?: string;
+  poster_path: string | null;
+  backdrop_path?: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  overview?: string;
+  vote_average?: number;
+  genre_ids: number[];
+};
+
+type TmdbSeason = {
+  id: number;
+  season_number: number;
+  name: string;
+  episode_count: number;
+};
+
+type TmdbEpisode = {
+  id: number;
+  episode_number: number;
+  name: string;
+  still_path?: string | null;
 };
 
 type PublicRoom = {
@@ -123,32 +144,27 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-function isDirectVideoUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
-    return /\.(mp4|m4v|webm|m3u8)$/i.test(url.pathname);
-  } catch {
-    return false;
-  }
-}
-
 const WatchPartyPage: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { code: routeCode, roomId } = useParams<{ code?: string; roomId?: string }>();
   const [nickname, setNickname] = useState(() => {
     try { return sessionStorage.getItem('watchPartyNickname') || ''; } catch { return ''; }
   });
   const [joinCode, setJoinCode] = useState((routeCode || '').toUpperCase());
-  const [title, setTitle] = useState('');
   const [roomName, setRoomName] = useState('');
-  const [watchPartyContext, setWatchPartyContext] = useState<WatchPartyLaunchContext | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
-  const [sourceUrl, setSourceUrl] = useState('');
-  const [posterUrl, setPosterUrl] = useState('');
-  const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
+  const [catalogQuery, setCatalogQuery] = useState('');
+  const [catalogType, setCatalogType] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
+  const [catalogResults, setCatalogResults] = useState<TmdbMedia[]>([]);
+  const [isSearchingCatalog, setIsSearchingCatalog] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<TmdbMedia | null>(null);
+  const [seasons, setSeasons] = useState<TmdbSeason[]>([]);
+  const [episodes, setEpisodes] = useState<TmdbEpisode[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
+  const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
+  const [isLoadingSeasons, setIsLoadingSeasons] = useState(false);
+  const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
   const [isPublic, setIsPublic] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState('8');
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
@@ -164,6 +180,7 @@ const WatchPartyPage: React.FC = () => {
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [copyDone, setCopyDone] = useState(false);
   const [requiresUserGesture, setRequiresUserGesture] = useState(false);
+  const [controlNotice, setControlNotice] = useState('');
   const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
@@ -183,28 +200,6 @@ const WatchPartyPage: React.FC = () => {
   useEffect(() => {
     roomRef.current = room;
   }, [room]);
-
-  useEffect(() => {
-    const context = (location.state as { watchPartyMedia?: WatchPartyLaunchContext } | null)?.watchPartyMedia;
-    if (!context || !/^\d+$/.test(String(context.tmdbId || ''))) return;
-    const cleanContext: WatchPartyLaunchContext = {
-      ...context,
-      tmdbId: String(context.tmdbId),
-      title: String(context.title || 'Contenu Movix'),
-      kind: context.kind === 'tv' ? 'tv' : 'movie',
-      season: Math.max(1, Number(context.season) || 1),
-      episode: Math.max(1, Number(context.episode) || 1),
-      position: Math.max(0, Number(context.position) || 0),
-      isPlaying: context.isPlaying === true,
-    };
-    setWatchPartyContext(cleanContext);
-    setTitle(cleanContext.title);
-    setPosterUrl(cleanContext.posterPath || '');
-    setMediaType(cleanContext.kind);
-    setRoomName(current => current || `Watch Party · ${cleanContext.title}`);
-    setError('');
-    setShowCreate(true);
-  }, [location.key, location.state]);
 
   const refreshPublicRooms = useCallback(async () => {
     setIsLoadingRooms(true);
