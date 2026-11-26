@@ -104,7 +104,7 @@ Le namespace dédié est `/watchparty`.
 Les familles d'événements à connaître :
 
 - room : `room:info`, `room:participants`, `room:chat`, `room:chatToggled`
-- playback : `playback:update`, `playback:state`, `playback:schedule`, `playback:buffering`
+- playback : `playback:update`, `playback:getState`, `playback:state`, `playback:schedule`, `playback:buffering`
 - contrôle : `control:request`, `control:approve`, `control:deny`, `control:revoke`, `control:setMode`
 - sync pro : `sync:setMode`, `sync:probe`, `sync:probeResult`
 - collaboration : `ready:toggle`, `reaction:send`, `media:change`

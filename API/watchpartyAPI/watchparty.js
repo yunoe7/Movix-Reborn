@@ -372,7 +372,9 @@ function sanitizeString(value, maxLength = MAX_STRING_LENGTH) {
 
 function sanitizeNickname(value) {
   const cleaned = sanitizeString(value, MAX_NICKNAME_LENGTH).replace(/[\r\n\t]/g, ' ').trim();
-  return cleaned || 'Guest';
+  // A nickname is a short display label, never a pasted invite URL.
+  if (!/^[\p{L}\p{N}_ -]{2,24}$/u.test(cleaned)) return 'Guest';
+  return cleaned;
 }
 
 function sanitizeOptionalString(value, maxLength = MAX_STRING_LENGTH) {
@@ -600,6 +602,16 @@ watchpartyIO.on('connection', (socket) => {
   }
   room.messages.filter(m => !m.deleted).forEach(m => socket.emit('room:chat', m));
 
+  // A client can load or reload its iframe after the Socket.IO connection.
+  // Return the authoritative snapshot on demand so a newly mounted VidRift
+  // player never keeps its local autoplay/position instead of the room state.
+  socket.on('playback:getState', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (!r.participants.some((participant) => participant.id === socket.id)) return;
+    socket.emit('room:playback', r.playbackState);
+  });
+
   // Chat
   socket.on('chat:message', (data) => {
     if (!watchpartyRooms.has(roomId)) return;
@@ -629,6 +641,13 @@ watchpartyIO.on('connection', (socket) => {
       r.controlMode === 'democratic';
 
     if (canControl) {
+      const reason = ['play', 'pause', 'seek', 'heartbeat', 'ended'].includes(data?.reason)
+        ? data.reason
+        : 'heartbeat';
+      // Playback controls may be shared with co-hosts/democratic members,
+      // but periodic heartbeats must have a single source of truth.
+      if (reason === 'heartbeat' && socket.id !== r.hostId) return;
+
       const position = sanitizeNumber(data?.position);
       const playbackUpdate = {
         isPlaying: data?.isPlaying === true,
@@ -636,9 +655,6 @@ watchpartyIO.on('connection', (socket) => {
         updatedAt: Date.now(),
         updatedBy: socket.id
       };
-      const reason = ['play', 'pause', 'seek', 'heartbeat', 'ended'].includes(data?.reason)
-        ? data.reason
-        : 'heartbeat';
       r.playbackState = playbackUpdate;
       // Broadcast aux autres clients (exclure le sender pour éviter la boucle de feedback)
       socket.to(roomId).emit('playback:state', playbackUpdate);
@@ -754,6 +770,14 @@ watchpartyIO.on('connection', (socket) => {
     if (socket.id !== r.hostId) return;
     if (mode === 'host-only' || mode === 'democratic') {
       r.controlMode = mode;
+      if (mode === 'host-only') {
+        // Switching back from democratic mode must really lock the room.
+        const previouslyGranted = [...r.coHosts];
+        r.coHosts = [];
+        previouslyGranted.forEach((participantId) => {
+          watchpartyIO.sockets.get(participantId)?.emit('control:revoked');
+        });
+      }
       const systemMsg = systemMessage(r, mode === 'democratic'
         ? '🎮 Mode démocratique activé - Tout le monde peut contrôler la lecture !'
         : '🔒 Mode hôte activé - Seul l\'hôte contrôle la lecture.');
@@ -840,7 +864,10 @@ watchpartyIO.on('connection', (socket) => {
   socket.on('media:change', (media) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
-    if (socket.id !== r.hostId) return;
+    const canControl = socket.id === r.hostId
+      || r.coHosts.includes(socket.id)
+      || r.controlMode === 'democratic';
+    if (!canControl) return;
 
     const sanitized = sanitizeMedia(media);
     if (!sanitized) return;

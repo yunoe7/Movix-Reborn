@@ -32,6 +32,8 @@ jobs:
         run: npx eslint src/components/VidRiftPlayer.tsx src/pages/AnimeRedirect.tsx
       - name: Lint Watch Party integration
         run: npx eslint src/components/ProfileMenu.tsx src/components/VidRiftPlayer.tsx src/pages/WatchPartyPage.tsx
+      - name: Check WatchParty API syntax
+        run: node --check API/watchpartyAPI/watchparty.js
       - name: Build production bundle
         env:
           VITE_SITE_URL: https://movix.health
