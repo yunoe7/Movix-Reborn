@@ -113,8 +113,8 @@ const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
 function buildVidRiftEmbedUrl(media: Media): string {
   const tmdbId = String(media.mediaId || '');
   if (!/^\d+$/.test(tmdbId)) return '';
-  const season = Math.max(0, Number(media.seasonNumber) || 1);
-  const episode = Math.max(1, Number(media.episodeNumber) || 1);
+  const season = Number.isInteger(media.seasonNumber) && Number(media.seasonNumber) >= 0 ? Number(media.seasonNumber) : 1;
+  const episode = Number.isInteger(media.episodeNumber) && Number(media.episodeNumber) > 0 ? Number(media.episodeNumber) : 1;
   const path = media.mediaType === 'tv'
     ? `/embed/tv/${encodeURIComponent(tmdbId)}/${season}/${episode}`
     : `/embed/movie/${encodeURIComponent(tmdbId)}`;
@@ -380,32 +380,25 @@ const WatchPartyPage: React.FC = () => {
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
     const cleanNickname = nickname.trim();
-    const launchContext = watchPartyContext;
-    const useVidRift = Boolean(launchContext && /^\d+$/.test(launchContext.tmdbId));
-    const contentTitle = launchContext?.title.trim() || title.trim();
-    const contentPoster = launchContext?.posterPath || posterUrl.trim();
+    if (!/^[\\p{L}\\p{N}_ -]{2,24}$/u.test(cleanNickname)) {
+      setError('Choisis un pseudo de 2 à 24 caractères, sans URL ni symbole spécial.');
+      return;
+    }
+    if (!selectedMedia) {
+      setError('Sélectionne un film, une série ou un anime dans le catalogue.');
+      return;
+    }
+    if (selectedMedia.media_type === 'tv' && (
+      selectedSeason === null || selectedEpisode === null || isLoadingSeasons || isLoadingEpisodes
+    )) {
+      setError('Sélectionne une saison et un épisode disponibles.');
+      return;
+    }
 
-    if (cleanNickname.length < 2) {
-      setError('Choisis un pseudo d’au moins 2 caractères.');
-      return;
-    }
-    if (!contentTitle) {
-      setError('Ajoute un titre pour le film ou la série.');
-      return;
-    }
-    if (!useVidRift && !isDirectVideoUrl(sourceUrl.trim())) {
-      setError('Ajoute un lien vidéo direct en MP4, WebM ou M3U8 (HLS).');
-      return;
-    }
-    if (contentPoster) {
-      try {
-        const poster = new URL(contentPoster);
-        if (!['http:', 'https:'].includes(poster.protocol)) throw new Error();
-      } catch {
-        setError('Le lien de l’affiche doit être une URL valide.');
-        return;
-      }
-    }
+    const mediaTitle = selectedMedia.title || selectedMedia.name || 'Contenu';
+    const poster = selectedMedia.poster_path
+      ? `https://image.tmdb.org/t/p/w500${selectedMedia.poster_path}`
+      : undefined;
     setIsSubmitting(true);
     setError('');
     try {
@@ -415,31 +408,26 @@ const WatchPartyPage: React.FC = () => {
         body: JSON.stringify({
           nickname: cleanNickname,
           maxParticipants: Number(maxParticipants),
-          roomName: roomName.trim(),
+          roomName: roomName.trim() || `Watch Party · ${mediaTitle}`,
           isPublic,
           syncMode: 'classic',
-          media: useVidRift ? {
+          media: {
             src: 'vidrift',
             playbackType: 'vidrift',
-            mediaId: launchContext!.tmdbId,
-            title: contentTitle,
-            poster: contentPoster || undefined,
-            mediaType: launchContext!.kind,
-            seasonNumber: launchContext!.kind === 'tv' ? launchContext!.season : undefined,
-            episodeNumber: launchContext!.kind === 'tv' ? launchContext!.episode : undefined,
-            position: launchContext!.position || 0,
-            isPlaying: launchContext!.isPlaying === true,
-          } : {
-            src: sourceUrl.trim(),
-            title: contentTitle,
-            poster: contentPoster || undefined,
-            mediaType,
-            playbackType: 'direct',
+            mediaId: String(selectedMedia.id),
+            title: mediaTitle,
+            poster,
+            mediaType: selectedMedia.media_type,
+            seasonNumber: selectedMedia.media_type === 'tv' ? selectedSeason : undefined,
+            episodeNumber: selectedMedia.media_type === 'tv' ? selectedEpisode : undefined,
+            position: 0,
+            isPlaying: false,
           },
         }),
       });
       storeRoomToken(result.roomId, result.hostToken);
       setShowCreate(false);
+      setSelectedMedia(null);
       navigate(`/watchparty/room/${result.roomId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de créer le salon.');
