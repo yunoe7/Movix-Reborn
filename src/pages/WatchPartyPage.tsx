@@ -57,10 +57,17 @@ type Room = {
   chatEnabled: boolean;
   media: Media;
   participants: Participant[];
-  playbackState?: { isPlaying: boolean; position: number; updatedAt: number };
+  playbackState?: PlaybackSnapshot;
 };
 
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
+
+type PlaybackSnapshot = {
+  isPlaying: boolean;
+  position: number;
+  updatedAt?: number;
+  updatedBy?: string | null;
+};
 
 type TmdbMedia = {
   id: number;
@@ -185,11 +192,15 @@ const WatchPartyPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
   const roomRef = useRef<Room | null>(null);
-  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true });
+  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true, updatedAt: 0 });
   const hlsRef = useRef<Hls | null>(null);
   const applyingRemoteRef = useRef(false);
   const lastHeartbeatRef = useRef(0);
-  const pendingPlaybackRef = useRef<{ isPlaying: boolean; position: number } | null>(null);
+  const pendingPlaybackRef = useRef<PlaybackSnapshot | null>(null);
+  const clockOffsetRef = useRef(0);
+  const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
+  const pendingClockProbesRef = useRef(new Map<string, number>());
+  const clockProbeSequenceRef = useRef(0);
 
   useEffect(() => {
     if (!routeCode) return;
@@ -455,7 +466,13 @@ const WatchPartyPage: React.FC = () => {
     navigate('/watchparty');
   }, [roomId, navigate]);
 
-  const applyRemotePlayback = useCallback(async (state: { isPlaying: boolean; position: number }) => {
+  const applyRemotePlayback = useCallback(async (state: PlaybackSnapshot) => {
+    const serverNow = Date.now() + clockOffsetRef.current;
+    const elapsedSeconds = state.isPlaying && Number.isFinite(state.updatedAt)
+      ? Math.max(0, Math.min(6, (serverNow - Number(state.updatedAt)) / 1000))
+      : 0;
+    const targetPosition = Math.max(0, Number(state.position) + elapsedSeconds);
+
     if (roomRef.current?.media.playbackType === 'vidrift') {
       const target = vidriftFrameRef.current?.contentWindow;
       if (!target) {
@@ -464,12 +481,15 @@ const WatchPartyPage: React.FC = () => {
       }
       applyingRemoteRef.current = true;
       try {
-        if (Number.isFinite(state.position) && Math.abs(vidriftPlaybackRef.current.currentTime - state.position) > 1) {
-          target.postMessage({ type: 'vidrift:resume', currentTime: Math.max(0, state.position) }, VIDRIFT_ORIGIN);
+        if (Number.isFinite(targetPosition) && Math.abs(vidriftPlaybackRef.current.currentTime - targetPosition) > 0.8) {
+          target.postMessage({ type: 'vidrift:resume', currentTime: targetPosition }, VIDRIFT_ORIGIN);
         }
         target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
-        vidriftPlaybackRef.current.paused = !state.isPlaying;
-        vidriftPlaybackRef.current.currentTime = Math.max(0, state.position || 0);
+        vidriftPlaybackRef.current = {
+          paused: !state.isPlaying,
+          currentTime: targetPosition,
+          updatedAt: performance.now(),
+        };
       } finally {
         window.setTimeout(() => { applyingRemoteRef.current = false; }, 1200);
       }
@@ -483,8 +503,8 @@ const WatchPartyPage: React.FC = () => {
     }
     applyingRemoteRef.current = true;
     try {
-      if (Number.isFinite(state.position) && Math.abs(video.currentTime - state.position) > 0.8) {
-        video.currentTime = Math.max(0, state.position);
+      if (Number.isFinite(targetPosition) && Math.abs(video.currentTime - targetPosition) > 0.8) {
+        video.currentTime = targetPosition;
       }
       if (state.isPlaying && video.paused) {
         await video.play().then(() => setRequiresUserGesture(false)).catch(() => setRequiresUserGesture(true));
@@ -524,17 +544,25 @@ const WatchPartyPage: React.FC = () => {
         socket.on('connect', () => {
           setSocketState('connected');
           setSelfId(socket.id || '');
-          // The iframe can load before Socket.IO finishes connecting. Ask both
-          // sides for their state again once the room channel is ready.
+          // Calibrate the client clock against the server before interpolating
+          // playback timestamps. The lowest-RTT samples minimize jitter.
+          clockOffsetSamplesRef.current = [];
+          clockOffsetRef.current = 0;
+          pendingClockProbesRef.current.clear();
+          for (let index = 0; index < 5; index += 1) {
+            const probeId = `${socket.id || 'client'}-${Date.now()}-${++clockProbeSequenceRef.current}`;
+            const clientSentAt = Date.now();
+            pendingClockProbesRef.current.set(probeId, clientSentAt);
+            socket.emit('sync:probe', { probeId, clientSentAt });
+          }
+          // Ask the server for its authoritative snapshot. This also covers
+          // iframe loads and reconnects that happen after the initial join.
           socket.emit('playback:getState');
-          window.setTimeout(() => {
-            vidriftFrameRef.current?.contentWindow?.postMessage(
-              { type: 'vidrift:get-state' },
-              VIDRIFT_ORIGIN,
-            );
-          }, 0);
         });
-        socket.on('disconnect', () => setSocketState('disconnected'));
+        socket.on('disconnect', () => {
+          setSocketState('disconnected');
+          pendingClockProbesRef.current.clear();
+        });
         socket.on('connect_error', (err) => {
           setSocketState('disconnected');
           setError(err.message || 'Connexion au salon impossible.');
@@ -548,6 +576,33 @@ const WatchPartyPage: React.FC = () => {
         socket.on('control:approved', () => setControlNotice('L’hôte t’a accordé le contrôle de la lecture.'));
         socket.on('control:denied', () => setControlNotice('L’hôte a refusé ta demande de contrôle.'));
         socket.on('control:revoked', () => setControlNotice('Ton autorisation de contrôle a été retirée.'));
+        socket.on('sync:probeResult', (result: {
+          probeId: string;
+          clientSentAt: number;
+          serverReceivedAt: number;
+          serverSentAt: number;
+        }) => {
+          const sentAt = pendingClockProbesRef.current.get(result.probeId);
+          if (sentAt === undefined) return;
+          pendingClockProbesRef.current.delete(result.probeId);
+          const receivedAt = Date.now();
+          const roundTripMs = receivedAt - sentAt;
+          if (!Number.isFinite(roundTripMs) || roundTripMs < 0 || roundTripMs > 5000) return;
+          const offsetMs = (
+            (result.serverReceivedAt - sentAt)
+            + (result.serverSentAt - receivedAt)
+          ) / 2;
+          if (!Number.isFinite(offsetMs)) return;
+          const samples = clockOffsetSamplesRef.current;
+          samples.push({ offsetMs, roundTripMs });
+          if (samples.length > 5) samples.shift();
+          const bestSamples = [...samples]
+            .sort((a, b) => a.roundTripMs - b.roundTripMs)
+            .slice(0, 3)
+            .map(sample => sample.offsetMs)
+            .sort((a, b) => a - b);
+          clockOffsetRef.current = bestSamples[Math.floor(bestSamples.length / 2)] ?? 0;
+        });
         socket.on('room:playback', applyRemotePlayback);
         socket.on('playback:state', applyRemotePlayback);
         socket.on('room:chat', (message: ChatMessage) => {
@@ -683,14 +738,22 @@ const WatchPartyPage: React.FC = () => {
       const currentTime = Number(data.currentTime);
       if (data.type === 'vidrift:state') {
         const previous = vidriftPlaybackRef.current;
+        const now = performance.now();
+        const expectedTime = previous.currentTime + (
+          !previous.paused && previous.updatedAt > 0
+            ? Math.max(0, now - previous.updatedAt) / 1000
+            : 0
+        );
         const nextTime = Number.isFinite(currentTime) && currentTime >= 0
           ? currentTime
           : previous.currentTime;
         const nextPaused = typeof data.paused === 'boolean' ? data.paused : previous.paused;
         const pauseChanged = nextPaused !== previous.paused;
-        const positionChanged = Math.abs(nextTime - previous.currentTime) > 1.25;
+        // Distinguish a real seek from the normal time elapsed since the last
+        // state/progress message, otherwise metadata changes can look like seeks.
+        const positionChanged = Math.abs(nextTime - expectedTime) > 1.5;
 
-        vidriftPlaybackRef.current = { currentTime: nextTime, paused: nextPaused };
+        vidriftPlaybackRef.current = { currentTime: nextTime, paused: nextPaused, updatedAt: now };
 
         // The server snapshot is authoritative when the iframe first loads or
         // reconnects. Apply it before treating the player's initial autoplay
@@ -709,7 +772,10 @@ const WatchPartyPage: React.FC = () => {
       }
 
       if (data.type === 'vidrift:progress') {
-        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        if (Number.isFinite(currentTime) && currentTime >= 0) {
+          vidriftPlaybackRef.current.currentTime = currentTime;
+          vidriftPlaybackRef.current.updatedAt = performance.now();
+        }
         if (canControl && Date.now() - lastHeartbeatRef.current > 2500) {
           lastHeartbeatRef.current = Date.now();
           sendPlayback('heartbeat');
@@ -720,6 +786,7 @@ const WatchPartyPage: React.FC = () => {
       if (data.type === 'vidrift:paused' || data.type === 'vidrift:unpaused') {
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = data.type === 'vidrift:paused';
+        vidriftPlaybackRef.current.updatedAt = performance.now();
         if (!applyingRemoteRef.current && canControl) {
           sendPlayback(data.type === 'vidrift:paused' ? 'pause' : 'play');
         }
@@ -729,6 +796,7 @@ const WatchPartyPage: React.FC = () => {
       if (data.type === 'vidrift:ended') {
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = true;
+        vidriftPlaybackRef.current.updatedAt = performance.now();
         if (!applyingRemoteRef.current && canControl) sendPlayback('ended');
         return;
       }
