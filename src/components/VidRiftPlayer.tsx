@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Users } from 'lucide-react';
 
 type VidRiftPlayerProps = {
   kind: 'movie' | 'tv';
@@ -95,6 +96,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastSavedAtRef = useRef(0);
   const lastKnownDurationRef = useRef(0);
+  const latestPlaybackRef = useRef({ currentTime: 0, paused: true });
   const pendingEpisodeResumeRef = useRef<string | null>(null);
   const navigate = useNavigate();
   const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
@@ -201,6 +203,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         mediaType?: string;
         currentTime?: number;
         duration?: number;
+        paused?: boolean;
         season?: number;
         episode?: number;
       };
@@ -213,6 +216,9 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
       if (data.mediaType !== kind) return;
 
       if (data.type === 'vidrift:state') {
+        const stateTime = Number(data.currentTime);
+        if (Number.isFinite(stateTime) && stateTime >= 0) latestPlaybackRef.current.currentTime = stateTime;
+        if (typeof data.paused === 'boolean') latestPlaybackRef.current.paused = data.paused;
         const duration = Number(data.duration);
         if (Number.isFinite(duration) && duration > 0) {
           lastKnownDurationRef.current = duration;
@@ -266,8 +272,11 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         return;
       }
 
-      if (data.type === 'vidrift:progress' || data.type === 'vidrift:paused') {
+      if (data.type === 'vidrift:progress' || data.type === 'vidrift:paused' || data.type === 'vidrift:unpaused') {
         const currentTime = Number(data.currentTime);
+        if (Number.isFinite(currentTime) && currentTime >= 0) latestPlaybackRef.current.currentTime = currentTime;
+        if (data.type === 'vidrift:paused') latestPlaybackRef.current.paused = true;
+        if (data.type === 'vidrift:unpaused') latestPlaybackRef.current.paused = false;
         const messageDuration = Number(data.duration);
         if (!Number.isFinite(currentTime) || currentTime < 0) return;
         if (Number.isFinite(messageDuration) && messageDuration > 0) {
@@ -295,6 +304,23 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     return () => window.removeEventListener('message', handleMessage);
   }, [kind, navigate, onEpisodeChange, persistProgress, tmdbId]);
 
+  const handleCreateWatchParty = () => {
+    navigate('/watchparty?create=1', {
+      state: {
+        watchPartyMedia: {
+          kind,
+          tmdbId,
+          title: title || 'Contenu Movix',
+          posterPath,
+          season,
+          episode,
+          position: latestPlaybackRef.current.currentTime,
+          isPlaying: !latestPlaybackRef.current.paused,
+        },
+      },
+    });
+  };
+
   return (
     <main className="fixed inset-0 z-50 flex h-[100dvh] w-full flex-col bg-black text-white">
       <iframe
@@ -308,6 +334,15 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         allowFullScreen
         loading="eager"
       />
+      <button
+        type="button"
+        onClick={handleCreateWatchParty}
+        className="absolute right-4 top-4 z-[60] inline-flex h-10 items-center gap-2 rounded-full border border-white/15 bg-black/75 px-4 text-xs font-bold text-white shadow-lg backdrop-blur-md transition hover:border-red-500/50 hover:bg-black/90 sm:right-6 sm:top-6"
+        aria-label="Créer une Watch Party avec ce contenu"
+      >
+        <Users className="h-4 w-4 text-red-400" />
+        Watch Party
+      </button>
     </main>
   );
 };
