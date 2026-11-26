@@ -734,7 +734,7 @@ const WatchPartyPage: React.FC = () => {
       }
 
       if (data.type === 'vidrift:episode' && media.mediaType === 'tv') {
-        if (!Number.isInteger(data.season) || data.season! < 1
+        if (!Number.isInteger(data.season) || data.season! < 0
           || !Number.isInteger(data.episode) || data.episode! < 1) return;
         if (!canControl) return;
         socketRef.current?.emit('media:change', {
@@ -919,7 +919,8 @@ const WatchPartyPage: React.FC = () => {
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-bold">{person.nickname.slice(0, 1).toUpperCase()}</span>
                         <span className="min-w-0 flex-1 truncate text-sm text-white/85">{person.nickname}{person.id === selfId ? ' (toi)' : ''}</span>
                         {person.isHost && <span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Hôte</span>}
-                        {isHost && !person.isHost && room.coHosts?.includes(person.id) && (
+                        {!person.isHost && room.coHosts?.includes(person.id) && <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-300">Contrôle</span>}
+                        {isHost && room.controlMode === 'host-only' && !person.isHost && room.coHosts?.includes(person.id) && (
                           <button
                             type="button"
                             onClick={() => socketRef.current?.emit('control:revoke', { participantId: person.id })}
