@@ -276,6 +276,7 @@ async function loadRoomsFromDisk() {
       room.pauseVote = null;
       room.countdownTimer = null;
       room.countdown = null;
+      room.pauseTimerTimeout = null;
       watchpartyRooms.set(room.id, room);
     });
     // Optionnel: supprimer le fichier après restauration, comme dans le serveur principal
@@ -288,7 +289,7 @@ async function loadRoomsFromDisk() {
 // `_idlePrev`/`_idleNext` forment une liste chaînée circulaire : le sérialiser
 // faisait échouer JSON.stringify et donc perdre TOUTES les rooms au shutdown.
 function serializeRoom(room) {
-  const { pauseVote, countdownTimer, ...rest } = room;
+  const { pauseVote, countdownTimer, pauseTimerTimeout, ...rest } = room;
   if (!pauseVote) return { ...rest, pauseVote: null };
   const { timeoutId, ...voteRest } = pauseVote;
   return { ...rest, pauseVote: voteRest };
@@ -533,6 +534,43 @@ function buildScheduledPlaybackEvent(playbackUpdate, action) {
     serverNow,
     updatedBy: playbackUpdate.updatedBy
   };
+}
+
+function schedulePauseAutoResume(roomId, room) {
+  if (room.pauseTimerTimeout) clearTimeout(room.pauseTimerTimeout);
+  const expectedEndTime = room.pauseTimer?.endTime;
+  if (!expectedEndTime) return;
+
+  const delay = Math.max(0, expectedEndTime - Date.now());
+  room.pauseTimerTimeout = setTimeout(() => {
+    const current = watchpartyRooms.get(roomId);
+    if (!current || current.pauseTimer?.endTime !== expectedEndTime) return;
+
+    const shouldResume = current.pauseTimer.resumeAfterPause === true;
+    current.pauseTimer = null;
+    current.pauseTimerTimeout = null;
+
+    if (shouldResume) {
+      current.playbackState = {
+        ...current.playbackState,
+        isPlaying: true,
+        updatedAt: Date.now(),
+        updatedBy: 'pause-timer',
+        reason: 'play'
+      };
+      watchpartyIO.to(roomId).emit('playback:state', current.playbackState);
+      if (current.syncMode === 'pro') {
+        watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(current.playbackState, 'play'));
+      }
+    }
+
+    watchpartyIO.to(roomId).emit('pause:timerFinished');
+    const message = systemMessage(current, shouldResume
+      ? '▶️ La pause est terminée, la lecture reprend.'
+      : 'La pause est terminée. La lecture reste en pause.');
+    watchpartyIO.to(roomId).emit('room:chat', message);
+  }, delay);
+  room.pauseTimerTimeout.unref?.();
 }
 
 watchpartyIO.on('connection', (socket) => {
@@ -874,6 +912,7 @@ watchpartyIO.on('connection', (socket) => {
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return;
     if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
     if (r.pauseVote?.timeoutId) clearTimeout(r.pauseVote.timeoutId);
     watchpartyIO.to(roomId).emit('room:closed', { reason: 'L’hôte a fermé cette salle.' });
     for (const participant of [...r.participants]) {
@@ -965,6 +1004,9 @@ watchpartyIO.on('connection', (socket) => {
     const sanitized = sanitizeMedia(media);
     if (!sanitized) return;
     r.media = sanitized;
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
+    r.pauseTimerTimeout = null;
+    r.pauseTimer = null;
     r.readyState = {};
     if (r.countdownTimer) clearTimeout(r.countdownTimer);
     r.countdownTimer = null;
@@ -1077,12 +1119,15 @@ watchpartyIO.on('connection', (socket) => {
     const canControl = socket.id === r.hostId || r.coHosts.includes(socket.id);
     if (!canControl) return;
     const safeDuration = clampPauseDuration(duration);
-    const durationMs = safeDuration * 1000;
+    const wasPlaying = r.playbackState?.isPlaying === true;
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
     r.pauseTimer = {
-      endTime: Date.now() + durationMs,
+      endTime: Date.now() + safeDuration * 1000,
       startedBy: socket.id,
-      duration: safeDuration
+      duration: safeDuration,
+      resumeAfterPause: wasPlaying
     };
+    schedulePauseAutoResume(roomId, r);
     // Pause playback
     r.playbackState.isPlaying = false;
     r.playbackState.updatedAt = Date.now();
@@ -1104,8 +1149,24 @@ watchpartyIO.on('connection', (socket) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     const canControl = socket.id === r.hostId || r.coHosts.includes(socket.id);
-    if (!canControl) return;
+    if (!canControl || !r.pauseTimer) return;
+    const shouldResume = r.pauseTimer.resumeAfterPause === true;
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
+    r.pauseTimerTimeout = null;
     r.pauseTimer = null;
+    if (shouldResume) {
+      r.playbackState = {
+        ...r.playbackState,
+        isPlaying: true,
+        updatedAt: Date.now(),
+        updatedBy: socket.id,
+        reason: 'play'
+      };
+      watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
+      if (r.syncMode === 'pro') {
+        watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'play'));
+      }
+    }
     watchpartyIO.to(roomId).emit('pause:timerCancelled');
   });
 
@@ -1208,12 +1269,15 @@ watchpartyIO.on('connection', (socket) => {
 
     if (passed) {
       // Start the pause timer
-      const durationMs = r.pauseVote.requestedDuration * 1000;
+      const wasPlaying = r.playbackState?.isPlaying === true;
+      if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
       r.pauseTimer = {
-        endTime: Date.now() + durationMs,
+        endTime: Date.now() + r.pauseVote.requestedDuration * 1000,
         startedBy: r.pauseVote.requestedBy,
-        duration: r.pauseVote.requestedDuration
+        duration: r.pauseVote.requestedDuration,
+        resumeAfterPause: wasPlaying
       };
+      schedulePauseAutoResume(roomId, r);
       // Pause playback
       r.playbackState.isPlaying = false;
       r.playbackState.updatedAt = Date.now();
@@ -1400,7 +1464,8 @@ app.post(
         coHosts: [],              // Array of participant IDs with control
         pendingControlRequests: [], // Array of {participantId, nickname, requestedAt}
         readyState: {},           // Map: participantId -> boolean
-        pauseTimer: null,         // {endTime, startedBy, duration} or null
+        pauseTimer: null,         // {endTime, startedBy, duration, resumeAfterPause} or null
+        pauseTimerTimeout: null,
         pauseVote: null,          // {requestedBy, requestedDuration, votes: {participantId: boolean}, endTime, timeoutId}
         media: cleanMedia,
         participants: [],
