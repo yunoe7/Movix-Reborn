@@ -913,24 +913,47 @@ const WatchPartyPage: React.FC = () => {
                 <span className="text-xs font-semibold text-white/70">Ton pseudo</span>
                 <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} />
               </label>
-              <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-white/70">Film ou série à regarder</span>
-                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="Titre du contenu" className={inputClass} />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-white/70">Lien vidéo direct</span>
-                <input value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} />
-                <span className="block text-[11px] leading-5 text-white/35">Formats compatibles : MP4, WebM ou HLS (.m3u8). Les pages de lecteurs externes ne sont pas synchronisables.</span>
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-white/70">Affiche (facultatif)</span>
-                <input value={posterUrl} onChange={event => setPosterUrl(event.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} />
-              </label>
+              {watchPartyContext ? (
+                <div className="flex items-center gap-4 rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3">
+                  {watchPartyContext.posterPath ? (
+                    <img src={watchPartyContext.posterPath} alt="" className="h-20 w-14 shrink-0 rounded-lg bg-black object-cover" />
+                  ) : (
+                    <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]"><Film className="h-5 w-5 text-white/35" /></div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[.16em] text-red-300">Contenu récupéré automatiquement</p>
+                    <h3 className="mt-1 truncate text-sm font-bold text-white">{watchPartyContext.title}</h3>
+                    <p className="mt-1 text-xs text-white/50">
+                      {watchPartyContext.kind === 'tv'
+                        ? `Série · Saison ${watchPartyContext.season} · Épisode ${watchPartyContext.episode}`
+                        : 'Film'}
+                    </p>
+                    <p className="mt-2 text-[11px] leading-4 text-white/40">Le même lecteur VidRift sera ouvert chez chaque participant. Aucun lien vidéo à copier.</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Film ou série à regarder</span>
+                    <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="Titre du contenu" className={inputClass} />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Lien vidéo direct</span>
+                    <input value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} />
+                    <span className="block text-[11px] leading-5 text-white/35">Pour les vidéos hébergées en dehors du lecteur Movix, MP4, WebM et HLS (.m3u8) sont acceptés.</span>
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Affiche (facultatif)</span>
+                    <input value={posterUrl} onChange={event => setPosterUrl(event.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} />
+                  </label>
+                  <label className="block space-y-1.5">
+                    <span className="text-xs font-semibold text-white/70">Type</span>
+                    <select value={mediaType} onChange={event => setMediaType(event.target.value as 'movie' | 'tv')} className={inputClass}><option value="movie">Film</option><option value="tv">Série</option></select>
+                  </label>
+                </>
+              )}
               <div className="grid grid-cols-2 gap-3">
-                <label className="block space-y-1.5">
-                  <span className="text-xs font-semibold text-white/70">Type</span>
-                  <select value={mediaType} onChange={event => setMediaType(event.target.value as 'movie' | 'tv')} className={inputClass}><option value="movie">Film</option><option value="tv">Série</option></select>
-                </label>
+                <div className="hidden sm:block" />
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold text-white/70">Places</span>
                   <select value={maxParticipants} onChange={event => setMaxParticipants(event.target.value)} className={inputClass}>{[2,4,6,8,10,15,20,30,50].map(value => <option key={value} value={value}>{value} personnes</option>)}</select>
