@@ -274,6 +274,10 @@ async function loadRoomsFromDisk() {
       room.pendingControlRequests = [];
       room.readyState = {};
       room.pauseVote = null;
+      room.pauseTimer = null;
+      room.countdownTimer = null;
+      room.countdown = null;
+      room.pauseTimerTimeout = null;
       watchpartyRooms.set(room.id, room);
     });
     // Optionnel: supprimer le fichier après restauration, comme dans le serveur principal
@@ -286,7 +290,7 @@ async function loadRoomsFromDisk() {
 // `_idlePrev`/`_idleNext` forment une liste chaînée circulaire : le sérialiser
 // faisait échouer JSON.stringify et donc perdre TOUTES les rooms au shutdown.
 function serializeRoom(room) {
-  const { pauseVote, ...rest } = room;
+  const { pauseVote, countdownTimer, pauseTimerTimeout, ...rest } = room;
   if (!pauseVote) return { ...rest, pauseVote: null };
   const { timeoutId, ...voteRest } = pauseVote;
   return { ...rest, pauseVote: voteRest };
@@ -420,6 +424,7 @@ function sanitizeMedia(media) {
     mediaType: media?.mediaType === 'tv' ? 'tv' : 'movie',
     mediaId: sanitizeOptionalString(media?.mediaId, 64),
     playbackType: media?.playbackType === 'vidrift' ? 'vidrift' : 'direct',
+    isAnime: media?.isAnime === true,
     seasonNumber: sanitizeNumber(media?.seasonNumber),
     episodeNumber: sanitizeNumber(media?.episodeNumber),
     nightflixSources: sanitizeSourceList(media?.nightflixSources, ['src', 'quality', 'language', 'label']),
@@ -502,6 +507,8 @@ function buildRoomInfo(roomId, room) {
     controlMode: room.controlMode,
     coHosts: room.coHosts,
     media: room.media,
+    countdown: room.countdown || null,
+    readyState: room.readyState || {},
     createdAt: room.createdAt,
     participants: room.participants
   };
@@ -528,6 +535,43 @@ function buildScheduledPlaybackEvent(playbackUpdate, action) {
     serverNow,
     updatedBy: playbackUpdate.updatedBy
   };
+}
+
+function schedulePauseAutoResume(roomId, room) {
+  if (room.pauseTimerTimeout) clearTimeout(room.pauseTimerTimeout);
+  const expectedEndTime = room.pauseTimer?.endTime;
+  if (!expectedEndTime) return;
+
+  const delay = Math.max(0, expectedEndTime - Date.now());
+  room.pauseTimerTimeout = setTimeout(() => {
+    const current = watchpartyRooms.get(roomId);
+    if (!current || current.pauseTimer?.endTime !== expectedEndTime) return;
+
+    const shouldResume = current.pauseTimer.resumeAfterPause === true;
+    current.pauseTimer = null;
+    current.pauseTimerTimeout = null;
+
+    if (shouldResume) {
+      current.playbackState = {
+        ...current.playbackState,
+        isPlaying: true,
+        updatedAt: Date.now(),
+        updatedBy: 'pause-timer',
+        reason: 'play'
+      };
+      watchpartyIO.to(roomId).emit('playback:state', current.playbackState);
+      if (current.syncMode === 'pro') {
+        watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(current.playbackState, 'play'));
+      }
+    }
+
+    watchpartyIO.to(roomId).emit('pause:timerFinished');
+    const message = systemMessage(current, shouldResume
+      ? '▶️ La pause est terminée, la lecture reprend.'
+      : 'La pause est terminée. La lecture reste en pause.');
+    watchpartyIO.to(roomId).emit('room:chat', message);
+  }, delay);
+  room.pauseTimerTimeout.unref?.();
 }
 
 watchpartyIO.on('connection', (socket) => {
@@ -579,6 +623,7 @@ watchpartyIO.on('connection', (socket) => {
     joinedAt: Date.now()
   };
   room.participants.push(participant);
+  room.readyState[socket.id] = false;
 
   // Emit room info + participants
   emitRoomInfo(roomId, room);
@@ -589,7 +634,13 @@ watchpartyIO.on('connection', (socket) => {
     coHosts: room.coHosts,
     pendingRequests: room.pendingControlRequests
   });
-  socket.emit('ready:state', room.readyState);
+  watchpartyIO.to(roomId).emit('ready:state', room.readyState);
+  if (room.countdown) {
+    if (room.countdownTimer) clearTimeout(room.countdownTimer);
+    room.countdown = null;
+    room.countdownTimer = null;
+    watchpartyIO.to(roomId).emit('room:countdownCancelled');
+  }
 
   // System join message
   const joinMessage = systemMessage(room, `${participant.nickname} a rejoint la Watch Party.`);
@@ -599,6 +650,21 @@ watchpartyIO.on('connection', (socket) => {
   socket.emit('room:playback', room.playbackState);
   if (room.pauseTimer && room.pauseTimer.endTime > Date.now()) {
     socket.emit('pause:timerStarted', room.pauseTimer);
+  }
+  if (room.pauseVote) {
+    socket.emit('vote:started', {
+      requestedBy: room.pauseVote.requestedBy,
+      requestedByNickname: room.pauseVote.requestedByNickname,
+      requestedDuration: room.pauseVote.requestedDuration,
+      endTime: room.pauseVote.endTime,
+      totalParticipants: room.pauseVote.totalParticipants
+    });
+    socket.emit('vote:update', {
+      yesVotes: Object.values(room.pauseVote.votes || {}).filter(Boolean).length,
+      noVotes: Object.values(room.pauseVote.votes || {}).filter(value => value === false).length,
+      totalVotes: Object.keys(room.pauseVote.votes || {}).length,
+      totalParticipants: room.participants.length
+    });
   }
   room.messages.filter(m => !m.deleted).forEach(m => socket.emit('room:chat', m));
 
@@ -621,11 +687,20 @@ watchpartyIO.on('connection', (socket) => {
     if (!me) return;
     const text = sanitizeString(data?.text, MAX_CHAT_LENGTH);
     if (!text) return;
+    const replyToId = sanitizeString(data?.replyToId, 64);
+    const repliedMessage = replyToId
+      ? r.messages.find(message => message.id === replyToId && !message.deleted)
+      : null;
     const msg = pushMessage(r, {
       id: uuidv4(),
       senderId: socket.id,
       senderNickname: me.nickname,
       text,
+      replyTo: repliedMessage ? {
+        id: repliedMessage.id,
+        senderNickname: sanitizeString(repliedMessage.senderNickname, 32),
+        text: sanitizeString(repliedMessage.text, 140)
+      } : null,
       timestamp: Date.now(),
       type: 'chat'
     });
@@ -653,7 +728,8 @@ watchpartyIO.on('connection', (socket) => {
         isPlaying: data?.isPlaying === true,
         position: position === null ? 0 : position,
         updatedAt: Date.now(),
-        updatedBy: socket.id
+        updatedBy: socket.id,
+        reason
       };
       r.playbackState = playbackUpdate;
       // Broadcast aux autres clients (exclure le sender pour éviter la boucle de feedback)
@@ -832,12 +908,69 @@ watchpartyIO.on('connection', (socket) => {
     });
   });
 
+  socket.on('room:close', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId) return;
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
+    if (r.pauseVote?.timeoutId) clearTimeout(r.pauseVote.timeoutId);
+    watchpartyIO.to(roomId).emit('room:closed', { reason: 'L’hôte a fermé cette salle.' });
+    for (const participant of [...r.participants]) {
+      const participantSocket = watchpartyIO.sockets.get(participant.id);
+      if (participantSocket) participantSocket.disconnect(true);
+    }
+    watchpartyRooms.delete(roomId);
+  });
+
+  socket.on('host:transfer', (payload) => {
+    const { participantId } = payload || {};
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId || !participantId || participantId === socket.id) return;
+    const target = r.participants.find(participant => participant.id === participantId);
+    const targetSocket = watchpartyIO.sockets.get(participantId);
+    if (!target || !targetSocket || !targetSocket.data?.token) return;
+
+    const targetToken = targetSocket.data.token;
+    if (!Object.prototype.hasOwnProperty.call(r.accessTokens, targetToken)) return;
+
+    const oldHostSocket = watchpartyIO.sockets.get(r.hostId);
+    const oldHostToken = oldHostSocket?.data?.token;
+    const oldHost = r.participants.find(participant => participant.id === r.hostId);
+    if (oldHostToken) {
+      r.accessTokens[oldHostToken] = {
+        nickname: oldHost?.nickname || 'Host',
+        issuedAt: Date.now()
+      };
+      if (oldHostSocket) oldHostSocket.data.role = 'member';
+    }
+
+    delete r.accessTokens[targetToken];
+    r.hostToken = targetToken;
+    r.hostTokens = new Set([targetToken]);
+    targetSocket.data.role = 'host';
+    r.hostId = target.id;
+    r.coHosts = r.coHosts.filter(id => id !== target.id && id !== oldHost?.id);
+    r.pendingControlRequests = r.pendingControlRequests.filter(request => request.participantId !== target.id);
+    r.participants.forEach(participant => { participant.isHost = participant.id === target.id; });
+
+    const message = systemMessage(r, `${target.nickname} est maintenant l'hôte de la Watch Party.`);
+    watchpartyIO.to(roomId).emit('room:chat', message);
+    watchpartyIO.to(roomId).emit('host:transferred', { hostId: target.id, previousHostId: oldHost?.id || null });
+    emitControlState(roomId, r);
+    emitRoomInfo(roomId, r);
+    watchpartyIO.to(roomId).emit('room:participants', r.participants);
+  });
+
   socket.on('room:setVisibility', (payload) => {
     const { isPublic } = payload || {};
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return;
     r.isPublic = isPublic === true;
+    const me = r.participants.find(participant => participant.id === socket.id);
+    watchpartyIO.to(roomId).emit('room:chat', systemMessage(r, `${me?.nickname || 'L’hôte'} a ${r.isPublic ? 'rendu la salle publique' : 'rendu la salle privée'}.`));
     emitRoomInfo(roomId, r);
   });
 
@@ -872,6 +1005,15 @@ watchpartyIO.on('connection', (socket) => {
     const sanitized = sanitizeMedia(media);
     if (!sanitized) return;
     r.media = sanitized;
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
+    r.pauseTimerTimeout = null;
+    r.pauseTimer = null;
+    r.readyState = {};
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    r.countdownTimer = null;
+    if (r.countdown) watchpartyIO.to(roomId).emit('room:countdownCancelled');
+    r.countdown = null;
+    watchpartyIO.to(roomId).emit('ready:state', r.readyState);
     r.playbackState = {
       isPlaying: false,
       position: 0,
@@ -892,6 +1034,65 @@ watchpartyIO.on('connection', (socket) => {
     watchpartyIO.to(roomId).emit('ready:state', r.readyState);
   });
 
+  // A synchronized start is only allowed after every current participant
+  // explicitly marks themselves ready. The server is the single countdown clock.
+  socket.on('room:startCountdown', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId || r.participants.length < 2) return;
+    const everyoneReady = r.participants.every(participant => r.readyState[participant.id] === true);
+    if (!everyoneReady) {
+      socket.emit('room:startCountdownDenied', { message: 'Tout le monde doit être prêt avant le départ.' });
+      return;
+    }
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    const startAt = Date.now() + 5000;
+    r.countdown = { startAt, startedBy: socket.id };
+    watchpartyIO.to(roomId).emit('room:countdown', r.countdown);
+    r.countdownTimer = setTimeout(() => {
+      const current = watchpartyRooms.get(roomId);
+      if (!current || current.countdown?.startAt !== startAt) return;
+      const position = Number(current.playbackState?.position) || 0;
+      current.playbackState = {
+        isPlaying: true,
+        position,
+        updatedAt: startAt,
+        updatedBy: socket.id,
+        reason: 'play'
+      };
+      current.countdown = null;
+      current.countdownTimer = null;
+      watchpartyIO.to(roomId).emit('playback:state', current.playbackState);
+      watchpartyIO.to(roomId).emit('playback:schedule', {
+        action: 'play',
+        position,
+        scheduledAt: startAt,
+        serverNow: Date.now(),
+        updatedBy: socket.id
+      });
+      watchpartyIO.to(roomId).emit('room:countdownFinished', { startedAt: startAt });
+    }, 5000);
+  });
+
+  socket.on('room:cancelCountdown', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId || !r.countdown) return;
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    r.countdownTimer = null;
+    r.countdown = null;
+    watchpartyIO.to(roomId).emit('room:countdownCancelled');
+  });
+
+  // Ready toggle
+  socket.on('ready:toggle', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (r.countdown) return;
+    r.readyState[socket.id] = !r.readyState[socket.id];
+    watchpartyIO.to(roomId).emit('ready:state', r.readyState);
+  });
+
   // Emoji reaction
   socket.on('reaction:send', (payload) => {
     const { emoji } = payload || {};
@@ -900,7 +1101,10 @@ watchpartyIO.on('connection', (socket) => {
     const me = r.participants.find(p => p.id === socket.id);
     if (!me) return;
     const cleanEmoji = sanitizeString(emoji, MAX_EMOJI_LENGTH);
-    if (!cleanEmoji) return;
+    const allowedEmojis = new Set(['😂', '❤️', '🔥', '😱', '👏', '😭', '🍿', '👀', '💀', '😍']);
+    const now = Date.now();
+    if (!allowedEmojis.has(cleanEmoji) || now - (socket.data.lastReactionAt || 0) < 650) return;
+    socket.data.lastReactionAt = now;
     watchpartyIO.to(roomId).emit('reaction:received', {
       id: uuidv4(),
       emoji: cleanEmoji,
@@ -918,16 +1122,20 @@ watchpartyIO.on('connection', (socket) => {
     const canControl = socket.id === r.hostId || r.coHosts.includes(socket.id);
     if (!canControl) return;
     const safeDuration = clampPauseDuration(duration);
-    const durationMs = safeDuration * 1000;
+    const wasPlaying = r.playbackState?.isPlaying === true;
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
     r.pauseTimer = {
-      endTime: Date.now() + durationMs,
+      endTime: Date.now() + safeDuration * 1000,
       startedBy: socket.id,
-      duration: safeDuration
+      duration: safeDuration,
+      resumeAfterPause: wasPlaying
     };
+    schedulePauseAutoResume(roomId, r);
     // Pause playback
     r.playbackState.isPlaying = false;
     r.playbackState.updatedAt = Date.now();
     r.playbackState.updatedBy = socket.id;
+    r.playbackState.reason = 'pause';
     watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
     if (r.syncMode === 'pro') {
       watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'pause'));
@@ -944,8 +1152,24 @@ watchpartyIO.on('connection', (socket) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     const canControl = socket.id === r.hostId || r.coHosts.includes(socket.id);
-    if (!canControl) return;
+    if (!canControl || !r.pauseTimer) return;
+    const shouldResume = r.pauseTimer.resumeAfterPause === true;
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
+    r.pauseTimerTimeout = null;
     r.pauseTimer = null;
+    if (shouldResume) {
+      r.playbackState = {
+        ...r.playbackState,
+        isPlaying: true,
+        updatedAt: Date.now(),
+        updatedBy: socket.id,
+        reason: 'play'
+      };
+      watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
+      if (r.syncMode === 'pro') {
+        watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'play'));
+      }
+    }
     watchpartyIO.to(roomId).emit('pause:timerCancelled');
   });
 
@@ -1048,16 +1272,20 @@ watchpartyIO.on('connection', (socket) => {
 
     if (passed) {
       // Start the pause timer
-      const durationMs = r.pauseVote.requestedDuration * 1000;
+      const wasPlaying = r.playbackState?.isPlaying === true;
+      if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
       r.pauseTimer = {
-        endTime: Date.now() + durationMs,
+        endTime: Date.now() + r.pauseVote.requestedDuration * 1000,
         startedBy: r.pauseVote.requestedBy,
-        duration: r.pauseVote.requestedDuration
+        duration: r.pauseVote.requestedDuration,
+        resumeAfterPause: wasPlaying
       };
+      schedulePauseAutoResume(roomId, r);
       // Pause playback
       r.playbackState.isPlaying = false;
       r.playbackState.updatedAt = Date.now();
       r.playbackState.updatedBy = 'vote';
+      r.playbackState.reason = 'pause';
       watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
       if (r.syncMode === 'pro') {
         watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'pause'));
@@ -1111,6 +1339,7 @@ watchpartyIO.on('connection', (socket) => {
     if (!target) return;
     r.coHosts = r.coHosts.filter((id) => id !== participantId);
     r.pendingControlRequests = r.pendingControlRequests.filter((req) => req.participantId !== participantId);
+    delete r.readyState[participantId];
     const s = watchpartyIO.sockets.get(participantId);
     if (s) {
       // Sans révocation du token, l'exclu se reconnectait immédiatement.
@@ -1118,25 +1347,9 @@ watchpartyIO.on('connection', (socket) => {
       s.emit('room:kicked', { reason: 'You have been removed from the watch party by the host.' });
       s.disconnect(true);
     }
+    watchpartyIO.to(roomId).emit('ready:state', r.readyState);
     const kickMessage = systemMessage(r, `${target.nickname} a été retiré de la Watch Party.`);
     watchpartyIO.to(roomId).emit('room:chat', kickMessage);
-  });
-
-  // Playback get state
-  socket.on('playback:getState', () => {
-    const r = watchpartyRooms.get(roomId);
-    if (!r) return;
-
-    if (!r.playbackState) {
-      r.playbackState = {
-        isPlaying: false,
-        position: 0,
-        updatedAt: Date.now(),
-        updatedBy: null,
-      };
-    }
-
-    socket.emit('playback:state', r.playbackState);
   });
 
   // Disconnect
@@ -1147,6 +1360,13 @@ watchpartyIO.on('connection', (socket) => {
     if (idx === -1) return;
     const leaving = r.participants[idx];
     r.participants.splice(idx, 1);
+    delete r.readyState[socket.id];
+    if (r.countdown) {
+      if (r.countdownTimer) clearTimeout(r.countdownTimer);
+      r.countdownTimer = null;
+      r.countdown = null;
+      watchpartyIO.to(roomId).emit('room:countdownCancelled');
+    }
 
     const leaveMessage = systemMessage(r, `${leaving.nickname} a quitté la Watch Party.`);
 
@@ -1184,6 +1404,7 @@ watchpartyIO.on('connection', (socket) => {
       }, 5 * 60 * 1000);
     } else {
       watchpartyIO.to(roomId).emit('room:participants', r.participants);
+      watchpartyIO.to(roomId).emit('ready:state', r.readyState);
       watchpartyIO.to(roomId).emit('room:chat', leaveMessage);
       emitRoomInfo(roomId, r);
     }
@@ -1248,11 +1469,15 @@ app.post(
         coHosts: [],              // Array of participant IDs with control
         pendingControlRequests: [], // Array of {participantId, nickname, requestedAt}
         readyState: {},           // Map: participantId -> boolean
-        pauseTimer: null,         // {endTime, startedBy, duration} or null
+        pauseTimer: null,         // {endTime, startedBy, duration, resumeAfterPause} or null
+        pauseTimerTimeout: null,
         pauseVote: null,          // {requestedBy, requestedDuration, votes: {participantId: boolean}, endTime, timeoutId}
         media: cleanMedia,
         participants: [],
         messages: [],
+        countdown: null,
+        countdownTimer: null,
+        reactionCooldowns: {},
         playbackState: {
           isPlaying: media?.isPlaying === true,
           position: position === null ? 0 : position,
@@ -1322,7 +1547,20 @@ app.get('/api/watchparty/room/:roomId', (req, res) => {
       media: room.media,
       createdAt: room.createdAt,
       participants: room.participants.map(p => ({ id: p.id, nickname: p.nickname, isHost: p.id === room.hostId, isActive: p.isActive })),
-      playbackState: room.playbackState
+      playbackState: room.playbackState,
+      readyState: room.readyState || {},
+      countdown: room.countdown || null,
+      pauseTimer: room.pauseTimer || null,
+      pauseVote: room.pauseVote ? {
+        requestedBy: room.pauseVote.requestedBy,
+        requestedByNickname: room.pauseVote.requestedByNickname,
+        requestedDuration: room.pauseVote.requestedDuration,
+        endTime: room.pauseVote.endTime,
+        totalParticipants: room.pauseVote.totalParticipants,
+        yesVotes: Object.values(room.pauseVote.votes || {}).filter(Boolean).length,
+        noVotes: Object.values(room.pauseVote.votes || {}).filter(value => value === false).length,
+        totalVotes: Object.keys(room.pauseVote.votes || {}).length
+      } : null
     }
   });
 });
@@ -1359,6 +1597,7 @@ app.get('/api/watchparty/public', rateLimit({ windowMs: 1000, max: 10, key: 'pub
         title: room.name || room.media.title,
         mediaTitle: room.media.title,
         hostNickname: room.participants.find((participant) => participant.isHost)?.nickname || 'Hôte',
+        isAnime: room.media.isAnime === true,
         playbackType: room.media.playbackType || 'direct',
         mediaId: room.media.mediaId || null,
         seasonNumber: room.media.seasonNumber,
