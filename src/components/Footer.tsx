@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { DISCORD_INVITE_URL } from '@/config/community';
-import { Icons8Icon } from '@/components/icons/Icons8';
 import './Footer.css';
 
 const Footer = () => {
@@ -15,10 +14,7 @@ const Footer = () => {
           <Link to="/terms-of-service">{t('auth.termsOfService')}</Link>
           <Link to="/privacy">{t('nav.privacy')}</Link>
           <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">{t('footer.discord')}</a>
-          <Link to="/frais" className="inline-flex items-center gap-1.5">
-            <Icons8Icon name="coins" size={15} />
-            {t('costs.navLabel')}
-          </Link>
+          <Link to="/frais">{t('costs.navLabel')}</Link>
         </nav>
 
         <p className="site-footer__disclaimer">{t('footer.contentText')}</p>
