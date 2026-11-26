@@ -287,7 +287,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
         // vidrift:ended event; only that event should mark a title watched.
         const completed = false;
         const now = Date.now();
-        if (data.type === 'vidrift:paused' || now - lastSavedAtRef.current >= 5000) {
+        if (data.type === 'vidrift:paused' || (data.type === 'vidrift:progress' && now - lastSavedAtRef.current >= 5000)) {
           persistProgress(
             currentTime,
             duration,
