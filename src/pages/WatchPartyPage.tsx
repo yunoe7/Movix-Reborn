@@ -1511,19 +1511,45 @@ const WatchPartyPage: React.FC = () => {
                   <h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><MessageCircle className="h-4 w-4 text-red-400" /> Discussion</h2>
                   <div className="mb-3 flex-1 space-y-3 overflow-y-auto pr-1">
                     {messages.length === 0 ? <p className="py-8 text-center text-xs text-white/35">La discussion commence ici.</p> : messages.map(message => (
-                      <div key={message.id} className={message.type === 'system' ? 'text-center text-[11px] text-white/35' : ''}>
-                        {message.type === 'system' ? message.text : (
+                      <div key={message.id} className={message.type === 'system' ? 'text-center text-[11px] text-white/35' : 'group rounded-lg px-2 py-1.5 transition hover:bg-white/[0.025]'}>
+                        {message.type === 'system' ? message.text : message.deleted ? (
+                          <p className="text-xs italic text-white/30">Message supprimé par la modération.</p>
+                        ) : (
                           <>
-                            <p className="mb-0.5 text-[11px] font-semibold text-white/55">{message.senderNickname}</p>
+                            {message.replyTo && (
+                              <div className="mb-1 border-l-2 border-red-400/50 pl-2">
+                                <p className="text-[10px] font-semibold text-white/45">{message.replyTo.senderNickname}</p>
+                                <p className="line-clamp-1 text-[10px] text-white/35">{message.replyTo.text}</p>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="mb-0.5 text-[11px] font-semibold text-white/55">{message.senderNickname}</p>
+                              <div className="flex items-center gap-2 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                                <button type="button" onClick={() => setChatReply(message)} className="text-[10px] font-semibold text-white/45 hover:text-red-300">Répondre</button>
+                                {isHost && <button type="button" onClick={() => socketRef.current?.emit('message:delete', { messageId: message.id })} className="text-[10px] font-semibold text-red-300/70 hover:text-red-300">Supprimer</button>}
+                              </div>
+                            </div>
                             <p className="break-words text-sm leading-relaxed text-white/85">{message.text}</p>
                           </>
                         )}
                       </div>
                     ))}
                   </div>
+                  {chatReply && (
+                    <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border-l-2 border-red-400 bg-white/[0.035] px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-red-300">Réponse à {chatReply.senderNickname}</p>
+                        <p className="truncate text-xs text-white/50">{chatReply.text}</p>
+                      </div>
+                      <button type="button" onClick={() => setChatReply(null)} className="text-xs text-white/45 hover:text-white">Annuler</button>
+                    </div>
+                  )}
+                  {room.chatEnabled === false && !canControl && (
+                    <p className="mb-2 text-center text-[11px] text-amber-200/70">La discussion est désactivée par l’hôte.</p>
+                  )}
                   <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/[0.07] pt-3">
-                    <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Écrire un message…" maxLength={500} className={inputClass} />
-                    <button type="submit" disabled={!chatInput.trim() || socketState !== 'connected'} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-40" aria-label="Envoyer"><Send className="h-4 w-4" /></button>
+                    <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder={room.chatEnabled === false && !canControl ? 'Discussion désactivée' : 'Écrire un message…'} maxLength={500} className={inputClass} disabled={room.chatEnabled === false && !canControl} />
+                    <button type="submit" disabled={!chatInput.trim() || socketState !== 'connected' || (room.chatEnabled === false && !canControl)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-40" aria-label="Envoyer"><Send className="h-4 w-4" /></button>
                   </form>
                 </section>
               </aside>
