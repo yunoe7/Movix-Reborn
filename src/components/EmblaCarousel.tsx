@@ -4,7 +4,7 @@ import useEmblaCarousel, {
   reInitMountedEmblaKeepingLocation,
   watchMountedEmblaResize,
 } from '@/hooks/useFlexGapEmblaCarousel';
-import { Star, Calendar, Trash, Trash2, ChevronLeft, ChevronRight } from './icons/Icons8';
+import { Star, Calendar, ChevronLeft, ChevronRight } from './icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -349,21 +349,7 @@ export const CarouselCard = React.memo<{
         {/* Top-right action: remove (history) or watchlist (normal) — natif <button>
             avec title= pour le tooltip (zéro overhead vs Radix Tooltip qui mountait
             un portal par card sur hover). active:scale-* remplace whileTap. */}
-        {isHistory && onRemoveItem ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onRemoveItem(item.id, item.media_type);
-            }}
-            title={t('common.deleteAll')}
-            aria-label={t('common.deleteAll')}
-            className="absolute top-2 right-2 z-20 p-2 rounded-full bg-red-600/95 hover:bg-red-600 active:scale-[0.85] text-white transition-[colors,transform] duration-150"
-          >
-            <Trash className="w-3.5 h-3.5" />
-          </button>
-        ) : (
+
           <WatchlistAction
             data-card-watchlist
             // Alterne entre deux valeurs pour relancer l'animation à chaque ajout.
@@ -391,8 +377,7 @@ export const CarouselCard = React.memo<{
                 fill={starred ? 'currentColor' : 'none'}
               />
             </motion.div>
-          </WatchlistAction>
-        )}
+          </WatchlistAction>}
 
         {/* Le navigateur adapte la définition à la largeur de la carte et au
             DPR, en conservant l'affiche localisée choisie par le cache. */}
@@ -789,12 +774,11 @@ const EmblaCarousel: React.FC<EmblaCarouselProps> = ({
           </div>
           {isHistory && onRemoveAll && limitedItems.length > 0 && (
             <button
+              type="button"
               onClick={onRemoveAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700/80 hover:bg-red-700 text-white text-xs font-medium rounded-full transition-colors"
-              aria-label="Supprimer tout"
+              className="px-1 py-1 text-sm font-medium text-white transition-opacity hover:opacity-75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{t('common.deleteAll')}</span>
+              {t('home.deleteHistory', 'Supprimer l’historique')}
             </button>
           )}
         </div>
