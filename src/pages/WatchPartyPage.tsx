@@ -718,14 +718,13 @@ const WatchPartyPage: React.FC = () => {
         });
         const handleAuthoritativePlayback = (state: PlaybackSnapshot) => {
           authoritativePlaybackRef.current = state;
-          pendingPlaybackRef.current = state;
-          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
+          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current && !isHost) {
             // Explicit actions arrive with a scheduled event; do not make the
             // worker execute them early from the unscheduled state broadcast.
             if (state.reason === 'heartbeat' || state.reason === undefined) {
               syncWorkerRef.current.postMessage({ type: 'master-state', state });
             }
-          } else {
+          } else if (!(isHost && state.reason === 'heartbeat' && state.updatedBy === selfId)) {
             void applyRemotePlayback(state);
           }
         };
@@ -883,7 +882,7 @@ const WatchPartyPage: React.FC = () => {
   }, [roomId, room?.syncMode]);
 
   useEffect(() => {
-    if (!roomId || !room || room.syncMode !== 'pro' || isHost) {
+    if (!roomId || !room || room.syncMode !== 'pro' || isHost || socketState !== 'connected') {
       if (syncTickTimerRef.current !== null) {
         window.clearInterval(syncTickTimerRef.current);
         syncTickTimerRef.current = null;
@@ -929,7 +928,7 @@ const WatchPartyPage: React.FC = () => {
         syncTickTimerRef.current = null;
       }
     };
-  }, [roomId, room?.syncMode, room?.media?.src, isHost]);
+  }, [roomId, room?.syncMode, room?.media?.src, room?.media?.playbackType, isHost, socketState]);
 
   useEffect(() => {
     if (countdownTarget === null && !pauseTimer && !pauseVote) return;
@@ -952,6 +951,7 @@ const WatchPartyPage: React.FC = () => {
     // host is the periodic clock source. Otherwise each viewer's heartbeat
     // competes with the others and makes the shared timeline oscillate.
     if (reason === 'heartbeat' && !isHost) return;
+    if (reason === 'heartbeat') lastHeartbeatRef.current = Date.now();
     if (roomRef.current?.media.playbackType === 'vidrift') {
       const snapshot = vidriftPlaybackRef.current;
       const now = performance.now();
