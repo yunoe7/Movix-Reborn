@@ -350,8 +350,8 @@ const WatchPartyPage: React.FC = () => {
     event?.preventDefault();
     const codeToJoin = (selectedCode || joinCode).trim().toUpperCase();
     const cleanNickname = nickname.trim();
-    if (cleanNickname.length < 2) {
-      setError('Choisis un pseudo d’au moins 2 caractères.');
+    if (!/^[\\p{L}\\p{N}_ -]{2,24}$/u.test(cleanNickname)) {
+      setError('Choisis un pseudo de 2 à 24 caractères, sans URL ni symbole spécial.');
       setShowJoin(true);
       return;
     }
@@ -536,6 +536,9 @@ const WatchPartyPage: React.FC = () => {
           setRoom(current => current ? { ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] } : current);
           setControlRequests(state.pendingRequests || []);
         });
+        socket.on('control:approved', () => setControlNotice('L’hôte t’a accordé le contrôle de la lecture.'));
+        socket.on('control:denied', () => setControlNotice('L’hôte a refusé ta demande de contrôle.'));
+        socket.on('control:revoked', () => setControlNotice('Ton autorisation de contrôle a été retirée.'));
         socket.on('room:playback', applyRemotePlayback);
         socket.on('playback:state', applyRemotePlayback);
         socket.on('room:chat', (message: ChatMessage) => {
@@ -597,7 +600,9 @@ const WatchPartyPage: React.FC = () => {
   }, [room?.media?.src]);
 
   const isHost = Boolean(selfId && room?.hostId === selfId);
-  const canControl = isHost || Boolean(selfId && room?.coHosts?.includes(selfId)) || room?.controlMode === 'democratic';
+  const isCoHost = Boolean(selfId && room?.coHosts?.includes(selfId));
+  const canControl = isHost || isCoHost || room?.controlMode === 'democratic';
+  const hasPendingControlRequest = Boolean(selfId && controlRequests.some(request => request.participantId === selfId));
 
   const sendPlayback = useCallback((reason: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended') => {
     const socket = socketRef.current;
@@ -664,8 +669,19 @@ const WatchPartyPage: React.FC = () => {
 
       const currentTime = Number(data.currentTime);
       if (data.type === 'vidrift:state') {
-        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
-        if (typeof data.paused === 'boolean') vidriftPlaybackRef.current.paused = data.paused;
+        const previous = vidriftPlaybackRef.current;
+        const nextTime = Number.isFinite(currentTime) && currentTime >= 0
+          ? currentTime
+          : previous.currentTime;
+        const nextPaused = typeof data.paused === 'boolean' ? data.paused : previous.paused;
+        const pauseChanged = nextPaused !== previous.paused;
+        const positionChanged = Math.abs(nextTime - previous.currentTime) > 1.25;
+
+        vidriftPlaybackRef.current = { currentTime: nextTime, paused: nextPaused };
+        if (!applyingRemoteRef.current && canControl && (pauseChanged || positionChanged)) {
+          sendPlayback(pauseChanged ? (nextPaused ? 'pause' : 'play') : 'seek');
+        }
+
         const pending = pendingPlaybackRef.current;
         if (pending) {
           pendingPlaybackRef.current = null;
@@ -702,7 +718,7 @@ const WatchPartyPage: React.FC = () => {
       if (data.type === 'vidrift:episode' && media.mediaType === 'tv') {
         if (!Number.isInteger(data.season) || data.season! < 1
           || !Number.isInteger(data.episode) || data.episode! < 1) return;
-        if (!isHost) return;
+        if (!canControl) return;
         socketRef.current?.emit('media:change', {
           ...media,
           src: 'vidrift',
@@ -1016,7 +1032,7 @@ const WatchPartyPage: React.FC = () => {
               </label>
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold text-white/70">Ton pseudo</span>
-                <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} />
+                <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={24} placeholder="Ex. Yuno" className={inputClass} />
               </label>
               {watchPartyContext ? (
                 <div className="flex items-center gap-4 rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3">
