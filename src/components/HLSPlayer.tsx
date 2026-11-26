@@ -3797,6 +3797,11 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
         }
         video.playbackRate = playbackSpeed;
         if (playbackRestoreRef.current === playbackRestore) playbackRestoreRef.current = null;
+        // Native Safari can emit loadedmetadata before canplay. Clear the
+        // initial spinner here; a later waiting event will show buffering again.
+        setIsLoading(false);
+        setIsBuffering(false);
+        clearBufferingTimeout();
         setIsAirPlayLoading(false);
         if (shouldAutoplay) safePlay(video).catch(error => console.warn('Native playback:', error));
       };
