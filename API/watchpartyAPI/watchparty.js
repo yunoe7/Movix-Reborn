@@ -1284,23 +1284,6 @@ watchpartyIO.on('connection', (socket) => {
     watchpartyIO.to(roomId).emit('room:chat', kickMessage);
   });
 
-  // Playback get state
-  socket.on('playback:getState', () => {
-    const r = watchpartyRooms.get(roomId);
-    if (!r) return;
-
-    if (!r.playbackState) {
-      r.playbackState = {
-        isPlaying: false,
-        position: 0,
-        updatedAt: Date.now(),
-        updatedBy: null,
-      };
-    }
-
-    socket.emit('playback:state', r.playbackState);
-  });
-
   // Disconnect
   socket.on('disconnect', () => {
     if (!watchpartyRooms.has(roomId)) return;
