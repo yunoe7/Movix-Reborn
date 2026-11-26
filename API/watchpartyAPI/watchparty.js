@@ -641,6 +641,13 @@ watchpartyIO.on('connection', (socket) => {
       r.controlMode === 'democratic';
 
     if (canControl) {
+      const reason = ['play', 'pause', 'seek', 'heartbeat', 'ended'].includes(data?.reason)
+        ? data.reason
+        : 'heartbeat';
+      // Playback controls may be shared with co-hosts/democratic members,
+      // but periodic heartbeats must have a single source of truth.
+      if (reason === 'heartbeat' && socket.id !== r.hostId) return;
+
       const position = sanitizeNumber(data?.position);
       const playbackUpdate = {
         isPlaying: data?.isPlaying === true,
@@ -648,9 +655,6 @@ watchpartyIO.on('connection', (socket) => {
         updatedAt: Date.now(),
         updatedBy: socket.id
       };
-      const reason = ['play', 'pause', 'seek', 'heartbeat', 'ended'].includes(data?.reason)
-        ? data.reason
-        : 'heartbeat';
       r.playbackState = playbackUpdate;
       // Broadcast aux autres clients (exclure le sender pour éviter la boucle de feedback)
       socket.to(roomId).emit('playback:state', playbackUpdate);
