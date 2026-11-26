@@ -188,6 +188,7 @@ const WatchPartyPage: React.FC = () => {
   const [copyDone, setCopyDone] = useState(false);
   const [requiresUserGesture, setRequiresUserGesture] = useState(false);
   const [controlNotice, setControlNotice] = useState('');
+  const [vidRiftActivationOpen, setVidRiftActivationOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
@@ -197,6 +198,8 @@ const WatchPartyPage: React.FC = () => {
   const applyingRemoteRef = useRef(false);
   const lastHeartbeatRef = useRef(0);
   const pendingPlaybackRef = useRef<PlaybackSnapshot | null>(null);
+  const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
+  const vidRiftActivationTimerRef = useRef<number | null>(null);
   const clockOffsetRef = useRef(0);
   const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
   const pendingClockProbesRef = useRef(new Map<string, number>());
@@ -467,6 +470,7 @@ const WatchPartyPage: React.FC = () => {
   }, [roomId, navigate]);
 
   const applyRemotePlayback = useCallback(async (state: PlaybackSnapshot) => {
+    authoritativePlaybackRef.current = state;
     const serverNow = Date.now() + clockOffsetRef.current;
     const elapsedSeconds = state.isPlaying && Number.isFinite(state.updatedAt)
       ? Math.max(0, Math.min(6, (serverNow - Number(state.updatedAt)) / 1000))
@@ -515,6 +519,33 @@ const WatchPartyPage: React.FC = () => {
       window.setTimeout(() => { applyingRemoteRef.current = false; }, 250);
     }
   }, []);
+
+  const closeVidRiftActivation = () => {
+    setVidRiftActivationOpen(false);
+    if (vidRiftActivationTimerRef.current !== null) {
+      window.clearTimeout(vidRiftActivationTimerRef.current);
+      vidRiftActivationTimerRef.current = null;
+    }
+  };
+
+  const openVidRiftActivation = () => {
+    if (vidRiftActivationTimerRef.current !== null) {
+      window.clearTimeout(vidRiftActivationTimerRef.current);
+    }
+    setVidRiftActivationOpen(true);
+    vidRiftActivationTimerRef.current = window.setTimeout(() => {
+      setVidRiftActivationOpen(false);
+      vidRiftActivationTimerRef.current = null;
+    }, 7000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (vidRiftActivationTimerRef.current !== null) {
+        window.clearTimeout(vidRiftActivationTimerRef.current);
+      }
+    };
+  }, [roomId]);
 
   useEffect(() => {
     if (!roomId) return;
@@ -759,6 +790,13 @@ const WatchPartyPage: React.FC = () => {
 
         vidriftPlaybackRef.current = { currentTime: nextTime, paused: nextPaused, updatedAt: now };
 
+        if (!canControl && vidRiftActivationOpen && (pauseChanged || positionChanged)) {
+          const authoritative = authoritativePlaybackRef.current;
+          closeVidRiftActivation();
+          if (authoritative) void applyRemotePlayback(authoritative);
+          return;
+        }
+
         // The server snapshot is authoritative when the iframe first loads or
         // reconnects. Apply it before treating the player's initial autoplay
         // state as a new host command.
@@ -792,6 +830,14 @@ const WatchPartyPage: React.FC = () => {
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = data.type === 'vidrift:paused';
         vidriftPlaybackRef.current.updatedAt = performance.now();
+        // A one-time user activation may change local playback. Immediately
+        // restore the server snapshot, then put the guest lock back in place.
+        if (!canControl && wasPaused !== vidriftPlaybackRef.current.paused && vidRiftActivationOpen) {
+          const authoritative = authoritativePlaybackRef.current;
+          closeVidRiftActivation();
+          if (authoritative) void applyRemotePlayback(authoritative);
+          return;
+        }
         // Remote commands update the ref before being posted into the iframe.
         // Only relay an actual local transition, even if VidRift acknowledges
         // it after the short command-suppression window has elapsed.
@@ -806,6 +852,12 @@ const WatchPartyPage: React.FC = () => {
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = true;
         vidriftPlaybackRef.current.updatedAt = performance.now();
+        if (!canControl && !wasPaused && vidRiftActivationOpen) {
+          const authoritative = authoritativePlaybackRef.current;
+          closeVidRiftActivation();
+          if (authoritative) void applyRemotePlayback(authoritative);
+          return;
+        }
         if (!wasPaused && !applyingRemoteRef.current && canControl) sendPlayback('ended');
         return;
       }
@@ -828,7 +880,10 @@ const WatchPartyPage: React.FC = () => {
 
       if (data.type === 'vidrift:exit') leaveRoom();
       if (data.type === 'vidrift:command-error') {
-        setError('Le lecteur VidRift n’a pas pu appliquer une commande de synchronisation.');
+        const commandError = event.data as { reason?: string };
+        setError(commandError.reason === 'click-required'
+          ? 'VidRift attend un premier clic dans le lecteur. Utilise « Activer le lecteur » pour l’autoriser ; le contrôle restera ensuite verrouillé.'
+          : 'Le lecteur VidRift n’a pas pu appliquer une commande de synchronisation.');
       }
     };
 
@@ -913,9 +968,9 @@ const WatchPartyPage: React.FC = () => {
                       onTimeUpdate={handleTimeUpdate}
                     />
                   )}
-                  {room.media.playbackType === 'vidrift' && !canControl && (
+                  {room.media.playbackType === 'vidrift' && !canControl && !vidRiftActivationOpen && (
                     <div
-                      className="absolute inset-0 z-20 flex cursor-not-allowed items-end justify-center bg-black/[0.015] p-4"
+                      className="absolute inset-0 z-20 flex flex-col items-center justify-end gap-3 bg-black/[0.025] p-4"
                       role="group"
                       aria-label="Commandes de lecture verrouillées"
                       onPointerDown={event => { event.preventDefault(); event.stopPropagation(); }}
@@ -924,10 +979,24 @@ const WatchPartyPage: React.FC = () => {
                       onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}
                       onKeyDown={event => { event.preventDefault(); event.stopPropagation(); }}
                     >
-                      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/80 px-3 py-2 text-xs font-semibold text-white/80 shadow-lg backdrop-blur">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/80 px-3 py-2 text-xs font-semibold text-white/80 shadow-lg backdrop-blur">
                         <LockKeyhole className="h-3.5 w-3.5 text-amber-300" />
                         Lecture contrôlée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
                       </div>
+                      <button
+                        type="button"
+                        onClick={openVidRiftActivation}
+                        className="rounded-full border border-white/15 bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/85"
+                      >
+                        Activer le lecteur
+                      </button>
+                    </div>
+                  )}
+                  {room.media.playbackType === 'vidrift' && !canControl && vidRiftActivationOpen && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center">
+                      <span className="rounded-full border border-white/10 bg-black/80 px-3 py-2 text-[11px] font-semibold text-white/80 shadow-lg backdrop-blur">
+                        Clique une fois dans le lecteur pour activer la synchronisation…
+                      </span>
                     </div>
                   )}
                   {room.media.playbackType !== 'vidrift' && !canControl && (
