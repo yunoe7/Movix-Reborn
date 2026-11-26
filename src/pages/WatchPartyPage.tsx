@@ -46,11 +46,14 @@ type Room = {
   isPublic: boolean;
   syncMode: 'classic' | 'pro';
   controlMode: 'host-only' | 'democratic';
+  coHosts?: string[];
   chatEnabled: boolean;
   media: Media;
   participants: Participant[];
   playbackState?: { isPlaying: boolean; position: number; updatedAt: number };
 };
+
+type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
 type PublicRoom = {
   id: string;
@@ -112,6 +115,7 @@ const WatchPartyPage: React.FC = () => {
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [controlRequests, setControlRequests] = useState<ControlRequest[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [selfId, setSelfId] = useState('');
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -303,6 +307,10 @@ const WatchPartyPage: React.FC = () => {
         });
         socket.on('room:info', (nextRoom: Room) => setRoom(current => current ? { ...current, ...nextRoom } : nextRoom));
         socket.on('room:participants', (next: Participant[]) => setParticipants(next || []));
+        socket.on('control:state', (state: { controlMode: 'host-only' | 'democratic'; coHosts: string[]; pendingRequests: ControlRequest[] }) => {
+          setRoom(current => current ? { ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] } : current);
+          setControlRequests(state.pendingRequests || []);
+        });
         socket.on('room:chat', (message: ChatMessage) => {
           setMessages(current => current.some(item => item.id === message.id) ? current : [...current.slice(-99), message]);
         });
@@ -361,7 +369,7 @@ const WatchPartyPage: React.FC = () => {
   }, [room?.media?.src]);
 
   const isHost = Boolean(selfId && room?.hostId === selfId);
-  const canControl = isHost || room?.controlMode === 'democratic';
+  const canControl = isHost || Boolean(selfId && room?.coHosts?.includes(selfId)) || room?.controlMode === 'democratic';
 
   const sendPlayback = (reason: 'play' | 'pause' | 'seek' | 'heartbeat') => {
     const video = videoRef.current;
@@ -466,6 +474,20 @@ const WatchPartyPage: React.FC = () => {
                 </div>
               </section>
               <aside className="space-y-5">
+                {isHost && controlRequests.length > 0 && (
+                  <section className={`${panelClass} space-y-3 p-4`}>
+                    <h2 className="text-sm font-bold">Demandes de contrôle</h2>
+                    {controlRequests.map(request => (
+                      <div key={request.participantId} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="truncate text-white/75">{request.nickname}</span>
+                        <div className="flex shrink-0 gap-2">
+                          <button onClick={() => socketRef.current?.emit('control:approve', { participantId: request.participantId })} className="rounded-lg bg-emerald-500/15 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25">Accepter</button>
+                          <button onClick={() => socketRef.current?.emit('control:deny', { participantId: request.participantId })} className="rounded-lg bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-white/55 hover:bg-white/10">Refuser</button>
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                )}
                 <section className={`${panelClass} p-4`}>
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-red-400" /> Participants</h2>
