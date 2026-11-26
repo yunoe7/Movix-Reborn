@@ -952,8 +952,7 @@ const WatchPartyPage: React.FC = () => {
                   </label>
                 </>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="hidden sm:block" />
+              <div className="grid grid-cols-1 gap-3">
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold text-white/70">Places</span>
                   <select value={maxParticipants} onChange={event => setMaxParticipants(event.target.value)} className={inputClass}>{[2,4,6,8,10,15,20,30,50].map(value => <option key={value} value={value}>{value} personnes</option>)}</select>
