@@ -1336,6 +1336,22 @@ const WatchPartyPage: React.FC = () => {
                       </button>
                     </div>
                   )}
+                  {countdownSeconds !== null && countdownSeconds > 0 && (
+                    <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/55 backdrop-blur-sm">
+                      <p className="text-xs font-bold uppercase tracking-[.25em] text-white/65">Départ collectif dans</p>
+                      <span className="mt-2 text-7xl font-black tabular-nums text-white drop-shadow-2xl">{countdownSeconds}</span>
+                    </div>
+                  )}
+                  {reactions.length > 0 && (
+                    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+                      {reactions.map((reaction, index) => (
+                        <div key={reaction.id} className="absolute bottom-8 animate-bounce text-4xl drop-shadow-lg" style={{ left: `${12 + ((index * 19) % 76)}%`, animationDuration: '1.4s' }}>
+                          <span>{reaction.emoji}</span>
+                          <span className="mt-1 block max-w-24 truncate rounded-full bg-black/70 px-2 py-0.5 text-center text-[9px] font-semibold text-white/80">{reaction.senderNickname}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-4 py-3">
                   <div className="flex min-w-[220px] flex-1 items-center gap-3" aria-label="Réglage de volume personnel">
@@ -1369,7 +1385,48 @@ const WatchPartyPage: React.FC = () => {
                     </span>
                     <span className="hidden text-[11px] text-white/35 sm:inline">Volume perso.</span>
                   </div>
-                  <p className="text-xs text-white/45">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'} · {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}</p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-white/65">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'} · {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}</p>
+                    {room.syncMode === 'pro' && (
+                      <p className="text-[10px] text-white/35">
+                        {syncStatus === 'perfect' ? 'Synchronisation stable' : syncStatus === 'adjusting' ? 'Correction du décalage…' : syncStatus === 'unstable' ? 'Rattrapage en cours…' : 'Calibration…'}
+                        {' · '}Moteur {syncEngine === 'wasm' ? 'WASM' : 'JS'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(['😂', '❤️', '🔥', '😱', '👏', '🍿'] as const).map(emoji => (
+                      <button key={emoji} type="button" onClick={() => sendReaction(emoji)} disabled={socketState !== 'connected'} className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.045] text-base transition hover:bg-white/[0.12] disabled:opacity-40" aria-label={`Envoyer la réaction ${emoji}`}>
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleReady}
+                    disabled={socketState !== 'connected' || countdownTarget !== null}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-40 ${readyState[selfId] ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/[0.05] text-white/65 hover:bg-white/10'}`}
+                  >
+                    {readyState[selfId] ? '✓ Prêt' : 'Je suis prêt'}
+                  </button>
+                  {isHost && (
+                    <button type="button" onClick={startTogether} disabled={!allParticipantsReady || countdownTarget !== null || socketState !== 'connected'} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">
+                      {countdownTarget !== null ? 'Départ en cours…' : `Lancer ensemble · ${participants.filter(person => readyState[person.id]).length}/${participants.length}`}
+                    </button>
+                  )}
+                  {isHost && (
+                    <button type="button" onClick={() => { if (pauseTimer) socketRef.current?.emit('pause:cancel'); else socketRef.current?.emit('pause:start', { duration: 60 }); }} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/65 transition hover:bg-white/10">
+                      {pauseTimer ? 'Annuler la pause' : 'Pause 60 s'}
+                    </button>
+                  )}
+                  {!canControl && !pauseVote && (
+                    <button type="button" onClick={() => socketRef.current?.emit('vote:request', { duration: 60 })} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/55 transition hover:bg-white/10">
+                      Demander une pause
+                    </button>
+                  )}
+                  {countdownTarget !== null && isHost && (
+                    <button type="button" onClick={() => socketRef.current?.emit('room:cancelCountdown')} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs text-white/60 hover:bg-white/10">Annuler le départ</button>
+                  )}
                   {!canControl && room.controlMode === 'host-only' && (
                     <button
                       onClick={() => {
@@ -1384,6 +1441,14 @@ const WatchPartyPage: React.FC = () => {
                   )}
                   {controlNotice && (
                     <p className="w-full text-right text-[11px] text-white/55" role="status">{controlNotice}</p>
+                  )}
+                  {isHost && (
+                    <button
+                      onClick={() => socketRef.current?.emit('sync:setMode', { mode: room.syncMode === 'pro' ? 'classic' : 'pro' })}
+                      className="text-xs font-semibold text-red-300 transition hover:text-red-200"
+                    >
+                      {room.syncMode === 'pro' ? 'Désactiver Sync Pro' : 'Activer Sync Pro'}
+                    </button>
                   )}
                   {isHost && (
                     <button
@@ -1413,15 +1478,22 @@ const WatchPartyPage: React.FC = () => {
                 <section className={`${panelClass} p-4`}>
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-red-400" /> Participants</h2>
-                    <span className="text-xs text-white/40">{participants.length}/{room.maxParticipants}</span>
+                    <span className="text-xs text-white/40">{participants.filter(person => readyState[person.id]).length} prêts · {participants.length}/{room.maxParticipants}</span>
                   </div>
                   <div className="space-y-2">
                     {participants.map(person => (
                       <div key={person.id} className="flex items-center gap-2 rounded-lg bg-white/[0.035] px-3 py-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-bold">{person.nickname.slice(0, 1).toUpperCase()}</span>
                         <span className="min-w-0 flex-1 truncate text-sm text-white/85">{person.nickname}{person.id === selfId ? ' (toi)' : ''}</span>
+                        <span className={`text-[10px] ${readyState[person.id] ? 'text-emerald-300' : 'text-white/25'}`}>{readyState[person.id] ? 'Prêt' : 'En attente'}</span>
                         {person.isHost && <span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Hôte</span>}
                         {!person.isHost && room.coHosts?.includes(person.id) && <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-300">Contrôle</span>}
+                        {isHost && !person.isHost && (
+                          <>
+                            <button type="button" onClick={() => socketRef.current?.emit('host:transfer', { participantId: person.id })} className="shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-200 transition hover:bg-amber-500/20" title="Transférer le rôle d'hôte">Passer hôte</button>
+                            <button type="button" onClick={() => socketRef.current?.emit('participant:kick', { participantId: person.id })} className="shrink-0 rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-300 transition hover:bg-red-500/20" title="Retirer ce participant">Exclure</button>
+                          </>
+                        )}
                         {isHost && room.controlMode === 'host-only' && !person.isHost && room.coHosts?.includes(person.id) && (
                           <button
                             type="button"
