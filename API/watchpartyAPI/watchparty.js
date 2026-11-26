@@ -254,6 +254,9 @@ function requireAdminSecret(req, res, next) {
 const CACHE_DIR = path.join(__dirname, 'cache');
 const WATCHPARTY_ROOMS_FILE = path.join(CACHE_DIR, 'watchparty-rooms.json');
 const watchpartyRooms = new Map();
+// Allow a briefly disconnected host to reclaim the room before transferring ownership.
+const HOST_RECONNECT_GRACE_MS = 30_000;
+const hostDisconnectTimers = new Map();
 
 async function ensureCacheDir() {
   try { await fsp.access(CACHE_DIR); } catch { await fsp.mkdir(CACHE_DIR, { recursive: true }); }
@@ -586,6 +589,15 @@ watchpartyIO.on('connection', (socket) => {
   }
 
   const room = watchpartyRooms.get(roomId);
+
+  // A host returning during the grace period keeps ownership and their existing token.
+  if (role === 'host') {
+    const pendingTransfer = hostDisconnectTimers.get(roomId);
+    if (pendingTransfer) {
+      clearTimeout(pendingTransfer);
+      hostDisconnectTimers.delete(roomId);
+    }
+  }
 
   // Un roomId seul ne suffit plus : il faut un token délivré par
   // POST /create (hôte) ou POST /join (membre). Sans ça, toute personne
@@ -1370,22 +1382,38 @@ watchpartyIO.on('connection', (socket) => {
 
     const leaveMessage = systemMessage(r, `${leaving.nickname} a quitté la Watch Party.`);
 
-    // Reassign host if needed. Tous les participants restants sont authentifiés
-    // (ils ont présenté un token valide de cette room), la promotion du plus
-    // ancien reste donc confinée aux membres légitimes.
+    // A mobile browser may suspend its socket when the host switches apps.
+    // Keep the host token valid and wait briefly before transferring ownership.
     if (socket.id === r.hostId && r.participants.length > 0) {
-      const newHost = r.participants.sort((a, b) => a.joinedAt - b.joinedAt)[0];
-      // Révoquer l'ancien jeton d'hôte et émettre un nouveau jeton persistant.
-      const newHostToken = generateToken();
-      r.hostToken = newHostToken;
-      r.hostTokens = new Set([newHostToken]);
-      r.hostId = newHost.id; newHost.isHost = true;
-      const newHostSocket = watchpartyIO.sockets.get(newHost.id);
-      if (newHostSocket) {
-        newHostSocket.emit('host:token', { token: newHostToken });
-      }
-      const newHostMsg = systemMessage(r, `${newHost.nickname} est maintenant l'hôte de la Watch Party.`);
-      watchpartyIO.to(roomId).emit('room:chat', newHostMsg);
+      r.hostId = null;
+      const existingTimer = hostDisconnectTimers.get(roomId);
+      if (existingTimer) clearTimeout(existingTimer);
+      const transferTimer = setTimeout(() => {
+        hostDisconnectTimers.delete(roomId);
+        const current = watchpartyRooms.get(roomId);
+        // A reconnecting host has already reclaimed the room.
+        if (!current || current.hostId || current.participants.length === 0) return;
+
+        const newHost = current.participants.sort((a, b) => a.joinedAt - b.joinedAt)[0];
+        const newHostToken = generateToken();
+        current.hostToken = newHostToken;
+        current.hostTokens = new Set([newHostToken]);
+        current.hostId = newHost.id;
+        current.participants.forEach((participant) => {
+          participant.isHost = participant.id === newHost.id;
+        });
+
+        const newHostSocket = watchpartyIO.sockets.get(newHost.id);
+        if (newHostSocket) newHostSocket.emit('host:token', { token: newHostToken });
+
+        const newHostMsg = systemMessage(current, `${newHost.nickname} est maintenant l'hôte de la Watch Party.`);
+        watchpartyIO.to(roomId).emit('room:chat', newHostMsg);
+        watchpartyIO.to(roomId).emit('room:participants', current.participants);
+        emitRoomInfo(roomId, current);
+        console.log(`[Watchparty] Host ownership transferred for room ${roomId} after reconnect grace period.`);
+      }, HOST_RECONNECT_GRACE_MS);
+      transferTimer.unref?.();
+      hostDisconnectTimers.set(roomId, transferTimer);
     }
 
     // Clean stale permission/request entries for the leaving participant.
