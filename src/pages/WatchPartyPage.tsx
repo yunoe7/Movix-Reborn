@@ -202,7 +202,7 @@ const WatchPartyPage: React.FC = () => {
   const pendingPlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const vidRiftActivationTimerRef = useRef<number | null>(null);
-  const pendingLocalVolumeRef = useRef(false);
+  const hasCustomLocalVolumeRef = useRef(false);
   const clockOffsetRef = useRef(0);
   const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
   const pendingClockProbesRef = useRef(new Map<string, number>());
@@ -756,18 +756,15 @@ const WatchPartyPage: React.FC = () => {
 
   const applyLocalVolume = (nextVolume: number, nextMuted = false) => {
     const volume = Math.max(0, Math.min(1, Number.isFinite(nextVolume) ? nextVolume : 0.8));
+    hasCustomLocalVolumeRef.current = true;
     setLocalVolume(volume);
     setLocalMuted(nextMuted);
 
     if (roomRef.current?.media.playbackType === 'vidrift') {
       const target = vidriftFrameRef.current?.contentWindow;
-      if (!target) {
-        pendingLocalVolumeRef.current = true;
-        return;
-      }
+      if (!target) return;
       // Volume is local to this iframe only and is never broadcast via Socket.IO.
       target.postMessage({ type: 'vidrift:set', volume, muted: nextMuted }, VIDRIFT_ORIGIN);
-      pendingLocalVolumeRef.current = false;
       return;
     }
 
@@ -788,9 +785,8 @@ const WatchPartyPage: React.FC = () => {
     const target = vidriftFrameRef.current?.contentWindow;
     if (!target) return;
     target.postMessage({ type: 'vidrift:get-state' }, VIDRIFT_ORIGIN);
-    if (pendingLocalVolumeRef.current) {
+    if (hasCustomLocalVolumeRef.current) {
       target.postMessage({ type: 'vidrift:set', volume: localVolume, muted: localMuted }, VIDRIFT_ORIGIN);
-      pendingLocalVolumeRef.current = false;
     }
     socketRef.current?.emit('playback:getState');
   };
