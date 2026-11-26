@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import Hls from 'hls.js';
 import {
-  ArrowLeft, Check, Copy, Film, Globe2, KeyRound, LoaderCircle, LockKeyhole,
+  ArrowLeft, Check, Copy, Film, Globe2, KeyRound, Loader2, LockKeyhole,
   MessageCircle, Play, Plus, RefreshCw, Send, Users, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
@@ -440,7 +440,7 @@ const WatchPartyPage: React.FC = () => {
         {error && <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
         {!room ? (
           <div className={`${panelClass} flex min-h-72 items-center justify-center gap-3 text-sm text-white/60`}>
-            <LoaderCircle className="h-5 w-5 animate-spin" /> Chargement du salon…
+            <Loader2 className="h-5 w-5 animate-spin" /> Chargement du salon…
           </div>
         ) : (
           <>
@@ -617,7 +617,7 @@ const WatchPartyPage: React.FC = () => {
 
         {isLoadingRooms ? (
           <div className="flex min-h-48 items-center gap-3 text-sm text-white/40">
-            <LoaderCircle className="h-5 w-5 animate-spin" />
+            <Loader2 className="h-5 w-5 animate-spin" />
             Chargement des salles publiques…
           </div>
         ) : publicRooms.length === 0 ? (
@@ -720,7 +720,7 @@ const WatchPartyPage: React.FC = () => {
               {error && <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</p>}
               <div className="flex justify-end gap-2 border-t border-white/[0.07] pt-4">
                 <button type="button" onClick={() => setShowCreate(false)} className="h-11 rounded-xl px-4 text-sm font-semibold text-white/60 transition hover:bg-white/[0.06] hover:text-white">Annuler</button>
-                <button type="submit" disabled={isSubmitting} className={buttonClass}>{isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Créer la salle</button>
+                <button type="submit" disabled={isSubmitting} className={buttonClass}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Créer la salle</button>
               </div>
             </form>
           </section>
@@ -747,7 +747,7 @@ const WatchPartyPage: React.FC = () => {
                 <input value={joinCode} onChange={event => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))} placeholder="ABC123" maxLength={6} className={`${inputClass} text-center font-mono text-xl font-bold tracking-[.28em]`} />
               </label>
               {error && <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</p>}
-              <button type="submit" disabled={isSubmitting || joinCode.length !== 6} className={`${buttonClass} w-full`}>{isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} Rejoindre la salle</button>
+              <button type="submit" disabled={isSubmitting || joinCode.length !== 6} className={`${buttonClass} w-full`}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} Rejoindre la salle</button>
             </form>
           </section>
         </div>
