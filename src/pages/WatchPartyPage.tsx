@@ -350,7 +350,7 @@ const WatchPartyPage: React.FC = () => {
     event?.preventDefault();
     const codeToJoin = (selectedCode || joinCode).trim().toUpperCase();
     const cleanNickname = nickname.trim();
-    if (!/^[\\p{L}\\p{N}_ -]{2,24}$/u.test(cleanNickname)) {
+    if (!/^[\p{L}\p{N}_ -]{2,24}$/u.test(cleanNickname)) {
       setError('Choisis un pseudo de 2 à 24 caractères, sans URL ni symbole spécial.');
       setShowJoin(true);
       return;
@@ -380,7 +380,7 @@ const WatchPartyPage: React.FC = () => {
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
     const cleanNickname = nickname.trim();
-    if (!/^[\\p{L}\\p{N}_ -]{2,24}$/u.test(cleanNickname)) {
+    if (!/^[\p{L}\p{N}_ -]{2,24}$/u.test(cleanNickname)) {
       setError('Choisis un pseudo de 2 à 24 caractères, sans URL ni symbole spécial.');
       return;
     }
@@ -1228,7 +1228,7 @@ const WatchPartyPage: React.FC = () => {
               {error && <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</p>}
               <div className="flex justify-end gap-2 border-t border-white/[0.07] pt-4">
                 <button type="button" onClick={() => setShowCreate(false)} className="h-11 rounded-xl px-4 text-sm font-semibold text-white/60 transition hover:bg-white/[0.06] hover:text-white">Annuler</button>
-                <button type="submit" disabled={isSubmitting} className={buttonClass}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Créer la salle</button>
+                <button type="submit" disabled={isSubmitting || !selectedMedia || (selectedMedia.media_type === 'tv' && (selectedSeason === null || selectedEpisode === null || isLoadingSeasons || isLoadingEpisodes))} className={buttonClass}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Créer la salle</button>
               </div>
             </form>
           </section>
