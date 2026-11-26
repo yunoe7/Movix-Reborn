@@ -847,6 +847,20 @@ watchpartyIO.on('connection', (socket) => {
     });
   });
 
+  socket.on('room:close', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId) return;
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    if (r.pauseVote?.timeoutId) clearTimeout(r.pauseVote.timeoutId);
+    watchpartyIO.to(roomId).emit('room:closed', { reason: 'L’hôte a fermé cette salle.' });
+    for (const participant of [...r.participants]) {
+      const participantSocket = watchpartyIO.sockets.get(participant.id);
+      if (participantSocket) participantSocket.disconnect(true);
+    }
+    watchpartyRooms.delete(roomId);
+  });
+
   socket.on('host:transfer', (payload) => {
     const { participantId } = payload || {};
     if (!watchpartyRooms.has(roomId)) return;
@@ -1456,7 +1470,20 @@ app.get('/api/watchparty/room/:roomId', (req, res) => {
       media: room.media,
       createdAt: room.createdAt,
       participants: room.participants.map(p => ({ id: p.id, nickname: p.nickname, isHost: p.id === room.hostId, isActive: p.isActive })),
-      playbackState: room.playbackState
+      playbackState: room.playbackState,
+      readyState: room.readyState || {},
+      countdown: room.countdown || null,
+      pauseTimer: room.pauseTimer || null,
+      pauseVote: room.pauseVote ? {
+        requestedBy: room.pauseVote.requestedBy,
+        requestedByNickname: room.pauseVote.requestedByNickname,
+        requestedDuration: room.pauseVote.requestedDuration,
+        endTime: room.pauseVote.endTime,
+        totalParticipants: room.pauseVote.totalParticipants,
+        yesVotes: Object.values(room.pauseVote.votes || {}).filter(Boolean).length,
+        noVotes: Object.values(room.pauseVote.votes || {}).filter(value => value === false).length,
+        totalVotes: Object.keys(room.pauseVote.votes || {}).length
+      } : null
     }
   });
 });
@@ -1493,6 +1520,7 @@ app.get('/api/watchparty/public', rateLimit({ windowMs: 1000, max: 10, key: 'pub
         title: room.name || room.media.title,
         mediaTitle: room.media.title,
         hostNickname: room.participants.find((participant) => participant.isHost)?.nickname || 'Hôte',
+        isAnime: room.media.isAnime === true,
         playbackType: room.media.playbackType || 'direct',
         mediaId: room.media.mediaId || null,
         seasonNumber: room.media.seasonNumber,
