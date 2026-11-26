@@ -1255,7 +1255,6 @@ const Home: React.FC = () => {
                 <div className="w-full overflow-hidden">
                   <div className="flex items-center justify-between gap-4 mb-4">
                     <h2 className="catalog-section-title">{t('home.streamingPlatforms')}</h2>
-                    <span className="hidden sm:block text-xs text-white/40">Choisis une plateforme</span>
                   </div>
                   <StreamingPlatformSelector
                     platforms={platformsItems}
