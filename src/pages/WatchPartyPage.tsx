@@ -1515,9 +1515,40 @@ const WatchPartyPage: React.FC = () => {
       )}
 
       <section>
-        <div className="mb-7 flex items-center gap-2.5">
-          <h2 className="text-base font-extrabold tracking-tight">Salles publiques</h2>
-          <span className="text-sm font-semibold text-white/45">{isLoadingRooms ? '…' : publicRooms.length}</span>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base font-extrabold tracking-tight">Salles publiques</h2>
+            <span className="text-sm font-semibold text-white/45">{isLoadingRooms ? '…' : filteredPublicRooms.length}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={publicQuery}
+              onChange={event => setPublicQuery(event.target.value)}
+              placeholder="Rechercher une salle, un film, un hôte…"
+              className="h-9 w-64 max-w-full rounded-lg border border-white/10 bg-white/[0.035] px-3 text-xs text-white outline-none placeholder:text-white/30 focus:border-red-500/50"
+            />
+            <select value={publicSort} onChange={event => setPublicSort(event.target.value as 'recent' | 'popular')} className="h-9 rounded-lg border border-white/10 bg-[#171717] px-3 text-xs text-white/75">
+              <option value="recent">Plus récentes</option>
+              <option value="popular">Plus populaires</option>
+            </select>
+          </div>
+        </div>
+        <div className="mb-6 flex flex-wrap gap-2">
+          {([
+            ['all', 'Tout'],
+            ['movie', 'Films'],
+            ['tv', 'Séries'],
+            ['anime', 'Anime'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPublicTypeFilter(value)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${publicTypeFilter === value ? 'bg-red-600 text-white' : 'border border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {isLoadingRooms ? (
@@ -1525,20 +1556,22 @@ const WatchPartyPage: React.FC = () => {
             <Loader2 className="h-5 w-5 animate-spin" />
             Chargement des salles publiques…
           </div>
-        ) : publicRooms.length === 0 ? (
+        ) : filteredPublicRooms.length === 0 ? (
           <div className="flex min-h-64 max-w-2xl flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] px-6 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05]">
               <Users className="h-6 w-6 text-white/35" />
             </div>
-            <h3 className="text-base font-bold">Aucune salle publique pour le moment</h3>
-            <p className="mt-2 max-w-md text-sm leading-6 text-white/40">Crée la première salle et invite tes amis à te rejoindre.</p>
-            <button type="button" onClick={openCreateDialog} className={`${buttonClass} mt-5`}>
-              <Plus className="h-4 w-4" /> Créer une salle
-            </button>
+            <h3 className="text-base font-bold">{publicRooms.length === 0 ? 'Aucune salle publique pour le moment' : 'Aucune salle ne correspond à ta recherche'}</h3>
+            <p className="mt-2 max-w-md text-sm leading-6 text-white/40">{publicRooms.length === 0 ? 'Crée la première salle et invite tes amis à te rejoindre.' : 'Modifie les filtres ou essaie un autre titre.'}</p>
+            {publicRooms.length === 0 && (
+              <button type="button" onClick={openCreateDialog} className={`${buttonClass} mt-5`}>
+                <Plus className="h-4 w-4" /> Créer une salle
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,312px),312px))] gap-x-2.5 gap-y-7">
-            {publicRooms.map(publicRoom => (
+            {filteredPublicRooms.map(publicRoom => (
               <button
                 key={publicRoom.id}
                 type="button"
@@ -1568,7 +1601,7 @@ const WatchPartyPage: React.FC = () => {
                 </div>
                 <h3 className="mt-2.5 truncate text-[13px] font-semibold text-white/90 transition group-hover:text-white">{publicRoom.title}</h3>
                 <p className="mt-1 truncate text-[11px] text-white/45">Par {publicRoom.hostNickname || 'Hôte'}</p>
-                <p className="mt-1 truncate text-[11px] text-white/35">{publicRoom.mediaTitle || publicRoom.title}{publicRoom.mediaType === 'tv' ? ' · Série' : ' · Film'}</p>
+                <p className="mt-1 truncate text-[11px] text-white/35">{publicRoom.mediaTitle || publicRoom.title}{publicRoom.isAnime ? ' · Anime' : publicRoom.mediaType === 'tv' ? ' · Série' : ' · Film'} · {publicRoom.participantCount}/{publicRoom.maxParticipants} en ligne · Sync {publicRoom.syncMode === 'pro' ? 'Pro' : 'classique'}</p>
               </button>
             ))}
           </div>
