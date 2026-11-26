@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import Hls from 'hls.js';
 import {
-  ArrowLeft, Check, Copy, Film, Globe2, KeyRound, LoaderCircle,
-  MessageCircle, Play, RefreshCw, Send, Users, Video, X,
+  ArrowLeft, Check, Copy, Film, Globe2, KeyRound, LoaderCircle, LockKeyhole,
+  MessageCircle, Play, Plus, RefreshCw, Send, Users, Video, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
 
@@ -64,6 +64,8 @@ type PublicRoom = {
   participantCount: number;
   maxParticipants: number;
   syncMode: 'classic' | 'pro';
+  mediaTitle?: string;
+  hostNickname?: string;
   seasonNumber?: number;
   episodeNumber?: number;
   createdAt: number;
@@ -103,6 +105,9 @@ const WatchPartyPage: React.FC = () => {
   });
   const [joinCode, setJoinCode] = useState((routeCode || '').toUpperCase());
   const [title, setTitle] = useState('');
+  const [roomName, setRoomName] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
   const [sourceUrl, setSourceUrl] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
   const [mediaType, setMediaType] = useState<'movie' | 'tv'>('movie');
@@ -129,7 +134,9 @@ const WatchPartyPage: React.FC = () => {
   const pendingPlaybackRef = useRef<{ isPlaying: boolean; position: number } | null>(null);
 
   useEffect(() => {
-    setJoinCode((routeCode || '').toUpperCase());
+    if (!routeCode) return;
+    setJoinCode(routeCode.toUpperCase());
+    setShowJoin(true);
   }, [routeCode]);
 
   const refreshPublicRooms = useCallback(async () => {
@@ -161,6 +168,7 @@ const WatchPartyPage: React.FC = () => {
     const cleanNickname = nickname.trim();
     if (cleanNickname.length < 2) {
       setError('Choisis un pseudo d’au moins 2 caractères.');
+      setShowJoin(true);
       return;
     }
     if (!/^[A-Z0-9]{6}$/.test(codeToJoin)) {
@@ -176,6 +184,7 @@ const WatchPartyPage: React.FC = () => {
         body: JSON.stringify({ roomCode: codeToJoin, nickname: cleanNickname }),
       });
       storeRoomToken(result.roomId, result.token);
+      setShowJoin(false);
       navigate(`/watchparty/room/${result.roomId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de rejoindre ce salon.');
@@ -217,6 +226,7 @@ const WatchPartyPage: React.FC = () => {
         body: JSON.stringify({
           nickname: cleanNickname,
           maxParticipants: Number(maxParticipants),
+          roomName: roomName.trim(),
           isPublic,
           syncMode: 'classic',
           media: {
@@ -228,6 +238,7 @@ const WatchPartyPage: React.FC = () => {
         }),
       });
       storeRoomToken(result.roomId, result.hostToken);
+      setShowCreate(false);
       navigate(`/watchparty/room/${result.roomId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de créer le salon.');
@@ -435,7 +446,8 @@ const WatchPartyPage: React.FC = () => {
             <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="mb-1 text-xs font-bold uppercase tracking-[.22em] text-red-400">MOVIX WATCH PARTY</p>
-                <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{room.media.title}</h1>
+                <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{room.name || room.media.title}</h1>
+                {room.name && <p className="mt-1 text-sm text-white/45">{room.media.title}</p>}
                 <p className="mt-1 text-sm text-white/45">Code du salon <span className="font-mono font-bold tracking-[.18em] text-white">{room.code}</span> · {participants.length}/{room.maxParticipants} participants</p>
               </div>
               <button onClick={handleCopyInvite} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white transition hover:bg-white/10">
@@ -544,77 +556,201 @@ const WatchPartyPage: React.FC = () => {
     );
   }
 
+  const openJoinDialog = (code = '') => {
+    setJoinCode(code.toUpperCase());
+    setError('');
+    setShowJoin(true);
+  };
+
+  const openCreateDialog = () => {
+    setError('');
+    setShowCreate(true);
+  };
+
   return (
-    <main className="mx-auto w-full max-w-[1320px] px-4 pb-16 pt-8 text-white sm:px-6">
-      <div className="mb-8">
-        <p className="mb-2 text-xs font-bold uppercase tracking-[.24em] text-red-400">MOVIX · ENSEMBLE</p>
-        <div className="flex flex-wrap items-end justify-between gap-4">
+    <main className="mx-auto min-h-[calc(100vh-150px)] w-full max-w-[1584px] px-6 pb-20 pt-14 text-white">
+      <header className="mb-11">
+        <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-black tracking-tight sm:text-4xl">Watch Party</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">Lance une session privée, invite tes amis avec un code et synchronisez votre lecture en temps réel.</p>
-            <label className="mt-4 block max-w-sm space-y-1.5"><span className="text-xs font-semibold text-white/65">Ton pseudo pour les sessions</span><input value={nickname} onChange={e => setNickname(e.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} /></label>
+            <h1 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">Watch Party</h1>
+            <p className="mt-3 text-base text-white/55">Regardez films et séries entre amis, en synchro</p>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-white/50">
-            <Users className="h-4 w-4 text-red-400" /> Jusqu’à 50 participants
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => void refreshPublicRooms()}
+              disabled={isLoadingRooms}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#454545] px-4 text-xs font-bold text-white/90 transition hover:bg-[#555] disabled:opacity-60"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoadingRooms ? 'animate-spin' : ''}`} />
+              Rafraîchir
+            </button>
+            <button
+              type="button"
+              onClick={() => openJoinDialog()}
+              className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#171717] px-4 text-xs font-semibold text-white/85 transition hover:bg-[#242424]"
+            >
+              <KeyRound className="h-3.5 w-3.5" />
+              Rejoindre avec un code
+            </button>
+            <button type="button" onClick={openCreateDialog} className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-xs font-bold text-[#111] transition hover:bg-white/85">
+              <Plus className="h-4 w-4" />
+              Créer une salle
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      {error && <div className="mb-5 flex items-start justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"><span>{error}</span><button onClick={() => setError('')} aria-label="Fermer"><X className="h-4 w-4" /></button></div>}
+      {error && (
+        <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          <span>{error}</span>
+          <button type="button" onClick={() => setError('')} aria-label="Fermer"><X className="h-4 w-4" /></button>
+        </div>
+      )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(330px,.8fr)]">
-        <section className={`${panelClass} p-5 sm:p-6`}>
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/10 text-red-400"><Video className="h-5 w-5" /></div>
-            <div><h2 className="text-lg font-bold">Créer un salon</h2><p className="text-xs text-white/40">Tu seras l’hôte et tu partageras le lien.</p></div>
+      <section>
+        <div className="mb-7 flex items-center gap-2.5">
+          <h2 className="text-base font-extrabold tracking-tight">Salles publiques</h2>
+          <span className="text-sm font-semibold text-white/45">{isLoadingRooms ? '…' : publicRooms.length}</span>
+        </div>
+
+        {isLoadingRooms ? (
+          <div className="flex min-h-48 items-center gap-3 text-sm text-white/40">
+            <LoaderCircle className="h-5 w-5 animate-spin" />
+            Chargement des salles publiques…
           </div>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Titre du contenu</span><input value={title} onChange={e => setTitle(e.target.value)} maxLength={200} placeholder="Nom du film ou de la série" className={inputClass} /></label>
-            <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Lien vidéo direct</span><input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} /><span className="block text-[11px] leading-5 text-white/35">Formats compatibles : MP4, WebM ou HLS (.m3u8). Les pages d’un lecteur externe ne permettent pas une synchronisation fiable.</span></label>
-            <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Affiche (facultatif)</span><input value={posterUrl} onChange={e => setPosterUrl(e.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} /></label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Type</span><select value={mediaType} onChange={e => setMediaType(e.target.value as 'movie' | 'tv')} className={inputClass}><option value="movie">Film</option><option value="tv">Série</option></select></label>
-              <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Places</span><select value={maxParticipants} onChange={e => setMaxParticipants(e.target.value)} className={inputClass}>{[2,4,6,8,10,15,20,30,50].map(value => <option key={value} value={value}>{value} personnes</option>)}</select></label>
+        ) : publicRooms.length === 0 ? (
+          <div className="flex min-h-64 max-w-2xl flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] px-6 text-center">
+            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05]">
+              <Users className="h-6 w-6 text-white/35" />
             </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-3">
-              <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} className="h-4 w-4 accent-red-500" />
-              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Salon public</span><span className="block text-[11px] text-white/40">Visible dans la liste ci-dessous. Sinon, seul le code permet de rejoindre.</span></span>
-              <Globe2 className="h-4 w-4 text-white/35" />
-            </label>
-            <button type="submit" disabled={isSubmitting} className={`${buttonClass} w-full`}>{isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Créer ma Watch Party</button>
-          </form>
-        </section>
+            <h3 className="text-base font-bold">Aucune salle publique pour le moment</h3>
+            <p className="mt-2 max-w-md text-sm leading-6 text-white/40">Crée la première salle et invite tes amis à te rejoindre.</p>
+            <button type="button" onClick={openCreateDialog} className={`${buttonClass} mt-5`}>
+              <Plus className="h-4 w-4" /> Créer une salle
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,312px),312px))] gap-x-2.5 gap-y-7">
+            {publicRooms.map(publicRoom => (
+              <button
+                key={publicRoom.id}
+                type="button"
+                onClick={() => openJoinDialog(publicRoom.code)}
+                className="group w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-4 focus-visible:ring-offset-black"
+              >
+                <div className="relative aspect-video w-full overflow-hidden rounded-[10px] border border-white/[0.07] bg-[#191919]">
+                  {publicRoom.poster ? (
+                    <img src={publicRoom.poster} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.045] group-hover:brightness-75" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_20%,rgba(220,38,38,.22),transparent_60%),linear-gradient(135deg,#242424,#101010)] px-5 text-center">
+                      <Film className="absolute left-4 top-4 h-5 w-5 text-white/25" />
+                      <span className="line-clamp-2 text-lg font-bold text-white/75">{publicRoom.mediaTitle || publicRoom.title}</span>
+                    </div>
+                  )}
+                  <div className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-md bg-black/75 px-2 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,.8)]" />
+                    <Users className="h-3 w-3" />
+                    {publicRoom.participantCount}
+                  </div>
+                  <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow-sm backdrop-blur" title="Accès par code">
+                    <LockKeyhole className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 flex translate-y-2 items-center justify-center bg-gradient-to-t from-black/75 to-transparent pb-3 pt-8 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+                    <span className="rounded-full bg-white px-4 py-1.5 text-[11px] font-bold text-black">Rejoindre la salle</span>
+                  </div>
+                </div>
+                <h3 className="mt-2.5 truncate text-[13px] font-semibold text-white/90 transition group-hover:text-white">{publicRoom.title}</h3>
+                <p className="mt-1 truncate text-[11px] text-white/45">Par {publicRoom.hostNickname || 'Hôte'}</p>
+                <p className="mt-1 truncate text-[11px] text-white/35">{publicRoom.mediaTitle || publicRoom.title}{publicRoom.mediaType === 'tv' ? ' · Série' : ' · Film'}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
-        <div className="space-y-5">
-          <section className={`${panelClass} p-5 sm:p-6`}>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.06] text-white/70"><KeyRound className="h-5 w-5" /></div>
-              <div><h2 className="text-lg font-bold">Rejoindre un salon</h2><p className="text-xs text-white/40">Entre le code transmis par ton ami.</p></div>
+      {showCreate && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) setShowCreate(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="watchparty-create-title" className="my-auto max-h-[min(90vh,850px)] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151515] shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.08] bg-[#151515]/95 px-6 py-5 backdrop-blur">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-red-400">MOVIX WATCH PARTY</p>
+                <h2 id="watchparty-create-title" className="mt-1 text-xl font-bold">Créer une salle</h2>
+              </div>
+              <button type="button" onClick={() => setShowCreate(false)} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.07] hover:text-white"><X className="h-5 w-5" /></button>
             </div>
-            <form onSubmit={handleJoin} className="space-y-3">
-              <label className="block space-y-1.5"><span className="text-xs font-semibold text-white/65">Code d’invitation</span><input value={joinCode} onChange={e => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))} placeholder="ABC123" maxLength={6} className={`${inputClass} text-center font-mono text-xl font-bold tracking-[.28em]`} /></label>
-              <button type="submit" disabled={isSubmitting || joinCode.length !== 6} className={`${buttonClass} w-full`}><Users className="h-4 w-4" /> Rejoindre avec le code</button>
+            <form onSubmit={handleCreate} className="space-y-4 p-6">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/70">Nom de la salle</span>
+                <input value={roomName} onChange={event => setRoomName(event.target.value)} maxLength={80} placeholder="Ex. Soirée cinéma" className={inputClass} />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/70">Ton pseudo</span>
+                <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/70">Film ou série à regarder</span>
+                <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="Titre du contenu" className={inputClass} />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/70">Lien vidéo direct</span>
+                <input value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} />
+                <span className="block text-[11px] leading-5 text-white/35">Formats compatibles : MP4, WebM ou HLS (.m3u8). Les pages de lecteurs externes ne sont pas synchronisables.</span>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/70">Affiche (facultatif)</span>
+                <input value={posterUrl} onChange={event => setPosterUrl(event.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold text-white/70">Type</span>
+                  <select value={mediaType} onChange={event => setMediaType(event.target.value as 'movie' | 'tv')} className={inputClass}><option value="movie">Film</option><option value="tv">Série</option></select>
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-xs font-semibold text-white/70">Places</span>
+                  <select value={maxParticipants} onChange={event => setMaxParticipants(event.target.value)} className={inputClass}>{[2,4,6,8,10,15,20,30,50].map(value => <option key={value} value={value}>{value} personnes</option>)}</select>
+                </label>
+              </div>
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-3">
+                <input type="checkbox" checked={isPublic} onChange={event => setIsPublic(event.target.checked)} className="h-4 w-4 accent-red-500" />
+                <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Salle publique</span><span className="block text-[11px] text-white/40">Visible dans la galerie. Sinon, seul le code permet de rejoindre.</span></span>
+                <Globe2 className="h-4 w-4 text-white/35" />
+              </label>
+              {error && <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</p>}
+              <div className="flex justify-end gap-2 border-t border-white/[0.07] pt-4">
+                <button type="button" onClick={() => setShowCreate(false)} className="h-11 rounded-xl px-4 text-sm font-semibold text-white/60 transition hover:bg-white/[0.06] hover:text-white">Annuler</button>
+                <button type="submit" disabled={isSubmitting} className={buttonClass}>{isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Créer la salle</button>
+              </div>
             </form>
           </section>
-
-          <section className={`${panelClass} p-5 sm:p-6`}>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div><h2 className="text-lg font-bold">Salons publics</h2><p className="text-xs text-white/40">Rejoins une session ouverte à tous.</p></div>
-              <button onClick={() => void refreshPublicRooms()} disabled={isLoadingRooms} className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white/50 transition hover:bg-white/5 hover:text-white" aria-label="Actualiser"><RefreshCw className={`h-4 w-4 ${isLoadingRooms ? 'animate-spin' : ''}`} /></button>
-            </div>
-            {isLoadingRooms ? <div className="flex items-center justify-center gap-2 py-8 text-xs text-white/40"><LoaderCircle className="h-4 w-4 animate-spin" /> Chargement des salons…</div>
-              : publicRooms.length === 0 ? <div className="rounded-xl border border-dashed border-white/10 px-4 py-8 text-center"><Film className="mx-auto mb-2 h-6 w-6 text-white/25" /><p className="text-sm text-white/55">Aucun salon public pour le moment.</p><p className="mt-1 text-xs text-white/30">Tu peux en créer un et le rendre visible ici.</p></div>
-              : <div className="space-y-3">{publicRooms.map(publicRoom => (
-                <button key={publicRoom.id} onClick={() => { setJoinCode(publicRoom.code); void handleJoin(undefined, publicRoom.code); }} className="group flex w-full items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.025] p-2.5 text-left transition hover:border-red-500/35 hover:bg-white/[0.05]">
-                  {publicRoom.poster ? <img src={publicRoom.poster} alt="" className="h-16 w-11 shrink-0 rounded-lg bg-black object-cover" /> : <div className="flex h-16 w-11 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]"><Film className="h-5 w-5 text-white/25" /></div>}
-                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-white/90">{publicRoom.title}</span><span className="mt-1 block text-[11px] text-white/40">{publicRoom.participantCount}/{publicRoom.maxParticipants} participants · {publicRoom.mediaType === 'tv' ? 'Série' : 'Film'}</span><span className="mt-1 block font-mono text-[10px] tracking-[.18em] text-red-300/80">{publicRoom.code}</span></span>
-                  <Play className="mr-1 h-4 w-4 shrink-0 text-white/25 transition group-hover:text-red-400" />
-                </button>
-              ))}</div>}
-          </section>
-          <p className="px-1 text-[11px] leading-5 text-white/30">Pour que la synchronisation soit fiable, l’hôte doit fournir un flux vidéo direct compatible. Les lecteurs externes intégrés dans une page web ne peuvent pas être pilotés depuis Movix.</p>
         </div>
-      </div>
+      )}
+
+      {showJoin && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) setShowJoin(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="watchparty-join-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#151515] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-red-400">MOVIX WATCH PARTY</p>
+                <h2 id="watchparty-join-title" className="mt-1 text-lg font-bold">Rejoindre une salle</h2>
+              </div>
+              <button type="button" onClick={() => setShowJoin(false)} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.07] hover:text-white"><X className="h-5 w-5" /></button>
+            </div>
+            <form onSubmit={handleJoin} className="space-y-4 p-5">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/70">Ton pseudo</span>
+                <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} autoFocus />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/70">Code d’invitation</span>
+                <input value={joinCode} onChange={event => setJoinCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6))} placeholder="ABC123" maxLength={6} className={`${inputClass} text-center font-mono text-xl font-bold tracking-[.28em]`} />
+              </label>
+              {error && <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</p>}
+              <button type="submit" disabled={isSubmitting || joinCode.length !== 6} className={`${buttonClass} w-full`}>{isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />} Rejoindre la salle</button>
+            </form>
+          </section>
+        </div>
+      )}
     </main>
   );
 };
