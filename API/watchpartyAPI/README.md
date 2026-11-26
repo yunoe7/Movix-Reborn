@@ -103,13 +103,13 @@ Le namespace dédié est `/watchparty`.
 
 Les familles d'événements à connaître :
 
-- room : `room:info`, `room:participants`, `room:chat`, `room:chatToggled`
+- room : `room:info`, `room:participants`, `room:chat`, `room:chatToggled`, `room:close`, `room:setVisibility`, `room:setMaxParticipants`
 - playback : `playback:update`, `playback:getState`, `playback:state`, `playback:schedule`, `playback:buffering`
-- contrôle : `control:request`, `control:approve`, `control:deny`, `control:revoke`, `control:setMode`
+- contrôle : `control:request`, `control:approve`, `control:deny`, `control:revoke`, `control:setMode`, `host:transfer`
 - sync pro : `sync:setMode`, `sync:probe`, `sync:probeResult`
-- collaboration : `ready:toggle`, `reaction:send`, `media:change`
-- moderation : `message:delete`, `participant:kick`
-- vote / pause : `pause:start`, `pause:cancel`, `vote:request`, `vote:cast`
+- collaboration : `ready:toggle`, `room:startCountdown`, `room:cancelCountdown`, `room:countdown`, `reaction:send`, `reaction:received`, `media:change`
+- chat / modération : `chat:message` (avec `replyToId` optionnel), `message:delete`, `participant:kick`
+- vote / pause : `pause:start`, `pause:cancel`, `pause:timerStarted`, `pause:timerFinished`, `vote:request`, `vote:cast`
 
 ## Persistance et cycle de vie
 
