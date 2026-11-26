@@ -610,6 +610,10 @@ const WatchPartyPage: React.FC = () => {
         roomRef.current = result.room;
         setRoom(result.room);
         setParticipants(result.room.participants || []);
+        setReadyState(result.room.readyState || {});
+        if (result.room.pauseTimer) setPauseTimer(result.room.pauseTimer);
+        if (result.room.countdown?.startAt) setCountdownTarget(result.room.countdown.startAt);
+        if (result.room.pauseVote) setPauseVote(result.room.pauseVote);
         if (result.room.playbackState) pendingPlaybackRef.current = result.room.playbackState;
         const savedNickname = (() => { try { return sessionStorage.getItem('watchPartyNickname') || 'Invité'; } catch { return 'Invité'; } })();
         const socket = io(`${WATCHPARTY_API}/watchparty`, {
@@ -867,7 +871,7 @@ const WatchPartyPage: React.FC = () => {
       worker.terminate();
       if (syncWorkerRef.current === worker) syncWorkerRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, room?.id]);
 
   useEffect(() => {
     if (!roomId || !room) return;
@@ -1191,9 +1195,42 @@ const WatchPartyPage: React.FC = () => {
     event.preventDefault();
     const text = chatInput.trim();
     if (!text || !socketRef.current?.connected) return;
-    socketRef.current.emit('chat:message', { text });
+    socketRef.current.emit('chat:message', { text, replyToId: chatReply?.id });
     setChatInput('');
+    setChatReply(null);
   };
+
+  const sendReaction = (emoji: string) => {
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit('reaction:send', { emoji });
+  };
+
+  const toggleReady = () => {
+    if (!socketRef.current?.connected || countdownTarget !== null) return;
+    socketRef.current.emit('ready:toggle');
+  };
+
+  const startTogether = () => {
+    if (!isHost || !allParticipantsReady) return;
+    socketRef.current?.emit('room:startCountdown');
+  };
+
+  const voteForPause = (vote: boolean) => {
+    socketRef.current?.emit('vote:cast', { vote });
+  };
+
+  const filteredPublicRooms = publicRooms
+    .filter(publicRoom => {
+      const normalizedQuery = publicQuery.trim().toLocaleLowerCase('fr');
+      if (normalizedQuery && !`${publicRoom.title} ${publicRoom.mediaTitle} ${publicRoom.hostNickname}`.toLocaleLowerCase('fr').includes(normalizedQuery)) return false;
+      if (publicTypeFilter === 'movie') return publicRoom.mediaType === 'movie';
+      if (publicTypeFilter === 'tv') return publicRoom.mediaType === 'tv' && !publicRoom.isAnime;
+      if (publicTypeFilter === 'anime') return publicRoom.mediaType === 'tv' && publicRoom.isAnime === true;
+      return true;
+    })
+    .sort((a, b) => publicSort === 'popular'
+      ? b.participantCount - a.participantCount || b.createdAt - a.createdAt
+      : b.createdAt - a.createdAt);
 
   if (roomId) {
     return (
