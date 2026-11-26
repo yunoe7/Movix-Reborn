@@ -798,6 +798,7 @@ const WatchPartyPage: React.FC = () => {
                       src={buildVidRiftEmbedUrl(room.media)}
                       title={room.media.title ? `VidRift — ${room.media.title}` : 'Lecteur VidRift'}
                       className="h-full w-full border-0 bg-black"
+                      tabIndex={canControl ? 0 : -1}
                       allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
                       allowFullScreen
                       onLoad={handleVidRiftLoad}
@@ -817,7 +818,24 @@ const WatchPartyPage: React.FC = () => {
                       onTimeUpdate={handleTimeUpdate}
                     />
                   )}
-                  {!canControl && (
+                  {room.media.playbackType === 'vidrift' && !canControl && (
+                    <div
+                      className="absolute inset-0 z-20 flex cursor-not-allowed items-end justify-center bg-black/[0.015] p-4"
+                      role="group"
+                      aria-label="Commandes de lecture verrouillées"
+                      onPointerDown={event => { event.preventDefault(); event.stopPropagation(); }}
+                      onClick={event => { event.preventDefault(); event.stopPropagation(); }}
+                      onDoubleClick={event => { event.preventDefault(); event.stopPropagation(); }}
+                      onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}
+                      onKeyDown={event => { event.preventDefault(); event.stopPropagation(); }}
+                    >
+                      <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/80 px-3 py-2 text-xs font-semibold text-white/80 shadow-lg backdrop-blur">
+                        <LockKeyhole className="h-3.5 w-3.5 text-amber-300" />
+                        Lecture contrôlée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
+                      </div>
+                    </div>
+                  )}
+                  {room.media.playbackType !== 'vidrift' && !canControl && (
                     <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-black/70 px-3 py-2 text-xs text-white/75 backdrop-blur">
                       Lecture synchronisée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
                     </div>
@@ -832,8 +850,20 @@ const WatchPartyPage: React.FC = () => {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-4 py-3">
                   <p className="text-xs text-white/45">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'} · {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}</p>
-                  {!isHost && room.controlMode !== 'democratic' && (
-                    <button onClick={() => socketRef.current?.emit('control:request')} className="text-xs font-semibold text-red-300 transition hover:text-red-200">Demander le contrôle</button>
+                  {!canControl && room.controlMode === 'host-only' && (
+                    <button
+                      onClick={() => {
+                        socketRef.current?.emit('control:request');
+                        setControlNotice('Demande envoyée à l’hôte.');
+                      }}
+                      disabled={hasPendingControlRequest || socketState !== 'connected'}
+                      className="text-xs font-semibold text-red-300 transition hover:text-red-200 disabled:cursor-not-allowed disabled:text-white/40"
+                    >
+                      {hasPendingControlRequest ? 'Demande en attente…' : 'Demander le contrôle'}
+                    </button>
+                  )}
+                  {controlNotice && (
+                    <p className="w-full text-right text-[11px] text-white/55" role="status">{controlNotice}</p>
                   )}
                   {isHost && (
                     <button
@@ -871,6 +901,15 @@ const WatchPartyPage: React.FC = () => {
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-bold">{person.nickname.slice(0, 1).toUpperCase()}</span>
                         <span className="min-w-0 flex-1 truncate text-sm text-white/85">{person.nickname}{person.id === selfId ? ' (toi)' : ''}</span>
                         {person.isHost && <span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Hôte</span>}
+                        {isHost && !person.isHost && room.coHosts?.includes(person.id) && (
+                          <button
+                            type="button"
+                            onClick={() => socketRef.current?.emit('control:revoke', { participantId: person.id })}
+                            className="shrink-0 rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-semibold text-white/55 transition hover:bg-red-500/15 hover:text-red-300"
+                          >
+                            Retirer le contrôle
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
