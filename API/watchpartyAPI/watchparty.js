@@ -1009,6 +1009,9 @@ watchpartyIO.on('connection', (socket) => {
     r.pauseTimer = null;
     r.readyState = {};
     if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
+    r.pauseTimerTimeout = null;
+    r.pauseTimer = null;
     r.countdownTimer = null;
     r.countdown = null;
     r.playbackState = {
