@@ -534,8 +534,15 @@ const WatchPartyPage: React.FC = () => {
         if (Number.isFinite(targetPosition) && Math.abs(vidriftPlaybackRef.current.currentTime - targetPosition) > 0.8) {
           target.postMessage({ type: 'vidrift:resume', currentTime: targetPosition }, VIDRIFT_ORIGIN);
         }
-        target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
+        // Heartbeats repeat the authoritative playback state. Sending play/pause
+        // on every heartbeat makes VidRift reopen its controls for guests even
+        // when playback is already in the requested state.
+        const playbackStateChanged = vidriftPlaybackRef.current.paused !== !state.isPlaying;
+        if (playbackStateChanged) {
+          target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
+        }
         vidriftPlaybackRef.current = {
+          ...vidriftPlaybackRef.current,
           paused: !state.isPlaying,
           currentTime: targetPosition,
           updatedAt: performance.now(),
