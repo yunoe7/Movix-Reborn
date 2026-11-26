@@ -91,7 +91,7 @@ const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
 
 function buildVidRiftEmbedUrl(media: Media): string {
   const tmdbId = String(media.mediaId || '');
-  if (!/^\\d+$/.test(tmdbId)) return '';
+  if (!/^\d+$/.test(tmdbId)) return '';
   const season = Math.max(0, Number(media.seasonNumber) || 1);
   const episode = Math.max(1, Number(media.episodeNumber) || 1);
   const path = media.mediaType === 'tv'
@@ -186,7 +186,7 @@ const WatchPartyPage: React.FC = () => {
 
   useEffect(() => {
     const context = (location.state as { watchPartyMedia?: WatchPartyLaunchContext } | null)?.watchPartyMedia;
-    if (!context || !/^\\d+$/.test(String(context.tmdbId || ''))) return;
+    if (!context || !/^\d+$/.test(String(context.tmdbId || ''))) return;
     const cleanContext: WatchPartyLaunchContext = {
       ...context,
       tmdbId: String(context.tmdbId),
@@ -264,7 +264,7 @@ const WatchPartyPage: React.FC = () => {
     event.preventDefault();
     const cleanNickname = nickname.trim();
     const launchContext = watchPartyContext;
-    const useVidRift = Boolean(launchContext && /^\\d+$/.test(launchContext.tmdbId));
+    const useVidRift = Boolean(launchContext && /^\d+$/.test(launchContext.tmdbId));
     const contentTitle = launchContext?.title.trim() || title.trim();
     const contentPoster = launchContext?.posterPath || posterUrl.trim();
 
