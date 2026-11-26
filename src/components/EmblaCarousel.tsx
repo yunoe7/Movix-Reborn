@@ -346,9 +346,7 @@ export const CarouselCard = React.memo<{
           </span>
         )}
 
-        {/* Top-right action: remove (history) or watchlist (normal) — natif <button>
-            avec title= pour le tooltip (zéro overhead vs Radix Tooltip qui mountait
-            un portal par card sur hover). active:scale-* remplace whileTap. */}
+        {/* Action d'ajout à la watchlist ; l'historique n'affiche plus de bouton sur les affiches. */}
 
           <WatchlistAction
             data-card-watchlist
@@ -377,7 +375,7 @@ export const CarouselCard = React.memo<{
                 fill={starred ? 'currentColor' : 'none'}
               />
             </motion.div>
-          </WatchlistAction>}
+          </WatchlistAction>
 
         {/* Le navigateur adapte la définition à la largeur de la carte et au
             DPR, en conservant l'affiche localisée choisie par le cache. */}
