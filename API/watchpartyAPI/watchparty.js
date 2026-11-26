@@ -274,6 +274,7 @@ async function loadRoomsFromDisk() {
       room.pendingControlRequests = [];
       room.readyState = {};
       room.pauseVote = null;
+      room.pauseTimer = null;
       room.countdownTimer = null;
       room.countdown = null;
       room.pauseTimerTimeout = null;
