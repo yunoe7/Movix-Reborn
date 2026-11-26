@@ -490,6 +490,7 @@ function buildRoomInfo(roomId, room) {
   return {
     id: roomId,
     code: room.code,
+    name: room.name || '',
     hostId: room.hostId,
     maxParticipants: room.maxParticipants,
     isPublic: !!room.isPublic,
@@ -1177,7 +1178,7 @@ app.post(
   rateLimit({ windowMs: 60_000, max: 10, key: 'create', message: 'Too many watch parties created. Please wait a moment.' }),
   (req, res) => {
     try {
-      const { nickname, maxParticipants, media, isPublic, syncMode } = req.body || {};
+      const { nickname, maxParticipants, media, roomName, isPublic, syncMode } = req.body || {};
       const cleanNickname = sanitizeNickname(nickname);
       const cleanMedia = sanitizeMedia(media);
       if (!nickname || !cleanMedia) {
@@ -1205,6 +1206,7 @@ app.post(
       const newRoom = {
         id: roomId,
         code,
+        name: sanitizeString(roomName, 80),
         hostId: null,
         hostToken,                // secret : ne doit jamais sortir d'ici
         hostTokens: new Set([hostToken]), // jetons d'hôte valides (transfert révoque les anciens)
@@ -1281,6 +1283,7 @@ app.get('/api/watchparty/room/:roomId', (req, res) => {
     room: {
       id: roomId,
       code: room.code,
+      name: room.name || '',
       hostId: room.hostId,
       maxParticipants: room.maxParticipants,
       isPublic: !!room.isPublic,
@@ -1325,7 +1328,9 @@ app.get('/api/watchparty/public', rateLimit({ windowMs: 1000, max: 10, key: 'pub
       if (room.isPublic) publicRooms.push({
         id,
         code: room.code,
-        title: room.media.title,
+        title: room.name || room.media.title,
+        mediaTitle: room.media.title,
+        hostNickname: room.participants.find((participant) => participant.isHost)?.nickname || 'Hôte',
         poster: room.media.poster,
         mediaType: room.media.mediaType,
         participantCount: room.participants.length,
