@@ -524,6 +524,15 @@ const WatchPartyPage: React.FC = () => {
         socket.on('connect', () => {
           setSocketState('connected');
           setSelfId(socket.id || '');
+          // The iframe can load before Socket.IO finishes connecting. Ask both
+          // sides for their state again once the room channel is ready.
+          socket.emit('playback:getState');
+          window.setTimeout(() => {
+            vidriftFrameRef.current?.contentWindow?.postMessage(
+              { type: 'vidrift:get-state' },
+              VIDRIFT_ORIGIN,
+            );
+          }, 0);
         });
         socket.on('disconnect', () => setSocketState('disconnected'));
         socket.on('connect_error', (err) => {
@@ -604,6 +613,10 @@ const WatchPartyPage: React.FC = () => {
   const canControl = isHost || isCoHost || room?.controlMode === 'democratic';
   const hasPendingControlRequest = Boolean(selfId && controlRequests.some(request => request.participantId === selfId));
 
+  useEffect(() => {
+    if (!canControl) vidriftFrameRef.current?.blur();
+  }, [canControl]);
+
   const sendPlayback = useCallback((reason: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended') => {
     const socket = socketRef.current;
     if (!socket?.connected || !canControl || applyingRemoteRef.current) return;
@@ -678,14 +691,19 @@ const WatchPartyPage: React.FC = () => {
         const positionChanged = Math.abs(nextTime - previous.currentTime) > 1.25;
 
         vidriftPlaybackRef.current = { currentTime: nextTime, paused: nextPaused };
-        if (!applyingRemoteRef.current && canControl && (pauseChanged || positionChanged)) {
-          sendPlayback(pauseChanged ? (nextPaused ? 'pause' : 'play') : 'seek');
-        }
 
+        // The server snapshot is authoritative when the iframe first loads or
+        // reconnects. Apply it before treating the player's initial autoplay
+        // state as a new host command.
         const pending = pendingPlaybackRef.current;
         if (pending) {
           pendingPlaybackRef.current = null;
           void applyRemotePlayback(pending);
+          return;
+        }
+
+        if (!applyingRemoteRef.current && canControl && (pauseChanged || positionChanged)) {
+          sendPlayback(pauseChanged ? (nextPaused ? 'pause' : 'play') : 'seek');
         }
         return;
       }
