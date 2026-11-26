@@ -372,7 +372,9 @@ function sanitizeString(value, maxLength = MAX_STRING_LENGTH) {
 
 function sanitizeNickname(value) {
   const cleaned = sanitizeString(value, MAX_NICKNAME_LENGTH).replace(/[\r\n\t]/g, ' ').trim();
-  return cleaned || 'Guest';
+  // A nickname is a short display label, never a pasted invite URL.
+  if (!/^[\p{L}\p{N}_ -]{2,24}$/u.test(cleaned)) return 'Guest';
+  return cleaned;
 }
 
 function sanitizeOptionalString(value, maxLength = MAX_STRING_LENGTH) {
@@ -840,7 +842,10 @@ watchpartyIO.on('connection', (socket) => {
   socket.on('media:change', (media) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
-    if (socket.id !== r.hostId) return;
+    const canControl = socket.id === r.hostId
+      || r.coHosts.includes(socket.id)
+      || r.controlMode === 'democratic';
+    if (!canControl) return;
 
     const sanitized = sanitizeMedia(media);
     if (!sanitized) return;
