@@ -1087,6 +1087,7 @@ watchpartyIO.on('connection', (socket) => {
     r.playbackState.isPlaying = false;
     r.playbackState.updatedAt = Date.now();
     r.playbackState.updatedBy = socket.id;
+    r.playbackState.reason = 'pause';
     watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
     if (r.syncMode === 'pro') {
       watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'pause'));
@@ -1217,6 +1218,7 @@ watchpartyIO.on('connection', (socket) => {
       r.playbackState.isPlaying = false;
       r.playbackState.updatedAt = Date.now();
       r.playbackState.updatedBy = 'vote';
+      r.playbackState.reason = 'pause';
       watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
       if (r.syncMode === 'pro') {
         watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'pause'));
