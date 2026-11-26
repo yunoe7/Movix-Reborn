@@ -120,6 +120,7 @@ const WatchPartyPage: React.FC = () => {
   const [selfId, setSelfId] = useState('');
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [copyDone, setCopyDone] = useState(false);
+  const [requiresUserGesture, setRequiresUserGesture] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -265,8 +266,11 @@ const WatchPartyPage: React.FC = () => {
       if (Number.isFinite(state.position) && Math.abs(video.currentTime - state.position) > 0.8) {
         video.currentTime = Math.max(0, state.position);
       }
-      if (state.isPlaying && video.paused) await video.play().catch(() => undefined);
+      if (state.isPlaying && video.paused) {
+        await video.play().then(() => setRequiresUserGesture(false)).catch(() => setRequiresUserGesture(true));
+      }
       if (!state.isPlaying && !video.paused) video.pause();
+      if (!state.isPlaying) setRequiresUserGesture(false);
     } finally {
       window.setTimeout(() => { applyingRemoteRef.current = false; }, 250);
     }
@@ -357,6 +361,9 @@ const WatchPartyPage: React.FC = () => {
     if (/\.m3u8(?:$|\?)/i.test(src) && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true });
       hlsRef.current = hls;
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (data.fatal) setError('Le flux HLS n’a pas pu être chargé. Vérifie que le serveur du flux autorise les requêtes vidéo depuis le navigateur.');
+      });
       hls.loadSource(src);
       hls.attachMedia(video);
     } else {
@@ -447,7 +454,7 @@ const WatchPartyPage: React.FC = () => {
                     playsInline
                     onLoadedMetadata={handleVideoReady}
                     onCanPlay={handleVideoReady}
-                    onPlay={() => sendPlayback('play')}
+                    onPlay={() => { setRequiresUserGesture(false); sendPlayback('play'); }}
                     onPause={() => sendPlayback('pause')}
                     onSeeked={() => sendPlayback('seek')}
                     onTimeUpdate={handleTimeUpdate}
@@ -455,6 +462,13 @@ const WatchPartyPage: React.FC = () => {
                   {!canControl && (
                     <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-black/70 px-3 py-2 text-xs text-white/75 backdrop-blur">
                       Lecture synchronisée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
+                    </div>
+                  )}
+                  {requiresUserGesture && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
+                      <button onClick={() => { void videoRef.current?.play().catch(() => setError('Impossible de démarrer la lecture sur cet appareil.')); }} className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-red-500">
+                        <Play className="h-4 w-4 fill-current" /> Activer la lecture synchronisée
+                      </button>
                     </div>
                   )}
                 </div>
