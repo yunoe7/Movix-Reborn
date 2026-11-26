@@ -6,7 +6,7 @@ import { getTmdbLanguage } from '../i18n';
 import Hls from 'hls.js';
 import {
   ArrowLeft, Check, Copy, Film, Globe2, KeyRound, Loader2, LockKeyhole,
-  MessageCircle, Play, Plus, RefreshCw, Send, Users, X,
+  MessageCircle, Play, Plus, RefreshCw, Send, Users, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
 
@@ -188,6 +188,8 @@ const WatchPartyPage: React.FC = () => {
   const [copyDone, setCopyDone] = useState(false);
   const [requiresUserGesture, setRequiresUserGesture] = useState(false);
   const [controlNotice, setControlNotice] = useState('');
+  const [localVolume, setLocalVolume] = useState(0.8);
+  const [localMuted, setLocalMuted] = useState(false);
   const [vidRiftActivationOpen, setVidRiftActivationOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -200,6 +202,7 @@ const WatchPartyPage: React.FC = () => {
   const pendingPlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const vidRiftActivationTimerRef = useRef<number | null>(null);
+  const hasCustomLocalVolumeRef = useRef(false);
   const clockOffsetRef = useRef(0);
   const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
   const pendingClockProbesRef = useRef(new Map<string, number>());
@@ -671,6 +674,14 @@ const WatchPartyPage: React.FC = () => {
 
   useEffect(() => {
     const video = videoRef.current;
+    if (video && room?.media?.playbackType !== 'vidrift') {
+      video.volume = localVolume;
+      video.muted = localMuted;
+    }
+  }, [room?.media?.src, room?.media?.playbackType, localVolume, localMuted]);
+
+  useEffect(() => {
+    const video = videoRef.current;
     const src = room?.media?.src;
     if (!video || !src) return;
     hlsRef.current?.destroy();
@@ -743,10 +754,40 @@ const WatchPartyPage: React.FC = () => {
     }
   };
 
+  const applyLocalVolume = (nextVolume: number, nextMuted = false) => {
+    const volume = Math.max(0, Math.min(1, Number.isFinite(nextVolume) ? nextVolume : 0.8));
+    hasCustomLocalVolumeRef.current = true;
+    setLocalVolume(volume);
+    setLocalMuted(nextMuted);
+
+    if (roomRef.current?.media.playbackType === 'vidrift') {
+      const target = vidriftFrameRef.current?.contentWindow;
+      if (!target) return;
+      // Volume is local to this iframe only and is never broadcast via Socket.IO.
+      target.postMessage({ type: 'vidrift:set', volume, muted: nextMuted }, VIDRIFT_ORIGIN);
+      return;
+    }
+
+    const video = videoRef.current;
+    if (video) {
+      video.volume = volume;
+      video.muted = nextMuted;
+    }
+  };
+
+  const toggleLocalMute = () => {
+    const nextMuted = !localMuted;
+    const restoreVolume = localVolume > 0 ? localVolume : 0.8;
+    applyLocalVolume(restoreVolume, nextMuted);
+  };
+
   const handleVidRiftLoad = () => {
     const target = vidriftFrameRef.current?.contentWindow;
     if (!target) return;
     target.postMessage({ type: 'vidrift:get-state' }, VIDRIFT_ORIGIN);
+    if (hasCustomLocalVolumeRef.current) {
+      target.postMessage({ type: 'vidrift:set', volume: localVolume, muted: localMuted }, VIDRIFT_ORIGIN);
+    }
     socketRef.current?.emit('playback:getState');
   };
 
@@ -765,6 +806,8 @@ const WatchPartyPage: React.FC = () => {
         mediaType?: string;
         currentTime?: number;
         paused?: boolean;
+        volume?: number;
+        muted?: boolean;
         season?: number;
         episode?: number;
       };
@@ -772,6 +815,11 @@ const WatchPartyPage: React.FC = () => {
 
       const currentTime = Number(data.currentTime);
       if (data.type === 'vidrift:state') {
+        // Mirror VidRift's local volume settings into this participant's UI only.
+        if (typeof data.volume === 'number' && Number.isFinite(data.volume)) {
+          setLocalVolume(Math.max(0, Math.min(1, data.volume)));
+        }
+        if (typeof data.muted === 'boolean') setLocalMuted(data.muted);
         const previous = vidriftPlaybackRef.current;
         const now = performance.now();
         const expectedTime = previous.currentTime + (
@@ -1014,6 +1062,37 @@ const WatchPartyPage: React.FC = () => {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-4 py-3">
+                  <div className="flex min-w-[220px] flex-1 items-center gap-3" aria-label="Réglage de volume personnel">
+                    <button
+                      type="button"
+                      onClick={toggleLocalMute}
+                      aria-label={localMuted ? 'Réactiver mon son' : 'Couper mon son'}
+                      title={localMuted ? 'Réactiver mon son' : 'Couper mon son'}
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/65 transition hover:bg-white/[0.07] hover:text-white"
+                    >
+                      {localMuted || localVolume === 0
+                        ? <VolumeX className="h-4 w-4" />
+                        : <Volume2 className="h-4 w-4" />}
+                    </button>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={localMuted ? 0 : Math.round(localVolume * 100)}
+                      onChange={event => {
+                        const nextVolume = Number(event.target.value) / 100;
+                        applyLocalVolume(nextVolume, nextVolume === 0);
+                      }}
+                      aria-label="Volume personnel"
+                      title="Volume personnel"
+                      className="h-1.5 w-full max-w-36 cursor-pointer accent-red-500"
+                    />
+                    <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-white/45">
+                      {localMuted ? 0 : Math.round(localVolume * 100)}%
+                    </span>
+                    <span className="hidden text-[11px] text-white/35 sm:inline">Volume perso.</span>
+                  </div>
                   <p className="text-xs text-white/45">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'} · {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}</p>
                   {!canControl && room.controlMode === 'host-only' && (
                     <button
