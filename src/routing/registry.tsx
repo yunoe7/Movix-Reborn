@@ -62,6 +62,9 @@ export const ROUTES: RouteEntry[] = [
   { path: '/watch/tv/:tmdbid/s/:season/e/:episode',       loader: lz(() => import('../pages/Watch/WatchTv')) },
 
   // Watch party
+  { path: '/watchparty',                         loader: lz(() => import('../pages/WatchPartyPage')), tvExcluded: true },
+  { path: '/watchparty/join/:code',                loader: lz(() => import('../pages/WatchPartyPage')), tvExcluded: true },
+  { path: '/watchparty/room/:roomId',              loader: lz(() => import('../pages/WatchPartyPage')), tvExcluded: true },
 
   // Auth & profile
   { path: '/auth',                    loader: lz(() => import('../components/DiscordAuth')) },
