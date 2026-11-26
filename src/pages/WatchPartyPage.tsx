@@ -23,6 +23,7 @@ type Media = {
   mediaType: 'movie' | 'tv';
   mediaId?: string;
   playbackType?: 'direct' | 'vidrift';
+  isAnime?: boolean;
   seasonNumber?: number;
   episodeNumber?: number;
   position?: number;
@@ -475,6 +476,7 @@ const WatchPartyPage: React.FC = () => {
             title: mediaTitle,
             poster,
             mediaType: selectedMedia.media_type,
+            isAnime: selectedMedia.media_type === 'tv' && selectedMedia.genre_ids?.includes(16) === true,
             seasonNumber: selectedMedia.media_type === 'tv' ? selectedSeason : undefined,
             episodeNumber: selectedMedia.media_type === 'tv' ? selectedEpisode : undefined,
             position: 0,
