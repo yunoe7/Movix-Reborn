@@ -530,6 +530,104 @@ const WatchPartyPage: React.FC = () => {
     }
   };
 
+  const handleVidRiftLoad = () => {
+    const target = vidriftFrameRef.current?.contentWindow;
+    if (!target) return;
+    target.postMessage({ type: 'vidrift:get-state' }, VIDRIFT_ORIGIN);
+    socketRef.current?.emit('playback:getState');
+  };
+
+  useEffect(() => {
+    const media = room?.media;
+    if (!roomId || media?.playbackType !== 'vidrift' || !media.mediaId) return;
+
+    const handleVidRiftMessage = (event: MessageEvent) => {
+      const frame = vidriftFrameRef.current;
+      if (event.origin !== VIDRIFT_ORIGIN || event.source !== frame?.contentWindow) return;
+      if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string') return;
+
+      const data = event.data as {
+        type: string;
+        tmdbId?: number | string;
+        mediaType?: string;
+        currentTime?: number;
+        paused?: boolean;
+        season?: number;
+        episode?: number;
+      };
+      if (Number(data.tmdbId) !== Number(media.mediaId) || data.mediaType !== media.mediaType) return;
+
+      const currentTime = Number(data.currentTime);
+      if (data.type === 'vidrift:state') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        if (typeof data.paused === 'boolean') vidriftPlaybackRef.current.paused = data.paused;
+        const pending = pendingPlaybackRef.current;
+        if (pending) {
+          pendingPlaybackRef.current = null;
+          void applyRemotePlayback(pending);
+        }
+        return;
+      }
+
+      if (data.type === 'vidrift:progress') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        if (canControl && Date.now() - lastHeartbeatRef.current > 2500) {
+          lastHeartbeatRef.current = Date.now();
+          sendPlayback('heartbeat');
+        }
+        return;
+      }
+
+      if (data.type === 'vidrift:paused' || data.type === 'vidrift:unpaused') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        vidriftPlaybackRef.current.paused = data.type === 'vidrift:paused';
+        if (!applyingRemoteRef.current && canControl) {
+          sendPlayback(data.type === 'vidrift:paused' ? 'pause' : 'play');
+        }
+        return;
+      }
+
+      if (data.type === 'vidrift:ended') {
+        if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
+        vidriftPlaybackRef.current.paused = true;
+        if (!applyingRemoteRef.current && canControl) sendPlayback('ended');
+        return;
+      }
+
+      if (data.type === 'vidrift:episode' && media.mediaType === 'tv') {
+        if (!Number.isInteger(data.season) || data.season! < 1
+          || !Number.isInteger(data.episode) || data.episode! < 1) return;
+        if (!isHost) return;
+        socketRef.current?.emit('media:change', {
+          ...media,
+          src: 'vidrift',
+          playbackType: 'vidrift',
+          seasonNumber: data.season,
+          episodeNumber: data.episode,
+          position: 0,
+          isPlaying: false,
+        });
+        return;
+      }
+
+      if (data.type === 'vidrift:exit') leaveRoom();
+      if (data.type === 'vidrift:command-error') {
+        setError('Le lecteur VidRift n’a pas pu appliquer une commande de synchronisation.');
+      }
+    };
+
+    window.addEventListener('message', handleVidRiftMessage);
+    return () => window.removeEventListener('message', handleVidRiftMessage);
+  }, [
+    roomId,
+    room?.media,
+    canControl,
+    isHost,
+    applyRemotePlayback,
+    sendPlayback,
+    leaveRoom,
+  ]);
+
   const handleSendMessage = (event: FormEvent) => {
     event.preventDefault();
     const text = chatInput.trim();
