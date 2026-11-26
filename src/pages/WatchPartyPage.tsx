@@ -8,7 +8,7 @@ import {
   ArrowLeft, Check, Copy, Film, Globe2, KeyRound, Loader2, LockKeyhole,
   MessageCircle, Play, Plus, RefreshCw, Send, Users, Volume2, VolumeX, X,
 } from 'lucide-react';
-import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
+import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
@@ -23,6 +23,7 @@ type Media = {
   mediaType: 'movie' | 'tv';
   mediaId?: string;
   playbackType?: 'direct' | 'vidrift';
+  isAnime?: boolean;
   seasonNumber?: number;
   episodeNumber?: number;
   position?: number;
@@ -40,9 +41,32 @@ type ChatMessage = {
   senderId: string;
   senderNickname: string;
   text: string;
+  replyTo?: { id: string; senderNickname: string; text: string } | null;
   timestamp: number;
   type: 'chat' | 'system' | 'action';
+  deleted?: boolean;
 };
+
+type FloatingReaction = {
+  id: string;
+  emoji: string;
+  senderId: string;
+  senderNickname: string;
+  timestamp: number;
+};
+
+type PauseVote = {
+  requestedBy: string;
+  requestedByNickname: string;
+  requestedDuration: number;
+  endTime: number;
+  totalParticipants: number;
+  yesVotes?: number;
+  noVotes?: number;
+  totalVotes?: number;
+};
+
+type PauseTimer = { endTime: number; startedBy: string; duration: number; resumeAfterPause?: boolean };
 
 type Room = {
   id: string;
@@ -58,15 +82,16 @@ type Room = {
   media: Media;
   participants: Participant[];
   playbackState?: PlaybackSnapshot;
+  readyState?: Record<string, boolean>;
+  countdown?: { startAt: number; startedBy: string } | null;
+  pauseTimer?: PauseTimer | null;
+  pauseVote?: PauseVote | null;
 };
 
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
-type PlaybackSnapshot = {
-  isPlaying: boolean;
-  position: number;
-  updatedAt?: number;
-  updatedBy?: string | null;
+type PlaybackSnapshot = PlaybackState & {
+  reason?: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended';
 };
 
 type TmdbMedia = {
@@ -110,6 +135,7 @@ type PublicRoom = {
   mediaId?: string | null;
   mediaTitle?: string;
   hostNickname?: string;
+  isAnime?: boolean;
   seasonNumber?: number;
   episodeNumber?: number;
   createdAt: number;
@@ -182,7 +208,19 @@ const WatchPartyPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [controlRequests, setControlRequests] = useState<ControlRequest[]>([]);
+  const [readyState, setReadyState] = useState<Record<string, boolean>>({});
+  const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [chatReply, setChatReply] = useState<ChatMessage | null>(null);
+  const [pauseVote, setPauseVote] = useState<PauseVote | null>(null);
+  const [pauseTimer, setPauseTimer] = useState<PauseTimer | null>(null);
+  const [countdownTarget, setCountdownTarget] = useState<number | null>(null);
+  const [countdownNow, setCountdownNow] = useState(Date.now());
+  const [syncStatus, setSyncStatus] = useState<'classic' | 'calibrating' | 'perfect' | 'adjusting' | 'unstable'>('classic');
+  const [syncEngine, setSyncEngine] = useState<'js' | 'wasm'>('js');
+  const [publicQuery, setPublicQuery] = useState('');
+  const [publicTypeFilter, setPublicTypeFilter] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
+  const [publicSort, setPublicSort] = useState<'recent' | 'popular'>('recent');
   const [selfId, setSelfId] = useState('');
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [copyDone, setCopyDone] = useState(false);
@@ -195,7 +233,7 @@ const WatchPartyPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
   const roomRef = useRef<Room | null>(null);
-  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true, updatedAt: 0 });
+  const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 });
   const hlsRef = useRef<Hls | null>(null);
   const applyingRemoteRef = useRef(false);
   const lastHeartbeatRef = useRef(0);
@@ -203,6 +241,9 @@ const WatchPartyPage: React.FC = () => {
   const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const vidRiftActivationTimerRef = useRef<number | null>(null);
   const hasCustomLocalVolumeRef = useRef(false);
+  const remoteCommandTimeoutRef = useRef<number | null>(null);
+  const syncWorkerRef = useRef<Worker | null>(null);
+  const syncTickTimerRef = useRef<number | null>(null);
   const clockOffsetRef = useRef(0);
   const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
   const pendingClockProbesRef = useRef(new Map<string, number>());
@@ -435,6 +476,7 @@ const WatchPartyPage: React.FC = () => {
             title: mediaTitle,
             poster,
             mediaType: selectedMedia.media_type,
+            isAnime: selectedMedia.media_type === 'tv' && selectedMedia.genre_ids?.includes(16) === true,
             seasonNumber: selectedMedia.media_type === 'tv' ? selectedSeason : undefined,
             episodeNumber: selectedMedia.media_type === 'tv' ? selectedEpisode : undefined,
             position: 0,
@@ -567,6 +609,10 @@ const WatchPartyPage: React.FC = () => {
         roomRef.current = result.room;
         setRoom(result.room);
         setParticipants(result.room.participants || []);
+        setReadyState(result.room.readyState || {});
+        if (result.room.pauseTimer) setPauseTimer(result.room.pauseTimer);
+        if (result.room.countdown?.startAt) setCountdownTarget(result.room.countdown.startAt);
+        if (result.room.pauseVote) setPauseVote(result.room.pauseVote);
         if (result.room.playbackState) pendingPlaybackRef.current = result.room.playbackState;
         const savedNickname = (() => { try { return sessionStorage.getItem('watchPartyNickname') || 'Invité'; } catch { return 'Invité'; } })();
         const socket = io(`${WATCHPARTY_API}/watchparty`, {
@@ -603,6 +649,36 @@ const WatchPartyPage: React.FC = () => {
         });
         socket.on('room:info', (nextRoom: Room) => setRoom(current => current ? { ...current, ...nextRoom } : nextRoom));
         socket.on('room:participants', (next: Participant[]) => setParticipants(next || []));
+        socket.on('ready:state', (next: Record<string, boolean>) => setReadyState(next || {}));
+        socket.on('room:countdown', (payload: { startAt: number }) => setCountdownTarget(payload.startAt));
+        socket.on('room:countdownCancelled', () => setCountdownTarget(null));
+        socket.on('room:countdownFinished', () => setCountdownTarget(null));
+        socket.on('room:startCountdownDenied', (payload: { message?: string }) => setControlNotice(payload?.message || 'Tout le monde doit être prêt.'));
+        socket.on('room:chatToggled', (payload: { enabled: boolean }) => {
+          setRoom(current => current ? { ...current, chatEnabled: payload.enabled } : current);
+        });
+        socket.on('pause:timerStarted', (payload: PauseTimer) => setPauseTimer(payload));
+        socket.on('pause:timerCancelled', () => setPauseTimer(null));
+        socket.on('pause:timerFinished', () => setPauseTimer(null));
+        socket.on('vote:started', (payload: PauseVote) => setPauseVote(payload));
+        socket.on('vote:update', (payload: { yesVotes: number; noVotes: number; totalVotes: number; totalParticipants: number }) => {
+          setPauseVote(current => current ? { ...current, ...payload } : current);
+        });
+        socket.on('vote:ended', () => setPauseVote(null));
+        socket.on('reaction:received', (reaction: FloatingReaction) => {
+          setReactions(current => [...current.slice(-7), reaction]);
+          window.setTimeout(() => setReactions(current => current.filter(item => item.id !== reaction.id)), 3200);
+        });
+        socket.on('message:deleted', (payload: { messageId: string }) => {
+          setMessages(current => current.map(message => message.id === payload.messageId ? { ...message, deleted: true, text: 'Message supprimé par la modération.' } : message));
+        });
+        socket.on('host:transferred', (payload: { hostId: string }) => {
+          setRoom(current => current ? { ...current, hostId: payload.hostId } : current);
+          setControlNotice(payload.hostId === socket.id ? 'Tu es maintenant l’hôte de cette Watch Party.' : 'Le rôle d’hôte a été transféré.');
+        });
+        socket.on('sync:modeChanged', (payload: { mode: 'classic' | 'pro' }) => {
+          setRoom(current => current ? { ...current, syncMode: payload.mode } : current);
+        });
         socket.on('control:state', (state: { controlMode: 'host-only' | 'democratic'; coHosts: string[]; pendingRequests: ControlRequest[] }) => {
           setRoom(current => current ? { ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] } : current);
           setControlRequests(state.pendingRequests || []);
@@ -620,6 +696,10 @@ const WatchPartyPage: React.FC = () => {
           if (sentAt === undefined) return;
           pendingClockProbesRef.current.delete(result.probeId);
           const receivedAt = Date.now();
+          syncWorkerRef.current?.postMessage({
+            type: 'probe-result',
+            result: { ...result, clientReceivedAt: receivedAt } satisfies SyncProbeResult
+          });
           const roundTripMs = receivedAt - sentAt;
           if (!Number.isFinite(roundTripMs) || roundTripMs < 0 || roundTripMs > 5000) return;
           const offsetMs = (
@@ -637,12 +717,40 @@ const WatchPartyPage: React.FC = () => {
             .sort((a, b) => a - b);
           clockOffsetRef.current = bestSamples[Math.floor(bestSamples.length / 2)] ?? 0;
         });
-        socket.on('room:playback', applyRemotePlayback);
-        socket.on('playback:state', applyRemotePlayback);
+        const handleAuthoritativePlayback = (state: PlaybackSnapshot) => {
+          authoritativePlaybackRef.current = state;
+          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current && !isHost) {
+            // Explicit actions arrive with a scheduled event; do not make the
+            // worker execute them early from the unscheduled state broadcast.
+            if (state.reason === 'heartbeat' || state.reason === undefined) {
+              syncWorkerRef.current.postMessage({ type: 'master-state', state });
+            }
+          } else if (!(isHost && state.reason === 'heartbeat' && state.updatedBy === selfId)) {
+            void applyRemotePlayback(state);
+          }
+        };
+        socket.on('room:playback', handleAuthoritativePlayback);
+        socket.on('playback:state', handleAuthoritativePlayback);
+        socket.on('playback:schedule', (schedule: ScheduledPlaybackEvent) => {
+          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
+            syncWorkerRef.current.postMessage({ type: 'schedule', event: schedule });
+          } else {
+            void applyRemotePlayback({
+              isPlaying: schedule.action === 'play' || (schedule.action === 'seek' && authoritativePlaybackRef.current?.isPlaying === true),
+              position: schedule.position,
+              updatedAt: schedule.scheduledAt,
+              updatedBy: schedule.updatedBy
+            });
+          }
+        });
         socket.on('room:chat', (message: ChatMessage) => {
           setMessages(current => current.some(item => item.id === message.id) ? current : [...current.slice(-99), message]);
         });
-        socket.on('media:updated', (media: Media) => setRoom(current => current ? { ...current, media } : current));
+        socket.on('media:updated', (media: Media) => {
+          setRoom(current => current ? { ...current, media, pauseTimer: null, pauseVote: null } : current);
+          setPauseTimer(null);
+          setPauseVote(null);
+        });
         socket.on('host:token', (payload: { token: string }) => storeRoomToken(roomId, payload.token));
         socket.on('room:kicked', (payload: { reason?: string }) => {
           setError(payload?.reason || 'Tu as été retiré du salon.');
@@ -650,10 +758,10 @@ const WatchPartyPage: React.FC = () => {
           clearRoomToken(roomId);
           navigate('/watchparty');
         });
-        socket.on('room:closed', () => {
-          setError('Ce salon a été fermé.');
-          socket.disconnect();
+        socket.on('room:closed', (payload?: { reason?: string }) => {
+          setError(payload?.reason || 'Ce salon a été fermé.');
           clearRoomToken(roomId);
+          socket.disconnect();
           navigate('/watchparty');
         });
         socket.on('error', (payload: { message?: string }) => setError(payload?.message || 'Erreur de connexion au salon.'));
@@ -709,6 +817,145 @@ const WatchPartyPage: React.FC = () => {
   const isCoHost = Boolean(selfId && room?.coHosts?.includes(selfId));
   const canControl = isHost || isCoHost || room?.controlMode === 'democratic';
   const hasPendingControlRequest = Boolean(selfId && controlRequests.some(request => request.participantId === selfId));
+  const allParticipantsReady = participants.length > 1 && participants.every(person => readyState[person.id] === true);
+  const countdownSeconds = countdownTarget === null
+    ? null
+    : Math.max(0, Math.ceil((countdownTarget - countdownNow) / 1000));
+
+  const applySyncCommand = useCallback((command: {
+    action: 'play' | 'pause' | 'seek' | 'setPlaybackRate' | 'resetPlaybackRate';
+    value?: number;
+  }) => {
+    applyingRemoteRef.current = true;
+    if (remoteCommandTimeoutRef.current !== null) window.clearTimeout(remoteCommandTimeoutRef.current);
+    remoteCommandTimeoutRef.current = window.setTimeout(() => {
+      applyingRemoteRef.current = false;
+      remoteCommandTimeoutRef.current = null;
+    }, 1300);
+
+    const isVidRift = roomRef.current?.media.playbackType === 'vidrift';
+    const target = vidriftFrameRef.current?.contentWindow;
+    const video = videoRef.current;
+    if (isVidRift && target) {
+      if (command.action === 'play') target.postMessage({ type: 'vidrift:play' }, VIDRIFT_ORIGIN);
+      if (command.action === 'pause') target.postMessage({ type: 'vidrift:pause' }, VIDRIFT_ORIGIN);
+      if (command.action === 'seek' && Number.isFinite(command.value)) {
+        target.postMessage({ type: 'vidrift:resume', currentTime: Math.max(0, command.value as number) }, VIDRIFT_ORIGIN);
+      }
+      if (command.action === 'setPlaybackRate' && Number.isFinite(command.value)) {
+        target.postMessage({ type: 'vidrift:set', speed: command.value }, VIDRIFT_ORIGIN);
+      }
+      if (command.action === 'resetPlaybackRate') {
+        target.postMessage({ type: 'vidrift:set', speed: 1 }, VIDRIFT_ORIGIN);
+      }
+      return;
+    }
+    if (!video) return;
+    if (command.action === 'play') void video.play().catch(() => setRequiresUserGesture(true));
+    if (command.action === 'pause') video.pause();
+    if (command.action === 'seek' && Number.isFinite(command.value)) video.currentTime = Math.max(0, command.value as number);
+    if (command.action === 'setPlaybackRate' && Number.isFinite(command.value)) video.playbackRate = command.value as number;
+    if (command.action === 'resetPlaybackRate') video.playbackRate = 1;
+  }, []);
+
+  useEffect(() => {
+    if (!roomId || !room) return;
+    const worker = new Worker(new URL('../workers/watchpartySync.worker.ts', import.meta.url), { type: 'module' });
+    syncWorkerRef.current = worker;
+    worker.onmessage = (event: MessageEvent) => {
+      const message = event.data as {
+        type: 'status' | 'engine' | 'command';
+        status?: 'classic' | 'calibrating' | 'perfect' | 'adjusting' | 'unstable';
+        implementation?: 'js' | 'wasm';
+        action?: 'play' | 'pause' | 'seek' | 'setPlaybackRate' | 'resetPlaybackRate';
+        value?: number;
+      };
+      if (message.type === 'status' && message.status) setSyncStatus(message.status);
+      if (message.type === 'engine' && message.implementation) setSyncEngine(message.implementation);
+      if (message.type === 'command' && message.action) {
+        applySyncCommand({ action: message.action, value: message.value });
+      }
+    };
+    worker.postMessage({
+      type: 'init',
+      mode: room.syncMode,
+      state: authoritativePlaybackRef.current || room.playbackState || null
+    });
+    return () => {
+      worker.terminate();
+      if (remoteCommandTimeoutRef.current !== null) {
+        window.clearTimeout(remoteCommandTimeoutRef.current);
+        remoteCommandTimeoutRef.current = null;
+      }
+      applyingRemoteRef.current = false;
+      if (syncWorkerRef.current === worker) syncWorkerRef.current = null;
+    };
+  }, [roomId, room?.id]);
+
+  useEffect(() => {
+    if (!roomId || !room) return;
+    syncWorkerRef.current?.postMessage({ type: 'set-mode', mode: room.syncMode });
+    setSyncStatus(room.syncMode === 'pro' ? 'calibrating' : 'classic');
+  }, [roomId, room?.syncMode]);
+
+  useEffect(() => {
+    if (!roomId || !room || room.syncMode !== 'pro' || isHost || socketState !== 'connected') {
+      if (syncTickTimerRef.current !== null) {
+        window.clearInterval(syncTickTimerRef.current);
+        syncTickTimerRef.current = null;
+      }
+      return;
+    }
+    if (!syncWorkerRef.current) return;
+
+    const tick = () => {
+      const now = performance.now();
+      if (roomRef.current?.media.playbackType === 'vidrift') {
+        const snapshot = vidriftPlaybackRef.current;
+        const elapsed = !snapshot.paused && snapshot.updatedAt > 0
+          ? Math.max(0, now - snapshot.updatedAt) / 1000
+          : 0;
+        syncWorkerRef.current?.postMessage({
+          type: 'local-state',
+          state: {
+            now: Date.now(),
+            currentTime: Math.max(0, snapshot.currentTime + elapsed * snapshot.playbackRate),
+            isPlaying: !snapshot.paused,
+            playbackRate: snapshot.playbackRate
+          }
+        });
+      } else {
+        const video = videoRef.current;
+        if (!video) return;
+        syncWorkerRef.current?.postMessage({
+          type: 'local-state',
+          state: {
+            now: Date.now(),
+            currentTime: video.currentTime,
+            isPlaying: !video.paused,
+            playbackRate: video.playbackRate
+          }
+        });
+      }
+    };
+    syncTickTimerRef.current = window.setInterval(tick, 250);
+    return () => {
+      if (syncTickTimerRef.current !== null) {
+        window.clearInterval(syncTickTimerRef.current);
+        syncTickTimerRef.current = null;
+      }
+    };
+  }, [roomId, room?.syncMode, room?.media?.src, room?.media?.playbackType, isHost, socketState]);
+
+  useEffect(() => {
+    if (countdownTarget === null && !pauseTimer && !pauseVote) return;
+    const timer = window.setInterval(() => setCountdownNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [countdownTarget, pauseTimer?.endTime, pauseVote?.endTime]);
+
+  useEffect(() => {
+    if (room?.countdown?.startAt) setCountdownTarget(room.countdown.startAt);
+  }, [room?.countdown?.startAt]);
 
   useEffect(() => {
     if (!canControl && !vidRiftActivationOpen) vidriftFrameRef.current?.blur();
@@ -721,10 +968,18 @@ const WatchPartyPage: React.FC = () => {
     // host is the periodic clock source. Otherwise each viewer's heartbeat
     // competes with the others and makes the shared timeline oscillate.
     if (reason === 'heartbeat' && !isHost) return;
+    if (reason === 'heartbeat') lastHeartbeatRef.current = Date.now();
     if (roomRef.current?.media.playbackType === 'vidrift') {
+      const snapshot = vidriftPlaybackRef.current;
+      const now = performance.now();
+      const elapsed = !snapshot.paused && snapshot.updatedAt > 0
+        ? Math.max(0, now - snapshot.updatedAt) / 1000
+        : 0;
+      const position = Math.max(0, snapshot.currentTime + elapsed * snapshot.playbackRate);
+      vidriftPlaybackRef.current = { ...snapshot, currentTime: position, updatedAt: now };
       socket.emit('playback:update', {
-        isPlaying: !vidriftPlaybackRef.current.paused,
-        position: Number.isFinite(vidriftPlaybackRef.current.currentTime) ? vidriftPlaybackRef.current.currentTime : 0,
+        isPlaying: !snapshot.paused,
+        position,
         reason,
       });
       return;
@@ -737,6 +992,12 @@ const WatchPartyPage: React.FC = () => {
       reason,
     });
   }, [canControl, isHost]);
+
+  useEffect(() => {
+    if (!roomId || !isHost || socketState !== 'connected') return;
+    const heartbeat = window.setInterval(() => sendPlayback('heartbeat'), 1000);
+    return () => window.clearInterval(heartbeat);
+  }, [roomId, isHost, socketState, sendPlayback]);
 
   const handleTimeUpdate = () => {
     const now = Date.now();
@@ -808,6 +1069,7 @@ const WatchPartyPage: React.FC = () => {
         paused?: boolean;
         volume?: number;
         muted?: boolean;
+        speed?: number;
         season?: number;
         episode?: number;
       };
@@ -836,7 +1098,12 @@ const WatchPartyPage: React.FC = () => {
         // state/progress message, otherwise metadata changes can look like seeks.
         const positionChanged = Math.abs(nextTime - expectedTime) > 1.5;
 
-        vidriftPlaybackRef.current = { currentTime: nextTime, paused: nextPaused, updatedAt: now };
+        vidriftPlaybackRef.current = {
+          currentTime: nextTime,
+          paused: nextPaused,
+          updatedAt: now,
+          playbackRate: Number.isFinite(data.speed) ? Number(data.speed) : previous.playbackRate
+        };
 
         if (!canControl && vidRiftActivationOpen && (pauseChanged || positionChanged)) {
           const authoritative = authoritativePlaybackRef.current;
@@ -866,6 +1133,9 @@ const WatchPartyPage: React.FC = () => {
           vidriftPlaybackRef.current.currentTime = currentTime;
           vidriftPlaybackRef.current.updatedAt = performance.now();
         }
+        if (typeof data.speed === 'number' && Number.isFinite(data.speed)) {
+          vidriftPlaybackRef.current.playbackRate = data.speed;
+        }
         if (isHost && Date.now() - lastHeartbeatRef.current > 2500) {
           lastHeartbeatRef.current = Date.now();
           sendPlayback('heartbeat');
@@ -878,6 +1148,9 @@ const WatchPartyPage: React.FC = () => {
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = data.type === 'vidrift:paused';
         vidriftPlaybackRef.current.updatedAt = performance.now();
+        if (typeof data.speed === 'number' && Number.isFinite(data.speed)) {
+          vidriftPlaybackRef.current.playbackRate = data.speed;
+        }
         // A one-time user activation may change local playback. Immediately
         // restore the server snapshot, then put the guest lock back in place.
         if (!canControl && wasPaused !== vidriftPlaybackRef.current.paused && vidRiftActivationOpen) {
@@ -952,9 +1225,42 @@ const WatchPartyPage: React.FC = () => {
     event.preventDefault();
     const text = chatInput.trim();
     if (!text || !socketRef.current?.connected) return;
-    socketRef.current.emit('chat:message', { text });
+    socketRef.current.emit('chat:message', { text, replyToId: chatReply?.id });
     setChatInput('');
+    setChatReply(null);
   };
+
+  const sendReaction = (emoji: string) => {
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit('reaction:send', { emoji });
+  };
+
+  const toggleReady = () => {
+    if (!socketRef.current?.connected || countdownTarget !== null) return;
+    socketRef.current.emit('ready:toggle');
+  };
+
+  const startTogether = () => {
+    if (!isHost || !allParticipantsReady) return;
+    socketRef.current?.emit('room:startCountdown');
+  };
+
+  const voteForPause = (vote: boolean) => {
+    socketRef.current?.emit('vote:cast', { vote });
+  };
+
+  const filteredPublicRooms = publicRooms
+    .filter(publicRoom => {
+      const normalizedQuery = publicQuery.trim().toLocaleLowerCase('fr');
+      if (normalizedQuery && !`${publicRoom.title} ${publicRoom.mediaTitle} ${publicRoom.hostNickname}`.toLocaleLowerCase('fr').includes(normalizedQuery)) return false;
+      if (publicTypeFilter === 'movie') return publicRoom.mediaType === 'movie';
+      if (publicTypeFilter === 'tv') return publicRoom.mediaType === 'tv' && !publicRoom.isAnime;
+      if (publicTypeFilter === 'anime') return publicRoom.mediaType === 'tv' && publicRoom.isAnime === true;
+      return true;
+    })
+    .sort((a, b) => publicSort === 'popular'
+      ? b.participantCount - a.participantCount || b.createdAt - a.createdAt
+      : b.createdAt - a.createdAt);
 
   if (roomId) {
     return (
@@ -1060,6 +1366,22 @@ const WatchPartyPage: React.FC = () => {
                       </button>
                     </div>
                   )}
+                  {countdownSeconds !== null && countdownSeconds > 0 && (
+                    <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/55 backdrop-blur-sm">
+                      <p className="text-xs font-bold uppercase tracking-[.25em] text-white/65">Départ collectif dans</p>
+                      <span className="mt-2 text-7xl font-black tabular-nums text-white drop-shadow-2xl">{countdownSeconds}</span>
+                    </div>
+                  )}
+                  {reactions.length > 0 && (
+                    <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden">
+                      {reactions.map((reaction, index) => (
+                        <div key={reaction.id} className="absolute bottom-8 animate-bounce text-4xl drop-shadow-lg" style={{ left: `${12 + ((index * 19) % 76)}%`, animationDuration: '1.4s' }}>
+                          <span>{reaction.emoji}</span>
+                          <span className="mt-1 block max-w-24 truncate rounded-full bg-black/70 px-2 py-0.5 text-center text-[9px] font-semibold text-white/80">{reaction.senderNickname}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-4 py-3">
                   <div className="flex min-w-[220px] flex-1 items-center gap-3" aria-label="Réglage de volume personnel">
@@ -1093,7 +1415,48 @@ const WatchPartyPage: React.FC = () => {
                     </span>
                     <span className="hidden text-[11px] text-white/35 sm:inline">Volume perso.</span>
                   </div>
-                  <p className="text-xs text-white/45">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'} · {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}</p>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-xs text-white/65">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'} · {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}</p>
+                    {room.syncMode === 'pro' && (
+                      <p className="text-[10px] text-white/35">
+                        {syncStatus === 'perfect' ? 'Synchronisation stable' : syncStatus === 'adjusting' ? 'Correction du décalage…' : syncStatus === 'unstable' ? 'Rattrapage en cours…' : 'Calibration…'}
+                        {' · '}Moteur {syncEngine === 'wasm' ? 'WASM' : 'JS'}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(['😂', '❤️', '🔥', '😱', '👏', '🍿'] as const).map(emoji => (
+                      <button key={emoji} type="button" onClick={() => sendReaction(emoji)} disabled={socketState !== 'connected'} className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.045] text-base transition hover:bg-white/[0.12] disabled:opacity-40" aria-label={`Envoyer la réaction ${emoji}`}>
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleReady}
+                    disabled={socketState !== 'connected' || countdownTarget !== null}
+                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-40 ${readyState[selfId] ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/[0.05] text-white/65 hover:bg-white/10'}`}
+                  >
+                    {readyState[selfId] ? '✓ Prêt' : 'Je suis prêt'}
+                  </button>
+                  {isHost && (
+                    <button type="button" onClick={startTogether} disabled={!allParticipantsReady || countdownTarget !== null || socketState !== 'connected'} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">
+                      {countdownTarget !== null ? 'Départ en cours…' : `Lancer ensemble · ${participants.filter(person => readyState[person.id]).length}/${participants.length}`}
+                    </button>
+                  )}
+                  {isHost && (
+                    <button type="button" onClick={() => { if (pauseTimer) socketRef.current?.emit('pause:cancel'); else socketRef.current?.emit('pause:start', { duration: 60 }); }} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/65 transition hover:bg-white/10">
+                      {pauseTimer ? 'Annuler la pause' : 'Pause 60 s'}
+                    </button>
+                  )}
+                  {!canControl && !pauseVote && (
+                    <button type="button" onClick={() => socketRef.current?.emit('vote:request', { duration: 60 })} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/55 transition hover:bg-white/10">
+                      Demander une pause
+                    </button>
+                  )}
+                  {countdownTarget !== null && isHost && (
+                    <button type="button" onClick={() => socketRef.current?.emit('room:cancelCountdown')} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs text-white/60 hover:bg-white/10">Annuler le départ</button>
+                  )}
                   {!canControl && room.controlMode === 'host-only' && (
                     <button
                       onClick={() => {
@@ -1108,6 +1471,14 @@ const WatchPartyPage: React.FC = () => {
                   )}
                   {controlNotice && (
                     <p className="w-full text-right text-[11px] text-white/55" role="status">{controlNotice}</p>
+                  )}
+                  {isHost && (
+                    <button
+                      onClick={() => socketRef.current?.emit('sync:setMode', { mode: room.syncMode === 'pro' ? 'classic' : 'pro' })}
+                      className="text-xs font-semibold text-red-300 transition hover:text-red-200"
+                    >
+                      {room.syncMode === 'pro' ? 'Désactiver Sync Pro' : 'Activer Sync Pro'}
+                    </button>
                   )}
                   {isHost && (
                     <button
@@ -1134,18 +1505,79 @@ const WatchPartyPage: React.FC = () => {
                     ))}
                   </section>
                 )}
+                {pauseVote && (
+                  <section className={`${panelClass} space-y-3 p-4`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <h2 className="text-sm font-bold">Vote pour une pause</h2>
+                      <span className="text-[10px] text-white/40">{Math.max(0, Math.ceil((pauseVote.endTime - countdownNow) / 1000))} s</span>
+                    </div>
+                    <p className="text-xs text-white/50">{pauseVote.requestedByNickname} propose une pause de {pauseVote.requestedDuration} secondes.</p>
+                    <p className="text-xs tabular-nums text-white/65">👍 {pauseVote.yesVotes || 0} · 👎 {pauseVote.noVotes || 0} · {pauseVote.totalVotes || 0}/{pauseVote.totalParticipants}</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => voteForPause(true)} className="flex-1 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25">Voter oui</button>
+                      <button type="button" onClick={() => voteForPause(false)} className="flex-1 rounded-lg bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20">Voter non</button>
+                    </div>
+                  </section>
+                )}
+                {pauseTimer && (
+                  <section className={`${panelClass} flex items-center justify-between gap-3 p-4`}>
+                    <div>
+                      <p className="text-sm font-bold">Pause collective</p>
+                      <p className="mt-1 text-xs text-white/45">{pauseTimer.resumeAfterPause === false ? 'La lecture était déjà en pause.' : 'Reprise automatique à la fin du minuteur.'}</p>
+                    </div>
+                    <span className="text-lg font-black tabular-nums text-amber-300">{Math.max(0, Math.ceil((pauseTimer.endTime - countdownNow) / 1000))} s</span>
+                  </section>
+                )}
+                {isHost && (
+                  <section className={`${panelClass} space-y-4 p-4`}>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-bold">Gérer la salle</h2>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">Hôte</span>
+                    </div>
+                    <label className="flex cursor-pointer items-center justify-between gap-3">
+                      <span>
+                        <span className="block text-xs font-semibold text-white/80">Salle publique</span>
+                        <span className="block text-[10px] text-white/35">Visible dans la galerie Watch Party</span>
+                      </span>
+                      <input type="checkbox" checked={room.isPublic} onChange={event => socketRef.current?.emit('room:setVisibility', { isPublic: event.target.checked })} className="h-4 w-4 accent-red-500" />
+                    </label>
+                    <label className="flex cursor-pointer items-center justify-between gap-3">
+                      <span>
+                        <span className="block text-xs font-semibold text-white/80">Discussion</span>
+                        <span className="block text-[10px] text-white/35">Autoriser les messages des spectateurs</span>
+                      </span>
+                      <input type="checkbox" checked={room.chatEnabled !== false} onChange={event => socketRef.current?.emit('room:toggleChat', { enabled: event.target.checked })} className="h-4 w-4 accent-red-500" />
+                    </label>
+                    <label className="block space-y-1.5">
+                      <span className="text-xs font-semibold text-white/80">Capacité maximale</span>
+                      <select value={room.maxParticipants} onChange={event => socketRef.current?.emit('room:setMaxParticipants', { max: Number(event.target.value) })} className={inputClass}>
+                        {[2,4,6,8,10,15,20,30,50].filter(value => value >= participants.length).map(value => <option key={value} value={value}>{value} personnes</option>)}
+                      </select>
+                    </label>
+                    <button type="button" onClick={() => { if (window.confirm('Fermer définitivement cette Watch Party ?')) socketRef.current?.emit('room:close'); }} className="w-full rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/15">
+                      Fermer la salle
+                    </button>
+                  </section>
+                )}
                 <section className={`${panelClass} p-4`}>
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-red-400" /> Participants</h2>
-                    <span className="text-xs text-white/40">{participants.length}/{room.maxParticipants}</span>
+                    <span className="text-xs text-white/40">{participants.filter(person => readyState[person.id]).length} prêts · {participants.length}/{room.maxParticipants}</span>
                   </div>
                   <div className="space-y-2">
                     {participants.map(person => (
                       <div key={person.id} className="flex items-center gap-2 rounded-lg bg-white/[0.035] px-3 py-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-bold">{person.nickname.slice(0, 1).toUpperCase()}</span>
                         <span className="min-w-0 flex-1 truncate text-sm text-white/85">{person.nickname}{person.id === selfId ? ' (toi)' : ''}</span>
+                        <span className={`text-[10px] ${readyState[person.id] ? 'text-emerald-300' : 'text-white/25'}`}>{readyState[person.id] ? 'Prêt' : 'En attente'}</span>
                         {person.isHost && <span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Hôte</span>}
                         {!person.isHost && room.coHosts?.includes(person.id) && <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-300">Contrôle</span>}
+                        {isHost && !person.isHost && (
+                          <>
+                            <button type="button" onClick={() => socketRef.current?.emit('host:transfer', { participantId: person.id })} className="shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-200 transition hover:bg-amber-500/20" title="Transférer le rôle d'hôte">Passer hôte</button>
+                            <button type="button" onClick={() => socketRef.current?.emit('participant:kick', { participantId: person.id })} className="shrink-0 rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-300 transition hover:bg-red-500/20" title="Retirer ce participant">Exclure</button>
+                          </>
+                        )}
                         {isHost && room.controlMode === 'host-only' && !person.isHost && room.coHosts?.includes(person.id) && (
                           <button
                             type="button"
@@ -1163,19 +1595,45 @@ const WatchPartyPage: React.FC = () => {
                   <h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><MessageCircle className="h-4 w-4 text-red-400" /> Discussion</h2>
                   <div className="mb-3 flex-1 space-y-3 overflow-y-auto pr-1">
                     {messages.length === 0 ? <p className="py-8 text-center text-xs text-white/35">La discussion commence ici.</p> : messages.map(message => (
-                      <div key={message.id} className={message.type === 'system' ? 'text-center text-[11px] text-white/35' : ''}>
-                        {message.type === 'system' ? message.text : (
+                      <div key={message.id} className={message.type === 'system' ? 'text-center text-[11px] text-white/35' : 'group rounded-lg px-2 py-1.5 transition hover:bg-white/[0.025]'}>
+                        {message.type === 'system' ? message.text : message.deleted ? (
+                          <p className="text-xs italic text-white/30">Message supprimé par la modération.</p>
+                        ) : (
                           <>
-                            <p className="mb-0.5 text-[11px] font-semibold text-white/55">{message.senderNickname}</p>
+                            {message.replyTo && (
+                              <div className="mb-1 border-l-2 border-red-400/50 pl-2">
+                                <p className="text-[10px] font-semibold text-white/45">{message.replyTo.senderNickname}</p>
+                                <p className="line-clamp-1 text-[10px] text-white/35">{message.replyTo.text}</p>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="mb-0.5 text-[11px] font-semibold text-white/55">{message.senderNickname}</p>
+                              <div className="flex items-center gap-2 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                                <button type="button" onClick={() => setChatReply(message)} className="text-[10px] font-semibold text-white/45 hover:text-red-300">Répondre</button>
+                                {isHost && <button type="button" onClick={() => socketRef.current?.emit('message:delete', { messageId: message.id })} className="text-[10px] font-semibold text-red-300/70 hover:text-red-300">Supprimer</button>}
+                              </div>
+                            </div>
                             <p className="break-words text-sm leading-relaxed text-white/85">{message.text}</p>
                           </>
                         )}
                       </div>
                     ))}
                   </div>
+                  {chatReply && (
+                    <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border-l-2 border-red-400 bg-white/[0.035] px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-red-300">Réponse à {chatReply.senderNickname}</p>
+                        <p className="truncate text-xs text-white/50">{chatReply.text}</p>
+                      </div>
+                      <button type="button" onClick={() => setChatReply(null)} className="text-xs text-white/45 hover:text-white">Annuler</button>
+                    </div>
+                  )}
+                  {room.chatEnabled === false && !canControl && (
+                    <p className="mb-2 text-center text-[11px] text-amber-200/70">La discussion est désactivée par l’hôte.</p>
+                  )}
                   <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/[0.07] pt-3">
-                    <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Écrire un message…" maxLength={500} className={inputClass} />
-                    <button type="submit" disabled={!chatInput.trim() || socketState !== 'connected'} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-40" aria-label="Envoyer"><Send className="h-4 w-4" /></button>
+                    <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder={room.chatEnabled === false && !canControl ? 'Discussion désactivée' : 'Écrire un message…'} maxLength={500} className={inputClass} disabled={room.chatEnabled === false && !canControl} />
+                    <button type="submit" disabled={!chatInput.trim() || socketState !== 'connected' || (room.chatEnabled === false && !canControl)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-40" aria-label="Envoyer"><Send className="h-4 w-4" /></button>
                   </form>
                 </section>
               </aside>
@@ -1239,9 +1697,40 @@ const WatchPartyPage: React.FC = () => {
       )}
 
       <section>
-        <div className="mb-7 flex items-center gap-2.5">
-          <h2 className="text-base font-extrabold tracking-tight">Salles publiques</h2>
-          <span className="text-sm font-semibold text-white/45">{isLoadingRooms ? '…' : publicRooms.length}</span>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-base font-extrabold tracking-tight">Salles publiques</h2>
+            <span className="text-sm font-semibold text-white/45">{isLoadingRooms ? '…' : filteredPublicRooms.length}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={publicQuery}
+              onChange={event => setPublicQuery(event.target.value)}
+              placeholder="Rechercher une salle, un film, un hôte…"
+              className="h-9 w-64 max-w-full rounded-lg border border-white/10 bg-white/[0.035] px-3 text-xs text-white outline-none placeholder:text-white/30 focus:border-red-500/50"
+            />
+            <select value={publicSort} onChange={event => setPublicSort(event.target.value as 'recent' | 'popular')} className="h-9 rounded-lg border border-white/10 bg-[#171717] px-3 text-xs text-white/75">
+              <option value="recent">Plus récentes</option>
+              <option value="popular">Plus populaires</option>
+            </select>
+          </div>
+        </div>
+        <div className="mb-6 flex flex-wrap gap-2">
+          {([
+            ['all', 'Tout'],
+            ['movie', 'Films'],
+            ['tv', 'Séries'],
+            ['anime', 'Anime'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPublicTypeFilter(value)}
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${publicTypeFilter === value ? 'bg-red-600 text-white' : 'border border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {isLoadingRooms ? (
@@ -1249,20 +1738,22 @@ const WatchPartyPage: React.FC = () => {
             <Loader2 className="h-5 w-5 animate-spin" />
             Chargement des salles publiques…
           </div>
-        ) : publicRooms.length === 0 ? (
+        ) : filteredPublicRooms.length === 0 ? (
           <div className="flex min-h-64 max-w-2xl flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.015] px-6 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05]">
               <Users className="h-6 w-6 text-white/35" />
             </div>
-            <h3 className="text-base font-bold">Aucune salle publique pour le moment</h3>
-            <p className="mt-2 max-w-md text-sm leading-6 text-white/40">Crée la première salle et invite tes amis à te rejoindre.</p>
-            <button type="button" onClick={openCreateDialog} className={`${buttonClass} mt-5`}>
-              <Plus className="h-4 w-4" /> Créer une salle
-            </button>
+            <h3 className="text-base font-bold">{publicRooms.length === 0 ? 'Aucune salle publique pour le moment' : 'Aucune salle ne correspond à ta recherche'}</h3>
+            <p className="mt-2 max-w-md text-sm leading-6 text-white/40">{publicRooms.length === 0 ? 'Crée la première salle et invite tes amis à te rejoindre.' : 'Modifie les filtres ou essaie un autre titre.'}</p>
+            {publicRooms.length === 0 && (
+              <button type="button" onClick={openCreateDialog} className={`${buttonClass} mt-5`}>
+                <Plus className="h-4 w-4" /> Créer une salle
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,312px),312px))] gap-x-2.5 gap-y-7">
-            {publicRooms.map(publicRoom => (
+            {filteredPublicRooms.map(publicRoom => (
               <button
                 key={publicRoom.id}
                 type="button"
@@ -1292,7 +1783,7 @@ const WatchPartyPage: React.FC = () => {
                 </div>
                 <h3 className="mt-2.5 truncate text-[13px] font-semibold text-white/90 transition group-hover:text-white">{publicRoom.title}</h3>
                 <p className="mt-1 truncate text-[11px] text-white/45">Par {publicRoom.hostNickname || 'Hôte'}</p>
-                <p className="mt-1 truncate text-[11px] text-white/35">{publicRoom.mediaTitle || publicRoom.title}{publicRoom.mediaType === 'tv' ? ' · Série' : ' · Film'}</p>
+                <p className="mt-1 truncate text-[11px] text-white/35">{publicRoom.mediaTitle || publicRoom.title}{publicRoom.isAnime ? ' · Anime' : publicRoom.mediaType === 'tv' ? ' · Série' : ' · Film'} · {publicRoom.participantCount}/{publicRoom.maxParticipants} en ligne · Sync {publicRoom.syncMode === 'pro' ? 'Pro' : 'classique'}</p>
               </button>
             ))}
           </div>
