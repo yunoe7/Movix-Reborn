@@ -30,6 +30,8 @@ jobs:
         run: npm ci
       - name: Lint new VidRift integration components
         run: npx eslint src/components/VidRiftPlayer.tsx src/pages/AnimeRedirect.tsx
+      - name: Lint Watch Party integration
+        run: npx eslint src/components/ProfileMenu.tsx src/pages/WatchPartyPage.tsx
       - name: Build production bundle
         env:
           VITE_SITE_URL: https://movix.health
