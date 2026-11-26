@@ -343,14 +343,34 @@ const WatchPartyPage: React.FC = () => {
     }
   };
 
-  const leaveRoom = () => {
+  const leaveRoom = useCallback(() => {
     socketRef.current?.disconnect();
     socketRef.current = null;
     if (roomId) clearRoomToken(roomId);
     navigate('/watchparty');
-  };
+  }, [roomId, navigate]);
 
   const applyRemotePlayback = useCallback(async (state: { isPlaying: boolean; position: number }) => {
+    if (roomRef.current?.media.playbackType === 'vidrift') {
+      const target = vidriftFrameRef.current?.contentWindow;
+      if (!target) {
+        pendingPlaybackRef.current = state;
+        return;
+      }
+      applyingRemoteRef.current = true;
+      try {
+        if (Number.isFinite(state.position) && Math.abs(vidriftPlaybackRef.current.currentTime - state.position) > 1) {
+          target.postMessage({ type: 'vidrift:resume', currentTime: Math.max(0, state.position) }, VIDRIFT_ORIGIN);
+        }
+        target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
+        vidriftPlaybackRef.current.paused = !state.isPlaying;
+        vidriftPlaybackRef.current.currentTime = Math.max(0, state.position || 0);
+      } finally {
+        window.setTimeout(() => { applyingRemoteRef.current = false; }, 1200);
+      }
+      return;
+    }
+
     const video = videoRef.current;
     if (!video) {
       pendingPlaybackRef.current = state;
@@ -385,6 +405,7 @@ const WatchPartyPage: React.FC = () => {
           headers: { 'x-watchparty-token': token },
         });
         if (!active) return;
+        roomRef.current = result.room;
         setRoom(result.room);
         setParticipants(result.room.participants || []);
         if (result.room.playbackState) pendingPlaybackRef.current = result.room.playbackState;
@@ -410,11 +431,11 @@ const WatchPartyPage: React.FC = () => {
           setRoom(current => current ? { ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] } : current);
           setControlRequests(state.pendingRequests || []);
         });
+        socket.on('room:playback', applyRemotePlayback);
+        socket.on('playback:state', applyRemotePlayback);
         socket.on('room:chat', (message: ChatMessage) => {
           setMessages(current => current.some(item => item.id === message.id) ? current : [...current.slice(-99), message]);
         });
-        socket.on('room:playback', applyRemotePlayback);
-        socket.on('playback:state', applyRemotePlayback);
         socket.on('media:updated', (media: Media) => setRoom(current => current ? { ...current, media } : current));
         socket.on('host:token', (payload: { token: string }) => storeRoomToken(roomId, payload.token));
         socket.on('room:kicked', (payload: { reason?: string }) => {
@@ -473,16 +494,25 @@ const WatchPartyPage: React.FC = () => {
   const isHost = Boolean(selfId && room?.hostId === selfId);
   const canControl = isHost || Boolean(selfId && room?.coHosts?.includes(selfId)) || room?.controlMode === 'democratic';
 
-  const sendPlayback = (reason: 'play' | 'pause' | 'seek' | 'heartbeat') => {
-    const video = videoRef.current;
+  const sendPlayback = useCallback((reason: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended') => {
     const socket = socketRef.current;
-    if (!video || !socket || !socket.connected || !canControl || applyingRemoteRef.current) return;
+    if (!socket?.connected || !canControl || applyingRemoteRef.current) return;
+    if (roomRef.current?.media.playbackType === 'vidrift') {
+      socket.emit('playback:update', {
+        isPlaying: !vidriftPlaybackRef.current.paused,
+        position: Number.isFinite(vidriftPlaybackRef.current.currentTime) ? vidriftPlaybackRef.current.currentTime : 0,
+        reason,
+      });
+      return;
+    }
+    const video = videoRef.current;
+    if (!video) return;
     socket.emit('playback:update', {
       isPlaying: !video.paused,
       position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
       reason,
     });
-  };
+  }, [canControl]);
 
   const handleTimeUpdate = () => {
     const now = Date.now();
