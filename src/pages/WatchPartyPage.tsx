@@ -201,6 +201,128 @@ const WatchPartyPage: React.FC = () => {
     roomRef.current = room;
   }, [room]);
 
+  useEffect(() => {
+    const query = catalogQuery.trim();
+    if (query.length < 2 || !TMDB_API_KEY) {
+      setCatalogResults([]);
+      setIsSearchingCatalog(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setIsSearchingCatalog(true);
+      try {
+        const response = await axios.get('https://api.themoviedb.org/3/search/multi', {
+          params: {
+            api_key: TMDB_API_KEY,
+            query,
+            language: getTmdbLanguage(),
+            include_adult: false,
+            page: 1,
+          },
+          signal: controller.signal,
+        });
+        const results = (response.data?.results || []).filter((item: TmdbMedia & { media_type: string }) => (
+          (item.media_type === 'movie' || item.media_type === 'tv')
+          && item.poster_path
+          && Number.isFinite(item.id)
+        )) as TmdbMedia[];
+        setCatalogResults(results.slice(0, 24));
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setCatalogResults([]);
+          setError('La recherche du catalogue est indisponible pour le moment.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsSearchingCatalog(false);
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [catalogQuery]);
+
+  useEffect(() => {
+    if (!selectedMedia || selectedMedia.media_type !== 'tv') {
+      setSeasons([]);
+      setEpisodes([]);
+      setSelectedSeason(null);
+      setSelectedEpisode(null);
+      setIsLoadingSeasons(false);
+      setIsLoadingEpisodes(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoadingSeasons(true);
+    setSeasons([]);
+    setEpisodes([]);
+    setSelectedSeason(null);
+    setSelectedEpisode(null);
+    axios.get(`https://api.themoviedb.org/3/tv/${selectedMedia.id}`, {
+      params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() },
+      signal: controller.signal,
+    }).then(response => {
+      if (controller.signal.aborted) return;
+      const available = (response.data?.seasons || [])
+        .filter((season: TmdbSeason) => Number.isInteger(season.season_number) && season.season_number >= 0)
+        .sort((a: TmdbSeason, b: TmdbSeason) => a.season_number - b.season_number);
+      setSeasons(available);
+      const first = available.find((season: TmdbSeason) => season.season_number > 0) || available[0];
+      if (first) setSelectedSeason(first.season_number);
+      else setError('Aucune saison disponible pour cette série.');
+    }).catch(err => {
+      if (!controller.signal.aborted) setError('Impossible de charger les saisons de cette série.');
+    }).finally(() => {
+      if (!controller.signal.aborted) setIsLoadingSeasons(false);
+    });
+
+    return () => controller.abort();
+  }, [selectedMedia?.id, selectedMedia?.media_type]);
+
+  useEffect(() => {
+    if (!selectedMedia || selectedMedia.media_type !== 'tv' || selectedSeason === null) {
+      setEpisodes([]);
+      setSelectedEpisode(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoadingEpisodes(true);
+    setEpisodes([]);
+    setSelectedEpisode(null);
+    axios.get(`https://api.themoviedb.org/3/tv/${selectedMedia.id}/season/${selectedSeason}`, {
+      params: { api_key: TMDB_API_KEY, language: getTmdbLanguage() },
+      signal: controller.signal,
+    }).then(response => {
+      if (controller.signal.aborted) return;
+      const available = (response.data?.episodes || [])
+        .filter((episode: TmdbEpisode) => Number.isInteger(episode.episode_number) && episode.episode_number > 0)
+        .sort((a: TmdbEpisode, b: TmdbEpisode) => a.episode_number - b.episode_number);
+      setEpisodes(available);
+      if (available[0]) setSelectedEpisode(available[0].episode_number);
+      else setError('Aucun épisode disponible dans cette saison.');
+    }).catch(() => {
+      if (!controller.signal.aborted) setError('Impossible de charger les épisodes.');
+    }).finally(() => {
+      if (!controller.signal.aborted) setIsLoadingEpisodes(false);
+    });
+
+    return () => controller.abort();
+  }, [selectedMedia?.id, selectedMedia?.media_type, selectedSeason]);
+
+  const selectCatalogMedia = (media: TmdbMedia) => {
+    setSelectedMedia(media);
+    setCatalogQuery('');
+    setCatalogResults([]);
+    setError('');
+    const mediaTitle = media.title || media.name || 'Contenu';
+    setRoomName(current => !current || current.startsWith('Watch Party ·') ? `Watch Party · ${mediaTitle}` : current);
+  };
+
   const refreshPublicRooms = useCallback(async () => {
     setIsLoadingRooms(true);
     try {
