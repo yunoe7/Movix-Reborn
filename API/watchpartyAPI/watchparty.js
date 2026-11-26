@@ -255,7 +255,7 @@ const CACHE_DIR = path.join(__dirname, 'cache');
 const WATCHPARTY_ROOMS_FILE = path.join(CACHE_DIR, 'watchparty-rooms.json');
 const watchpartyRooms = new Map();
 // Allow a briefly disconnected host to reclaim the room before transferring ownership.
-const HOST_RECONNECT_GRACE_MS = 30_000;
+const HOST_RECONNECT_GRACE_MS = 5 * 60_000;
 const hostDisconnectTimers = new Map();
 
 async function ensureCacheDir() {
