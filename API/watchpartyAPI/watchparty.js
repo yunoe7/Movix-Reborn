@@ -584,6 +584,7 @@ watchpartyIO.on('connection', (socket) => {
     joinedAt: Date.now()
   };
   room.participants.push(participant);
+  room.readyState[socket.id] = false;
 
   // Emit room info + participants
   emitRoomInfo(roomId, room);
@@ -594,7 +595,13 @@ watchpartyIO.on('connection', (socket) => {
     coHosts: room.coHosts,
     pendingRequests: room.pendingControlRequests
   });
-  socket.emit('ready:state', room.readyState);
+  watchpartyIO.to(roomId).emit('ready:state', room.readyState);
+  if (room.countdown) {
+    if (room.countdownTimer) clearTimeout(room.countdownTimer);
+    room.countdown = null;
+    room.countdownTimer = null;
+    watchpartyIO.to(roomId).emit('room:countdownCancelled');
+  }
 
   // System join message
   const joinMessage = systemMessage(room, `${participant.nickname} a rejoint la Watch Party.`);
@@ -604,6 +611,21 @@ watchpartyIO.on('connection', (socket) => {
   socket.emit('room:playback', room.playbackState);
   if (room.pauseTimer && room.pauseTimer.endTime > Date.now()) {
     socket.emit('pause:timerStarted', room.pauseTimer);
+  }
+  if (room.pauseVote) {
+    socket.emit('vote:started', {
+      requestedBy: room.pauseVote.requestedBy,
+      requestedByNickname: room.pauseVote.requestedByNickname,
+      requestedDuration: room.pauseVote.requestedDuration,
+      endTime: room.pauseVote.endTime,
+      totalParticipants: room.pauseVote.totalParticipants
+    });
+    socket.emit('vote:update', {
+      yesVotes: Object.values(room.pauseVote.votes || {}).filter(Boolean).length,
+      noVotes: Object.values(room.pauseVote.votes || {}).filter(value => value === false).length,
+      totalVotes: Object.keys(room.pauseVote.votes || {}).length,
+      totalParticipants: room.participants.length
+    });
   }
   room.messages.filter(m => !m.deleted).forEach(m => socket.emit('room:chat', m));
 
