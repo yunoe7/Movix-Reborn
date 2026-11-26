@@ -1475,6 +1475,60 @@ const WatchPartyPage: React.FC = () => {
                     ))}
                   </section>
                 )}
+                {pauseVote && (
+                  <section className={`${panelClass} space-y-3 p-4`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <h2 className="text-sm font-bold">Vote pour une pause</h2>
+                      <span className="text-[10px] text-white/40">{Math.max(0, Math.ceil((pauseVote.endTime - countdownNow) / 1000))} s</span>
+                    </div>
+                    <p className="text-xs text-white/50">{pauseVote.requestedByNickname} propose une pause de {pauseVote.requestedDuration} secondes.</p>
+                    <p className="text-xs tabular-nums text-white/65">👍 {pauseVote.yesVotes || 0} · 👎 {pauseVote.noVotes || 0} · {pauseVote.totalVotes || 0}/{pauseVote.totalParticipants}</p>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => voteForPause(true)} className="flex-1 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25">Voter oui</button>
+                      <button type="button" onClick={() => voteForPause(false)} className="flex-1 rounded-lg bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/20">Voter non</button>
+                    </div>
+                  </section>
+                )}
+                {pauseTimer && (
+                  <section className={`${panelClass} flex items-center justify-between gap-3 p-4`}>
+                    <div>
+                      <p className="text-sm font-bold">Pause collective</p>
+                      <p className="mt-1 text-xs text-white/45">Reprise automatique à la fin du minuteur.</p>
+                    </div>
+                    <span className="text-lg font-black tabular-nums text-amber-300">{Math.max(0, Math.ceil((pauseTimer.endTime - countdownNow) / 1000))} s</span>
+                  </section>
+                )}
+                {isHost && (
+                  <section className={`${panelClass} space-y-4 p-4`}>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-sm font-bold">Gérer la salle</h2>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">Hôte</span>
+                    </div>
+                    <label className="flex cursor-pointer items-center justify-between gap-3">
+                      <span>
+                        <span className="block text-xs font-semibold text-white/80">Salle publique</span>
+                        <span className="block text-[10px] text-white/35">Visible dans la galerie Watch Party</span>
+                      </span>
+                      <input type="checkbox" checked={room.isPublic} onChange={event => socketRef.current?.emit('room:setVisibility', { isPublic: event.target.checked })} className="h-4 w-4 accent-red-500" />
+                    </label>
+                    <label className="flex cursor-pointer items-center justify-between gap-3">
+                      <span>
+                        <span className="block text-xs font-semibold text-white/80">Discussion</span>
+                        <span className="block text-[10px] text-white/35">Autoriser les messages des spectateurs</span>
+                      </span>
+                      <input type="checkbox" checked={room.chatEnabled !== false} onChange={event => socketRef.current?.emit('room:toggleChat', { enabled: event.target.checked })} className="h-4 w-4 accent-red-500" />
+                    </label>
+                    <label className="block space-y-1.5">
+                      <span className="text-xs font-semibold text-white/80">Capacité maximale</span>
+                      <select value={room.maxParticipants} onChange={event => socketRef.current?.emit('room:setMaxParticipants', { max: Number(event.target.value) })} className={inputClass}>
+                        {[2,4,6,8,10,15,20,30,50].filter(value => value >= participants.length).map(value => <option key={value} value={value}>{value} personnes</option>)}
+                      </select>
+                    </label>
+                    <button type="button" onClick={() => { if (window.confirm('Fermer définitivement cette Watch Party ?')) socketRef.current?.emit('room:close'); }} className="w-full rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/15">
+                      Fermer la salle
+                    </button>
+                  </section>
+                )}
                 <section className={`${panelClass} p-4`}>
                   <div className="mb-3 flex items-center justify-between">
                     <h2 className="flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-red-400" /> Participants</h2>
