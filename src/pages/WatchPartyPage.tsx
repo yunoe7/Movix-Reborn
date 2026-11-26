@@ -1,10 +1,10 @@
-import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import Hls from 'hls.js';
 import {
-  ArrowLeft, Check, Copy, Film, Globe2, KeyRound, LoaderCircle, LockKeyhole,
-  LogOut, MessageCircle, Play, RefreshCw, Send, Users, Video, X,
+  ArrowLeft, Check, Copy, Film, Globe2, KeyRound, LoaderCircle,
+  MessageCircle, Play, RefreshCw, Send, Users, Video, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
 
@@ -109,7 +109,6 @@ const WatchPartyPage: React.FC = () => {
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -525,7 +524,6 @@ const WatchPartyPage: React.FC = () => {
       </div>
 
       {error && <div className="mb-5 flex items-start justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"><span>{error}</span><button onClick={() => setError('')} aria-label="Fermer"><X className="h-4 w-4" /></button></div>}
-      {success && <div className="mb-5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">{success}</div>}
 
       <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(330px,.8fr)]">
         <section className={`${panelClass} p-5 sm:p-6`}>
