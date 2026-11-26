@@ -719,13 +719,15 @@ const WatchPartyPage: React.FC = () => {
         });
         const handleAuthoritativePlayback = (state: PlaybackSnapshot) => {
           authoritativePlaybackRef.current = state;
-          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current && !isHost) {
+          const activeSocketId = socket.id;
+          const activeIsHost = Boolean(activeSocketId && roomRef.current?.hostId === activeSocketId);
+          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current && !activeIsHost) {
             // Explicit actions arrive with a scheduled event; do not make the
             // worker execute them early from the unscheduled state broadcast.
             if (state.reason === 'heartbeat' || state.reason === undefined) {
               syncWorkerRef.current.postMessage({ type: 'master-state', state });
             }
-          } else if (!(isHost && state.reason === 'heartbeat' && state.updatedBy === selfId)) {
+          } else if (!(activeIsHost && state.reason === 'heartbeat' && state.updatedBy === activeSocketId)) {
             void applyRemotePlayback(state);
           }
         };
