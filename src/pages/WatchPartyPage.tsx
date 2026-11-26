@@ -8,7 +8,7 @@ import {
   ArrowLeft, Check, Copy, Film, Globe2, KeyRound, Loader2, LockKeyhole,
   MessageCircle, Play, Plus, RefreshCw, Send, Users, Volume2, VolumeX, X,
 } from 'lucide-react';
-import { clearRoomToken, getRoomToken, storeRoomToken } from '../utils/watchparty';
+import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
@@ -40,9 +40,32 @@ type ChatMessage = {
   senderId: string;
   senderNickname: string;
   text: string;
+  replyTo?: { id: string; senderNickname: string; text: string } | null;
   timestamp: number;
   type: 'chat' | 'system' | 'action';
+  deleted?: boolean;
 };
+
+type FloatingReaction = {
+  id: string;
+  emoji: string;
+  senderId: string;
+  senderNickname: string;
+  timestamp: number;
+};
+
+type PauseVote = {
+  requestedBy: string;
+  requestedByNickname: string;
+  requestedDuration: number;
+  endTime: number;
+  totalParticipants: number;
+  yesVotes?: number;
+  noVotes?: number;
+  totalVotes?: number;
+};
+
+type PauseTimer = { endTime: number; startedBy: string; duration: number };
 
 type Room = {
   id: string;
@@ -58,6 +81,10 @@ type Room = {
   media: Media;
   participants: Participant[];
   playbackState?: PlaybackSnapshot;
+  readyState?: Record<string, boolean>;
+  countdown?: { startAt: number; startedBy: string } | null;
+  pauseTimer?: PauseTimer | null;
+  pauseVote?: PauseVote | null;
 };
 
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
@@ -110,6 +137,7 @@ type PublicRoom = {
   mediaId?: string | null;
   mediaTitle?: string;
   hostNickname?: string;
+  isAnime?: boolean;
   seasonNumber?: number;
   episodeNumber?: number;
   createdAt: number;
@@ -182,7 +210,20 @@ const WatchPartyPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [controlRequests, setControlRequests] = useState<ControlRequest[]>([]);
+  const [readyState, setReadyState] = useState<Record<string, boolean>>({});
+  const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [chatReply, setChatReply] = useState<ChatMessage | null>(null);
+  const [pauseVote, setPauseVote] = useState<PauseVote | null>(null);
+  const [pauseTimer, setPauseTimer] = useState<PauseTimer | null>(null);
+  const [countdownTarget, setCountdownTarget] = useState<number | null>(null);
+  const [countdownNow, setCountdownNow] = useState(Date.now());
+  const [syncStatus, setSyncStatus] = useState<'classic' | 'calibrating' | 'perfect' | 'adjusting' | 'unstable'>('classic');
+  const [syncEngine, setSyncEngine] = useState<'js' | 'wasm'>('js');
+  const [publicQuery, setPublicQuery] = useState('');
+  const [publicTypeFilter, setPublicTypeFilter] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
+  const [publicSort, setPublicSort] = useState<'recent' | 'popular'>('recent');
+  const [roomSettingsOpen, setRoomSettingsOpen] = useState(false);
   const [selfId, setSelfId] = useState('');
   const [socketState, setSocketState] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [copyDone, setCopyDone] = useState(false);
@@ -203,6 +244,8 @@ const WatchPartyPage: React.FC = () => {
   const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const vidRiftActivationTimerRef = useRef<number | null>(null);
   const hasCustomLocalVolumeRef = useRef(false);
+  const syncWorkerRef = useRef<Worker | null>(null);
+  const syncTickTimerRef = useRef<number | null>(null);
   const clockOffsetRef = useRef(0);
   const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
   const pendingClockProbesRef = useRef(new Map<string, number>());
