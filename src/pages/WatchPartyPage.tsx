@@ -89,11 +89,8 @@ type Room = {
 
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
-type PlaybackSnapshot = {
-  isPlaying: boolean;
-  position: number;
-  updatedAt?: number;
-  updatedBy?: string | null;
+type PlaybackSnapshot = PlaybackState & {
+  reason?: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended';
 };
 
 type TmdbMedia = {
@@ -721,7 +718,11 @@ const WatchPartyPage: React.FC = () => {
           authoritativePlaybackRef.current = state;
           pendingPlaybackRef.current = state;
           if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
-            syncWorkerRef.current.postMessage({ type: 'master-state', state });
+            // Explicit actions arrive with a scheduled event; do not make the
+            // worker execute them early from the unscheduled state broadcast.
+            if (state.reason === 'heartbeat' || state.reason === undefined) {
+              syncWorkerRef.current.postMessage({ type: 'master-state', state });
+            }
           } else {
             void applyRemotePlayback(state);
           }
@@ -929,12 +930,6 @@ const WatchPartyPage: React.FC = () => {
   }, [roomId, room?.syncMode, room?.media?.src, isHost]);
 
   useEffect(() => {
-    if (!roomId || !isHost || socketState !== 'connected') return;
-    const heartbeat = window.setInterval(() => sendPlayback('heartbeat'), 1000);
-    return () => window.clearInterval(heartbeat);
-  }, [roomId, isHost, socketState, sendPlayback]);
-
-  useEffect(() => {
     if (countdownTarget === null) return;
     const timer = window.setInterval(() => setCountdownNow(Date.now()), 100);
     return () => window.clearInterval(timer);
@@ -956,9 +951,16 @@ const WatchPartyPage: React.FC = () => {
     // competes with the others and makes the shared timeline oscillate.
     if (reason === 'heartbeat' && !isHost) return;
     if (roomRef.current?.media.playbackType === 'vidrift') {
+      const snapshot = vidriftPlaybackRef.current;
+      const now = performance.now();
+      const elapsed = !snapshot.paused && snapshot.updatedAt > 0
+        ? Math.max(0, now - snapshot.updatedAt) / 1000
+        : 0;
+      const position = Math.max(0, snapshot.currentTime + elapsed * snapshot.playbackRate);
+      vidriftPlaybackRef.current = { ...snapshot, currentTime: position, updatedAt: now };
       socket.emit('playback:update', {
-        isPlaying: !vidriftPlaybackRef.current.paused,
-        position: Number.isFinite(vidriftPlaybackRef.current.currentTime) ? vidriftPlaybackRef.current.currentTime : 0,
+        isPlaying: !snapshot.paused,
+        position,
         reason,
       });
       return;
@@ -971,6 +973,12 @@ const WatchPartyPage: React.FC = () => {
       reason,
     });
   }, [canControl, isHost]);
+
+  useEffect(() => {
+    if (!roomId || !isHost || socketState !== 'connected') return;
+    const heartbeat = window.setInterval(() => sendPlayback('heartbeat'), 1000);
+    return () => window.clearInterval(heartbeat);
+  }, [roomId, isHost, socketState, sendPlayback]);
 
   const handleTimeUpdate = () => {
     const now = Date.now();
