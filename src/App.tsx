@@ -1674,7 +1674,8 @@ const ProfileGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [loadingTimedOut, setLoadingTimedOut] = React.useState(false);
 
   // Skip profile gate on watch routes and BIP39 link flows
-  const isWatchRoute = location.pathname.startsWith('/watch/');
+  // WatchParty invite and room routes must bypass profile selection just like video watch routes.
+  const isWatchRoute = location.pathname.startsWith('/watch/') || location.pathname === '/watchparty' || location.pathname.startsWith('/watchparty/');
   const isBip39LinkRoute = location.pathname.startsWith('/link-bip39');
   const isOauthAuthorizeRoute = location.pathname.startsWith('/oauth/authorize');
 
