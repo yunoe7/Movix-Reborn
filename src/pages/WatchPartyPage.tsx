@@ -1073,45 +1073,147 @@ const WatchPartyPage: React.FC = () => {
                 <span className="text-xs font-semibold text-white/70">Ton pseudo</span>
                 <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={24} placeholder="Ex. Yuno" className={inputClass} />
               </label>
-              {watchPartyContext ? (
-                <div className="flex items-center gap-4 rounded-xl border border-red-500/20 bg-red-500/[0.06] p-3">
-                  {watchPartyContext.posterPath ? (
-                    <img src={watchPartyContext.posterPath} alt="" className="h-20 w-14 shrink-0 rounded-lg bg-black object-cover" />
-                  ) : (
-                    <div className="flex h-20 w-14 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]"><Film className="h-5 w-5 text-white/35" /></div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[.16em] text-red-300">Contenu récupéré automatiquement</p>
-                    <h3 className="mt-1 truncate text-sm font-bold text-white">{watchPartyContext.title}</h3>
-                    <p className="mt-1 text-xs text-white/50">
-                      {watchPartyContext.kind === 'tv'
-                        ? `Série · Saison ${watchPartyContext.season} · Épisode ${watchPartyContext.episode}`
-                        : 'Film'}
-                    </p>
-                    <p className="mt-2 text-[11px] leading-4 text-white/40">Le même lecteur VidRift sera ouvert chez chaque participant. Aucun lien vidéo à copier.</p>
+              <section className="space-y-3">
+                <div className="space-y-1.5">
+                  <span className="text-xs font-semibold text-white/70">Choisir le contenu</span>
+                  <div className="relative">
+                    <input
+                      value={catalogQuery}
+                      onChange={event => setCatalogQuery(event.target.value)}
+                      maxLength={100}
+                      placeholder="Rechercher un film, une série ou un anime…"
+                      className={`${inputClass} pl-10`}
+                    />
+                    <Film className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+                    {isSearchingCatalog && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-red-400" />}
                   </div>
                 </div>
-              ) : (
-                <>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-semibold text-white/70">Film ou série à regarder</span>
-                    <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder="Titre du contenu" className={inputClass} />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-semibold text-white/70">Lien vidéo direct</span>
-                    <input value={sourceUrl} onChange={event => setSourceUrl(event.target.value)} placeholder="https://…/video.m3u8 ou .mp4" inputMode="url" className={inputClass} />
-                    <span className="block text-[11px] leading-5 text-white/35">Pour les vidéos hébergées en dehors du lecteur Movix, MP4, WebM et HLS (.m3u8) sont acceptés.</span>
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-semibold text-white/70">Affiche (facultatif)</span>
-                    <input value={posterUrl} onChange={event => setPosterUrl(event.target.value)} placeholder="https://…/poster.jpg" inputMode="url" className={inputClass} />
-                  </label>
-                  <label className="block space-y-1.5">
-                    <span className="text-xs font-semibold text-white/70">Type</span>
-                    <select value={mediaType} onChange={event => setMediaType(event.target.value as 'movie' | 'tv')} className={inputClass}><option value="movie">Film</option><option value="tv">Série</option></select>
-                  </label>
-                </>
-              )}
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['all', 'Tout'],
+                    ['movie', 'Films'],
+                    ['tv', 'Séries'],
+                    ['anime', 'Anime'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setCatalogType(value)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${catalogType === value ? 'bg-red-600 text-white' : 'border border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {catalogQuery.trim().length >= 2 && (
+                  <div className="max-h-64 overflow-y-auto rounded-xl border border-white/[0.07] bg-black/20 p-2">
+                    {isSearchingCatalog ? (
+                      <div className="flex items-center justify-center gap-2 py-8 text-xs text-white/45">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Recherche dans le catalogue…
+                      </div>
+                    ) : (
+                      (() => {
+                        const visibleResults = catalogResults.filter(item => {
+                          if (catalogType === 'movie') return item.media_type === 'movie';
+                          if (catalogType === 'tv') return item.media_type === 'tv';
+                          if (catalogType === 'anime') return item.media_type === 'tv' && item.genre_ids?.includes(16);
+                          return true;
+                        });
+                        return visibleResults.length > 0 ? (
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                            {visibleResults.map(item => {
+                              const itemTitle = item.title || item.name || 'Sans titre';
+                              const year = (item.release_date || item.first_air_date || '').slice(0, 4);
+                              const isAnime = item.media_type === 'tv' && item.genre_ids?.includes(16);
+                              return (
+                                <button
+                                  key={`${item.media_type}-${item.id}`}
+                                  type="button"
+                                  onClick={() => selectCatalogMedia(item)}
+                                  className="group min-w-0 rounded-lg p-1 text-left transition hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                                >
+                                  <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-white/[0.05]">
+                                    {item.poster_path ? (
+                                      <img src={`https://image.tmdb.org/t/p/w342${item.poster_path}`} alt="" loading="lazy" className="h-full w-full object-cover transition group-hover:scale-[1.03]" />
+                                    ) : (
+                                      <div className="flex h-full items-center justify-center"><Film className="h-6 w-6 text-white/25" /></div>
+                                    )}
+                                    <span className="absolute left-1 top-1 rounded bg-black/75 px-1.5 py-0.5 text-[9px] font-bold text-white/80">
+                                      {isAnime ? 'ANIME' : item.media_type === 'tv' ? 'SÉRIE' : 'FILM'}
+                                    </span>
+                                  </div>
+                                  <span className="mt-1.5 block line-clamp-2 text-[11px] font-semibold leading-4 text-white/85">{itemTitle}</span>
+                                  <span className="block text-[10px] text-white/40">{year || 'Date inconnue'}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="px-3 py-7 text-center text-xs text-white/40">Aucun résultat dans cette catégorie.</p>
+                        );
+                      })()
+                    )}
+                  </div>
+                )}
+                {selectedMedia ? (
+                  <div className="rounded-xl border border-red-500/25 bg-red-500/[0.055] p-3">
+                    <div className="flex items-start gap-3">
+                      {selectedMedia.poster_path ? (
+                        <img src={`https://image.tmdb.org/t/p/w342${selectedMedia.poster_path}`} alt="" className="h-24 w-16 shrink-0 rounded-lg bg-black object-cover" />
+                      ) : (
+                        <div className="flex h-24 w-16 shrink-0 items-center justify-center rounded-lg bg-white/[0.06]"><Film className="h-5 w-5 text-white/30" /></div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-bold uppercase tracking-[.16em] text-red-300">Contenu sélectionné</p>
+                        <h3 className="mt-1 text-sm font-bold text-white">{selectedMedia.title || selectedMedia.name}</h3>
+                        <p className="mt-1 text-xs text-white/45">
+                          {selectedMedia.media_type === 'tv'
+                            ? (selectedMedia.genre_ids?.includes(16) ? 'Anime / série' : 'Série')
+                            : 'Film'}
+                          {' · '}
+                          {(selectedMedia.release_date || selectedMedia.first_air_date || '').slice(0, 4) || 'Année inconnue'}
+                        </p>
+                        <button type="button" onClick={() => { setSelectedMedia(null); setSeasons([]); setEpisodes([]); setSelectedSeason(null); setSelectedEpisode(null); }} className="mt-3 text-[11px] font-semibold text-red-300 hover:text-red-200">Changer de contenu</button>
+                      </div>
+                    </div>
+                    {selectedMedia.media_type === 'tv' && (
+                      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-3">
+                        <label className="block space-y-1.5">
+                          <span className="text-xs font-semibold text-white/65">Saison</span>
+                          <select
+                            value={selectedSeason ?? ''}
+                            onChange={event => setSelectedSeason(Number(event.target.value))}
+                            disabled={isLoadingSeasons || seasons.length === 0}
+                            className={inputClass}
+                          >
+                            {isLoadingSeasons && <option value="">Chargement…</option>}
+                            {seasons.map(season => <option key={season.id} value={season.season_number}>{season.name || `Saison ${season.season_number}`}</option>)}
+                          </select>
+                        </label>
+                        <label className="block space-y-1.5">
+                          <span className="text-xs font-semibold text-white/65">Épisode</span>
+                          <select
+                            value={selectedEpisode ?? ''}
+                            onChange={event => setSelectedEpisode(Number(event.target.value))}
+                            disabled={isLoadingEpisodes || episodes.length === 0}
+                            className={inputClass}
+                          >
+                            {isLoadingEpisodes && <option value="">Chargement…</option>}
+                            {episodes.map(episode => <option key={episode.id} value={episode.episode_number}>E{String(episode.episode_number).padStart(2, '0')} · {episode.name || `Épisode ${episode.episode_number}`}</option>)}
+                          </select>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/10 px-4 py-5 text-center">
+                    <p className="text-xs text-white/45">Recherche un titre puis sélectionne son affiche pour choisir le film ou l’épisode à regarder ensemble.</p>
+                  </div>
+                )}
+                {!TMDB_API_KEY && (
+                  <p className="text-xs text-red-300">La clé de recherche TMDB n’est pas configurée sur cette version du site.</p>
+                )}
+              </section>
               <div className="grid grid-cols-1 gap-3">
                 <label className="block space-y-1.5">
                   <span className="text-xs font-semibold text-white/70">Places</span>
