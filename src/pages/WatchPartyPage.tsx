@@ -66,7 +66,7 @@ type PauseVote = {
   totalVotes?: number;
 };
 
-type PauseTimer = { endTime: number; startedBy: string; duration: number };
+type PauseTimer = { endTime: number; startedBy: string; duration: number; resumeAfterPause?: boolean };
 
 type Room = {
   id: string;
@@ -746,7 +746,11 @@ const WatchPartyPage: React.FC = () => {
         socket.on('room:chat', (message: ChatMessage) => {
           setMessages(current => current.some(item => item.id === message.id) ? current : [...current.slice(-99), message]);
         });
-        socket.on('media:updated', (media: Media) => setRoom(current => current ? { ...current, media } : current));
+        socket.on('media:updated', (media: Media) => {
+          setRoom(current => current ? { ...current, media, pauseTimer: null, pauseVote: null } : current);
+          setPauseTimer(null);
+          setPauseVote(null);
+        });
         socket.on('host:token', (payload: { token: string }) => storeRoomToken(roomId, payload.token));
         socket.on('room:kicked', (payload: { reason?: string }) => {
           setError(payload?.reason || 'Tu as été retiré du salon.');
@@ -1519,7 +1523,7 @@ const WatchPartyPage: React.FC = () => {
                   <section className={`${panelClass} flex items-center justify-between gap-3 p-4`}>
                     <div>
                       <p className="text-sm font-bold">Pause collective</p>
-                      <p className="mt-1 text-xs text-white/45">Reprise automatique à la fin du minuteur.</p>
+                      <p className="mt-1 text-xs text-white/45">{pauseTimer.resumeAfterPause === false ? 'La lecture était déjà en pause.' : 'Reprise automatique à la fin du minuteur.'}</p>
                     </div>
                     <span className="text-lg font-black tabular-nums text-amber-300">{Math.max(0, Math.ceil((pauseTimer.endTime - countdownNow) / 1000))} s</span>
                   </section>
