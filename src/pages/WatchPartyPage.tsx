@@ -41,6 +41,7 @@ type ChatMessage = {
 type Room = {
   id: string;
   code: string;
+  name?: string;
   hostId: string | null;
   maxParticipants: number;
   isPublic: boolean;
