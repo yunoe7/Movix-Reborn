@@ -675,6 +675,10 @@ const WatchPartyPage: React.FC = () => {
   const sendPlayback = useCallback((reason: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended') => {
     const socket = socketRef.current;
     if (!socket?.connected || !canControl || applyingRemoteRef.current) return;
+    // Co-hosts and democratic viewers may issue controls, but only the room
+    // host is the periodic clock source. Otherwise each viewer's heartbeat
+    // competes with the others and makes the shared timeline oscillate.
+    if (reason === 'heartbeat' && !isHost) return;
     if (roomRef.current?.media.playbackType === 'vidrift') {
       socket.emit('playback:update', {
         isPlaying: !vidriftPlaybackRef.current.paused,
@@ -690,11 +694,11 @@ const WatchPartyPage: React.FC = () => {
       position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
       reason,
     });
-  }, [canControl]);
+  }, [canControl, isHost]);
 
   const handleTimeUpdate = () => {
     const now = Date.now();
-    if (now - lastHeartbeatRef.current > 2500) {
+    if (isHost && now - lastHeartbeatRef.current > 2500) {
       lastHeartbeatRef.current = now;
       sendPlayback('heartbeat');
     }
@@ -776,7 +780,7 @@ const WatchPartyPage: React.FC = () => {
           vidriftPlaybackRef.current.currentTime = currentTime;
           vidriftPlaybackRef.current.updatedAt = performance.now();
         }
-        if (canControl && Date.now() - lastHeartbeatRef.current > 2500) {
+        if (isHost && Date.now() - lastHeartbeatRef.current > 2500) {
           lastHeartbeatRef.current = Date.now();
           sendPlayback('heartbeat');
         }
@@ -784,20 +788,25 @@ const WatchPartyPage: React.FC = () => {
       }
 
       if (data.type === 'vidrift:paused' || data.type === 'vidrift:unpaused') {
+        const wasPaused = vidriftPlaybackRef.current.paused;
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = data.type === 'vidrift:paused';
         vidriftPlaybackRef.current.updatedAt = performance.now();
-        if (!applyingRemoteRef.current && canControl) {
+        // Remote commands update the ref before being posted into the iframe.
+        // Only relay an actual local transition, even if VidRift acknowledges
+        // it after the short command-suppression window has elapsed.
+        if (wasPaused !== vidriftPlaybackRef.current.paused && !applyingRemoteRef.current && canControl) {
           sendPlayback(data.type === 'vidrift:paused' ? 'pause' : 'play');
         }
         return;
       }
 
       if (data.type === 'vidrift:ended') {
+        const wasPaused = vidriftPlaybackRef.current.paused;
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = true;
         vidriftPlaybackRef.current.updatedAt = performance.now();
-        if (!applyingRemoteRef.current && canControl) sendPlayback('ended');
+        if (!wasPaused && !applyingRemoteRef.current && canControl) sendPlayback('ended');
         return;
       }
 
