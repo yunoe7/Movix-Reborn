@@ -417,6 +417,7 @@ function sanitizeMedia(media) {
     poster: sanitizeOptionalString(media?.poster),
     mediaType: media?.mediaType === 'tv' ? 'tv' : 'movie',
     mediaId: sanitizeOptionalString(media?.mediaId, 64),
+    playbackType: media?.playbackType === 'vidrift' ? 'vidrift' : 'direct',
     seasonNumber: sanitizeNumber(media?.seasonNumber),
     episodeNumber: sanitizeNumber(media?.episodeNumber),
     nightflixSources: sanitizeSourceList(media?.nightflixSources, ['src', 'quality', 'language', 'label']),
@@ -1226,7 +1227,7 @@ app.post(
         participants: [],
         messages: [],
         playbackState: {
-          isPlaying: false,
+          isPlaying: media?.isPlaying === true,
           position: position === null ? 0 : position,
           updatedAt: Date.now(),
           updatedBy: 'system'
@@ -1331,6 +1332,10 @@ app.get('/api/watchparty/public', rateLimit({ windowMs: 1000, max: 10, key: 'pub
         title: room.name || room.media.title,
         mediaTitle: room.media.title,
         hostNickname: room.participants.find((participant) => participant.isHost)?.nickname || 'Hôte',
+        playbackType: room.media.playbackType || 'direct',
+        mediaId: room.media.mediaId || null,
+        seasonNumber: room.media.seasonNumber,
+        episodeNumber: room.media.episodeNumber,
         poster: room.media.poster,
         mediaType: room.media.mediaType,
         participantCount: room.participants.length,
