@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Shield, Sparkles, Star, User } from './icons/Icons8';
+import { ArrowLeftRight, Bell, ChevronDown, Crown, History, KeyRound, List, LogOut, Shield, Sparkles, Star, User, Users2 } from './icons/Icons8';
 import { PrefetchLink as Link } from '@/routing/PrefetchLink';
 import { cn } from '@/lib/utils';
 import { isHiddenOnTv } from '@/routing/registry';
@@ -338,6 +338,7 @@ const ProfileMenu: React.FC = () => {
     { to: '/profile?tab=watched', label: t('profile.watched', 'Historique'), Icon: History },
     { to: '/profile?tab=watchlist', label: t('profile.watchlist', 'Ma liste'), Icon: List },
     { to: '/profile?tab=favorites', label: t('common.favorites'), Icon: Star },
+    { to: '/watchparty', label: t('nav.watchParty', 'Watch Party'), Icon: Users2 },
     { to: '/profile', label: t('profile.title'), Icon: User },
     { to: '/nouveautes', label: 'Nouveautés', Icon: Sparkles },
   ];
@@ -394,7 +395,7 @@ const ProfileMenu: React.FC = () => {
           </MenuItem>
         )}
         <MenuDivider />
-        {navLinks.map(({ to, label, Icon }) => (
+        {navLinks.filter(({ to }) => !isHiddenOnTv(to)).map(({ to, label, Icon }) => (
           <MenuItem key={to} variant={variant} value={to}>
             <Link to={to} onClick={close} className={rowClass(variant)}>
               <Icon className={ICON_CLASS} aria-hidden="true" />
