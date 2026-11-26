@@ -274,6 +274,8 @@ async function loadRoomsFromDisk() {
       room.pendingControlRequests = [];
       room.readyState = {};
       room.pauseVote = null;
+      room.countdownTimer = null;
+      room.countdown = null;
       watchpartyRooms.set(room.id, room);
     });
     // Optionnel: supprimer le fichier après restauration, comme dans le serveur principal
@@ -286,7 +288,7 @@ async function loadRoomsFromDisk() {
 // `_idlePrev`/`_idleNext` forment une liste chaînée circulaire : le sérialiser
 // faisait échouer JSON.stringify et donc perdre TOUTES les rooms au shutdown.
 function serializeRoom(room) {
-  const { pauseVote, ...rest } = room;
+  const { pauseVote, countdownTimer, ...rest } = room;
   if (!pauseVote) return { ...rest, pauseVote: null };
   const { timeoutId, ...voteRest } = pauseVote;
   return { ...rest, pauseVote: voteRest };
@@ -420,6 +422,7 @@ function sanitizeMedia(media) {
     mediaType: media?.mediaType === 'tv' ? 'tv' : 'movie',
     mediaId: sanitizeOptionalString(media?.mediaId, 64),
     playbackType: media?.playbackType === 'vidrift' ? 'vidrift' : 'direct',
+    isAnime: media?.isAnime === true,
     seasonNumber: sanitizeNumber(media?.seasonNumber),
     episodeNumber: sanitizeNumber(media?.episodeNumber),
     nightflixSources: sanitizeSourceList(media?.nightflixSources, ['src', 'quality', 'language', 'label']),
@@ -502,6 +505,8 @@ function buildRoomInfo(roomId, room) {
     controlMode: room.controlMode,
     coHosts: room.coHosts,
     media: room.media,
+    countdown: room.countdown || null,
+    readyState: room.readyState || {},
     createdAt: room.createdAt,
     participants: room.participants
   };
@@ -621,11 +626,20 @@ watchpartyIO.on('connection', (socket) => {
     if (!me) return;
     const text = sanitizeString(data?.text, MAX_CHAT_LENGTH);
     if (!text) return;
+    const replyToId = sanitizeString(data?.replyToId, 64);
+    const repliedMessage = replyToId
+      ? r.messages.find(message => message.id === replyToId && !message.deleted)
+      : null;
     const msg = pushMessage(r, {
       id: uuidv4(),
       senderId: socket.id,
       senderNickname: me.nickname,
       text,
+      replyTo: repliedMessage ? {
+        id: repliedMessage.id,
+        senderNickname: sanitizeString(repliedMessage.senderNickname, 32),
+        text: sanitizeString(repliedMessage.text, 140)
+      } : null,
       timestamp: Date.now(),
       type: 'chat'
     });
@@ -653,7 +667,8 @@ watchpartyIO.on('connection', (socket) => {
         isPlaying: data?.isPlaying === true,
         position: position === null ? 0 : position,
         updatedAt: Date.now(),
-        updatedBy: socket.id
+        updatedBy: socket.id,
+        reason
       };
       r.playbackState = playbackUpdate;
       // Broadcast aux autres clients (exclure le sender pour éviter la boucle de feedback)
@@ -832,12 +847,54 @@ watchpartyIO.on('connection', (socket) => {
     });
   });
 
+  socket.on('host:transfer', (payload) => {
+    const { participantId } = payload || {};
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId || !participantId || participantId === socket.id) return;
+    const target = r.participants.find(participant => participant.id === participantId);
+    const targetSocket = watchpartyIO.sockets.get(participantId);
+    if (!target || !targetSocket || !targetSocket.data?.token) return;
+
+    const targetToken = targetSocket.data.token;
+    if (!Object.prototype.hasOwnProperty.call(r.accessTokens, targetToken)) return;
+
+    const oldHostSocket = watchpartyIO.sockets.get(r.hostId);
+    const oldHostToken = oldHostSocket?.data?.token;
+    const oldHost = r.participants.find(participant => participant.id === r.hostId);
+    if (oldHostToken) {
+      r.accessTokens[oldHostToken] = {
+        nickname: oldHost?.nickname || 'Host',
+        issuedAt: Date.now()
+      };
+      if (oldHostSocket) oldHostSocket.data.role = 'member';
+    }
+
+    delete r.accessTokens[targetToken];
+    r.hostToken = targetToken;
+    r.hostTokens = new Set([targetToken]);
+    targetSocket.data.role = 'host';
+    r.hostId = target.id;
+    r.coHosts = r.coHosts.filter(id => id !== target.id && id !== oldHost?.id);
+    r.pendingControlRequests = r.pendingControlRequests.filter(request => request.participantId !== target.id);
+    r.participants.forEach(participant => { participant.isHost = participant.id === target.id; });
+
+    const message = systemMessage(r, `${target.nickname} est maintenant l'hôte de la Watch Party.`);
+    watchpartyIO.to(roomId).emit('room:chat', message);
+    watchpartyIO.to(roomId).emit('host:transferred', { hostId: target.id, previousHostId: oldHost?.id || null });
+    emitControlState(roomId, r);
+    emitRoomInfo(roomId, r);
+    watchpartyIO.to(roomId).emit('room:participants', r.participants);
+  });
+
   socket.on('room:setVisibility', (payload) => {
     const { isPublic } = payload || {};
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return;
     r.isPublic = isPublic === true;
+    const me = r.participants.find(participant => participant.id === socket.id);
+    watchpartyIO.to(roomId).emit('room:chat', systemMessage(r, `${me?.nickname || 'L’hôte'} a ${r.isPublic ? 'rendu la salle publique' : 'rendu la salle privée'}.`));
     emitRoomInfo(roomId, r);
   });
 
@@ -872,6 +929,10 @@ watchpartyIO.on('connection', (socket) => {
     const sanitized = sanitizeMedia(media);
     if (!sanitized) return;
     r.media = sanitized;
+    r.readyState = {};
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    r.countdownTimer = null;
+    r.countdown = null;
     r.playbackState = {
       isPlaying: false,
       position: 0,
@@ -892,6 +953,65 @@ watchpartyIO.on('connection', (socket) => {
     watchpartyIO.to(roomId).emit('ready:state', r.readyState);
   });
 
+  // A synchronized start is only allowed after every current participant
+  // explicitly marks themselves ready. The server is the single countdown clock.
+  socket.on('room:startCountdown', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId || r.participants.length < 2) return;
+    const everyoneReady = r.participants.every(participant => r.readyState[participant.id] === true);
+    if (!everyoneReady) {
+      socket.emit('room:startCountdownDenied', { message: 'Tout le monde doit être prêt avant le départ.' });
+      return;
+    }
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    const startAt = Date.now() + 5000;
+    r.countdown = { startAt, startedBy: socket.id };
+    watchpartyIO.to(roomId).emit('room:countdown', r.countdown);
+    r.countdownTimer = setTimeout(() => {
+      const current = watchpartyRooms.get(roomId);
+      if (!current || current.countdown?.startAt !== startAt) return;
+      const position = Number(current.playbackState?.position) || 0;
+      current.playbackState = {
+        isPlaying: true,
+        position,
+        updatedAt: startAt,
+        updatedBy: socket.id,
+        reason: 'play'
+      };
+      current.countdown = null;
+      current.countdownTimer = null;
+      watchpartyIO.to(roomId).emit('playback:state', current.playbackState);
+      watchpartyIO.to(roomId).emit('playback:schedule', {
+        action: 'play',
+        position,
+        scheduledAt: startAt,
+        serverNow: Date.now(),
+        updatedBy: socket.id
+      });
+      watchpartyIO.to(roomId).emit('room:countdownFinished', { startedAt: startAt });
+    }, 5000);
+  });
+
+  socket.on('room:cancelCountdown', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (socket.id !== r.hostId || !r.countdown) return;
+    if (r.countdownTimer) clearTimeout(r.countdownTimer);
+    r.countdownTimer = null;
+    r.countdown = null;
+    watchpartyIO.to(roomId).emit('room:countdownCancelled');
+  });
+
+  // Ready toggle
+  socket.on('ready:toggle', () => {
+    if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (r.countdown) return;
+    r.readyState[socket.id] = !r.readyState[socket.id];
+    watchpartyIO.to(roomId).emit('ready:state', r.readyState);
+  });
+
   // Emoji reaction
   socket.on('reaction:send', (payload) => {
     const { emoji } = payload || {};
@@ -900,7 +1020,10 @@ watchpartyIO.on('connection', (socket) => {
     const me = r.participants.find(p => p.id === socket.id);
     if (!me) return;
     const cleanEmoji = sanitizeString(emoji, MAX_EMOJI_LENGTH);
-    if (!cleanEmoji) return;
+    const allowedEmojis = new Set(['😂', '❤️', '🔥', '😱', '👏', '😭', '🍿', '👀', '💀', '😍']);
+    const now = Date.now();
+    if (!allowedEmojis.has(cleanEmoji) || now - (socket.data.lastReactionAt || 0) < 650) return;
+    socket.data.lastReactionAt = now;
     watchpartyIO.to(roomId).emit('reaction:received', {
       id: uuidv4(),
       emoji: cleanEmoji,
@@ -1111,6 +1234,7 @@ watchpartyIO.on('connection', (socket) => {
     if (!target) return;
     r.coHosts = r.coHosts.filter((id) => id !== participantId);
     r.pendingControlRequests = r.pendingControlRequests.filter((req) => req.participantId !== participantId);
+    delete r.readyState[participantId];
     const s = watchpartyIO.sockets.get(participantId);
     if (s) {
       // Sans révocation du token, l'exclu se reconnectait immédiatement.
@@ -1147,6 +1271,13 @@ watchpartyIO.on('connection', (socket) => {
     if (idx === -1) return;
     const leaving = r.participants[idx];
     r.participants.splice(idx, 1);
+    delete r.readyState[socket.id];
+    if (r.countdown) {
+      if (r.countdownTimer) clearTimeout(r.countdownTimer);
+      r.countdownTimer = null;
+      r.countdown = null;
+      watchpartyIO.to(roomId).emit('room:countdownCancelled');
+    }
 
     const leaveMessage = systemMessage(r, `${leaving.nickname} a quitté la Watch Party.`);
 
@@ -1253,6 +1384,9 @@ app.post(
         media: cleanMedia,
         participants: [],
         messages: [],
+        countdown: null,
+        countdownTimer: null,
+        reactionCooldowns: {},
         playbackState: {
           isPlaying: media?.isPlaying === true,
           position: position === null ? 0 : position,
