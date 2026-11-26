@@ -242,6 +242,7 @@ const WatchPartyPage: React.FC = () => {
   const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const vidRiftActivationTimerRef = useRef<number | null>(null);
   const hasCustomLocalVolumeRef = useRef(false);
+  const remoteCommandTimeoutRef = useRef<number | null>(null);
   const syncWorkerRef = useRef<Worker | null>(null);
   const syncTickTimerRef = useRef<number | null>(null);
   const clockOffsetRef = useRef(0);
@@ -753,10 +754,10 @@ const WatchPartyPage: React.FC = () => {
           clearRoomToken(roomId);
           navigate('/watchparty');
         });
-        socket.on('room:closed', () => {
-          setError('Ce salon a été fermé.');
-          socket.disconnect();
+        socket.on('room:closed', (payload?: { reason?: string }) => {
+          setError(payload?.reason || 'Ce salon a été fermé.');
           clearRoomToken(roomId);
+          socket.disconnect();
           navigate('/watchparty');
         });
         socket.on('error', (payload: { message?: string }) => setError(payload?.message || 'Erreur de connexion au salon.'));
@@ -821,6 +822,13 @@ const WatchPartyPage: React.FC = () => {
     action: 'play' | 'pause' | 'seek' | 'setPlaybackRate' | 'resetPlaybackRate';
     value?: number;
   }) => {
+    applyingRemoteRef.current = true;
+    if (remoteCommandTimeoutRef.current !== null) window.clearTimeout(remoteCommandTimeoutRef.current);
+    remoteCommandTimeoutRef.current = window.setTimeout(() => {
+      applyingRemoteRef.current = false;
+      remoteCommandTimeoutRef.current = null;
+    }, 1300);
+
     const isVidRift = roomRef.current?.media.playbackType === 'vidrift';
     const target = vidriftFrameRef.current?.contentWindow;
     const video = videoRef.current;
@@ -871,6 +879,11 @@ const WatchPartyPage: React.FC = () => {
     });
     return () => {
       worker.terminate();
+      if (remoteCommandTimeoutRef.current !== null) {
+        window.clearTimeout(remoteCommandTimeoutRef.current);
+        remoteCommandTimeoutRef.current = null;
+      }
+      applyingRemoteRef.current = false;
       if (syncWorkerRef.current === worker) syncWorkerRef.current = null;
     };
   }, [roomId, room?.id]);
@@ -1131,6 +1144,9 @@ const WatchPartyPage: React.FC = () => {
         if (Number.isFinite(currentTime) && currentTime >= 0) vidriftPlaybackRef.current.currentTime = currentTime;
         vidriftPlaybackRef.current.paused = data.type === 'vidrift:paused';
         vidriftPlaybackRef.current.updatedAt = performance.now();
+        if (typeof data.speed === 'number' && Number.isFinite(data.speed)) {
+          vidriftPlaybackRef.current.playbackRate = data.speed;
+        }
         // A one-time user activation may change local playback. Immediately
         // restore the server snapshot, then put the guest lock back in place.
         if (!canControl && wasPaused !== vidriftPlaybackRef.current.paused && vidRiftActivationOpen) {
