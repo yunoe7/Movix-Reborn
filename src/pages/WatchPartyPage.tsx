@@ -700,8 +700,8 @@ const WatchPartyPage: React.FC = () => {
   const hasPendingControlRequest = Boolean(selfId && controlRequests.some(request => request.participantId === selfId));
 
   useEffect(() => {
-    if (!canControl) vidriftFrameRef.current?.blur();
-  }, [canControl]);
+    if (!canControl && !vidRiftActivationOpen) vidriftFrameRef.current?.blur();
+  }, [canControl, vidRiftActivationOpen]);
 
   const sendPlayback = useCallback((reason: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended') => {
     const socket = socketRef.current;
@@ -894,6 +894,7 @@ const WatchPartyPage: React.FC = () => {
     room?.media,
     canControl,
     isHost,
+    vidRiftActivationOpen,
     applyRemotePlayback,
     sendPlayback,
     leaveRoom,
