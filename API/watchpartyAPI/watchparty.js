@@ -1011,7 +1011,9 @@ watchpartyIO.on('connection', (socket) => {
     r.readyState = {};
     if (r.countdownTimer) clearTimeout(r.countdownTimer);
     r.countdownTimer = null;
+    if (r.countdown) watchpartyIO.to(roomId).emit('room:countdownCancelled');
     r.countdown = null;
+    watchpartyIO.to(roomId).emit('ready:state', r.readyState);
     r.playbackState = {
       isPlaying: false,
       position: 0,
@@ -1345,6 +1347,7 @@ watchpartyIO.on('connection', (socket) => {
       s.emit('room:kicked', { reason: 'You have been removed from the watch party by the host.' });
       s.disconnect(true);
     }
+    watchpartyIO.to(roomId).emit('ready:state', r.readyState);
     const kickMessage = systemMessage(r, `${target.nickname} a été retiré de la Watch Party.`);
     watchpartyIO.to(roomId).emit('room:chat', kickMessage);
   });
@@ -1401,6 +1404,7 @@ watchpartyIO.on('connection', (socket) => {
       }, 5 * 60 * 1000);
     } else {
       watchpartyIO.to(roomId).emit('room:participants', r.participants);
+      watchpartyIO.to(roomId).emit('ready:state', r.readyState);
       watchpartyIO.to(roomId).emit('room:chat', leaveMessage);
       emitRoomInfo(roomId, r);
     }
