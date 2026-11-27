@@ -39,7 +39,7 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     readyState: {},
     playbackState: { isPlaying: false, position: 0, updatedAt: Date.now(), updatedBy: 'system' }
   };
-  const state = { error: [], room: [], socketState: [], notices: [], navigate: [] };
+  const state = { error: [], room: [], socketState: [], notices: [], navigate: [], participants: [], selfId: [] };
   const refs = {
     roomRef: { current: room },
     pendingPlaybackRef: { current: { isPlaying: true, position: 99 } },
@@ -74,10 +74,10 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     WATCHPARTY_API: 'https://watchparty.test',
     ...refs,
     setSocketState: value => state.socketState.push(value),
-    setSelfId: noop,
+    setSelfId: value => state.selfId.push(value),
     setError: value => state.error.push(value),
     setRoom: updater => state.room.push(typeof updater === 'function' ? updater(room) : updater),
-    setParticipants: noop,
+    setParticipants: value => state.participants.push(value),
     setReadyState: noop,
     setPauseTimer: noop,
     setCountdownTarget: noop,
@@ -107,6 +107,46 @@ test('une erreur de connexion disparaît après une reconnexion réussie', async
     assert.equal(fixture.state.error.at(-1), '', 'le message d’erreur ne doit pas rester affiché une fois connecté');
     assert.equal(fixture.socket.emits.filter(([event]) => event === 'sync:probe').length, 5);
     assert.ok(fixture.socket.emits.some(([event]) => event === 'playback:getState'));
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('le créateur reçoit son rôle d’hôte dans room, participants et selfId', async () => {
+  const fixture = roomFixture();
+  try {
+    await flushMicrotasks();
+    fixture.socket.id = 'creator-socket';
+    fixture.socket.fire('connect');
+
+    const participants = [{
+      id: 'creator-socket',
+      nickname: 'Créateur',
+      isHost: true,
+      isActive: true,
+      joinedAt: 1
+    }];
+    fixture.socket.fire('room:participants', participants);
+    fixture.socket.fire('room:info', {
+      ...fixture.room,
+      hostId: 'creator-socket',
+      participants,
+      controlMode: 'host-only'
+    });
+
+    const selfId = fixture.state.selfId.at(-1);
+    const currentRoom = fixture.state.room.at(-1);
+    const currentParticipants = fixture.state.participants.at(-1);
+    assert.equal(selfId, 'creator-socket');
+    assert.equal(currentRoom.hostId, selfId);
+    assert.equal(currentParticipants[0].isHost, true);
+
+    const isHost = sourceFunction(PAGE, 'isHost', { Boolean, selfId, room: currentRoom });
+    const canControl = sourceFunction(
+      PAGE, 'canControl', { Boolean, selfId, isHost, isCoHost: false, room: currentRoom },
+    );
+    assert.equal(isHost, true, 'le créateur doit être reconnu comme hôte');
+    assert.equal(canControl, true, 'l’hôte doit obtenir les commandes de lecture');
   } finally {
     fixture.cleanup();
   }

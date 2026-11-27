@@ -10,7 +10,9 @@ import { io } from 'socket.io-client';
 // connexion Socket.IO passait inaperçue car le handler global `uncaughtException`
 // empêche le processus de mourir. Ces tests exercent le vrai serveur et le vrai
 // namespace /watchparty, pas une copie de sa logique.
-const SERVER_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'watchparty.js');
+const SERVER_FILE = process.env.WATCHPARTY_TEST_SERVER
+  ? path.resolve(process.env.WATCHPARTY_TEST_SERVER)
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'watchparty.js');
 const MEDIA = {
   src: 'https://example.test/video.mp4',
   title: 'WatchParty test media',
@@ -20,6 +22,14 @@ const MEDIA = {
 let child;
 let baseUrl;
 let serverLog = '';
+let clientIpCounter = 0;
+
+// Chaque salon de test est attribué à une IP distincte : les limites anti-abus
+// du serveur ne doivent pas transformer un scénario de création en 429.
+function nextClientIp() {
+  clientIpCounter += 1;
+  return `127.${Math.floor(clientIpCounter / 250)}.${clientIpCounter % 250}.1`;
+}
 
 async function findFreePort() {
   const probe = createServer();
@@ -87,7 +97,7 @@ async function api(pathname, options) {
 async function createRoom(t, options = {}) {
   const room = await api('/api/watchparty/create', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': nextClientIp() },
     body: JSON.stringify({
       nickname: 'Hôte test',
       roomName: 'Room test',
@@ -103,7 +113,7 @@ async function createRoom(t, options = {}) {
 async function joinRoom(roomCode, nickname) {
   const joined = await api('/api/watchparty/join', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-forwarded-for': nextClientIp() },
     body: JSON.stringify({ roomCode, nickname })
   });
   assert.equal(joined.success, true);
@@ -419,4 +429,146 @@ test('un hôte seul qui se déconnecte ne laisse pas un hostId mort dans la room
     member, 'room:participants', list => list.length === 1, 'le nouveau participant connecté',
   );
   assert.equal(participants.length, 1);
+});
+
+test('le créateur devient hôte dès sa connexion avec le token renvoyé par /create', async (t) => {
+  const room = await createRoom(t);
+  const ctx = { socket: null };
+  closeRoom(t, room, () => ctx.socket);
+
+  // État brut renvoyé par le REST avant la connexion : personne n'est encore
+  // dans la room, exactement comme au retour du formulaire de création.
+  const before = await api(`/api/watchparty/room/${room.roomId}`, {
+    headers: { 'x-watchparty-token': room.hostToken }
+  });
+  assert.equal(before.room.hostId, null);
+  assert.equal(before.room.participants.length, 0);
+
+  const socket = openSocket(room.roomId, room.hostToken, room.nickname);
+  ctx.socket = socket;
+  trackSocket(t, socket);
+
+  const [info, participants, playback] = await Promise.all([
+    waitForEvent(socket, 'room:info'),
+    waitForEvent(socket, 'room:participants'),
+    waitForEvent(socket, 'room:playback')
+  ]);
+
+  assert.equal(info.hostId, socket.id, 'room:info doit attribuer hostId au socket du créateur');
+  assert.equal(info.participants.length, 1, 'le créateur doit apparaître dans la liste');
+  assert.equal(info.participants[0].nickname, room.nickname);
+  assert.equal(info.participants[0].isHost, true);
+  assert.equal(participants[0].id, socket.id);
+  assert.equal(participants[0].isHost, true, 'le créateur doit être marqué isHost');
+  assert.equal(playback.isPlaying, false);
+});
+
+test('un second participant reste invité et il n’y a qu’un seul hôte', async (t) => {
+  const { room, socket: host } = await connectHost(t);
+  const hostViewPromise = waitForPredicate(
+    host,
+    'room:participants',
+    (list) => list.length === 2
+      && list.find((person) => person.id === host.id)?.isHost === true
+      && list.find((person) => person.id === member.id)?.isHost === false,
+    'la vue hôte avec un invité non hôte',
+  );
+  const { socket: member, participants: memberView } = await connectMember(t, room);
+  const hostView = await hostViewPromise;
+
+  assert.equal(hostView.find((person) => person.id === member.id)?.isHost, false);
+  assert.equal(memberView.find((person) => person.id === host.id)?.isHost, true);
+  assert.equal(memberView.filter((person) => person.isHost).length, 1);
+});
+
+test('un rafraîchissement ou une reconnexion du propriétaire conserve un seul hôte', async (t) => {
+  const { room, socket: host, ctx } = await connectHost(t);
+  const { socket: member } = await connectMember(t, room);
+
+  host.disconnect();
+  await delay(75);
+
+  const refreshed = openSocket(room.roomId, room.hostToken, room.nickname);
+  ctx.socket = refreshed;
+  trackSocket(t, refreshed);
+
+  const [info, participants] = await Promise.all([
+    waitForPredicate(refreshed, 'room:info', (state) => state.hostId === refreshed.id, 'le hostId après reconnexion'),
+    waitForPredicate(
+      refreshed,
+      'room:participants',
+      (list) => list.length === 2 && list.some((person) => person.id === refreshed.id && person.isHost),
+      'le créateur reconnecté comme hôte',
+    )
+  ]);
+
+  assert.equal(info.participants.filter((person) => person.isHost).length, 1);
+  assert.equal(participants.filter((person) => person.isHost).length, 1);
+  assert.equal(participants.find((person) => person.id === member.id)?.isHost, false);
+
+  refreshed.disconnect();
+  await delay(75);
+  const reconnected = openSocket(room.roomId, room.hostToken, room.nickname);
+  ctx.socket = reconnected;
+  trackSocket(t, reconnected);
+  const state = await waitForPredicate(
+    reconnected,
+    'room:info',
+    (value) => value.hostId === reconnected.id,
+    'le hostId après une seconde reconnexion',
+  );
+  assert.equal(state.participants.filter((person) => person.isHost).length, 1);
+});
+
+test('des salons successifs ont chacun leur propre hôte, y compris après fermeture', async (t) => {
+  const first = await createRoom(t);
+  const firstCtx = { socket: null };
+  closeRoom(t, first, () => firstCtx.socket);
+  const firstSocket = openSocket(first.roomId, first.hostToken, first.nickname);
+  firstCtx.socket = firstSocket;
+  trackSocket(t, firstSocket);
+  const firstView = await waitForPredicate(
+    firstSocket,
+    'room:participants',
+    (list) => list.length === 1 && list[0].id === firstSocket.id && list[0].isHost,
+    'le premier salon a son hôte',
+  );
+  assert.equal(firstView.length, 1);
+
+  const second = await createRoom(t);
+  const secondCtx = { socket: null };
+  closeRoom(t, second, () => secondCtx.socket);
+  const secondSocket = openSocket(second.roomId, second.hostToken, second.nickname);
+  secondCtx.socket = secondSocket;
+  trackSocket(t, secondSocket);
+  const [secondInfo, secondView] = await Promise.all([
+    waitForEvent(secondSocket, 'room:info'),
+    waitForPredicate(
+      secondSocket,
+      'room:participants',
+      (list) => list.length === 1 && list[0].id === secondSocket.id && list[0].isHost,
+      'le second salon a son propre hôte',
+    )
+  ]);
+  assert.equal(secondInfo.hostId, secondSocket.id);
+  assert.notEqual(secondSocket.id, firstSocket.id);
+  assert.notEqual(second.hostToken, first.hostToken);
+
+  const closed = waitForEvent(firstSocket, 'room:closed');
+  firstSocket.emit('room:close');
+  await closed;
+
+  const third = await createRoom(t);
+  const thirdCtx = { socket: null };
+  closeRoom(t, third, () => thirdCtx.socket);
+  const thirdSocket = openSocket(third.roomId, third.hostToken, third.nickname);
+  thirdCtx.socket = thirdSocket;
+  trackSocket(t, thirdSocket);
+  const thirdInfo = await waitForPredicate(
+    thirdSocket,
+    'room:info',
+    (state) => state.hostId === thirdSocket.id && state.participants.length === 1,
+    'un nouveau salon après fermeture a son hôte',
+  );
+  assert.equal(thirdInfo.participants[0].isHost, true);
 });
