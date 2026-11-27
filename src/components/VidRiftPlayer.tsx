@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isIpadSafari } from '../utils/deviceDetection';
 import { isTrustedVidRiftMessage, postToVidRift, VIDRIFT_ORIGIN } from '../utils/vidriftMessaging';
 
 type VidRiftPlayerProps = {
@@ -113,6 +114,11 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     url.searchParams.set('download', '1');
     if (title) url.searchParams.set('title', title);
     if (posterPath?.startsWith('https://')) url.searchParams.set('poster', posterPath);
+    // Sur iPadOS, demander en priorité les sources VidRift adaptées à Safari natif.
+    // Le paramètre ne force pas un fournisseur et ne modifie pas les autres appareils.
+    if (isIpadSafari()) {
+      url.searchParams.set('pref', kind === 'tv' ? 'evion' : 'vexon');
+    }
     return url.toString();
   }, [kind, tmdbId, season, episode, title, posterPath]);
 

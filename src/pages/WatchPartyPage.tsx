@@ -165,6 +165,10 @@ function buildVidRiftEmbedUrl(media: Media): string {
   url.searchParams.set('exit', '1');
   if (media.title) url.searchParams.set('title', media.title);
   if (media.poster?.startsWith('https://')) url.searchParams.set('poster', media.poster);
+  // Garder la même préférence iPad Safari que dans le lecteur principal.
+  if (isIpadSafari()) {
+    url.searchParams.set('pref', media.mediaType === 'tv' ? 'evion' : 'vexon');
+  }
   return url.toString();
 }
 
