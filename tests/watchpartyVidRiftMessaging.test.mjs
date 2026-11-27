@@ -29,13 +29,13 @@ const {
 } = moduleObj.exports;
 
 function fakeFrame({ src = `${VIDRIFT_ORIGIN}/embed/movie/550`, sameOriginDocument = false, missing = false } = {}) {
-  if (missing) return { src, contentWindow: null, contentDocument: null };
+  if (missing) return { src, contentWindow: null };
   const calls = [];
   const currentOrigin = sameOriginDocument ? PARENT_ORIGIN : VIDRIFT_ORIGIN;
   return {
     src,
     calls,
-    get contentDocument() { return sameOriginDocument ? {} : null; },
+    get contentDocument() { throw new Error('contentDocument ne doit jamais être lu'); },
     contentWindow: {
       postMessage(message, targetOrigin) {
         if (targetOrigin !== currentOrigin) {
