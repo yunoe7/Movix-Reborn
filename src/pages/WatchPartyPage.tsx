@@ -5,8 +5,9 @@ import axios from 'axios';
 import { getTmdbLanguage } from '../i18n';
 import Hls from 'hls.js';
 import {
-  ArrowLeft, Check, Copy, Film, Globe2, KeyRound, Loader2, LockKeyhole,
-  MessageCircle, Play, Plus, RefreshCw, Send, Users, Volume2, VolumeX, X,
+  ArrowLeft, Check, Clock3, Copy, Crown, Film, Globe2, KeyRound, Loader2,
+  LockKeyhole, MessageCircle, Pause, Play, Plus, RefreshCw, Send, Settings2,
+  ShieldCheck, SkipBack, SkipForward, Users, Volume2, VolumeX, Wifi, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
 import { isIpadSafari } from '../utils/deviceDetection';
@@ -163,9 +164,28 @@ function buildVidRiftEmbedUrl(media: Media): string {
   return url.toString();
 }
 
-const panelClass = 'rounded-2xl border border-white/[0.08] bg-[#111214] shadow-[0_18px_60px_rgba(0,0,0,.28)]';
-const inputClass = 'h-11 w-full rounded-xl border border-white/10 bg-black/35 px-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-red-500/60 focus:ring-2 focus:ring-red-500/10';
-const buttonClass = 'inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50';
+const focusRingClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0c]';
+const panelClass = 'rounded-2xl border border-white/[0.07] bg-[#0f1012]/95 shadow-[0_20px_60px_rgba(0,0,0,.35)]';
+const inputClass = `h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-red-500/60 focus:ring-2 focus:ring-red-500/10 [color-scheme:dark] ${focusRingClass}`;
+const buttonClass = `inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`;
+const softButtonClass = `inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold text-white/75 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`;
+const eyebrowClass = 'text-[10px] font-extrabold uppercase tracking-[.22em] text-red-400';
+
+function formatClockTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const total = Math.floor(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const rest = total % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+    : `${minutes}:${String(rest).padStart(2, '0')}`;
+}
+
+function formatChatTime(timestamp: number) {
+  if (!Number.isFinite(timestamp)) return '';
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${WATCHPARTY_API}${path}`, {
@@ -224,6 +244,9 @@ const WatchPartyPage: React.FC = () => {
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const [syncStatus, setSyncStatus] = useState<'classic' | 'calibrating' | 'perfect' | 'adjusting' | 'unstable'>('classic');
   const [syncEngine, setSyncEngine] = useState<'js' | 'wasm'>('js');
+  // État léger uniquement destiné à l'interface ; la source de vérité de la
+  // lecture reste le lecteur vidéo et les refs de synchronisation existantes.
+  const [playerUi, setPlayerUi] = useState({ currentTime: 0, duration: 0, paused: true });
   const [publicQuery, setPublicQuery] = useState('');
   const [publicTypeFilter, setPublicTypeFilter] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
   const [publicSort, setPublicSort] = useState<'recent' | 'popular'>('recent');
@@ -1086,7 +1109,14 @@ const WatchPartyPage: React.FC = () => {
     return () => window.clearInterval(heartbeat);
   }, [roomId, isHost, socketState, sendPlayback]);
 
-  const handleTimeUpdate = () => {
+  const handleTimeUpdate = (event: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = event.currentTarget;
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    setPlayerUi(previous => ({
+      currentTime: Number.isFinite(video.currentTime) ? video.currentTime : previous.currentTime,
+      duration: previous.duration === duration ? previous.duration : duration,
+      paused: video.paused
+    }));
     const now = Date.now();
     if (isHost && now - lastHeartbeatRef.current > 2500) {
       lastHeartbeatRef.current = now;
@@ -1100,6 +1130,25 @@ const WatchPartyPage: React.FC = () => {
       pendingPlaybackRef.current = null;
       void applyRemotePlayback(pending);
     }
+  };
+
+  const toggleVideoPlayback = () => {
+    const video = videoRef.current;
+    if (!video || !canControl) return;
+    if (video.paused) {
+      void video.play().catch(() => setError('Impossible de démarrer la lecture sur cet appareil.'));
+    } else {
+      video.pause();
+    }
+  };
+
+  const seekVideoBy = (deltaSeconds: number) => {
+    const video = videoRef.current;
+    if (!video || !canControl) return;
+    const upperBound = Number.isFinite(video.duration) ? video.duration : Number.MAX_SAFE_INTEGER;
+    const nextTime = Math.max(0, Math.min(upperBound, video.currentTime + deltaSeconds));
+    video.currentTime = nextTime;
+    setPlayerUi(previous => ({ ...previous, currentTime: nextTime }));
   };
 
   const applyLocalVolume = (nextVolume: number, nextMuted = false) => {
@@ -1353,38 +1402,47 @@ const WatchPartyPage: React.FC = () => {
 
   if (roomId) {
     return (
-      <main className="mx-auto w-full max-w-[1500px] px-4 pb-12 pt-8 text-white sm:px-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <button onClick={leaveRoom} className="inline-flex items-center gap-2 text-sm text-white/60 transition hover:text-white">
+      <main className="mx-auto w-full max-w-[1500px] px-4 pb-16 pt-6 text-white sm:px-6 lg:px-8">
+        <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+          <button onClick={leaveRoom} className={`inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm text-white/55 transition hover:bg-white/[0.05] hover:text-white ${focusRingClass}`}>
             <ArrowLeft className="h-4 w-4" /> Retour aux salons
           </button>
-          <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-white/65">
-            <span className={`h-2 w-2 rounded-full ${socketState === 'connected' ? 'bg-emerald-400' : socketState === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
+          <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/[0.035] px-3.5 py-2 text-xs font-medium text-white/70">
+            <Wifi className={`h-3.5 w-3.5 ${socketState === 'connected' ? 'text-emerald-400' : socketState === 'connecting' ? 'text-amber-400' : 'text-red-400'}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${socketState === 'connected' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,.7)]' : socketState === 'connecting' ? 'bg-amber-400' : 'bg-red-400'}`} />
             {socketState === 'connected' ? 'Connecté' : socketState === 'connecting' ? 'Connexion…' : 'Déconnecté'}
           </div>
         </div>
-        {error && <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+        {error && (
+          <div className="mb-5 flex items-start justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.08] px-4 py-3 text-sm text-red-200">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError('')} aria-label="Fermer le message" className={`rounded-md p-1 text-red-200/60 transition hover:bg-white/[0.06] hover:text-red-100 ${focusRingClass}`}><X className="h-4 w-4" /></button>
+          </div>
+        )}
         {!room ? (
           <div className={`${panelClass} flex min-h-72 items-center justify-center gap-3 text-sm text-white/60`}>
             <Loader2 className="h-5 w-5 animate-spin" /> Chargement du salon…
           </div>
         ) : (
           <>
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="mb-1 text-xs font-bold uppercase tracking-[.22em] text-red-400">MOVIX WATCH PARTY</p>
-                <h1 className="text-2xl font-black tracking-tight sm:text-3xl">{room.name || room.media.title}</h1>
-                {room.name && <p className="mt-1 text-sm text-white/45">{room.media.title}</p>}
-                <p className="mt-1 text-sm text-white/45">Code du salon <span className="font-mono font-bold tracking-[.18em] text-white">{room.code}</span> · {participants.length}/{room.maxParticipants} participants</p>
+            <div className="mb-7 flex flex-wrap items-end justify-between gap-5">
+              <div className="min-w-0">
+                <p className={`mb-2 ${eyebrowClass}`}>MOVIX WATCH PARTY</p>
+                <h1 className="truncate text-2xl font-black tracking-[-0.03em] sm:text-3xl">{room.name || room.media.title}</h1>
+                {room.name && <p className="mt-1 truncate text-sm text-white/45">{room.media.title}</p>}
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-white/50">
+                  <span className="rounded-lg border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono font-bold tracking-[.18em] text-white/85">{room.code}</span>
+                  <span className="inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-red-400" /> {participants.length}/{room.maxParticipants} participants</span>
+                </div>
               </div>
-              <button onClick={handleCopyInvite} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white transition hover:bg-white/10">
+              <button onClick={handleCopyInvite} className={softButtonClass}>
                 {copyDone ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
                 {copyDone ? 'Lien copié' : 'Inviter des amis'}
               </button>
             </div>
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
               <section className={`${panelClass} overflow-hidden`}>
-                <div className="relative aspect-video bg-black">
+                <div className="relative aspect-video overflow-hidden bg-[#08090a]">
                   {room.media.playbackType === 'vidrift' ? (
                     <iframe
                       key={buildVidRiftEmbedUrl(room.media)}
@@ -1406,9 +1464,27 @@ const WatchPartyPage: React.FC = () => {
                       playsInline
                       onLoadedMetadata={handleVideoReady}
                       onCanPlay={handleVideoReady}
-                      onPlay={() => { setRequiresUserGesture(false); sendPlayback('play'); }}
-                      onPause={() => sendPlayback('pause')}
-                      onSeeked={() => sendPlayback('seek')}
+                      onPlay={() => {
+                        setRequiresUserGesture(false);
+                        setPlayerUi(previous => ({ ...previous, paused: false }));
+                        sendPlayback('play');
+                      }}
+                      onPause={() => {
+                        setPlayerUi(previous => ({ ...previous, paused: true }));
+                        sendPlayback('pause');
+                      }}
+                      onSeeked={event => {
+                        const video = event.currentTarget;
+                        setPlayerUi(previous => ({ ...previous, currentTime: video.currentTime }));
+                        sendPlayback('seek');
+                      }}
+                      onDurationChange={event => {
+                        const duration = event.currentTarget.duration;
+                        setPlayerUi(previous => ({
+                          ...previous,
+                          duration: Number.isFinite(duration) ? duration : 0
+                        }));
+                      }}
                       onTimeUpdate={handleTimeUpdate}
                     />
                   )}
@@ -1423,14 +1499,14 @@ const WatchPartyPage: React.FC = () => {
                       onContextMenu={event => { event.preventDefault(); event.stopPropagation(); }}
                       onKeyDown={event => { event.preventDefault(); event.stopPropagation(); }}
                     >
-                      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/80 px-3 py-2 text-xs font-semibold text-white/80 shadow-lg backdrop-blur">
-                        <LockKeyhole className="h-3.5 w-3.5 text-amber-300" />
+                      <div className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/75 px-4 py-2.5 text-xs font-semibold text-white/80 shadow-2xl backdrop-blur-md">
+                        <LockKeyhole className="h-4 w-4 text-amber-300" />
                         Lecture contrôlée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
                       </div>
                       <button
                         type="button"
                         onClick={openVidRiftActivation}
-                        className="rounded-full border border-white/15 bg-white px-4 py-2 text-xs font-bold text-black shadow-lg transition hover:bg-white/85"
+                        className={`rounded-xl border border-white/15 bg-white px-5 py-2.5 text-xs font-bold text-black shadow-2xl transition hover:bg-white/85 ${focusRingClass}`}
                       >
                         Activer le lecteur
                       </button>
@@ -1438,27 +1514,29 @@ const WatchPartyPage: React.FC = () => {
                   )}
                   {room.media.playbackType === 'vidrift' && !canControl && vidRiftActivationOpen && (
                     <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center">
-                      <span className="rounded-full border border-white/10 bg-black/80 px-3 py-2 text-[11px] font-semibold text-white/80 shadow-lg backdrop-blur">
+                      <span className="rounded-xl border border-white/10 bg-black/75 px-4 py-2.5 text-[11px] font-semibold text-white/80 shadow-2xl backdrop-blur-md">
                         Clique une fois dans le lecteur pour activer la synchronisation…
                       </span>
                     </div>
                   )}
                   {room.media.playbackType !== 'vidrift' && !canControl && (
-                    <div className="pointer-events-none absolute bottom-4 left-4 rounded-lg bg-black/70 px-3 py-2 text-xs text-white/75 backdrop-blur">
+                    <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl border border-white/10 bg-black/70 px-3.5 py-2.5 text-xs font-medium text-white/75 shadow-xl backdrop-blur-md">
                       Lecture synchronisée par {participants.find(person => person.isHost)?.nickname || 'l’hôte'}
                     </div>
                   )}
                   {requiresUserGesture && room.media.playbackType !== 'vidrift' && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
-                      <button onClick={() => { void videoRef.current?.play().catch(() => setError('Impossible de démarrer la lecture sur cet appareil.')); }} className="inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-bold text-white shadow-xl transition hover:bg-red-500">
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]">
+                      <button onClick={() => { void videoRef.current?.play().catch(() => setError('Impossible de démarrer la lecture sur cet appareil.')); }} className={`inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-2xl transition hover:bg-red-500 ${focusRingClass}`}>
                         <Play className="h-4 w-4 fill-current" /> Activer la lecture synchronisée
                       </button>
                     </div>
                   )}
                   {countdownSeconds !== null && countdownSeconds > 0 && (
-                    <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/55 backdrop-blur-sm">
-                      <p className="text-xs font-bold uppercase tracking-[.25em] text-white/65">Départ collectif dans</p>
-                      <span className="mt-2 text-7xl font-black tabular-nums text-white drop-shadow-2xl">{countdownSeconds}</span>
+                    <div className="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/65 backdrop-blur-sm">
+                      <div className="rounded-2xl border border-white/10 bg-black/60 px-8 py-6 text-center shadow-2xl">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[.28em] text-white/60">Départ collectif dans</p>
+                        <span className="mt-2 block text-7xl font-black tabular-nums text-white drop-shadow-2xl">{countdownSeconds}</span>
+                      </div>
                     </div>
                   )}
                   {reactions.length > 0 && (
@@ -1466,116 +1544,217 @@ const WatchPartyPage: React.FC = () => {
                       {reactions.map((reaction, index) => (
                         <div key={reaction.id} className="absolute bottom-8 animate-bounce text-4xl drop-shadow-lg" style={{ left: `${12 + ((index * 19) % 76)}%`, animationDuration: '1.4s' }}>
                           <span>{reaction.emoji}</span>
-                          <span className="mt-1 block max-w-24 truncate rounded-full bg-black/70 px-2 py-0.5 text-center text-[9px] font-semibold text-white/80">{reaction.senderNickname}</span>
+                          <span className="mt-1 block max-w-24 truncate rounded-lg border border-white/10 bg-black/75 px-2 py-0.5 text-center text-[9px] font-semibold text-white/80 shadow-lg">{reaction.senderNickname}</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.07] px-4 py-3">
-                  <div className="flex min-w-[220px] flex-1 items-center gap-3" aria-label="Réglage de volume personnel">
-                    <button
-                      type="button"
-                      onClick={toggleLocalMute}
-                      aria-label={localMuted ? 'Réactiver mon son' : 'Couper mon son'}
-                      title={localMuted ? 'Réactiver mon son' : 'Couper mon son'}
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/65 transition hover:bg-white/[0.07] hover:text-white"
-                    >
-                      {localMuted || localVolume === 0
-                        ? <VolumeX className="h-4 w-4" />
-                        : <Volume2 className="h-4 w-4" />}
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={localMuted ? 0 : Math.round(localVolume * 100)}
-                      onChange={event => {
-                        const nextVolume = Number(event.target.value) / 100;
-                        applyLocalVolume(nextVolume, nextVolume === 0);
-                      }}
-                      aria-label="Volume personnel"
-                      title="Volume personnel"
-                      className="h-1.5 w-full max-w-36 cursor-pointer accent-red-500"
-                    />
-                    <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-white/45">
-                      {localMuted ? 0 : Math.round(localVolume * 100)}%
-                    </span>
-                    <span className="hidden text-[11px] text-white/35 sm:inline">Volume perso.</span>
+                <div className="border-t border-white/[0.07] bg-[#0b0c0e]/70 px-4 py-4 sm:px-5">
+                  {room.media.playbackType !== 'vidrift' && (
+                    <div className="mb-4 rounded-xl border border-white/[0.07] bg-black/25 px-3 py-3 sm:px-4">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                          type="button"
+                          onClick={toggleVideoPlayback}
+                          disabled={!canControl}
+                          aria-label={playerUi.paused ? 'Lancer la lecture' : 'Mettre en pause'}
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-600 text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-white/[0.06] disabled:text-white/30 ${focusRingClass}`}
+                        >
+                          {playerUi.paused ? <Play className="h-4 w-4 fill-current" /> : <Pause className="h-4 w-4 fill-current" />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => seekVideoBy(-10)}
+                          disabled={!canControl}
+                          aria-label="Reculer de 10 secondes"
+                          title="Reculer de 10 secondes"
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 ${focusRingClass}`}
+                        >
+                          <SkipBack className="h-4 w-4" />
+                        </button>
+                        <span className="w-11 shrink-0 text-right text-[11px] font-semibold tabular-nums text-white/80">{formatClockTime(playerUi.currentTime)}</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max={Math.max(1, playerUi.duration)}
+                          step="0.1"
+                          value={Math.min(playerUi.currentTime, playerUi.duration || 1)}
+                          disabled={!canControl || playerUi.duration <= 0}
+                          onChange={event => {
+                            const video = videoRef.current;
+                            if (!video || !canControl) return;
+                            const nextTime = Number(event.target.value);
+                            video.currentTime = nextTime;
+                            setPlayerUi(previous => ({ ...previous, currentTime: nextTime }));
+                          }}
+                          aria-label="Position de lecture"
+                          className="wp-range h-1.5 min-w-0 flex-1 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                        <span className="w-11 shrink-0 text-[11px] font-semibold tabular-nums text-white/45">{formatClockTime(playerUi.duration)}</span>
+                        <button
+                          type="button"
+                          onClick={() => seekVideoBy(10)}
+                          disabled={!canControl}
+                          aria-label="Avancer de 10 secondes"
+                          title="Avancer de 10 secondes"
+                          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/60 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-30 ${focusRingClass}`}
+                        >
+                          <SkipForward className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[10px] text-white/35">
+                        <span>{canControl ? 'Contrôle de lecture actif' : 'Lecture verrouillée par l’hôte'}</span>
+                        <span>{playerUi.paused ? 'En pause' : 'Lecture en cours'}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                        <p className={`mb-2.5 ${eyebrowClass}`}>Ma lecture</p>
+                        <div className="flex items-center gap-3" aria-label="Réglage de volume personnel">
+                          <button
+                            type="button"
+                            onClick={toggleLocalMute}
+                            aria-label={localMuted ? 'Réactiver mon son' : 'Couper mon son'}
+                            title={localMuted ? 'Réactiver mon son' : 'Couper mon son'}
+                            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:bg-white/[0.09] hover:text-white ${focusRingClass}`}
+                          >
+                            {localMuted || localVolume === 0
+                              ? <VolumeX className="h-4 w-4" />
+                              : <Volume2 className="h-4 w-4" />}
+                          </button>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="1"
+                            value={localMuted ? 0 : Math.round(localVolume * 100)}
+                            onChange={event => {
+                              const nextVolume = Number(event.target.value) / 100;
+                              applyLocalVolume(nextVolume, nextVolume === 0);
+                            }}
+                            aria-label="Volume personnel"
+                            title="Volume personnel"
+                            className="wp-range h-1.5 min-w-0 flex-1 cursor-pointer"
+                          />
+                          <span className="w-9 shrink-0 text-right text-[11px] font-semibold tabular-nums text-white/55">
+                            {localMuted ? 0 : Math.round(localVolume * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs font-semibold text-white/85">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'}</p>
+                          <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-white/50">
+                            {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}
+                          </span>
+                        </div>
+                        {room.syncMode === 'pro' && (
+                          <p className="mt-1.5 text-[11px] text-white/45">
+                            {syncStatus === 'perfect' ? 'Synchronisation stable' : syncStatus === 'adjusting' ? 'Correction du décalage…' : syncStatus === 'unstable' ? 'Rattrapage en cours…' : 'Calibration…'}
+                            {' · '}Moteur {syncEngine === 'wasm' ? 'WASM' : 'JS'}
+                          </p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {isHost && (
+                            <button
+                              type="button"
+                              onClick={() => socketRef.current?.emit('sync:setMode', { mode: room.syncMode === 'pro' ? 'classic' : 'pro' })}
+                              className={`${softButtonClass} h-8 px-3 ${room.syncMode === 'pro' ? 'border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20' : ''}`}
+                            >
+                              {room.syncMode === 'pro' ? 'Désactiver Sync Pro' : 'Activer Sync Pro'}
+                            </button>
+                          )}
+                          {isHost && (
+                            <button
+                              type="button"
+                              onClick={() => socketRef.current?.emit('control:setMode', { mode: room.controlMode === 'democratic' ? 'host-only' : 'democratic' })}
+                              className={`${softButtonClass} h-8 px-3`}
+                            >
+                              {room.controlMode === 'democratic' ? 'Réserver le contrôle à l’hôte' : 'Autoriser tout le monde à contrôler'}
+                            </button>
+                          )}
+                          {!canControl && room.controlMode === 'host-only' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                socketRef.current?.emit('control:request');
+                                setControlNotice('Demande envoyée à l’hôte.');
+                              }}
+                              disabled={hasPendingControlRequest || socketState !== 'connected'}
+                              className={`${softButtonClass} h-8 border-red-500/25 px-3 text-red-200 hover:bg-red-500/10`}
+                            >
+                              {hasPendingControlRequest ? 'Demande en attente…' : 'Demander le contrôle'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                        <p className={`mb-2.5 ${eyebrowClass}`}>Réactions rapides</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(['😂', '❤️', '🔥', '😱', '👏', '🍿'] as const).map(emoji => (
+                            <button key={emoji} type="button" onClick={() => sendReaction(emoji)} disabled={socketState !== 'connected'} className={`flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.07] bg-white/[0.035] text-base transition hover:border-white/20 hover:bg-white/[0.09] disabled:opacity-40 ${focusRingClass}`} aria-label={`Envoyer la réaction ${emoji}`}>
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
+                        <button
+                          type="button"
+                          onClick={toggleReady}
+                          disabled={socketState !== 'connected' || countdownTarget !== null}
+                          className={`${softButtonClass} h-9 ${readyState[selfId] ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20' : ''}`}
+                        >
+                          {readyState[selfId] ? <Check className="h-3.5 w-3.5" /> : <Clock3 className="h-3.5 w-3.5" />}
+                          {readyState[selfId] ? 'Prêt' : 'Je suis prêt'}
+                        </button>
+                        {isHost && (
+                          <button
+                            type="button"
+                            onClick={startTogether}
+                            disabled={!allParticipantsReady || countdownTarget !== null || socketState !== 'connected'}
+                            className={`${buttonClass} h-9 px-3 text-xs`}
+                          >
+                            {countdownTarget !== null ? 'Départ en cours…' : `Lancer ensemble · ${participants.filter(person => readyState[person.id]).length}/${participants.length}`}
+                          </button>
+                        )}
+                        {isHost && (
+                          <button
+                            type="button"
+                            onClick={() => { if (pauseTimer) socketRef.current?.emit('pause:cancel'); else socketRef.current?.emit('pause:start', { duration: 60 }); }}
+                            className={`${softButtonClass} h-9 px-3`}
+                          >
+                            {pauseTimer ? 'Annuler la pause' : 'Pause 60 s'}
+                          </button>
+                        )}
+                        {!canControl && !pauseVote && (
+                          <button
+                            type="button"
+                            onClick={() => socketRef.current?.emit('vote:request', { duration: 60 })}
+                            className={`${softButtonClass} h-9 px-3`}
+                          >
+                            Demander une pause
+                          </button>
+                        )}
+                        {countdownTarget !== null && isHost && (
+                          <button
+                            type="button"
+                            onClick={() => socketRef.current?.emit('room:cancelCountdown')}
+                            className={`${softButtonClass} h-9 px-3`}
+                          >
+                            Annuler le départ
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-xs text-white/65">Synchronisation {room.syncMode === 'pro' ? 'Pro' : 'classique'} · {room.controlMode === 'democratic' ? 'Contrôle partagé' : 'Contrôle hôte'}</p>
-                    {room.syncMode === 'pro' && (
-                      <p className="text-[10px] text-white/35">
-                        {syncStatus === 'perfect' ? 'Synchronisation stable' : syncStatus === 'adjusting' ? 'Correction du décalage…' : syncStatus === 'unstable' ? 'Rattrapage en cours…' : 'Calibration…'}
-                        {' · '}Moteur {syncEngine === 'wasm' ? 'WASM' : 'JS'}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {(['😂', '❤️', '🔥', '😱', '👏', '🍿'] as const).map(emoji => (
-                      <button key={emoji} type="button" onClick={() => sendReaction(emoji)} disabled={socketState !== 'connected'} className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.045] text-base transition hover:bg-white/[0.12] disabled:opacity-40" aria-label={`Envoyer la réaction ${emoji}`}>
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={toggleReady}
-                    disabled={socketState !== 'connected' || countdownTarget !== null}
-                    className={`rounded-lg px-3 py-2 text-xs font-semibold transition disabled:opacity-40 ${readyState[selfId] ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/[0.05] text-white/65 hover:bg-white/10'}`}
-                  >
-                    {readyState[selfId] ? '✓ Prêt' : 'Je suis prêt'}
-                  </button>
-                  {isHost && (
-                    <button type="button" onClick={startTogether} disabled={!allParticipantsReady || countdownTarget !== null || socketState !== 'connected'} className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40">
-                      {countdownTarget !== null ? 'Départ en cours…' : `Lancer ensemble · ${participants.filter(person => readyState[person.id]).length}/${participants.length}`}
-                    </button>
-                  )}
-                  {isHost && (
-                    <button type="button" onClick={() => { if (pauseTimer) socketRef.current?.emit('pause:cancel'); else socketRef.current?.emit('pause:start', { duration: 60 }); }} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/65 transition hover:bg-white/10">
-                      {pauseTimer ? 'Annuler la pause' : 'Pause 60 s'}
-                    </button>
-                  )}
-                  {!canControl && !pauseVote && (
-                    <button type="button" onClick={() => socketRef.current?.emit('vote:request', { duration: 60 })} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/55 transition hover:bg-white/10">
-                      Demander une pause
-                    </button>
-                  )}
-                  {countdownTarget !== null && isHost && (
-                    <button type="button" onClick={() => socketRef.current?.emit('room:cancelCountdown')} className="rounded-lg bg-white/[0.05] px-3 py-2 text-xs text-white/60 hover:bg-white/10">Annuler le départ</button>
-                  )}
-                  {!canControl && room.controlMode === 'host-only' && (
-                    <button
-                      onClick={() => {
-                        socketRef.current?.emit('control:request');
-                        setControlNotice('Demande envoyée à l’hôte.');
-                      }}
-                      disabled={hasPendingControlRequest || socketState !== 'connected'}
-                      className="text-xs font-semibold text-red-300 transition hover:text-red-200 disabled:cursor-not-allowed disabled:text-white/40"
-                    >
-                      {hasPendingControlRequest ? 'Demande en attente…' : 'Demander le contrôle'}
-                    </button>
-                  )}
                   {controlNotice && (
-                    <p className="w-full text-right text-[11px] text-white/55" role="status">{controlNotice}</p>
-                  )}
-                  {isHost && (
-                    <button
-                      onClick={() => socketRef.current?.emit('sync:setMode', { mode: room.syncMode === 'pro' ? 'classic' : 'pro' })}
-                      className="text-xs font-semibold text-red-300 transition hover:text-red-200"
-                    >
-                      {room.syncMode === 'pro' ? 'Désactiver Sync Pro' : 'Activer Sync Pro'}
-                    </button>
-                  )}
-                  {isHost && (
-                    <button
-                      onClick={() => socketRef.current?.emit('control:setMode', { mode: room.controlMode === 'democratic' ? 'host-only' : 'democratic' })}
-                      className="text-xs font-semibold text-white/70 transition hover:text-white"
-                    >
-                      {room.controlMode === 'democratic' ? 'Réserver le contrôle à l’hôte' : 'Autoriser tout le monde à contrôler'}
-                    </button>
+                    <p className="mt-3 text-right text-[11px] text-white/55" role="status">{controlNotice}</p>
                   )}
                 </div>
               </section>
@@ -1618,111 +1797,150 @@ const WatchPartyPage: React.FC = () => {
                   </section>
                 )}
                 {isHost && (
-                  <section className={`${panelClass} space-y-4 p-4`}>
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-bold">Gérer la salle</h2>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">Hôte</span>
+                  <section className={`${panelClass} overflow-hidden`}>
+                    <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-3">
+                      <h2 className="flex items-center gap-2 text-sm font-bold"><Settings2 className="h-4 w-4 text-red-400" /> Gérer la salle</h2>
+                      <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/25 bg-amber-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-200"><Crown className="h-3 w-3" /> Hôte</span>
                     </div>
-                    <label className="flex cursor-pointer items-center justify-between gap-3">
-                      <span>
-                        <span className="block text-xs font-semibold text-white/80">Salle publique</span>
-                        <span className="block text-[10px] text-white/35">Visible dans la galerie Watch Party</span>
-                      </span>
-                      <input type="checkbox" checked={room.isPublic} onChange={event => socketRef.current?.emit('room:setVisibility', { isPublic: event.target.checked })} className="h-4 w-4 accent-red-500" />
-                    </label>
-                    <label className="flex cursor-pointer items-center justify-between gap-3">
-                      <span>
-                        <span className="block text-xs font-semibold text-white/80">Discussion</span>
-                        <span className="block text-[10px] text-white/35">Autoriser les messages des spectateurs</span>
-                      </span>
-                      <input type="checkbox" checked={room.chatEnabled !== false} onChange={event => socketRef.current?.emit('room:toggleChat', { enabled: event.target.checked })} className="h-4 w-4 accent-red-500" />
-                    </label>
-                    <label className="block space-y-1.5">
-                      <span className="text-xs font-semibold text-white/80">Capacité maximale</span>
-                      <select value={room.maxParticipants} onChange={event => socketRef.current?.emit('room:setMaxParticipants', { max: Number(event.target.value) })} className={inputClass}>
-                        {[2,4,6,8,10,15,20,30,50].filter(value => value >= participants.length).map(value => <option key={value} value={value}>{value} personnes</option>)}
-                      </select>
-                    </label>
-                    <button type="button" onClick={() => { if (window.confirm('Fermer définitivement cette Watch Party ?')) socketRef.current?.emit('room:close'); }} className="w-full rounded-lg border border-red-500/20 bg-red-500/[0.06] px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/15">
-                      Fermer la salle
-                    </button>
+                    <div className="space-y-1 p-3">
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-2 transition hover:bg-white/[0.035]">
+                        <span>
+                          <span className="block text-xs font-semibold text-white/85">Salle publique</span>
+                          <span className="block text-[10px] text-white/35">Visible dans la galerie Watch Party</span>
+                        </span>
+                        <input type="checkbox" checked={room.isPublic} onChange={event => socketRef.current?.emit('room:setVisibility', { isPublic: event.target.checked })} className="h-4 w-4 shrink-0 accent-red-500" />
+                      </label>
+                      <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl px-2 py-2 transition hover:bg-white/[0.035]">
+                        <span>
+                          <span className="block text-xs font-semibold text-white/85">Discussion</span>
+                          <span className="block text-[10px] text-white/35">Autoriser les messages des spectateurs</span>
+                        </span>
+                        <input type="checkbox" checked={room.chatEnabled !== false} onChange={event => socketRef.current?.emit('room:toggleChat', { enabled: event.target.checked })} className="h-4 w-4 shrink-0 accent-red-500" />
+                      </label>
+                    </div>
+                    <div className="space-y-3 border-t border-white/[0.07] p-3">
+                      <label className="block space-y-1.5">
+                        <span className="text-xs font-semibold text-white/80">Capacité maximale</span>
+                        <select value={room.maxParticipants} onChange={event => socketRef.current?.emit('room:setMaxParticipants', { max: Number(event.target.value) })} className={inputClass}>
+                          {[2,4,6,8,10,15,20,30,50].filter(value => value >= participants.length).map(value => <option key={value} value={value}>{value} personnes</option>)}
+                        </select>
+                      </label>
+                      <button type="button" onClick={() => { if (window.confirm('Fermer définitivement cette Watch Party ?')) socketRef.current?.emit('room:close'); }} className={`${softButtonClass} w-full border-red-500/20 bg-red-500/[0.07] text-red-200 hover:border-red-500/40 hover:bg-red-500/15`}>
+                        Fermer la salle
+                      </button>
+                    </div>
                   </section>
                 )}
-                <section className={`${panelClass} p-4`}>
-                  <div className="mb-3 flex items-center justify-between">
+                <section className={`${panelClass} overflow-hidden`}>
+                  <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-3">
                     <h2 className="flex items-center gap-2 text-sm font-bold"><Users className="h-4 w-4 text-red-400" /> Participants</h2>
-                    <span className="text-xs text-white/40">{participants.filter(person => readyState[person.id]).length} prêts · {participants.length}/{room.maxParticipants}</span>
+                    <span className="text-[11px] text-white/45">{participants.filter(person => readyState[person.id]).length} prêts · {participants.length}/{room.maxParticipants}</span>
                   </div>
-                  <div className="space-y-2">
-                    {participants.map(person => (
-                      <div key={person.id} className="flex items-center gap-2 rounded-lg bg-white/[0.035] px-3 py-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-xs font-bold">{person.nickname.slice(0, 1).toUpperCase()}</span>
-                        <span className="min-w-0 flex-1 truncate text-sm text-white/85">{person.nickname}{person.id === selfId ? ' (toi)' : ''}</span>
-                        <span className={`text-[10px] ${readyState[person.id] ? 'text-emerald-300' : 'text-white/25'}`}>{readyState[person.id] ? 'Prêt' : 'En attente'}</span>
-                        {person.isHost && <span className="text-[10px] font-bold uppercase tracking-wide text-amber-300">Hôte</span>}
-                        {!person.isHost && room.coHosts?.includes(person.id) && <span className="text-[10px] font-bold uppercase tracking-wide text-emerald-300">Contrôle</span>}
-                        {isHost && !person.isHost && (
-                          <>
-                            <button type="button" onClick={() => socketRef.current?.emit('host:transfer', { participantId: person.id })} className="shrink-0 rounded-md bg-amber-500/10 px-2 py-1 text-[10px] font-semibold text-amber-200 transition hover:bg-amber-500/20" title="Transférer le rôle d'hôte">Passer hôte</button>
-                            <button type="button" onClick={() => socketRef.current?.emit('participant:kick', { participantId: person.id })} className="shrink-0 rounded-md bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-300 transition hover:bg-red-500/20" title="Retirer ce participant">Exclure</button>
-                          </>
-                        )}
-                        {isHost && room.controlMode === 'host-only' && !person.isHost && room.coHosts?.includes(person.id) && (
-                          <button
-                            type="button"
-                            onClick={() => socketRef.current?.emit('control:revoke', { participantId: person.id })}
-                            className="shrink-0 rounded-md bg-white/[0.06] px-2 py-1 text-[10px] font-semibold text-white/55 transition hover:bg-red-500/15 hover:text-red-300"
-                          >
-                            Retirer le contrôle
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                  <div className="wp-scrollbar max-h-[340px] space-y-1.5 overflow-y-auto p-2.5">
+                    {participants.map(person => {
+                      const isCoHost = !person.isHost && room.coHosts?.includes(person.id);
+                      const isReady = Boolean(readyState[person.id]);
+                      return (
+                        <div key={person.id} className="group flex items-center gap-2.5 rounded-xl border border-transparent bg-white/[0.025] px-2.5 py-2 transition hover:border-white/[0.09] hover:bg-white/[0.05]">
+                          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${person.isHost ? 'border-amber-400/40 bg-amber-400/10 text-amber-200' : isCoHost ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-white/[0.07] text-white/75'}`}>
+                            {person.nickname.slice(0, 1).toUpperCase()}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="truncate text-sm font-semibold text-white/90">{person.nickname}</span>
+                              {person.id === selfId && <span className="rounded bg-white/[0.07] px-1.5 py-0.5 text-[9px] font-bold text-white/50">TOI</span>}
+                              {person.isHost && <span className="inline-flex items-center gap-1 rounded-md border border-amber-400/25 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-amber-200"><Crown className="h-2.5 w-2.5" /> Hôte</span>}
+                              {isCoHost && <span className="inline-flex items-center gap-1 rounded-md border border-emerald-400/25 bg-emerald-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-200"><ShieldCheck className="h-2.5 w-2.5" /> Contrôle</span>}
+                            </div>
+                            <div className="mt-1 flex items-center gap-2.5 text-[10px]">
+                              <span className={`inline-flex items-center gap-1 ${person.isActive === false ? 'text-white/30' : 'text-emerald-300/80'}`}>
+                                <Wifi className="h-2.5 w-2.5" /> {person.isActive === false ? 'Hors ligne' : 'Connecté'}
+                              </span>
+                              <span className={isReady ? 'text-emerald-300/80' : 'text-white/30'}>{isReady ? 'Prêt' : 'En attente'}</span>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 flex-wrap items-center justify-end gap-1 sm:opacity-0 sm:transition sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                            {isHost && !person.isHost && (
+                              <>
+                                <button type="button" onClick={() => socketRef.current?.emit('host:transfer', { participantId: person.id })} className={`${softButtonClass} h-7 border-amber-400/20 bg-amber-400/[0.07] px-2 text-[10px] text-amber-200 hover:bg-amber-400/15`} title="Transférer le rôle d'hôte">Passer hôte</button>
+                                <button type="button" onClick={() => socketRef.current?.emit('participant:kick', { participantId: person.id })} className={`${softButtonClass} h-7 border-red-500/20 bg-red-500/[0.07] px-2 text-[10px] text-red-200 hover:bg-red-500/15`} title="Retirer ce participant">Exclure</button>
+                              </>
+                            )}
+                            {isHost && room.controlMode === 'host-only' && isCoHost && (
+                              <button
+                                type="button"
+                                onClick={() => socketRef.current?.emit('control:revoke', { participantId: person.id })}
+                                className={`${softButtonClass} h-7 px-2 text-[10px]`}
+                              >
+                                Retirer le contrôle
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
-                <section className={`${panelClass} flex min-h-[360px] flex-col p-4`}>
-                  <h2 className="mb-3 flex items-center gap-2 text-sm font-bold"><MessageCircle className="h-4 w-4 text-red-400" /> Discussion</h2>
-                  <div className="mb-3 flex-1 space-y-3 overflow-y-auto pr-1">
-                    {messages.length === 0 ? <p className="py-8 text-center text-xs text-white/35">La discussion commence ici.</p> : messages.map(message => (
-                      <div key={message.id} className={message.type === 'system' ? 'text-center text-[11px] text-white/35' : 'group rounded-lg px-2 py-1.5 transition hover:bg-white/[0.025]'}>
-                        {message.type === 'system' ? message.text : message.deleted ? (
-                          <p className="text-xs italic text-white/30">Message supprimé par la modération.</p>
-                        ) : (
-                          <>
-                            {message.replyTo && (
-                              <div className="mb-1 border-l-2 border-red-400/50 pl-2">
-                                <p className="text-[10px] font-semibold text-white/45">{message.replyTo.senderNickname}</p>
-                                <p className="line-clamp-1 text-[10px] text-white/35">{message.replyTo.text}</p>
-                              </div>
-                            )}
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="mb-0.5 text-[11px] font-semibold text-white/55">{message.senderNickname}</p>
-                              <div className="flex items-center gap-2 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                                <button type="button" onClick={() => setChatReply(message)} className="text-[10px] font-semibold text-white/45 hover:text-red-300">Répondre</button>
-                                {isHost && <button type="button" onClick={() => socketRef.current?.emit('message:delete', { messageId: message.id })} className="text-[10px] font-semibold text-red-300/70 hover:text-red-300">Supprimer</button>}
+                <section className={`${panelClass} flex min-h-[420px] flex-col overflow-hidden`}>
+                  <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-4 py-3">
+                    <h2 className="flex items-center gap-2 text-sm font-bold"><MessageCircle className="h-4 w-4 text-red-400" /> Discussion</h2>
+                    <span className="text-[10px] text-white/35">{messages.length} messages</span>
+                  </div>
+                  <div className="wp-scrollbar mb-3 flex-1 space-y-3 overflow-y-auto px-3 py-3">
+                    {messages.length === 0 ? (
+                      <p className="py-10 text-center text-xs text-white/35">La discussion commence ici.</p>
+                    ) : messages.map(message => {
+                      if (message.type === 'system' || message.type === 'action' || message.deleted) {
+                        return (
+                          <p key={message.id} className="mx-auto w-fit max-w-[90%] rounded-full border border-white/[0.06] bg-white/[0.025] px-3 py-1.5 text-center text-[10px] text-white/35">
+                            {message.deleted ? 'Message supprimé par la modération.' : message.text}
+                          </p>
+                        );
+                      }
+                      const isOwn = message.senderId === selfId;
+                      return (
+                        <div key={message.id} className={`group flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${isOwn ? 'border-red-400/30 bg-red-500/15 text-red-200' : 'border-white/10 bg-white/[0.07] text-white/65'}`}>
+                            {message.senderNickname.slice(0, 1).toUpperCase()}
+                          </span>
+                          <div className={`min-w-0 max-w-[82%] ${isOwn ? 'text-right' : ''}`}>
+                            <div className={`mb-1 flex flex-wrap items-center gap-2 ${isOwn ? 'justify-end' : ''}`}>
+                              <span className="text-[11px] font-semibold text-white/65">{message.senderNickname}</span>
+                              <span className="text-[9px] tabular-nums text-white/30">{formatChatTime(message.timestamp)}</span>
+                              <div className="flex items-center gap-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+                                <button type="button" onClick={() => setChatReply(message)} className={`text-[10px] font-semibold transition hover:text-red-300 ${isOwn ? 'text-red-200/60' : 'text-white/40'}`}>Répondre</button>
+                                {isHost && <button type="button" onClick={() => socketRef.current?.emit('message:delete', { messageId: message.id })} className="text-[10px] font-semibold text-red-300/60 transition hover:text-red-300">Supprimer</button>}
                               </div>
                             </div>
-                            <p className="break-words text-sm leading-relaxed text-white/85">{message.text}</p>
-                          </>
-                        )}
-                      </div>
-                    ))}
+                            {message.replyTo && (
+                              <div className={`mb-1.5 rounded-lg border border-white/[0.06] bg-black/25 px-2.5 py-1.5 ${isOwn ? 'text-right' : 'text-left'}`}>
+                                <p className="text-[10px] font-semibold text-red-300/80">{message.replyTo.senderNickname}</p>
+                                <p className="line-clamp-1 text-[10px] text-white/40">{message.replyTo.text}</p>
+                              </div>
+                            )}
+                            <div className={`inline-block break-words rounded-2xl border px-3 py-2 text-left text-sm leading-relaxed ${isOwn ? 'rounded-tr-sm border-red-500/25 bg-red-500/15 text-red-50' : 'rounded-tl-sm border-white/[0.07] bg-white/[0.055] text-white/85'}`}>
+                              {message.text}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   {chatReply && (
-                    <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border-l-2 border-red-400 bg-white/[0.035] px-3 py-2">
+                    <div className="mx-3 mb-2 flex items-center justify-between gap-2 rounded-xl border border-red-400/25 bg-red-500/[0.07] px-3 py-2">
                       <div className="min-w-0">
                         <p className="text-[10px] font-semibold text-red-300">Réponse à {chatReply.senderNickname}</p>
                         <p className="truncate text-xs text-white/50">{chatReply.text}</p>
                       </div>
-                      <button type="button" onClick={() => setChatReply(null)} className="text-xs text-white/45 hover:text-white">Annuler</button>
+                      <button type="button" onClick={() => setChatReply(null)} className={`text-xs text-white/45 transition hover:text-white ${focusRingClass}`}>Annuler</button>
                     </div>
                   )}
                   {room.chatEnabled === false && !canControl && (
                     <p className="mb-2 text-center text-[11px] text-amber-200/70">La discussion est désactivée par l’hôte.</p>
                   )}
-                  <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/[0.07] pt-3">
+                  <form onSubmit={handleSendMessage} className="flex gap-2 border-t border-white/[0.07] px-3 py-3">
                     <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder={room.chatEnabled === false && !canControl ? 'Discussion désactivée' : 'Écrire un message…'} maxLength={500} className={inputClass} disabled={room.chatEnabled === false && !canControl} />
-                    <button type="submit" disabled={!chatInput.trim() || socketState !== 'connected' || (room.chatEnabled === false && !canControl)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-40" aria-label="Envoyer"><Send className="h-4 w-4" /></button>
+                    <button type="submit" disabled={!chatInput.trim() || socketState !== 'connected' || (room.chatEnabled === false && !canControl)} className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white transition hover:bg-red-500 disabled:opacity-40 ${focusRingClass}`} aria-label="Envoyer"><Send className="h-4 w-4" /></button>
                   </form>
                 </section>
               </aside>
@@ -1745,81 +1963,92 @@ const WatchPartyPage: React.FC = () => {
   };
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-150px)] w-full max-w-[1584px] px-6 pb-20 pt-14 text-white">
-      <header className="mb-11">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <h1 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">Watch Party</h1>
-            <p className="mt-3 text-base text-white/55">Regardez films et séries entre amis, en synchro</p>
+    <main className="mx-auto min-h-[calc(100vh-150px)] w-full max-w-[1584px] px-4 pb-20 pt-10 text-white sm:px-6 lg:px-8 lg:pt-14">
+      <header className="mb-10">
+        <div className={`${panelClass} relative overflow-hidden px-5 py-6 sm:px-8 sm:py-8`}>
+          <p className={`mb-3 ${eyebrowClass}`}>MOVIX WATCH PARTY</p>
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <h1 className="text-4xl font-black tracking-[-0.045em] sm:text-5xl">Watch Party</h1>
+              <p className="mt-3 text-base leading-relaxed text-white/55">Regardez films et séries entre amis, en synchro</p>
+              <p className="mt-2 text-xs text-white/35">Synchronisation Pro, réactions en direct et contrôle partagé.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => void refreshPublicRooms()}
+                disabled={isLoadingRooms}
+                className={softButtonClass}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${isLoadingRooms ? 'animate-spin' : ''}`} />
+                Rafraîchir
+              </button>
+              <button
+                type="button"
+                onClick={() => openJoinDialog()}
+                className={softButtonClass}
+              >
+                <KeyRound className="h-3.5 w-3.5" />
+                Rejoindre avec un code
+              </button>
+              <button type="button" onClick={openCreateDialog} className={buttonClass}>
+                <Plus className="h-4 w-4" />
+                Créer une salle
+              </button>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={() => void refreshPublicRooms()}
-              disabled={isLoadingRooms}
-              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#454545] px-4 text-xs font-bold text-white/90 transition hover:bg-[#555] disabled:opacity-60"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isLoadingRooms ? 'animate-spin' : ''}`} />
-              Rafraîchir
-            </button>
-            <button
-              type="button"
-              onClick={() => openJoinDialog()}
-              className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/15 bg-[#171717] px-4 text-xs font-semibold text-white/85 transition hover:bg-[#242424]"
-            >
-              <KeyRound className="h-3.5 w-3.5" />
-              Rejoindre avec un code
-            </button>
-            <button type="button" onClick={openCreateDialog} className="inline-flex h-10 items-center gap-2 rounded-lg bg-white px-4 text-xs font-bold text-[#111] transition hover:bg-white/85">
-              <Plus className="h-4 w-4" />
-              Créer une salle
-            </button>
+          <div className="mt-6 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4 text-[11px] text-white/45">
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.025] px-2.5 py-1.5"><ShieldCheck className="h-3.5 w-3.5 text-red-400" /> Moteur WASM avec repli JS</span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.025] px-2.5 py-1.5"><Clock3 className="h-3.5 w-3.5 text-red-400" /> Latence et seeks compensés</span>
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.025] px-2.5 py-1.5"><Users className="h-3.5 w-3.5 text-red-400" /> Contrôle hôte ou partagé</span>
           </div>
         </div>
       </header>
 
       {error && (
-        <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/[0.08] px-4 py-3 text-sm text-red-200">
           <span>{error}</span>
-          <button type="button" onClick={() => setError('')} aria-label="Fermer"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={() => setError('')} aria-label="Fermer" className={`rounded-md p-1 text-red-200/60 transition hover:bg-white/[0.06] hover:text-red-100 ${focusRingClass}`}><X className="h-4 w-4" /></button>
         </div>
       )}
 
       <section>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-base font-extrabold tracking-tight">Salles publiques</h2>
-            <span className="text-sm font-semibold text-white/45">{isLoadingRooms ? '…' : filteredPublicRooms.length}</span>
+        <div className={`${panelClass} mb-6 p-4 sm:p-5`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base font-extrabold tracking-tight">Salles publiques</h2>
+              <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-0.5 text-xs font-semibold text-white/50">{isLoadingRooms ? '…' : filteredPublicRooms.length}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={publicQuery}
+                onChange={event => setPublicQuery(event.target.value)}
+                placeholder="Rechercher une salle, un film, un hôte…"
+                className={`${inputClass} h-9 w-64 max-w-full text-xs`}
+              />
+              <select value={publicSort} onChange={event => setPublicSort(event.target.value as 'recent' | 'popular')} className={`${inputClass} h-9 w-auto px-3 text-xs`}>
+                <option value="recent">Plus récentes</option>
+                <option value="popular">Plus populaires</option>
+              </select>
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              value={publicQuery}
-              onChange={event => setPublicQuery(event.target.value)}
-              placeholder="Rechercher une salle, un film, un hôte…"
-              className="h-9 w-64 max-w-full rounded-lg border border-white/10 bg-white/[0.035] px-3 text-xs text-white outline-none placeholder:text-white/30 focus:border-red-500/50"
-            />
-            <select value={publicSort} onChange={event => setPublicSort(event.target.value as 'recent' | 'popular')} className="h-9 rounded-lg border border-white/10 bg-[#171717] px-3 text-xs text-white/75">
-              <option value="recent">Plus récentes</option>
-              <option value="popular">Plus populaires</option>
-            </select>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {([
+              ['all', 'Tout'],
+              ['movie', 'Films'],
+              ['tv', 'Séries'],
+              ['anime', 'Anime'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setPublicTypeFilter(value)}
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${publicTypeFilter === value ? 'border-red-500/40 bg-red-600 text-white shadow-[0_6px_18px_rgba(220,38,38,.25)]' : `border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white ${focusRingClass}`}`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-        </div>
-        <div className="mb-6 flex flex-wrap gap-2">
-          {([
-            ['all', 'Tout'],
-            ['movie', 'Films'],
-            ['tv', 'Séries'],
-            ['anime', 'Anime'],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setPublicTypeFilter(value)}
-              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${publicTypeFilter === value ? 'bg-red-600 text-white' : 'border border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white'}`}
-            >
-              {label}
-            </button>
-          ))}
         </div>
 
         {isLoadingRooms ? (
@@ -1847,32 +2076,43 @@ const WatchPartyPage: React.FC = () => {
                 key={publicRoom.id}
                 type="button"
                 onClick={() => openJoinDialog(publicRoom.code)}
-                className="group w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-4 focus-visible:ring-offset-black"
+                className={`group w-full text-left ${focusRingClass}`}
               >
-                <div className="relative aspect-video w-full overflow-hidden rounded-[10px] border border-white/[0.07] bg-[#191919]">
-                  {publicRoom.poster ? (
-                    <img src={publicRoom.poster} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.045] group-hover:brightness-75" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_20%,rgba(220,38,38,.22),transparent_60%),linear-gradient(135deg,#242424,#101010)] px-5 text-center">
-                      <Film className="absolute left-4 top-4 h-5 w-5 text-white/25" />
-                      <span className="line-clamp-2 text-lg font-bold text-white/75">{publicRoom.mediaTitle || publicRoom.title}</span>
+                <div className={`${panelClass} overflow-hidden transition duration-300 group-hover:-translate-y-1 group-hover:border-white/[0.16] group-hover:shadow-[0_24px_70px_rgba(0,0,0,.45)]`}>
+                  <div className="relative aspect-video w-full overflow-hidden bg-[#0d0e10]">
+                    {publicRoom.poster ? (
+                      <img src={publicRoom.poster} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.045] group-hover:brightness-75" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_20%,rgba(220,38,38,.18),transparent_60%),linear-gradient(135deg,#242424,#101010)] px-5 text-center">
+                        <Film className="absolute left-4 top-4 h-5 w-5 text-white/25" />
+                        <span className="line-clamp-2 text-lg font-bold text-white/75">{publicRoom.mediaTitle || publicRoom.title}</span>
+                      </div>
+                    )}
+                    <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-black/75 px-2 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur-md">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,.8)]" />
+                      <Users className="h-3 w-3" />
+                      {publicRoom.participantCount}
                     </div>
-                  )}
-                  <div className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-md bg-black/75 px-2 py-1 text-[11px] font-bold text-white shadow-sm backdrop-blur">
-                    <span className="h-1.5 w-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,.8)]" />
-                    <Users className="h-3 w-3" />
-                    {publicRoom.participantCount}
+                    <div className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/75 text-white shadow-lg backdrop-blur-md" title="Accès par code">
+                      <LockKeyhole className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 flex translate-y-2 items-center justify-center bg-gradient-to-t from-black/85 to-transparent pb-4 pt-10 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+                      <span className="rounded-lg bg-white px-4 py-2 text-[11px] font-bold text-black shadow-lg">Rejoindre la salle</span>
+                    </div>
                   </div>
-                  <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-md bg-black/75 text-white shadow-sm backdrop-blur" title="Accès par code">
-                    <LockKeyhole className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="absolute inset-x-0 bottom-0 flex translate-y-2 items-center justify-center bg-gradient-to-t from-black/75 to-transparent pb-3 pt-8 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-                    <span className="rounded-full bg-white px-4 py-1.5 text-[11px] font-bold text-black">Rejoindre la salle</span>
+                  <div className="p-4">
+                    <h3 className="truncate text-sm font-bold text-white/90 transition group-hover:text-white">{publicRoom.title}</h3>
+                    <p className="mt-1 truncate text-[11px] text-white/45">Par {publicRoom.hostNickname || 'Hôte'}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-white/[0.06] pt-3 text-[10px] text-white/40">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1">
+                        <Film className="h-3 w-3 text-red-400" />
+                        {publicRoom.isAnime ? 'Anime' : publicRoom.mediaType === 'tv' ? 'Série' : 'Film'}
+                      </span>
+                      <span>{publicRoom.participantCount}/{publicRoom.maxParticipants} en ligne</span>
+                      <span className={publicRoom.syncMode === 'pro' ? 'text-red-300' : ''}>Sync {publicRoom.syncMode === 'pro' ? 'Pro' : 'classique'}</span>
+                    </div>
                   </div>
                 </div>
-                <h3 className="mt-2.5 truncate text-[13px] font-semibold text-white/90 transition group-hover:text-white">{publicRoom.title}</h3>
-                <p className="mt-1 truncate text-[11px] text-white/45">Par {publicRoom.hostNickname || 'Hôte'}</p>
-                <p className="mt-1 truncate text-[11px] text-white/35">{publicRoom.mediaTitle || publicRoom.title}{publicRoom.isAnime ? ' · Anime' : publicRoom.mediaType === 'tv' ? ' · Série' : ' · Film'} · {publicRoom.participantCount}/{publicRoom.maxParticipants} en ligne · Sync {publicRoom.syncMode === 'pro' ? 'Pro' : 'classique'}</p>
               </button>
             ))}
           </div>
@@ -1880,16 +2120,17 @@ const WatchPartyPage: React.FC = () => {
       </section>
 
       {showCreate && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) setShowCreate(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="watchparty-create-title" className="my-auto max-h-[min(90vh,850px)] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151515] shadow-2xl">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/[0.08] bg-[#151515]/95 px-6 py-5 backdrop-blur">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center overflow-y-auto bg-black/85 p-4 backdrop-blur-md" onMouseDown={event => { if (event.target === event.currentTarget) setShowCreate(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="watchparty-create-title" className="my-auto max-h-[min(92vh,900px)] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0f1012] shadow-[0_30px_100px_rgba(0,0,0,.65)]">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0f1012]/95 px-6 py-5 backdrop-blur-md">
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-red-400">MOVIX WATCH PARTY</p>
-                <h2 id="watchparty-create-title" className="mt-1 text-xl font-bold">Créer une salle</h2>
+                <p className={`mb-1.5 ${eyebrowClass}`}>MOVIX WATCH PARTY</p>
+                <h2 id="watchparty-create-title" className="text-xl font-bold tracking-tight">Créer une salle</h2>
+                <p className="mt-1 text-xs text-white/40">Choisis un titre et invite tes amis avec le code de la salle.</p>
               </div>
-              <button type="button" onClick={() => setShowCreate(false)} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.07] hover:text-white"><X className="h-5 w-5" /></button>
+              <button type="button" onClick={() => setShowCreate(false)} aria-label="Fermer" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.07] hover:text-white ${focusRingClass}`}><X className="h-5 w-5" /></button>
             </div>
-            <form onSubmit={handleCreate} className="space-y-4 p-6">
+            <form onSubmit={handleCreate} className="space-y-5 p-6">
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold text-white/70">Nom de la salle</span>
                 <input value={roomName} onChange={event => setRoomName(event.target.value)} maxLength={80} placeholder="Ex. Soirée cinéma" className={inputClass} />
@@ -1924,14 +2165,14 @@ const WatchPartyPage: React.FC = () => {
                       key={value}
                       type="button"
                       onClick={() => setCatalogType(value)}
-                      className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${catalogType === value ? 'bg-red-600 text-white' : 'border border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white'}`}
+                      className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition ${catalogType === value ? 'border-red-500/40 bg-red-600 text-white shadow-[0_6px_18px_rgba(220,38,38,.25)]' : `border-white/10 bg-white/[0.035] text-white/55 hover:bg-white/[0.07] hover:text-white ${focusRingClass}`}`}
                     >
                       {label}
                     </button>
                   ))}
                 </div>
                 {catalogQuery.trim().length >= 2 && (
-                  <div className="max-h-64 overflow-y-auto rounded-xl border border-white/[0.07] bg-black/20 p-2">
+                  <div className="wp-scrollbar max-h-64 overflow-y-auto rounded-xl border border-white/[0.07] bg-black/25 p-2">
                     {isSearchingCatalog ? (
                       <div className="flex items-center justify-center gap-2 py-8 text-xs text-white/45">
                         <Loader2 className="h-4 w-4 animate-spin" /> Recherche dans le catalogue…
@@ -1981,7 +2222,7 @@ const WatchPartyPage: React.FC = () => {
                   </div>
                 )}
                 {selectedMedia ? (
-                  <div className="rounded-xl border border-red-500/25 bg-red-500/[0.055] p-3">
+                  <div className="rounded-xl border border-red-500/25 bg-red-500/[0.06] p-3 shadow-[0_12px_32px_rgba(0,0,0,.22)]">
                     <div className="flex items-start gap-3">
                       {selectedMedia.poster_path ? (
                         <img src={`https://image.tmdb.org/t/p/w342${selectedMedia.poster_path}`} alt="" className="h-24 w-16 shrink-0 rounded-lg bg-black object-cover" />
@@ -2051,8 +2292,8 @@ const WatchPartyPage: React.FC = () => {
                 <Globe2 className="h-4 w-4 text-white/35" />
               </label>
               {error && <p className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</p>}
-              <div className="flex justify-end gap-2 border-t border-white/[0.07] pt-4">
-                <button type="button" onClick={() => setShowCreate(false)} className="h-11 rounded-xl px-4 text-sm font-semibold text-white/60 transition hover:bg-white/[0.06] hover:text-white">Annuler</button>
+              <div className="flex flex-wrap justify-end gap-2 border-t border-white/[0.07] pt-5">
+                <button type="button" onClick={() => setShowCreate(false)} className={`h-11 rounded-xl px-4 text-sm font-semibold text-white/60 transition hover:bg-white/[0.06] hover:text-white ${focusRingClass}`}>Annuler</button>
                 <button type="submit" disabled={isSubmitting || !selectedMedia || (selectedMedia.media_type === 'tv' && (selectedSeason === null || selectedEpisode === null || isLoadingSeasons || isLoadingEpisodes))} className={buttonClass}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Créer la salle</button>
               </div>
             </form>
@@ -2061,16 +2302,16 @@ const WatchPartyPage: React.FC = () => {
       )}
 
       {showJoin && (
-        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) setShowJoin(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="watchparty-join-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#151515] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/[0.08] px-5 py-4">
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md" onMouseDown={event => { if (event.target === event.currentTarget) setShowJoin(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="watchparty-join-title" className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0f1012] shadow-[0_30px_100px_rgba(0,0,0,.65)]">
+            <div className="flex items-center justify-between gap-3 border-b border-white/[0.08] px-5 py-5">
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[.2em] text-red-400">MOVIX WATCH PARTY</p>
-                <h2 id="watchparty-join-title" className="mt-1 text-lg font-bold">Rejoindre une salle</h2>
+                <p className={`mb-1.5 ${eyebrowClass}`}>MOVIX WATCH PARTY</p>
+                <h2 id="watchparty-join-title" className="text-lg font-bold tracking-tight">Rejoindre une salle</h2>
               </div>
-              <button type="button" onClick={() => setShowJoin(false)} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.07] hover:text-white"><X className="h-5 w-5" /></button>
+              <button type="button" onClick={() => setShowJoin(false)} aria-label="Fermer" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/45 transition hover:bg-white/[0.07] hover:text-white ${focusRingClass}`}><X className="h-5 w-5" /></button>
             </div>
-            <form onSubmit={handleJoin} className="space-y-4 p-5">
+            <form onSubmit={handleJoin} className="space-y-5 p-5">
               <label className="block space-y-1.5">
                 <span className="text-xs font-semibold text-white/70">Ton pseudo</span>
                 <input value={nickname} onChange={event => setNickname(event.target.value)} maxLength={32} placeholder="Ex. Yuno" className={inputClass} autoFocus />
