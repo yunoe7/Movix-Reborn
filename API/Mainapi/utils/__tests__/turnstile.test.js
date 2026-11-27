@@ -99,6 +99,22 @@ test('sans clé au groupe 1, la vérification reste désactivée même avec d\'a
   assert.equal(checks.length, 0);
 });
 
+test('en production, une clé absente bloque la vérification au lieu de la désactiver', async () => {
+  const { turnstile, checks } = load({ NODE_ENV: 'production' });
+  const result = await turnstile.verifyTurnstileFromRequest(from('https://movix.site'), 'valid-token');
+  assert.equal(result.valid, false);
+  assert.equal(result.status, 503);
+  assert.match(result.error, /indisponible/i);
+  assert.equal(checks.length, 0);
+});
+
+test('en production, la dispense admin passe même sans clé configurée', async () => {
+  const { turnstile, checks } = load({ NODE_ENV: 'production' }, { admin: true });
+  const result = await turnstile.verifyTurnstileFromRequest(from('https://movix.site'), undefined);
+  assert.deepEqual({ ...result }, { valid: true, bypassed: true });
+  assert.equal(checks.length, 0);
+});
+
 test('la dispense admin s\'applique aussi aux autres groupes', async () => {
   const { turnstile, checks } = load(ENV, { admin: true });
   const result = await turnstile.verifyTurnstileFromRequest(from('https://movix.new'), undefined, 'invisible');

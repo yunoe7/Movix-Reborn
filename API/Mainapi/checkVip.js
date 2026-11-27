@@ -70,21 +70,11 @@ async function verifyAccessKey(accessKey) {
         return { vip: false, expiresAt: null, duration: null };
     }
 
-    const trimmedKey = accessKey.trim();
-
-    // Fix encoding: HTTP headers carry non-ASCII bytes as Latin-1.
-    // Node stores them as-is in the string, so 0xe9 (é) stays as \xe9.
-    // Convert Latin-1 bytes → Buffer → UTF-8 string to recover proper Unicode.
-    let fixedKey = trimmedKey;
-    try {
-        const buf = Buffer.from(trimmedKey, 'latin1');
-        const decoded = buf.toString('utf8');
-        // Only use the fixed version if it's valid UTF-8 (no replacement chars)
-        if (!decoded.includes('\ufffd')) {
-            fixedKey = decoded;
-        }
-    } catch (e) {
-        // Encoding fix failed, use original
+    // Une seule normalisation partagée avec l'invalidation admin : sans cela,
+    // une clé révoquée peut rester positive en cache jusqu'à la fin du TTL.
+    const fixedKey = normalizeVipKey(accessKey);
+    if (!fixedKey) {
+        return { vip: false, expiresAt: null, duration: null };
     }
 
     // Vérifier le cache d'abord
@@ -220,7 +210,7 @@ function normalizeVipKey(accessKey) {
     try {
         const buf = Buffer.from(trimmedKey, 'latin1');
         const decoded = buf.toString('utf8');
-        if (!decoded.includes('\\ufffd')) {
+        if (!decoded.includes('\ufffd')) {
             fixedKey = decoded;
         }
     } catch (e) {
@@ -247,6 +237,7 @@ module.exports = {
     verifyAccessKey,
     vipMiddleware,
     requireVip,
+    normalizeVipKey,
     invalidateVipCache,
     invalidateAllVipCache
 };

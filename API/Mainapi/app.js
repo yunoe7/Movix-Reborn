@@ -705,12 +705,11 @@ app.use((err, req, res, next) => {
     });
   }
 
-  console.error("Erreur globale:", err);
-  res.status(500).json({
-    error: "Erreur serveur interne",
-    message: err.message,
-    path: req.path,
-  });
+  // Ne jamais renvoyer err.message / req.path au client : ils peuvent contenir
+  // des détails MySQL, des chemins internes ou des URL signées. Le détail reste
+  // dans les logs serveur, avec l'identifiant de requête quand il existe.
+  console.error("Erreur globale:", err, { path: req.path, requestId: req.id || req.headers['x-request-id'] || null });
+  res.status(500).json({ error: "Erreur serveur interne" });
 });
 
 module.exports = { app, appReady, getAppPool };
