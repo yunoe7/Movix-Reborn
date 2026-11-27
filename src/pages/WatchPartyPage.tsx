@@ -2117,7 +2117,7 @@ const WatchPartyPage: React.FC = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,312px),312px))] gap-x-2.5 gap-y-7">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,340px),340px))] gap-x-4 gap-y-6">
             {filteredPublicRooms.map(publicRoom => (
               <button
                 key={publicRoom.id}
@@ -2125,10 +2125,10 @@ const WatchPartyPage: React.FC = () => {
                 onClick={() => openJoinDialog(publicRoom.code)}
                 className={`group w-full text-left ${focusRingClass}`}
               >
-                <div className={`${panelClass} overflow-hidden transition duration-300 group-hover:-translate-y-1 group-hover:border-white/[0.16] group-hover:shadow-[0_24px_70px_rgba(0,0,0,.45)]`}>
-                  <div className="relative aspect-video w-full overflow-hidden bg-[#0d0e10]">
+                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0d0e10] transition duration-300 group-hover:-translate-y-1 group-hover:border-white/[0.16] group-hover:shadow-[0_24px_70px_rgba(0,0,0,.4)]">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-t-2xl bg-[#0d0e10]">
                     {publicRoom.poster ? (
-                      <img src={publicRoom.poster} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.045] group-hover:brightness-75" />
+                      <img src={publicRoom.poster} alt="" loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.035]" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_30%_20%,rgba(220,38,38,.18),transparent_60%),linear-gradient(135deg,#242424,#101010)] px-5 text-center">
                         <Film className="absolute left-4 top-4 h-5 w-5 text-white/25" />
@@ -2143,21 +2143,10 @@ const WatchPartyPage: React.FC = () => {
                     <div className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 bg-black/75 text-white shadow-lg backdrop-blur-md" title="Accès par code">
                       <LockKeyhole className="h-3.5 w-3.5" />
                     </div>
-                    <div className="absolute inset-x-0 bottom-0 flex translate-y-2 items-center justify-center bg-gradient-to-t from-black/85 to-transparent pb-4 pt-10 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100">
-                      <span className="rounded-lg bg-white px-4 py-2 text-[11px] font-bold text-black shadow-lg">Rejoindre la salle</span>
-                    </div>
                   </div>
-                  <div className="p-4">
+                  <div className="px-3.5 pb-3.5 pt-2.5">
                     <h3 className="truncate text-sm font-bold text-white/90 transition group-hover:text-white">{publicRoom.title}</h3>
-                    <p className="mt-1 truncate text-[11px] text-white/45">Par {publicRoom.hostNickname || 'Hôte'}</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-white/[0.06] pt-3 text-[10px] text-white/40">
-                      <span className="inline-flex items-center gap-1 rounded-md border border-white/[0.07] bg-white/[0.03] px-2 py-1">
-                        <Film className="h-3 w-3 text-red-400" />
-                        {publicRoom.isAnime ? 'Anime' : publicRoom.mediaType === 'tv' ? 'Série' : 'Film'}
-                      </span>
-                      <span>{publicRoom.participantCount}/{publicRoom.maxParticipants} en ligne</span>
-                      <span className={publicRoom.syncMode === 'pro' ? 'text-red-300' : ''}>Sync {publicRoom.syncMode === 'pro' ? 'Pro' : 'classique'}</span>
-                    </div>
+                    <p className="mt-1 truncate text-xs text-white/45">Par {publicRoom.hostNickname || 'Hôte'}</p>
                   </div>
                 </div>
               </button>
