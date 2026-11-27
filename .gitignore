@@ -117,3 +117,6 @@ app-tv/dist/
 keystore.properties
 signing.properties
 release-signing.properties
+
+# Cloudflare Worker : état local généré par Wrangler
+cloudflareproxy/.wrangler/
