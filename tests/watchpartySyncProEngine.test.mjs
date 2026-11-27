@@ -32,11 +32,12 @@ function compileWorker() {
 
 const WORKER_SOURCE = compileWorker();
 
-function createWasmFixture() {
+function createWasmFixture({ missing = false } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'watchparty-sync-pro-'));
   const moduleDir = path.join(root, 'wasm', 'watchparty-sync');
   mkdirSync(moduleDir, { recursive: true });
   writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
+  if (missing) return { root, calls: globalThis.__watchpartyWasmCalls ||= [] };
   writeFileSync(path.join(moduleDir, 'watchparty_sync.js'), `
 const calls = globalThis.__watchpartyWasmCalls ||= [];
 export default async function init() {}
@@ -54,7 +55,7 @@ export class WatchPartySyncEngine {
   return { root, calls: globalThis.__watchpartyWasmCalls };
 }
 
-function createEngine({ wasm = false, mode = 'pro', state = FROZEN_STATE } = {}) {
+function createEngine({ wasm = false, wasmMissing = false, mode = 'pro', state = FROZEN_STATE } = {}) {
   const originalDateNow = Date.now;
   let now = T0;
   Date.now = () => now;
@@ -62,7 +63,7 @@ function createEngine({ wasm = false, mode = 'pro', state = FROZEN_STATE } = {})
   let fixture = null;
   let origin = 'http://127.0.0.1:1';
   if (wasm) {
-    fixture = createWasmFixture();
+    fixture = createWasmFixture({ missing: wasmMissing });
     globalThis.__watchpartyWasmCalls = fixture.calls;
     origin = pathToFileURL(fixture.root).href;
   }
@@ -134,6 +135,13 @@ function createEngine({ wasm = false, mode = 'pro', state = FROZEN_STATE } = {})
         await new Promise(resolve => setImmediate(resolve));
       }
       throw new Error('le moteur WASM factice ne s’est pas chargé');
+    },
+    async waitForEngine(implementation) {
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        if (messages.some(message => message.type === 'engine' && message.implementation === implementation)) return;
+        await new Promise(resolve => setImmediate(resolve));
+      }
+      throw new Error(`le moteur ${implementation} n’a pas été annoncé`);
     },
     dispose() {
       Date.now = originalDateNow;
@@ -324,6 +332,26 @@ test('chemin WASM : une commande programmée est différée et compensée comme 
   const schedules = engine.wasmCalls().filter(call => call[0] === 'ingest_schedule');
   assert.equal(schedules.length, 1);
   assertClose(schedules[0][1].position, 110.25, 0.05, 'position transmise au moteur WASM');
+});
+
+test('repli WASM→JS : un bundle indisponible laisse le moteur JS appliquer les schedules', async (t) => {
+  const engine = createEngine({ wasm: true, wasmMissing: true });
+  t.after(() => engine.dispose());
+  await engine.waitForEngine('js');
+
+  engine.send({
+    type: 'schedule',
+    event: { action: 'seek', position: 110, scheduledAt: T0 + 250, serverNow: T0, updatedBy: 'host-1' }
+  });
+  engine.send({ type: 'local-state', state: { now: T0 + 100, currentTime: 120, isPlaying: true, playbackRate: 1 } });
+
+  assert.equal(engine.commands().length, 0, 'le repli JS ne doit pas anticiper le seek');
+  engine.advanceTo(T0 + 250);
+
+  const seeks = engine.commands().filter(command => command.action === 'seek');
+  assert.equal(seeks.length, 1);
+  assertClose(seeks[0].value, 110.25, 0.05, 'position du seek en repli JS');
+  assert.equal(engine.wasmCalls().length, 0, 'aucun appel WASM ne doit être tenté après l’échec de chargement');
 });
 
 test('mode classique : aucun schedule ni commande n’est piloté par le worker', (t) => {
