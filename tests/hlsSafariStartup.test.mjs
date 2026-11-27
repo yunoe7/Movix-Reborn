@@ -79,6 +79,7 @@ function playerFixture({ hlsSupported = true, autoPlay = false } = {}) {
     src: 'https://media.test/master.m3u8', normalizeUqloadEmbedUrl: url => url,
     kisskhSources: [], isMP4Source: () => false, contentTypeMp4Urls: new Set(),
     createHlsConfig: () => ({}), purstreamSources: [], console: silentConsole, window: {},
+    isIpadSafari: () => false,
     qualitiesRef: { current: [] }, qualityPreferenceRef: { current: 'auto' },
     buildHlsQualityOptions: levels => levels, setQualities: noop,
     selectLevelForPreference: () => 0, formatDetectedStreamQuality: () => '1080p',
