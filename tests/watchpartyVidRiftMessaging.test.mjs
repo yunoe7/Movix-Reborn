@@ -120,7 +120,10 @@ test('handleVidRiftLoad demande toujours l’état serveur, même sans frame pr�
 });
 
 test('une URL VidRift sans identifiant numérique ne produit pas d’iframe', () => {
-  const build = sourceFunction(PAGE, 'buildVidRiftEmbedUrl', { VIDRIFT_ORIGIN }, '/embed/');
+  const build = sourceFunction(PAGE, 'buildVidRiftEmbedUrl', {
+    VIDRIFT_ORIGIN,
+    isIpadSafari: () => false,
+  }, '/embed/');
 
   assert.equal(build({ mediaType: 'movie', mediaId: null }), '');
   assert.equal(build({ mediaType: 'movie', mediaId: 'abc' }), '');
@@ -179,6 +182,7 @@ test('le lecteur VidRift peut recevoir un onLoad avant que la frame soit prête'
 test('le lecteur VidRift refuse un identifiant TMDB invalide sans monter d’iframe', () => {
   const buildSrc = sourceFunction(PLAYER, 'src', {
     useMemo: (factory) => factory,
+    isIpadSafari: () => false,
     kind: 'movie',
     tmdbId: 'abc',
     season: undefined,
@@ -193,6 +197,7 @@ test('le lecteur VidRift refuse un identifiant TMDB invalide sans monter d’ifr
 
   const validSrc = sourceFunction(PLAYER, 'src', {
     useMemo: (factory) => factory,
+    isIpadSafari: () => false,
     kind: 'movie',
     tmdbId: '550',
     season: undefined,
