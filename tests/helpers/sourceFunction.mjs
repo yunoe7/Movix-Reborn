@@ -11,6 +11,9 @@ export function sourceFunction(file, name, bindings = {}, includes = '') {
     if (ts.isVariableDeclaration(node) && node.name.getText(source) === name && node.initializer?.getText(source).includes(includes)) {
       expression = node.initializer.getText(source);
     }
+    if (ts.isFunctionDeclaration(node) && node.name?.getText(source) === name && node.getText(source).includes(includes)) {
+      expression = node.getText(source);
+    }
     ts.forEachChild(node, visit);
   };
   visit(source);
