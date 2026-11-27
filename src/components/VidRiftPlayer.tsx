@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isTrustedVidRiftMessage, postToVidRift, VIDRIFT_ORIGIN } from '../utils/vidriftMessaging';
 import { isIpadSafari } from '../utils/deviceDetection';
 
 type VidRiftPlayerProps = {
@@ -32,7 +33,6 @@ type ContinueWatchingHistory = {
   tv: ContinueWatchingEntry[];
 };
 
-const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
 const VIDRIFT_BRAND_COLOR = 'DC2626';
 
 function readContinueWatching(): ContinueWatchingHistory {
@@ -125,7 +125,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   }, [kind, tmdbId, season, episode, title, posterPath]);
 
   const sendToPlayer = useCallback((message: Record<string, unknown>) => {
-    iframeRef.current?.contentWindow?.postMessage(message, VIDRIFT_ORIGIN);
+    postToVidRift(iframeRef.current, message);
   }, []);
 
   const persistProgress = useCallback((
@@ -201,8 +201,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     if (!iframe) return;
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== VIDRIFT_ORIGIN) return;
-      if (event.source !== iframe.contentWindow) return;
+      if (!isTrustedVidRiftMessage(event, iframe)) return;
       if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string') return;
 
       const data = event.data as {
