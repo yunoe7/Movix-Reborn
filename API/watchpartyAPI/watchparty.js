@@ -699,6 +699,8 @@ watchpartyIO.on('connection', (socket) => {
   };
   room.participants.push(participant);
   room.readyState[socket.id] = false;
+  // Rafraîchir aussi le compteur public quand l'hôte ou un invité rejoint.
+  emitPublicRooms();
 
   // Emit room info + participants
   emitRoomInfo(roomId, room);
@@ -1437,6 +1439,8 @@ watchpartyIO.on('connection', (socket) => {
     const leaving = r.participants[idx];
     r.participants.splice(idx, 1);
     delete r.readyState[socket.id];
+    // Garder le nombre de participants du lobby synchronisé aux déconnexions.
+    emitPublicRooms();
     if (r.countdown) {
       if (r.countdownTimer) clearTimeout(r.countdownTimer);
       r.countdownTimer = null;

@@ -704,3 +704,21 @@ test('la fermeture d’un salon public le retire du lobby connecté', async (t) 
   );
   assert.equal(roomIsInLobby(snapshot, room.roomId), false);
 });
+
+
+test('un salon public reste listé et son compteur se met à jour après connexion de l’hôte', async (t) => {
+  const lobby = await connectLobbySocket(t);
+  const { room } = await connectHost(t, { isPublic: true });
+
+  const snapshot = await waitForLobbySnapshot(
+    lobby,
+    (rooms) => rooms.some((entry) => entry.id === room.roomId && entry.participantCount === 1),
+    'le salon public avec son hôte connecté'
+  );
+  assert.ok(roomIsInLobby(snapshot, room.roomId));
+
+  const publicRooms = await api('/api/watchparty/public');
+  const listed = publicRooms.rooms.find((entry) => entry.id === room.roomId);
+  assert.ok(listed, 'la route REST doit retourner le salon public');
+  assert.equal(listed.participantCount, 1);
+});

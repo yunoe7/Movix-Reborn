@@ -232,7 +232,7 @@ const WatchPartyPage: React.FC = () => {
   const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
   const [isLoadingSeasons, setIsLoadingSeasons] = useState(false);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
-  const [isPublic, setIsPublic] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
   const [maxParticipants, setMaxParticipants] = useState('8');
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);

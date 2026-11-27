@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { sourceEffect, sourceFunction } from './helpers/sourceFunction.mjs';
@@ -150,4 +151,10 @@ test('le lobby ouvert reçoit les salons publics sans rechargement ni clic', () 
   assert.deepEqual(cleared, [77]);
   assert.equal(listeners.window.has('focus'), false);
   assert.equal(listeners.document.has('visibilitychange'), false);
+});
+
+
+test('la création WatchParty active la visibilité publique par défaut', () => {
+  const source = readFileSync(PAGE, 'utf8');
+  assert.match(source, /const \[isPublic, setIsPublic\] = useState\(true\);/);
 });
