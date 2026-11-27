@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import { sourceEffect, sourceFunction } from './helpers/sourceFunction.mjs';
+
+const require = createRequire(import.meta.url);
+const esbuild = require('esbuild');
 
 const PAGE = 'src/pages/WatchPartyPage.tsx';
 
@@ -30,9 +34,11 @@ test('refreshPublicRooms applique la réponse réelle de la route publique', asy
 });
 
 test('apiRequest remonte les statuts 404 et 502 au lieu de masquer la réponse', async () => {
+  const requests = [];
   const request = sourceFunction(PAGE, 'apiRequest', {
     WATCHPARTY_API: 'https://watchparty.test',
     fetch: async (url, init) => {
+      requests.push({ url, init });
       const status = init?.headers?.['x-test-status'] || 404;
       return {
         ok: status < 400,
@@ -44,12 +50,42 @@ test('apiRequest remonte les statuts 404 et 502 au lieu de masquer la réponse',
 
   await assert.rejects(
     request('/api/watchparty/public', { headers: { 'x-test-status': 404 } }),
-    /Not found/
+    /Not found \(404 · \/api\/watchparty\/public\)/
   );
   await assert.rejects(
     request('/api/watchparty/public', { headers: { 'x-test-status': 502 } }),
-    /Bad gateway/
+    /Bad gateway \(502 · \/api\/watchparty\/public\)/
   );
+  assert.equal(requests.length, 2);
+  assert.deepEqual(requests.map(({ url }) => url), [
+    'https://watchparty.test/api/watchparty/public',
+    'https://watchparty.test/api/watchparty/public',
+  ]);
+  assert.ok(requests.every(({ init }) => init.cache === 'no-store'));
+});
+
+test('WATCHPARTY_API ne retombe jamais sur la Main API', () => {
+  const built = esbuild.buildSync({
+    entryPoints: ['src/config/runtime.ts'],
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    target: 'node24',
+    write: false,
+    logLevel: 'silent',
+    define: {
+      'import.meta.env': JSON.stringify({
+        VITE_MAIN_API: 'https://main-api.test',
+        VITE_SITE_URL: 'https://movix.test',
+      }),
+    },
+  });
+  const moduleObj = { exports: {} };
+  new Function('exports', 'module', built.outputFiles[0].text)(moduleObj.exports, moduleObj);
+  const runtime = moduleObj.exports;
+
+  assert.equal(runtime.MAIN_API, 'https://main-api.test');
+  assert.equal(runtime.WATCHPARTY_API, '', 'la Main API ne doit pas servir les routes WatchParty');
 });
 
 test('le lobby ouvert reçoit les salons publics sans rechargement ni clic', () => {

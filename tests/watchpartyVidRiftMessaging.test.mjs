@@ -19,14 +19,14 @@ const built = esbuild.buildSync({
   logLevel: 'silent'
 });
 
-const moduleExports = {};
-new Function('exports', 'module', built.outputFiles[0].text)(moduleExports, { exports: moduleExports });
+const moduleObj = { exports: {} };
+new Function('exports', 'module', built.outputFiles[0].text)(moduleObj.exports, moduleObj);
 const {
   isAllowedVidRiftOrigin,
   getVidRiftTargetOrigin,
   postToVidRift,
   isTrustedVidRiftMessage,
-} = moduleExports;
+} = moduleObj.exports;
 
 function fakeFrame({ src = `${VIDRIFT_ORIGIN}/embed/movie/550`, sameOriginDocument = false, missing = false } = {}) {
   if (missing) return { src, contentWindow: null, contentDocument: null };
@@ -109,6 +109,7 @@ test('handleVidRiftLoad demande toujours l’état serveur, même sans frame pr�
     localVolume: 0.8,
     localMuted: false,
     socketRef: { current: { emit: (event, ...args) => emitted.push([event, ...args]) } },
+    getVidRiftTargetOrigin: () => null,
     postToVidRift,
     VIDRIFT_ORIGIN,
   }, 'vidrift:get-state');
@@ -125,4 +126,82 @@ test('une URL VidRift sans identifiant numérique ne produit pas d’iframe', ()
   assert.equal(build({ mediaType: 'movie', mediaId: 'abc' }), '');
   assert.equal(build({ mediaType: 'movie', mediaId: '0' }), '');
   assert.match(build({ mediaType: 'movie', mediaId: '550' }), /^https:\/\/embed\.vidrift\.net\/embed\/movie\/550/);
+});
+
+const PLAYER = 'src/components/VidRiftPlayer.tsx';
+
+test('le lecteur VidRift n’envoie que via le helper d’origine validée', () => {
+  const sent = [];
+  const frame = fakeFrame();
+  const send = sourceFunction(PLAYER, 'sendToPlayer', {
+    useCallback: (callback) => callback,
+    postToVidRift: (target, message) => {
+      sent.push({ target, message });
+      return postToVidRift(target, message);
+    },
+    iframeRef: { current: frame },
+  }, 'postToVidRift');
+
+  send({ type: 'vidrift:get-state' });
+  assert.deepEqual(sent, [{ target: frame, message: { type: 'vidrift:get-state' } }]);
+  assert.deepEqual(frame.calls, [
+    { message: { type: 'vidrift:get-state' }, targetOrigin: VIDRIFT_ORIGIN }
+  ]);
+});
+
+test('le lecteur VidRift peut recevoir un onLoad avant que la frame soit prête', () => {
+  globalThis.window = { location: { href: `${PARENT_ORIGIN}/watch/550` } };
+  const sent = [];
+  const frame = fakeFrame({ src: '', sameOriginDocument: true });
+  const send = sourceFunction(PLAYER, 'sendToPlayer', {
+    useCallback: (callback) => callback,
+    postToVidRift: (target, message) => {
+      sent.push(message);
+      return postToVidRift(target, message);
+    },
+    iframeRef: { current: frame },
+  }, 'postToVidRift');
+  const onLoad = sourceFunction(PLAYER, 'handleIframeLoad', {
+    useCallback: (callback) => callback,
+    savedProgress: 42,
+    sendToPlayer: send,
+  }, 'vidrift:get-state');
+
+  onLoad();
+
+  assert.deepEqual(sent, [
+    { type: 'vidrift:get-state' },
+    { type: 'vidrift:resume', currentTime: 42 },
+  ]);
+  assert.equal(frame.calls.length, 0, 'aucune erreur postMessage ne doit être levée');
+});
+
+test('le lecteur VidRift refuse un identifiant TMDB invalide sans monter d’iframe', () => {
+  const buildSrc = sourceFunction(PLAYER, 'src', {
+    useMemo: (factory) => factory,
+    kind: 'movie',
+    tmdbId: 'abc',
+    season: undefined,
+    episode: undefined,
+    title: 'Film',
+    posterPath: undefined,
+    VIDRIFT_ORIGIN,
+    VIDRIFT_BRAND_COLOR: 'DC2626',
+  }, '/embed/');
+
+  assert.equal(buildSrc(), '');
+
+  const validSrc = sourceFunction(PLAYER, 'src', {
+    useMemo: (factory) => factory,
+    kind: 'movie',
+    tmdbId: '550',
+    season: undefined,
+    episode: undefined,
+    title: 'Fight Club',
+    posterPath: undefined,
+    VIDRIFT_ORIGIN,
+    VIDRIFT_BRAND_COLOR: 'DC2626',
+  }, '/embed/');
+
+  assert.match(validSrc(), /^https:\/\/embed\.vidrift\.net\/embed\/movie\/550/);
 });

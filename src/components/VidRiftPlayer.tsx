@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isTrustedVidRiftMessage, postToVidRift, VIDRIFT_ORIGIN } from '../utils/vidriftMessaging';
 
 type VidRiftPlayerProps = {
   kind: 'movie' | 'tv';
@@ -31,7 +32,6 @@ type ContinueWatchingHistory = {
   tv: ContinueWatchingEntry[];
 };
 
-const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
 const VIDRIFT_BRAND_COLOR = 'DC2626';
 
 function readContinueWatching(): ContinueWatchingHistory {
@@ -100,6 +100,8 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
 
   const src = useMemo(() => {
+    const numericTmdbId = Number(tmdbId);
+    if (!Number.isSafeInteger(numericTmdbId) || numericTmdbId <= 0) return '';
     const path = kind === 'movie'
       ? `/embed/movie/${encodeURIComponent(tmdbId)}`
       : `/embed/tv/${encodeURIComponent(tmdbId)}/${season ?? 1}/${episode ?? 1}`;
@@ -115,7 +117,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   }, [kind, tmdbId, season, episode, title, posterPath]);
 
   const sendToPlayer = useCallback((message: Record<string, unknown>) => {
-    iframeRef.current?.contentWindow?.postMessage(message, VIDRIFT_ORIGIN);
+    postToVidRift(iframeRef.current, message);
   }, []);
 
   const persistProgress = useCallback((
@@ -191,8 +193,7 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     if (!iframe) return;
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== VIDRIFT_ORIGIN) return;
-      if (event.source !== iframe.contentWindow) return;
+      if (!isTrustedVidRiftMessage(event, iframe)) return;
       if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string') return;
 
       const data = event.data as {
@@ -297,17 +298,23 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
 
   return (
     <main className="fixed inset-0 z-50 flex h-[100dvh] w-full flex-col bg-black text-white">
-      <iframe
-        ref={iframeRef}
-        onLoad={handleIframeLoad}
-        key={src}
-        src={src}
-        title={title ? `VidRift — ${title}` : 'Lecteur VidRift'}
-        className="h-full w-full flex-1 border-0"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
-        allowFullScreen
-        loading="eager"
-      />
+      {src ? (
+        <iframe
+          ref={iframeRef}
+          onLoad={handleIframeLoad}
+          key={src}
+          src={src}
+          title={title ? `VidRift — ${title}` : 'Lecteur VidRift'}
+          className="h-full w-full flex-1 border-0"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
+          allowFullScreen
+          loading="eager"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-white/60">
+          Lecteur indisponible : identifiant VidRift invalide.
+        </div>
+      )}
     </main>
   );
 };

@@ -11,12 +11,18 @@ import {
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
 import { isIpadSafari } from '../utils/deviceDetection';
+import {
+  getVidRiftTargetOrigin,
+  isTrustedVidRiftMessage,
+  postToVidRift,
+  VIDRIFT_ORIGIN,
+} from '../utils/vidriftMessaging';
 import { WATCHPARTY_API as CONFIGURED_WATCHPARTY_API } from '../config/runtime';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
-// Le fallback historique reste disponible pour les déploiements qui ne
-// configurent ni VITE_WATCHPARTY_API ni VITE_MAIN_API.
+// Ce service a sa propre URL : la fallback historique reste disponible pour
+// les déploiements qui ne configurent pas VITE_WATCHPARTY_API.
 const WATCHPARTY_API = CONFIGURED_WATCHPARTY_API || 'https://watchparty-api-production.up.railway.app';
 
 type Media = {
@@ -144,11 +150,9 @@ type PublicRoom = {
   createdAt: number;
 };
 
-const VIDRIFT_ORIGIN = 'https://embed.vidrift.net';
-
 function buildVidRiftEmbedUrl(media: Media): string {
   const tmdbId = String(media.mediaId || '');
-  if (!/^\d+$/.test(tmdbId)) return '';
+  if (!/^\d+$/.test(tmdbId) || !Number.isSafeInteger(Number(tmdbId)) || Number(tmdbId) <= 0) return '';
   const season = Number.isInteger(media.seasonNumber) && Number(media.seasonNumber) >= 0 ? Number(media.seasonNumber) : 1;
   const episode = Number.isInteger(media.episodeNumber) && Number(media.episodeNumber) > 0 ? Number(media.episodeNumber) : 1;
   const path = media.mediaType === 'tv'
@@ -170,6 +174,7 @@ const inputClass = `h-11 w-full rounded-xl border border-white/10 bg-black/40 px
 const buttonClass = `inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`;
 const softButtonClass = `inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold text-white/75 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${focusRingClass}`;
 const eyebrowClass = 'text-[10px] font-extrabold uppercase tracking-[.22em] text-red-400';
+const PUBLIC_ROOMS_POLL_MS = 10_000;
 
 function formatClockTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -190,11 +195,17 @@ function formatChatTime(timestamp: number) {
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${WATCHPARTY_API}${path}`, {
     ...init,
+    cache: 'no-store',
     headers: { ...(init?.headers || {}), ...(init?.body ? { 'Content-Type': 'application/json' } : {}) },
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload?.message || `Erreur serveur (${response.status})`);
+    const fallback = response.status === 502
+      ? 'Service WatchParty indisponible'
+      : response.status === 404
+        ? 'Ressource WatchParty introuvable'
+        : 'Erreur serveur WatchParty';
+    throw new Error(`${payload?.message || fallback} (${response.status} · ${path})`);
   }
   return payload as T;
 }
@@ -259,6 +270,7 @@ const WatchPartyPage: React.FC = () => {
   const [localMuted, setLocalMuted] = useState(false);
   const [vidRiftActivationOpen, setVidRiftActivationOpen] = useState(false);
   const socketRef = useRef<Socket | null>(null);
+  const lobbySocketRef = useRef<Socket | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const vidriftFrameRef = useRef<HTMLIFrameElement>(null);
   const vidRiftHasReportedStateRef = useRef(false);
@@ -430,7 +442,33 @@ const WatchPartyPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!roomId) void refreshPublicRooms();
+    if (roomId) return;
+    // LOBBY_PUBLIC_ROOMS : un lobby déjà ouvert doit voir les salons créés
+    // ailleurs sans rechargement. Le socket temps réel est la voie principale,
+    // le polling et le retour en avant-plan servent de filet de sécurité.
+    void refreshPublicRooms();
+    const lobbySocket = io(`${WATCHPARTY_API}/watchparty-lobby`, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+    });
+    lobbySocketRef.current = lobbySocket;
+    lobbySocket.on('lobby:rooms', (rooms: PublicRoom[]) => {
+      setPublicRooms(Array.isArray(rooms) ? rooms : []);
+      setError('');
+    });
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === 'visible') void refreshPublicRooms();
+    };
+    const pollTimer = window.setInterval(() => void refreshPublicRooms(), PUBLIC_ROOMS_POLL_MS);
+    window.addEventListener('focus', refreshOnVisibility);
+    document.addEventListener('visibilitychange', refreshOnVisibility);
+    return () => {
+      window.clearInterval(pollTimer);
+      window.removeEventListener('focus', refreshOnVisibility);
+      document.removeEventListener('visibilitychange', refreshOnVisibility);
+      lobbySocket.disconnect();
+      if (lobbySocketRef.current === lobbySocket) lobbySocketRef.current = null;
+    };
   }, [roomId, refreshPublicRooms]);
 
   const rememberIdentity = (name: string) => {
@@ -574,21 +612,21 @@ const WatchPartyPage: React.FC = () => {
     const targetPosition = Math.max(0, Number(state.position) + elapsedSeconds);
 
     if (roomRef.current?.media.playbackType === 'vidrift') {
-      const target = vidriftFrameRef.current?.contentWindow;
-      if (!target) {
+      const frame = vidriftFrameRef.current;
+      if (!getVidRiftTargetOrigin(frame)) {
         pendingPlaybackRef.current = state;
         return;
       }
       suppressRemotePlaybackEvents(1200);
       if (Number.isFinite(targetPosition) && Math.abs(vidriftPlaybackRef.current.currentTime - targetPosition) > 0.8) {
-        target.postMessage({ type: 'vidrift:resume', currentTime: targetPosition }, VIDRIFT_ORIGIN);
+        postToVidRift(frame, { type: 'vidrift:resume', currentTime: targetPosition });
       }
       // Heartbeats repeat the authoritative playback state. Sending play/pause
       // on every heartbeat makes VidRift reopen its controls for guests even
       // when playback is already in the requested state.
       const playbackStateChanged = vidriftPlaybackRef.current.paused !== !state.isPlaying;
       if (playbackStateChanged) {
-        target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
+        postToVidRift(frame, { type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' });
       }
       vidriftPlaybackRef.current = {
         ...vidriftPlaybackRef.current,
@@ -676,8 +714,13 @@ const WatchPartyPage: React.FC = () => {
         if (result.room.pauseVote) setPauseVote(result.room.pauseVote);
         if (result.room.playbackState) pendingPlaybackRef.current = result.room.playbackState;
         const savedNickname = (() => { try { return sessionStorage.getItem('watchPartyNickname') || 'Invité'; } catch { return 'Invité'; } })();
+        const identity = { roomId, nickname: savedNickname, token };
         const socket = io(`${WATCHPARTY_API}/watchparty`, {
-          query: { roomId, nickname: savedNickname, token },
+          // Socket.IO v4 transmet ces données dans `auth` (et non `query`),
+          // sinon le serveur reçoit un roomId vide et répond « Invalid room ID ».
+          auth: identity,
+          // Conservé pour les serveurs encore en Socket.IO v3.
+          query: identity,
           transports: ['websocket', 'polling'],
           reconnection: true,
         });
@@ -942,19 +985,21 @@ const WatchPartyPage: React.FC = () => {
     suppressRemotePlaybackEvents(1300);
 
     const isVidRift = roomRef.current?.media.playbackType === 'vidrift';
-    const target = vidriftFrameRef.current?.contentWindow;
+    const frame = vidriftFrameRef.current;
     const video = videoRef.current;
-    if (isVidRift && target) {
-      if (command.action === 'play') target.postMessage({ type: 'vidrift:play' }, VIDRIFT_ORIGIN);
-      if (command.action === 'pause') target.postMessage({ type: 'vidrift:pause' }, VIDRIFT_ORIGIN);
-      if (command.action === 'seek' && Number.isFinite(command.value)) {
-        target.postMessage({ type: 'vidrift:resume', currentTime: Math.max(0, command.value as number) }, VIDRIFT_ORIGIN);
-      }
-      if (command.action === 'setPlaybackRate' && Number.isFinite(command.value)) {
-        target.postMessage({ type: 'vidrift:set', speed: command.value }, VIDRIFT_ORIGIN);
-      }
-      if (command.action === 'resetPlaybackRate') {
-        target.postMessage({ type: 'vidrift:set', speed: 1 }, VIDRIFT_ORIGIN);
+    if (isVidRift) {
+      if (getVidRiftTargetOrigin(frame)) {
+        if (command.action === 'play') postToVidRift(frame, { type: 'vidrift:play' });
+        if (command.action === 'pause') postToVidRift(frame, { type: 'vidrift:pause' });
+        if (command.action === 'seek' && Number.isFinite(command.value)) {
+          postToVidRift(frame, { type: 'vidrift:resume', currentTime: Math.max(0, command.value as number) });
+        }
+        if (command.action === 'setPlaybackRate' && Number.isFinite(command.value)) {
+          postToVidRift(frame, { type: 'vidrift:set', speed: command.value });
+        }
+        if (command.action === 'resetPlaybackRate') {
+          postToVidRift(frame, { type: 'vidrift:set', speed: 1 });
+        }
       }
       return;
     }
@@ -1158,10 +1203,8 @@ const WatchPartyPage: React.FC = () => {
     setLocalMuted(nextMuted);
 
     if (roomRef.current?.media.playbackType === 'vidrift') {
-      const target = vidriftFrameRef.current?.contentWindow;
-      if (!target) return;
       // Volume is local to this iframe only and is never broadcast via Socket.IO.
-      target.postMessage({ type: 'vidrift:set', volume, muted: nextMuted }, VIDRIFT_ORIGIN);
+      postToVidRift(vidriftFrameRef.current, { type: 'vidrift:set', volume, muted: nextMuted });
       return;
     }
 
@@ -1179,13 +1222,17 @@ const WatchPartyPage: React.FC = () => {
   };
 
   const handleVidRiftLoad = () => {
-    const target = vidriftFrameRef.current?.contentWindow;
-    if (!target) return;
+    const frame = vidriftFrameRef.current;
+    const ready = Boolean(getVidRiftTargetOrigin(frame));
     vidRiftHasReportedStateRef.current = false;
-    target.postMessage({ type: 'vidrift:get-state' }, VIDRIFT_ORIGIN);
-    if (hasCustomLocalVolumeRef.current) {
-      target.postMessage({ type: 'vidrift:set', volume: localVolume, muted: localMuted }, VIDRIFT_ORIGIN);
+    if (ready) {
+      postToVidRift(frame, { type: 'vidrift:get-state' });
+      if (hasCustomLocalVolumeRef.current) {
+        postToVidRift(frame, { type: 'vidrift:set', volume: localVolume, muted: localMuted });
+      }
     }
+    // Le snapshot serveur reste disponible même si l'iframe n'est pas encore
+    // dans l'origine VidRift : il sera appliqué au premier `vidrift:state`.
     socketRef.current?.emit('playback:getState');
   };
 
@@ -1195,7 +1242,7 @@ const WatchPartyPage: React.FC = () => {
 
     const handleVidRiftMessage = (event: MessageEvent) => {
       const frame = vidriftFrameRef.current;
-      if (event.origin !== VIDRIFT_ORIGIN || event.source !== frame?.contentWindow) return;
+      if (!isTrustedVidRiftMessage(event, frame)) return;
       if (!event.data || typeof event.data !== 'object' || typeof event.data.type !== 'string') return;
 
       const data = event.data as {

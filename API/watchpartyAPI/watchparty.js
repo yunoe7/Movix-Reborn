@@ -512,6 +512,9 @@ function extractRequestToken(req) {
 
 // --- Socket.IO namespace dédié watchparty ---
 const watchpartyIO = io.of('/watchparty');
+// Les clients du lobby n'ont pas de token de salle : ils reçoivent uniquement
+// les métadonnées publiques, jamais les URLs de flux ni les participants privés.
+const lobbyIO = io.of('/watchparty-lobby');
 const SYNC_PRO_SCHEDULE_DELAY_MS = 250;
 
 function buildRoomInfo(roomId, room) {
@@ -537,6 +540,45 @@ function buildRoomInfo(roomId, room) {
 function emitRoomInfo(roomId, room) {
   watchpartyIO.to(roomId).emit('room:info', buildRoomInfo(roomId, room));
 }
+
+// Le lobby et la route REST partagent exactement la même projection : aucun
+// champ privé (media.src, tokens, messages) ne quitte ce module.
+function buildPublicRoomEntry(roomId, room) {
+  return {
+    id: roomId,
+    code: room.code,
+    title: room.name || room.media.title,
+    mediaTitle: room.media.title,
+    hostNickname: room.participants.find((participant) => participant.isHost)?.nickname || 'Hôte',
+    isAnime: room.media.isAnime === true,
+    playbackType: room.media.playbackType || 'direct',
+    mediaId: room.media.mediaId || null,
+    seasonNumber: room.media.seasonNumber,
+    episodeNumber: room.media.episodeNumber,
+    poster: room.media.poster,
+    mediaType: room.media.mediaType,
+    participantCount: room.participants.length,
+    maxParticipants: room.maxParticipants,
+    syncMode: room.syncMode || 'classic',
+    createdAt: room.createdAt
+  };
+}
+
+function buildPublicRoomSnapshot() {
+  const rooms = [];
+  for (const [roomId, room] of watchpartyRooms.entries()) {
+    if (room.isPublic) rooms.push(buildPublicRoomEntry(roomId, room));
+  }
+  return rooms.sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0));
+}
+
+function emitPublicRooms() {
+  lobbyIO.emit('lobby:rooms', buildPublicRoomSnapshot());
+}
+
+lobbyIO.on('connection', (socket) => {
+  socket.emit('lobby:rooms', buildPublicRoomSnapshot());
+});
 
 function emitControlState(roomId, room) {
   watchpartyIO.to(roomId).emit('control:state', {
@@ -595,9 +637,12 @@ function schedulePauseAutoResume(roomId, room) {
 }
 
 watchpartyIO.on('connection', (socket) => {
-  const roomId = sanitizeString(socket.handshake.query.roomId, 64);
-  const nickname = sanitizeNickname(socket.handshake.query.nickname);
-  const token = sanitizeString(socket.handshake.query.token, 256);
+  // Socket.IO v4 place les données de connexion dans `auth` ; `query` reste
+  // accepté pour les clients v3 encore déployés.
+  const handshake = { ...socket.handshake.query, ...(socket.handshake.auth || {}) };
+  const roomId = sanitizeString(handshake.roomId, 64);
+  const nickname = sanitizeNickname(handshake.nickname);
+  const token = sanitizeString(handshake.token, 256);
 
   if (!roomId || !watchpartyRooms.has(roomId)) {
     socket.emit('error', { message: 'Invalid room ID' });
@@ -951,6 +996,7 @@ watchpartyIO.on('connection', (socket) => {
       if (participantSocket) participantSocket.disconnect(true);
     }
     watchpartyRooms.delete(roomId);
+    emitPublicRooms();
   });
 
   socket.on('host:transfer', (payload) => {
@@ -997,11 +1043,17 @@ watchpartyIO.on('connection', (socket) => {
     const { isPublic } = payload || {};
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
-    if (socket.id !== r.hostId) return;
+    // Un refus silencieux laissait l'invité croire que le basculement avait
+    // réussi alors que l'UI n'était pas rafraîchie.
+    if (socket.id !== r.hostId) {
+      socket.emit('error', { message: 'Seul l’hôte peut modifier la visibilité du salon.' });
+      return;
+    }
     r.isPublic = isPublic === true;
     const me = r.participants.find(participant => participant.id === socket.id);
     watchpartyIO.to(roomId).emit('room:chat', systemMessage(r, `${me?.nickname || 'L’hôte'} a ${r.isPublic ? 'rendu la salle publique' : 'rendu la salle privée'}.`));
     emitRoomInfo(roomId, r);
+    emitPublicRooms();
   });
 
   socket.on('room:toggleChat', (payload) => {
@@ -1443,6 +1495,7 @@ watchpartyIO.on('connection', (socket) => {
         const still = watchpartyRooms.get(roomId);
         if (still && still.participants.length === 0) {
           watchpartyRooms.delete(roomId);
+          emitPublicRooms();
           console.log(`Room ${roomId} closed due to inactivity`);
         }
       }, 5 * 60 * 1000);
@@ -1532,6 +1585,7 @@ app.post(
       };
 
       watchpartyRooms.set(roomId, newRoom);
+      emitPublicRooms();
       // `hostToken` n'est renvoyé qu'ici, au créateur, et lie l'hôte à la room.
       res.status(200).json({ success: true, roomId, roomCode: code, hostToken, token: hostToken, nickname: cleanNickname });
     } catch (e) {
@@ -1568,6 +1622,7 @@ app.post(
 );
 
 app.get('/api/watchparty/room/:roomId', (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const { roomId } = req.params;
   if (!watchpartyRooms.has(roomId)) return res.status(404).json({ message: 'Room not found' });
   const room = watchpartyRooms.get(roomId);
@@ -1611,6 +1666,7 @@ app.get('/api/watchparty/room/:roomId', (req, res) => {
 
 app.get('/api/watchparty/info/:code', rateLimit({ windowMs: 1000, max: 10, key: 'info' }), (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const code = sanitizeString(req.params.code, 6).toUpperCase();
     let foundRoom = null;
     for (const room of watchpartyRooms.values()) { if (room.code === code) { foundRoom = room; break; } }
@@ -1633,30 +1689,8 @@ app.get('/api/watchparty/info/:code', rateLimit({ windowMs: 1000, max: 10, key: 
 
 app.get('/api/watchparty/public', rateLimit({ windowMs: 1000, max: 10, key: 'public' }), (_req, res) => {
   try {
-    const publicRooms = [];
-    for (const [id, room] of watchpartyRooms.entries()) {
-      if (room.isPublic) publicRooms.push({
-        id,
-        code: room.code,
-        title: room.name || room.media.title,
-        mediaTitle: room.media.title,
-        hostNickname: room.participants.find((participant) => participant.isHost)?.nickname || 'Hôte',
-        isAnime: room.media.isAnime === true,
-        playbackType: room.media.playbackType || 'direct',
-        mediaId: room.media.mediaId || null,
-        seasonNumber: room.media.seasonNumber,
-        episodeNumber: room.media.episodeNumber,
-        poster: room.media.poster,
-        mediaType: room.media.mediaType,
-        participantCount: room.participants.length,
-        maxParticipants: room.maxParticipants,
-        syncMode: room.syncMode || 'classic',
-        seasonNumber: room.media.seasonNumber,
-        episodeNumber: room.media.episodeNumber,
-        createdAt: room.createdAt
-      });
-    }
-    res.status(200).json({ success: true, rooms: publicRooms });
+    res.set('Cache-Control', 'no-store');
+    res.status(200).json({ success: true, rooms: buildPublicRoomSnapshot() });
   } catch (e) {
     console.error('Error listing public watch parties:', e);
     res.status(500).json({ success: false, message: 'Server error' });
@@ -1717,6 +1751,7 @@ setInterval(() => {
     watchpartyRooms.delete(roomId);
     console.log(`Room ${roomId} closed due to expiration or inactivity`);
   });
+  if (expiredRooms.length > 0) emitPublicRooms();
 }, 60 * 60 * 1000);
 
 // Startup

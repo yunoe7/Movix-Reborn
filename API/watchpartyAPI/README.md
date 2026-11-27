@@ -12,7 +12,7 @@ Le service est volontairement concentré dans un seul fichier ESM, `watchparty.j
 - chat live, réactions et participants
 - contrôle par hôte, co-hosts ou mode démocratique
 - pause timer et vote de pause
-- rooms publiques et liste des rooms visibles
+- rooms publiques et liste des rooms visibles, diffusée en temps réel aux lobbies connectés
 - sauvegarde JSON sur disque au shutdown
 
 ## Démarrage
@@ -43,6 +43,13 @@ Les variables exposées par `API/watchpartyAPI/.env.example` sont :
 - `WATCHPARTY_ADMIN_SECRET`
 - `WATCHPARTY_MAX_BODY`, `WATCHPARTY_MAX_ROOMS`, `WATCHPARTY_MAX_ROOMS_PER_IP`
 
+Le frontend doit renseigner `VITE_WATCHPARTY_API` avec l'origine de ce service.
+Il ne retombe jamais sur `VITE_MAIN_API` : la Main API ne sert aucune route
+`/api/watchparty/*` et renvoyait un 404 silencieux. Une réponse `404` signifie
+donc une URL ou une configuration de base incorrecte ; un `502` signifie que le
+service WatchParty (ou son proxy amont) est momentanément indisponible. Les deux
+statuts sont remontés tels quels à l'interface, sans fallback masqué.
+
 L'IP client utilisée par le rate limiting est lue dans `CF-Connecting-IP`, avec
 `X-Forwarded-For` puis `req.ip` en repli — aucun réglage `trust proxy` à faire,
 il suffit que nginx transmette ces en-têtes.
@@ -72,7 +79,8 @@ réellement l'accès.
 
 Connaître un `roomId` ne donne aucun droit. Chaque room délivre deux sortes de
 jetons, et il en faut un pour lire `GET /room/:roomId` (header
-`x-watchparty-token`) comme pour ouvrir la socket (query `token`) :
+`x-watchparty-token`) comme pour ouvrir la socket (`auth.token` en Socket.IO v4,
+`query.token` conservé pour les clients v3) :
 
 - **`hostToken`** — renvoyé une seule fois par `POST /create`, à son créateur. Il
   désigne l'hôte : c'est son porteur qui devient `hostId` à la connexion, quel
@@ -99,7 +107,17 @@ par le client est ignoré.
 
 ## Surface Socket.IO
 
-Le namespace dédié est `/watchparty`.
+Le namespace dédié aux rooms est `/watchparty`. Le namespace
+`/watchparty-lobby` est ouvert sans token : il ne diffuse que la projection
+publique des salons (`id`, code, titre, média, hôte, affiche, nombre de
+participants) via `lobby:rooms`. Aucun secret ni URL de flux n'y transite.
+
+Le client envoie `roomId`, `nickname` et `token` dans `auth` (Socket.IO v4).
+Les versions précédentes utilisaient `query`, mais cette option est attachée au
+manager partagé par origine : lorsqu'un lobby se connecte avant la room, le
+second socket réutilise le manager sans les paramètres et est rejeté avec
+`Invalid room ID`. Le serveur accepte désormais les deux canaux, `auth` ayant
+la priorité.
 
 Les familles d'événements à connaître :
 
@@ -113,7 +131,11 @@ Les familles d'événements à connaître :
 
 ## Persistance et cycle de vie
 
-- les rooms sont gardées en mémoire dans un `Map`
+- les rooms sont gardées en mémoire dans un `Map` propre au processus : derrière
+  plusieurs instances sans store partagé (Redis/DB), chaque instance ne
+  voit que ses propres rooms. Le déploiement doit donc rester mono-instance ou
+  garantir l'affinité de session (sticky sessions) ; la liste publique n'est pas
+  fédérée entre processus.
 - au shutdown, le service sauve dans `API/watchpartyAPI/cache/watchparty-rooms.json`
   (le `timeoutId` d'un vote en cours est retiré : c'est un objet circulaire qui
   faisait échouer `JSON.stringify` et donc perdre toutes les rooms)
@@ -136,11 +158,26 @@ existe en dernier recours, mais ne doit pas servir de filet de routine.
 
 Si tu touches la WatchParty, vérifie aussi :
 
-- `src/pages/WatchPartyCreate.tsx`
-- `src/pages/WatchPartyJoin.tsx`
-- `src/pages/WatchPartyList.tsx`
-- `src/pages/WatchPartyRoom.tsx`
-- `src/hooks/useWatchParty.ts`
-- `src/utils/watchparty.ts`
+- `src/pages/WatchPartyPage.tsx` (lobby, salle, création, visibilité, lecture VidRift et synchro)
+- `src/config/runtime.ts` (`VITE_WATCHPARTY_API`, sans repli sur la Main API)
+- `src/utils/watchparty.ts` (tokens de room)
 - `src/utils/watchpartySync.ts`
+- `src/utils/vidriftMessaging.ts` (origines strictes des `postMessage`)
+- `src/components/VidRiftPlayer.tsx`
 - `src/workers/watchpartySync.worker.ts`
+
+Le lecteur VidRift est une iframe externe. Le parent n'envoie jamais de
+`postMessage` avec `'*'` : l'origine cible est dérivée de l'iframe réelle puis
+validée contre la liste des origines VidRift autorisées ; les messages entrants
+sont acceptés seulement depuis cette frame et cette origine. Une URL d'embed
+invalide ne monte pas d'iframe (`src=""`). Le chargement et les erreurs internes
+du bundle VidRift restent hors du périmètre de ce service.
+
+## Tests ciblés
+
+```powershell
+node --test API\watchpartyAPI\__tests__\watchpartySocket.test.mjs tests\watchpartyPublicRooms.test.mjs tests\watchpartyVidRiftMessaging.test.mjs
+node --test tests\watchpartyPublicRooms.browser.mjs
+```
+
+Le second scénario lance un build Vite, un serveur WatchParty local et deux contextes Playwright. Il prouve qu'un second navigateur voit un salon public sans rechargement, qu'un salon privé reste invisible et que la fermeture par l'hôte retire le salon du lobby. Le rapport et la trace sont écrits dans `%TEMP%\opencode\watchparty-public-rooms-e2e`. Les secrets sont remplacés par `<redacted>` dans le rapport.

@@ -2,8 +2,10 @@ const normalizeBaseUrl = (value?: string): string => (value || '').trim().replac
 
 export const SITE_URL = normalizeBaseUrl(import.meta.env.VITE_SITE_URL as string);
 
-export const WATCHPARTY_API = normalizeBaseUrl(import.meta.env.VITE_WATCHPARTY_API as string) ||
-  normalizeBaseUrl(import.meta.env.VITE_MAIN_API as string);
+// Ne jamais retomber sur la Main API : elle ne sert aucune route
+// /api/watchparty/* et produisait des 404 silencieux quand
+// VITE_WATCHPARTY_API n'était pas renseigné en production.
+export const WATCHPARTY_API = normalizeBaseUrl(import.meta.env.VITE_WATCHPARTY_API as string);
 
 export const MAIN_API = normalizeBaseUrl(import.meta.env.VITE_MAIN_API as string);
 export const PROXIES_EMBED_API = normalizeBaseUrl(import.meta.env.VITE_PROXIES_EMBED_API as string);
