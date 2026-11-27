@@ -34,6 +34,9 @@ jobs:
         run: npx eslint src/components/ProfileMenu.tsx src/components/VidRiftPlayer.tsx src/pages/WatchPartyPage.tsx
       - name: Check WatchParty API syntax
         run: node --check API/watchpartyAPI/watchparty.js
+      - name: Check WatchParty startup import resolution
+        working-directory: API/watchpartyAPI
+        run: node --input-type=module -e "import { existsSync, readFileSync } from 'node:fs'; import { pathToFileURL } from 'node:url'; const src = readFileSync('watchparty.js', 'utf8'); const match = src.match(/from\s+['\x22](\.\/voteMajority\.mjs)['\x22]/); if (!match) throw new Error('import voteMajority.mjs absent de watchparty.js'); const target = new URL(match[1], pathToFileURL(process.cwd() + '/watchparty.js')); if (!existsSync(target)) throw new Error('voteMajority.mjs introuvable au demarrage'); const mod = await import(target.href); if (typeof mod.isPauseVotePassed !== 'function') throw new Error('export isPauseVotePassed manquant'); console.log('WatchParty startup import OK:', match[1]);"
       - name: Build production bundle
         env:
           VITE_SITE_URL: https://movix.health
