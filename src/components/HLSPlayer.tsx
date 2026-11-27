@@ -2951,8 +2951,8 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
     // Save media info to sessionStorage
     sessionStorage.setItem('watchPartyMedia', JSON.stringify(mediaInfo));
 
-    // Navigate to watchparty creation page
-    navigate('/watchparty/create');
+    // Le lobby ouvre le formulaire de création : /watchparty/create n'existe pas.
+    navigate('/watchparty');
   };
 
   // UseEffect pour calculer la largeur du menu des paramètres
