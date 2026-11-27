@@ -8,6 +8,7 @@ import { promises as fsp } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import { isPauseVotePassed } from './voteMajority.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -310,7 +311,7 @@ async function loadRoomsFromDisk() {
 // `_idlePrev`/`_idleNext` forment une liste chaînée circulaire : le sérialiser
 // faisait échouer JSON.stringify et donc perdre TOUTES les rooms au shutdown.
 function serializeRoom(room) {
-  const { pauseVote, countdownTimer, pauseTimerTimeout, ...rest } = room;
+  const { pauseVote, countdownTimer, pauseTimerTimeout, _cleanupTimer, ...rest } = room;
   if (!pauseVote) return { ...rest, pauseVote: null };
   const { timeoutId, ...voteRest } = pauseVote;
   return { ...rest, pauseVote: voteRest };
@@ -516,6 +517,23 @@ const watchpartyIO = io.of('/watchparty');
 // les métadonnées publiques, jamais les URLs de flux ni les participants privés.
 const lobbyIO = io.of('/watchparty-lobby');
 const SYNC_PRO_SCHEDULE_DELAY_MS = 250;
+
+// Un vote ne doit compter que les participants encore présents : sans cela,
+// un invité parti faisait échouer un vote-majorité par son absence.
+function emitVoteUpdate(roomId, room) {
+  if (!room.pauseVote) return;
+  const present = new Set(room.participants.map((participant) => participant.id));
+  for (const id of Object.keys(room.pauseVote.votes)) {
+    if (!present.has(id)) delete room.pauseVote.votes[id];
+  }
+  const values = Object.values(room.pauseVote.votes);
+  watchpartyIO.to(roomId).emit('vote:update', {
+    yesVotes: values.filter((value) => value === true).length,
+    noVotes: values.filter((value) => value === false).length,
+    totalVotes: values.length,
+    totalParticipants: room.participants.length,
+  });
+}
 
 function buildRoomInfo(roomId, room) {
   return {
@@ -1311,17 +1329,9 @@ watchpartyIO.on('connection', (socket) => {
     // Record vote (true = yes, false = no)
     r.pauseVote.votes[socket.id] = vote === true;
 
-    // Broadcast vote update
-    const yesVotes = Object.values(r.pauseVote.votes).filter(v => v === true).length;
-    const noVotes = Object.values(r.pauseVote.votes).filter(v => v === false).length;
+    // Broadcast vote update (les votes des absents sont retirés au passage).
+    emitVoteUpdate(roomId, r);
     const totalVotes = Object.keys(r.pauseVote.votes).length;
-
-    watchpartyIO.to(roomId).emit('vote:update', {
-      yesVotes,
-      noVotes,
-      totalVotes,
-      totalParticipants: r.participants.length
-    });
 
     // Check if everyone has voted
     if (totalVotes >= r.participants.length) {
@@ -1344,9 +1354,8 @@ watchpartyIO.on('connection', (socket) => {
     const yesVotes = eligibleEntries.filter(([, value]) => value === true).length;
     const totalVotes = eligibleEntries.length;
     const totalParticipants = r.participants.length || r.pauseVote.totalParticipants;
-    const majority = Math.ceil(totalParticipants / 2);
 
-    const passed = yesVotes >= majority;
+    const passed = isPauseVotePassed(yesVotes, totalParticipants);
 
     if (passed) {
       // Start the pause timer
@@ -1418,6 +1427,7 @@ watchpartyIO.on('connection', (socket) => {
     r.coHosts = r.coHosts.filter((id) => id !== participantId);
     r.pendingControlRequests = r.pendingControlRequests.filter((req) => req.participantId !== participantId);
     delete r.readyState[participantId];
+    emitVoteUpdate(roomId, r);
     const s = watchpartyIO.sockets.get(participantId);
     if (s) {
       // Sans révocation du token, l'exclu se reconnectait immédiatement.
@@ -1439,6 +1449,7 @@ watchpartyIO.on('connection', (socket) => {
     const leaving = r.participants[idx];
     r.participants.splice(idx, 1);
     delete r.readyState[socket.id];
+    emitVoteUpdate(roomId, r);
     // Garder le nombre de participants du lobby synchronisé aux déconnexions.
     emitPublicRooms();
     if (r.countdown) {

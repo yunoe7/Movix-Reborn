@@ -50,12 +50,13 @@ if (!JWT_SECRET) {
 }
 
 function issueJwt(userType, userId, sessionId, authMethod = null) {
-  // Issue a token without expiration (no exp claim)
+  // Les jetons volés ne doivent pas rester valables indéfiniment : une expiration
+  // absolue est appliquée ici et vérifiée par jwt.verify() côté validation.
   const payload = { sub: userId, userType, sessionId };
   if (AUTH_METHODS.includes(authMethod)) {
     payload.authMethod = authMethod;
   }
-  return jwt.sign(payload, JWT_SECRET, { algorithm: 'HS256' });
+  return jwt.sign(payload, JWT_SECRET, { algorithm: 'HS256', expiresIn: '30d' });
 }
 
 function parseStoredAuth(rawValue) {

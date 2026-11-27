@@ -1365,6 +1365,7 @@
     "allAges": "TOUS PUBLIC",
     "ageAndAbove": "{{age}} ANS ET PLUS",
     "contentBlocked": "Contenu restreint",
+    "unrated": "Non classé",
     "contentBlockedDesc": "Ce contenu est classé {{rating}} et n'est pas disponible pour le profil actuel ({{age}}+).",
     "goBack": "Retour"
   },
@@ -2305,6 +2306,8 @@
     "connectAccount": "Connecter un compte",
     "connectedUser": "Utilisateur Connecté",
     "loadingProfiles": "Chargement des profils...",
+    "loadTimeout": "Impossible de charger les profils. Les restrictions d'âge ne peuvent pas être vérifiées.",
+    "reload": "Réessayer",
     "deleteProfileConfirm": "Supprimer ce profil ?",
     "deleteProfileWarning": "Êtes-vous sûr de vouloir supprimer ce profil ? Cette action est irréversible.",
     "profilePhoto": "Photo de profil",

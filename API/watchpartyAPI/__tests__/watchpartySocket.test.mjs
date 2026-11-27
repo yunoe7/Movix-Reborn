@@ -722,3 +722,79 @@ test('un salon public reste listé et son compteur se met à jour après connexi
   assert.ok(listed, 'la route REST doit retourner le salon public');
   assert.equal(listed.participantCount, 1);
 });
+
+test('trois participants : kick avec révocation de token puis départ du dernier invité', async (t) => {
+  const { room, socket: host } = await connectHost(t);
+  const first = await connectMember(t, room);
+
+  const secondJoined = await joinRoom(room.roomCode, 'Invité 2');
+  const second = connectSocket(t, room.roomId, secondJoined.token, secondJoined.nickname);
+  const three = await waitForPredicate(
+    second,
+    'room:participants',
+    (list) => list.length === 3 && list.some((participant) => participant.id === second.id),
+    'la liste des participants avec trois personnes'
+  );
+  assert.equal(three.filter((participant) => participant.isHost).length, 1);
+
+  const kicked = waitForEvent(first.socket, 'room:kicked');
+  host.emit('participant:kick', { participantId: first.socket.id });
+  assert.match((await kicked).reason, /removed/i);
+
+  const afterKick = await waitForPredicate(
+    host,
+    'room:participants',
+    (list) => list.length === 2 && !list.some((participant) => participant.id === first.socket.id),
+    'la liste après expulsion'
+  );
+  assert.equal(afterKick.filter((participant) => participant.isHost).length, 1);
+
+  // Le jeton révoqué ne doit pas permettre à l'exclu de revenir.
+  const revoked = io(`${baseUrl}/watchparty`, {
+    query: { roomId: room.roomId, token: first.joined.token, nickname: first.joined.nickname },
+    transports: ['websocket'],
+    forceNew: true,
+    reconnection: false,
+    timeout: 3000,
+    autoConnect: false,
+  });
+  const refused = waitForEvent(revoked, 'error');
+  revoked.connect();
+  assert.match((await refused).message, /token/i);
+  revoked.disconnect();
+
+  second.disconnect();
+  const afterLeave = await waitForPredicate(
+    host,
+    'room:participants',
+    (list) => list.length === 1 && list[0].id === host.id,
+    'la liste après départ du dernier invité'
+  );
+  assert.equal(afterLeave[0].isHost, true);
+});
+
+test('un vote en cours oublie le votant parti et réduit le dénominateur', async (t) => {
+  const { room, socket: host } = await connectHost(t);
+  const member = await connectMember(t, room);
+
+  const started = waitForEvent(host, 'vote:started');
+  member.socket.emit('vote:request', { duration: 60 });
+  await started;
+
+  const firstUpdate = waitForEvent(host, 'vote:update');
+  member.socket.emit('vote:cast', { vote: true });
+  const before = await firstUpdate;
+  assert.equal(before.yesVotes, 1);
+  assert.equal(before.totalParticipants, 2);
+
+  const afterLeave = waitForPredicate(
+    host,
+    'vote:update',
+    (payload) => payload.totalVotes === 0 && payload.totalParticipants === 1,
+    'la mise à jour du vote après départ'
+  );
+  member.socket.disconnect();
+  const update = await afterLeave;
+  assert.equal(update.yesVotes, 0);
+  assert.equal(update.noVotes, 0);
+});

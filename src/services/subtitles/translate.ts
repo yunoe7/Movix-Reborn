@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { TRANSLATE_HTML_API_KEY } from '../../config/runtime';
 
 /**
  * Traduction des répliques par les services publics de Google Traduction et
@@ -123,31 +124,32 @@ export function translateHtmlToText(html: string): string {
 }
 
 /**
- * Service de la traduction de page de Chrome. La clé est la clé publique que
- * Google met dans son propre script de traduction de sites ; les extensions
- * TWP, Kiss Translator et Read Frog utilisent la même.
+ * Service de la traduction de page de Chrome. La clé publique est fournie par
+ * la configuration de déploiement : aucun secret n'est embarqué dans le code.
  */
-const translateHtmlEndpoint: TranslateEndpoint = {
-  id: 'translateHtml@translate-pa.googleapis.com',
-  async translate(plains, targetLang, post) {
-    const data = asJson(await post({
-      url: 'https://translate-pa.googleapis.com/v1/translateHtml',
-      body: JSON.stringify([[plains.map(textToTranslateHtml), 'auto', targetLang], 'wt_lib']),
-      headers: {
-        'Content-Type': 'application/json+protobuf',
-        'X-Goog-API-Key': 'AIzaSyATBXajvzQLTDHEQbcpq0Ihe0vWDHmO520',
-      },
-    }));
-    const translated = Array.isArray(data) && Array.isArray(data[0]) ? data[0] : null;
-    if (!translated || translated.length !== plains.length) return null;
-    return translated.map((value: unknown) => (typeof value === 'string' ? translateHtmlToText(value) : ''));
-  },
-};
+function translateHtmlEndpoint(apiKey: string): TranslateEndpoint {
+  return {
+    id: 'translateHtml@translate-pa.googleapis.com',
+    async translate(plains, targetLang, post) {
+      const data = asJson(await post({
+        url: 'https://translate-pa.googleapis.com/v1/translateHtml',
+        body: JSON.stringify([[plains.map(textToTranslateHtml), 'auto', targetLang], 'wt_lib']),
+        headers: {
+          'Content-Type': 'application/json+protobuf',
+          'X-Goog-API-Key': apiKey,
+        },
+      }));
+      const translated = Array.isArray(data) && Array.isArray(data[0]) ? data[0] : null;
+      if (!translated || translated.length !== plains.length) return null;
+      return translated.map((value: unknown) => (typeof value === 'string' ? translateHtmlToText(value) : ''));
+    },
+  };
+}
 
 export const TRANSLATE_ENDPOINTS: readonly TranslateEndpoint[] = [
   gtxEndpoint('translate.googleapis.com'),
   microsoftEndpoint,
-  translateHtmlEndpoint,
+  ...(TRANSLATE_HTML_API_KEY ? [translateHtmlEndpoint(TRANSLATE_HTML_API_KEY)] : []),
   dictEndpoint,
   gtxEndpoint('clients5.google.com'),
 ];

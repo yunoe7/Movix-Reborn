@@ -321,6 +321,8 @@ function suppressionFixture() {
     roomRef: { current: { media: { playbackType: 'video' } } },
     vidriftFrameRef: { current: null },
     videoRef: { current: video },
+    getVidRiftTargetOrigin: () => 'https://vidrift.test',
+    postToVidRift: noop,
     VIDRIFT_ORIGIN: 'https://vidrift.test',
     setRequiresUserGesture: noop,
     authoritativePlaybackRef: { current: null },
@@ -350,7 +352,7 @@ function suppressionFixture() {
         PAGE, 'suppressRemotePlaybackEvents', bindings, 'remoteSuppressionUntilRef',
       );
       bindings.suppressRemotePlaybackEvents = suppressRemotePlaybackEvents;
-      const applySyncCommand = sourceFunction(PAGE, 'applySyncCommand', bindings, 'postMessage');
+      const applySyncCommand = sourceFunction(PAGE, 'applySyncCommand', bindings, 'postToVidRift');
       const applyRemotePlayback = sourceFunction(PAGE, 'applyRemotePlayback', bindings, 'targetPosition');
       const sendPlayback = sourceFunction(PAGE, 'sendPlayback', bindings, 'applyingRemoteRef');
 

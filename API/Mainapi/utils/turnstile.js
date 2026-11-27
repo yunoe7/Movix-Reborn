@@ -128,10 +128,19 @@ async function verifyTurnstile(token, ip, secretKey) {
  * @param {'visible'|'invisible'} [kind='visible'] - Widget qui a produit le token
  */
 async function verifyTurnstileFromRequest(req, turnstileToken, kind = 'visible') {
-  const key = turnstileSecretFor(req, kind);
-  if (!key) return { valid: true };
-
+  // La dispense admin reste explicite, même si aucune clé n'est configurée.
   if (await isAdminRequest(req)) return { valid: true, bypassed: true };
+
+  const key = turnstileSecretFor(req, kind);
+  if (!key) {
+    // Une clé manquante ne doit jamais désactiver silencieusement la
+    // protection anti-bot en production (inscription, commentaires, dons…).
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[TURNSTILE] Clé secrète absente en production : vérification bloquée');
+      return { valid: false, status: 503, error: 'Vérification de sécurité indisponible. Réessayez.' };
+    }
+    return { valid: true };
+  }
 
   if (!turnstileToken) {
     return { valid: false, status: 400, error: 'Vérification de sécurité requise' };

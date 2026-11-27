@@ -1365,6 +1365,7 @@
     "allAges": "ALL AGES",
     "ageAndAbove": "{{age}} AND OLDER",
     "contentBlocked": "Restricted content",
+    "unrated": "Unrated",
     "contentBlockedDesc": "This content is rated {{rating}} and is not available for the current profile ({{age}}+).",
     "goBack": "Go back"
   },
@@ -2305,6 +2306,8 @@
     "connectAccount": "Connect Account",
     "connectedUser": "Connected User",
     "loadingProfiles": "Loading profiles...",
+    "loadTimeout": "Unable to load profiles. Age restrictions cannot be verified.",
+    "reload": "Try again",
     "deleteProfileConfirm": "Delete this profile?",
     "deleteProfileWarning": "Are you sure you want to delete this profile? This action is irreversible.",
     "profilePhoto": "Profile photo",

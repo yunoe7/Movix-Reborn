@@ -76,6 +76,15 @@ async function fixture(t) {
   };
 }
 
+test('les jetons émis portent une expiration absolue', async t => {
+  const f = await fixture(t);
+  const token = f.auth.issueJwt('oauth', 'user', 'session-one');
+  const payload = jwt.decode(token);
+  assert.equal(typeof payload.iat, 'number');
+  assert.equal(typeof payload.exp, 'number');
+  assert.equal(payload.exp - payload.iat, 30 * 24 * 60 * 60);
+});
+
 test('seules les erreurs infrastructure auth sont reconnues comme indisponibilités', async t => {
   const f = await fixture(t);
   assert.equal(f.auth.isAuthInfrastructureError({ code: 'AUTH_INFRASTRUCTURE_UNAVAILABLE' }), true);

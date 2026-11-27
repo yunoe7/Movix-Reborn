@@ -1620,7 +1620,9 @@ const TVDetails: React.FC = () => {
   // Age restriction check
   const contentCert = certifications['FR'] || certifications['US'] || '';
   const profileAgeRestriction = currentProfile?.ageRestriction ?? 0;
-  if (contentCert && profileAgeRestriction > 0 && !isContentAllowed(contentCert, profileAgeRestriction)) {
+  // Une classification absente ou inconnue doit bloquer les profils mineurs :
+  // isContentAllowed() est déjà fail-closed pour ces cas.
+  if (profileAgeRestriction > 0 && !isContentAllowed(contentCert, profileAgeRestriction)) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black flex items-center justify-center px-4">
         <div className="text-center max-w-md">
@@ -1631,7 +1633,7 @@ const TVDetails: React.FC = () => {
           </div>
           <h2 className="text-2xl font-bold text-white mb-3">{t('details.contentBlocked')}</h2>
           <p className="text-gray-400 mb-6">
-            {t('details.contentBlockedDesc', { rating: getClassificationLabel(contentCert, t), age: profileAgeRestriction })}
+            {t('details.contentBlockedDesc', { rating: contentCert ? getClassificationLabel(contentCert, t) : t('details.unrated'), age: profileAgeRestriction })}
           </p>
           <button
             onClick={() => navigate(-1)}
