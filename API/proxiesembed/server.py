@@ -1985,8 +1985,6 @@ class ProxyServer:
             {
                 'error': 'Invalid stream: upstream did not return valid M3U8 content',
                 'upstream_status': response.status,
-                'upstream_url': target_url,
-                'upstream_body': body_text[:2000]
             },
             status=502,
             headers=error_headers
@@ -2950,10 +2948,10 @@ class ProxyServer:
                 validated_parsed.netloc.encode('idna')
             except UnicodeError as e:
                 logger.warning(f'Invalid URL encoding rejected: {e}')
-                return web.json_response({'error': f'Invalid URL encoding: {str(e)}'}, status=400, headers=CORS_HEADERS)
+                return web.json_response({'error': 'Invalid URL encoding'}, status=400, headers=CORS_HEADERS)
             except Exception as e:
                 logger.warning(f'URL validation failed: {e}')
-                return web.json_response({'error': f'Invalid URL: {str(e)}'}, status=400, headers=CORS_HEADERS)
+                return web.json_response({'error': 'Invalid URL'}, status=400, headers=CORS_HEADERS)
             
             # Detect content type
             content = detect_content_type(target_url, request.headers.get('accept', ''))
@@ -3068,8 +3066,6 @@ class ProxyServer:
                 body = json.dumps({
                     'error': f'Upstream HTTP error: {response.status}',
                     'upstream_status': response.status,
-                    'upstream_url': target_url,
-                    'upstream_body': err_text[:2000]
                 }).encode()
                 return (response.status, body, {**CORS_HEADERS, 'Content-Type': 'application/json'}, None)
 
@@ -3090,8 +3086,7 @@ class ProxyServer:
                 if m3u8_resp is not None:
                     return (m3u8_resp.status, m3u8_resp.body, dict(m3u8_resp.headers), None)
                 return (502, json.dumps({
-                    'error': 'Failed to process M3U8 stream',
-                    'upstream_url': target_url
+                    'error': 'Failed to process M3U8 stream'
                 }).encode(), {**CORS_HEADERS, 'Content-Type': 'application/json'}, None)
 
             # Not a valid M3U8 despite URL/content-type â€” return probe bytes
@@ -3140,8 +3135,6 @@ class ProxyServer:
                 body = json.dumps({
                     'error': f'Upstream HTTP error: {response.status}',
                     'upstream_status': response.status,
-                    'upstream_url': target_url,
-                    'upstream_body': err_text[:2000],
                 }).encode()
                 return (response.status, body, {**CORS_HEADERS, 'Content-Type': 'application/json'}, None)
 
@@ -3412,8 +3405,6 @@ class ProxyServer:
                         {
                             'error': f'Upstream HTTP error: {response.status}',
                             'upstream_status': response.status,
-                            'upstream_url': target_url,
-                            'upstream_body': err_text[:2000]
                         },
                         status=response.status,
                         headers=CORS_HEADERS
@@ -3442,8 +3433,6 @@ class ProxyServer:
                             {
                                 'error': 'Failed to process M3U8 stream',
                                 'upstream_status': response.status,
-                                'upstream_url': target_url,
-                                'upstream_body': body_text[:2000]
                             },
                             status=502, headers=CORS_HEADERS
                         )
@@ -3503,8 +3492,6 @@ class ProxyServer:
                             {
                                 'error': 'Failed to process M3U8 stream',
                                 'upstream_status': response.status,
-                                'upstream_url': target_url,
-                                'upstream_body': body_text[:2000]
                             },
                             status=502, headers=CORS_HEADERS
                         )
@@ -3515,38 +3502,23 @@ class ProxyServer:
                 return await self._stream_response(request, response, resp_headers, CHUNK_DEFAULT)
                 
         except asyncio.TimeoutError as e:
+            logger.warning('[PROXY] Upstream timeout: %s', e)
             return web.json_response(
-                {
-                    'error': 'Timeout',
-                    'exception': type(e).__name__,
-                    'message': str(e) or None,
-                    'upstream_url': target_url,
-                },
+                {'error': 'Timeout'},
                 status=504,
                 headers=CORS_HEADERS,
             )
         except aiohttp.ClientError as e:
+            logger.warning('[PROXY] Upstream request failed: %s', e)
             return web.json_response(
-                {
-                    'error': 'Upstream request failed',
-                    'exception': type(e).__name__,
-                    'message': str(e) or None,
-                    'details': repr(e),
-                    'upstream_url': target_url,
-                },
+                {'error': 'Upstream request failed'},
                 status=502,
                 headers=CORS_HEADERS,
             )
         except Exception as e:
             logger.exception('[PROXY] Unexpected error while streaming')
             return web.json_response(
-                {
-                    'error': 'Unexpected proxy error',
-                    'exception': type(e).__name__,
-                    'message': str(e) or None,
-                    'details': repr(e),
-                    'upstream_url': target_url,
-                },
+                {'error': 'Unexpected proxy error'},
                 status=500,
                 headers=CORS_HEADERS,
             )
@@ -3600,7 +3572,7 @@ class ProxyServer:
                     
         except Exception as e:
             logger.error(f'[UQLOAD] Error: {e}')
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
     
     def _normalize_custom_headers(self, custom_headers: Optional[Dict]) -> Dict[str, str]:
         """Normalize custom headers passed through /proxy?headers=..."""
@@ -4150,7 +4122,7 @@ class ProxyServer:
         except asyncio.TimeoutError:
             return web.json_response({'error': 'Timeout'}, status=504)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500)
     
     async def _fetch_with_redirects(self, url: str, headers: Dict, max_redirects: int = 3,
                                      use_proxy: bool = True, specific_proxy: Dict = None,
@@ -4358,7 +4330,7 @@ class ProxyServer:
                 redact_url_for_log(request.query.get('url')),
                 exc_info=True,
             )
-            return web.json_response({'error': str(e)}, status=500)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500)
     
     def _deobfuscate_fsvid_script(self, script: str) -> str:
         """Deobfuscate packed JavaScript"""
@@ -4929,7 +4901,7 @@ class ProxyServer:
                 redact_url_for_log(request.query.get('url')),
                 exc_info=True,
             )
-            return web.json_response({'error': str(e)}, status=500)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500)
     
     @staticmethod
     def _vidmoly_media_id(url: str) -> Optional[str]:
@@ -5008,7 +4980,7 @@ class ProxyServer:
             return resp
             
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500)
     
     @staticmethod
     def _normalize_sibnet_url(raw_url: str) -> str:
@@ -5123,9 +5095,9 @@ class ProxyServer:
             return resp
 
         except ValueError as e:
-            return web.json_response({'error': str(e)}, status=400)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=400)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500)
 
     def _validate_uqload_url(self, url: str) -> str:
         """Validate and format UQLOAD URL"""
@@ -5216,9 +5188,9 @@ class ProxyServer:
             return resp
             
         except ValueError as e:
-            return web.json_response({'error': str(e)}, status=400)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=400)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500)
     
     # ===== DoodStream Extraction =====
     
@@ -5383,7 +5355,7 @@ class ProxyServer:
         except asyncio.TimeoutError:
             return web.json_response({'error': 'Timeout'}, status=504, headers=CORS_HEADERS)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
     
     # ===== LuluStream Extraction =====
 
@@ -5478,11 +5450,11 @@ class ProxyServer:
             return resp
 
         except ValueError as e:
-            return web.json_response({'error': str(e)}, status=400, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=400, headers=CORS_HEADERS)
         except asyncio.TimeoutError:
             return web.json_response({'error': 'Timeout'}, status=504, headers=CORS_HEADERS)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
 
     # ===== Veev Extraction =====
 
@@ -5592,7 +5564,7 @@ class ProxyServer:
         except asyncio.TimeoutError:
             return web.json_response({'error': 'Timeout'}, status=504, headers=CORS_HEADERS)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
 
     # ===== Vidara Extraction =====
 
@@ -5682,7 +5654,7 @@ class ProxyServer:
         except asyncio.TimeoutError:
             return web.json_response({'error': 'Timeout'}, status=504, headers=CORS_HEADERS)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
 
     # ===== SeekStreaming (Embed4me) Extraction =====
 
@@ -6975,7 +6947,7 @@ class ProxyServer:
             }, headers=CORS_HEADERS)
         except Exception as e:
             traceback.print_exc()
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
     
     async def drm_manifest_handler(self, request: Request) -> Response:
         """Fetch a manifest, rewrite its URLs, and return it through the DRM proxy"""
@@ -7117,9 +7089,9 @@ class ProxyServer:
         except asyncio.TimeoutError:
             return web.json_response({'error': 'Timeout'}, status=504, headers=CORS_HEADERS)
         except aiohttp.ClientError as e:
-            return web.json_response({'error': str(e)}, status=502, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=502, headers=CORS_HEADERS)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
     
     async def drm_base_resource_handler(self, request: Request) -> Response:
         """Path-based proxy for DASH: resolves subpath relative to decoded base URL.
@@ -7212,9 +7184,9 @@ class ProxyServer:
         except asyncio.TimeoutError:
             return web.json_response({'error': 'Timeout'}, status=504, headers=CORS_HEADERS)
         except aiohttp.ClientError as e:
-            return web.json_response({'error': str(e)}, status=502, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=502, headers=CORS_HEADERS)
         except Exception as e:
-            return web.json_response({'error': str(e)}, status=500, headers=CORS_HEADERS)
+            return web.json_response({'error': 'Unexpected proxy error'}, status=500, headers=CORS_HEADERS)
     
     async def _periodic_cache_cleanup(self):
         """Periodically clean expired cache entries to free memory"""
