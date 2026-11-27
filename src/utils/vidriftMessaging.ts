@@ -16,18 +16,12 @@ function readFrameOrigin(frame: HTMLIFrameElement): string | null {
   }
 }
 
-// Une frame cross-origin a `contentDocument === null`. Une frame about:blank ou
-// retombée sur le SPA Movix a un document same-origin : dans ce cas le document
-// courant n'est pas VidRift et poster avec l'origine VidRift lève une exception.
+// Ne jamais lire contentDocument/document de l'iframe : ce serait un accès DOM
+// cross-origin interdit. L'origine cible est déterminée uniquement depuis src.
 export function getVidRiftTargetOrigin(frame?: HTMLIFrameElement | null): string | null {
   if (!frame?.contentWindow) return null;
   const origin = readFrameOrigin(frame);
   if (!origin || !isAllowedVidRiftOrigin(origin)) return null;
-  try {
-    if (frame.contentDocument) return null;
-  } catch {
-    // Cross-origin : c'est précisément le cas attendu pour le lecteur VidRift.
-  }
   return origin;
 }
 

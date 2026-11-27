@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { isTrustedVidRiftMessage, postToVidRift, VIDRIFT_ORIGIN } from '../utils/vidriftMessaging';
-import { isIpadSafari } from '../utils/deviceDetection';
 
 type VidRiftPlayerProps = {
   kind: 'movie' | 'tv';
@@ -114,13 +113,6 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     url.searchParams.set('download', '1');
     if (title) url.searchParams.set('title', title);
     if (posterPath?.startsWith('https://')) url.searchParams.set('poster', posterPath);
-    // Sur iPadOS, le player distant choisit par défaut HLS.js/MSE alors que
-    // Safari peut lire le master en natif. `pref` ne réordonne la cascade que
-    // si le serveur est réellement disponible : la couverture reste intacte
-    // ailleurs. Aucun `provider` n'est forcé.
-    if (isIpadSafari()) {
-      url.searchParams.set('pref', kind === 'tv' ? 'evion' : 'vexon');
-    }
     return url.toString();
   }, [kind, tmdbId, season, episode, title, posterPath]);
 
