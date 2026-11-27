@@ -9,6 +9,7 @@ import {
   MessageCircle, Play, Plus, RefreshCw, Send, Users, Volume2, VolumeX, X,
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
+import { isIpadSafari } from '../utils/deviceDetection';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
@@ -806,7 +807,17 @@ const WatchPartyPage: React.FC = () => {
     hlsRef.current = null;
     video.removeAttribute('src');
     video.load();
-    if (/\.m3u8(?:$|\?)/i.test(src) && Hls.isSupported()) {
+    // iPadOS Safari peut annoncer MSE tout en bloquant le chargement HLS.js.
+    // Comme sur iPhone, le master est confié au lecteur HLS natif de Safari ;
+    // Hls.js reste inchangé sur PC, Android et iPhone.
+    const useNativeIpadHls = isIpadSafari()
+      && video.canPlayType('application/vnd.apple.mpegurl') !== '';
+    const handleNativeError = () => {
+      if (useNativeIpadHls) {
+        setError('Le flux HLS n’a pas pu être chargé sur iPad. Vérifie la source ou réessaie.');
+      }
+    };
+    if (/\.m3u8(?:$|\?)/i.test(src) && !useNativeIpadHls && Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true });
       hlsRef.current = hls;
       hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -815,11 +826,13 @@ const WatchPartyPage: React.FC = () => {
       hls.loadSource(src);
       hls.attachMedia(video);
     } else {
+      if (useNativeIpadHls) video.addEventListener('error', handleNativeError);
       video.src = src;
     }
     return () => {
       hlsRef.current?.destroy();
       hlsRef.current = null;
+      video.removeEventListener('error', handleNativeError);
     };
   }, [room?.media?.src]);
 

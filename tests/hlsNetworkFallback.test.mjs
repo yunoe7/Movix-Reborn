@@ -96,6 +96,7 @@ function playerFixture() {
     requestHlsFallback, src, normalizeUqloadEmbedUrl: url => url,
     kisskhSources: [], isMP4Source: () => false, contentTypeMp4Urls: new Set(),
     createHlsConfig: () => ({}), purstreamSources: [], console: silentConsole, window,
+    isIpadSafari: () => false,
     failed429Segments: new Set(), isVideoLevelFailure, isDnsLikeError,
     decideHlsAudioFailure: fatal => fatal ? 'switch-source' : 'keep-source',
     isSubtitleLoadError: sourceFunction('src/components/HLSPlayer.tsx', 'isSubtitleLoadError'),

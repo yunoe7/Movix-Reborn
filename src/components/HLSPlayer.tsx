@@ -100,6 +100,7 @@ import { PROXIES_EMBED_API } from '../config/runtime';
 import { getTmdbLanguage } from '../i18n';
 import { getCoflixPreferredUrl } from '../utils/coflix';
 import { safePlay } from '../utils/safePlay';
+import { isIpadSafari } from '../utils/deviceDetection';
 import { copyText } from '../utils/clipboard';
 import {
   createLocalPlaybackAwakeLease,
@@ -3764,8 +3765,15 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
       source.type === 'mp4' && source.url === normalizedSrc
     )) || isMP4Source(normalizedSrc)
       || contentTypeMp4Urls.has(normalizedSrc);
+    // iPadOS Safari peut annoncer MSE (Hls.isSupported() === true) alors que le
+    // pipeline HLS.js + MediaSource/WebWorker reste bloqué sans erreur. Le HLS
+    // natif de Safari fonctionne sur cet appareil, comme sur iPhone : le choisir
+    // explicitement, sans toucher aux autres navigateurs ni au chemin MP4.
+    const preferNativeIpadHls = !isMP4
+      && isIpadSafari()
+      && video.canPlayType('application/vnd.apple.mpegurl') !== '';
     // Bravo/Purstream fournit des liens mp4 compatibles avec cette logique
-    if (nativeAirPlay || (!isMP4 && !Hls.isSupported())) {
+    if (nativeAirPlay || (!isMP4 && (!Hls.isSupported() || preferNativeIpadHls))) {
       // Le même cycle gère AirPlay, les changements de source sans MSE et
       // le retour local sur les Safari qui ne prennent pas Hls.js en charge.
       let failed = false;
@@ -3802,6 +3810,10 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
         setIsLoading(false);
         setIsBuffering(false);
         clearBufferingTimeout();
+        // Sur iPad Safari, `canplay` peut ne jamais arriver : sans ce nettoyage,
+        // le délai de secours de 45 s changerait de source alors que le média
+        // natif est déjà prêt. Les autres chemins natifs gardent leur délai.
+        if (preferNativeIpadHls) clearSourceTimeout();
         setIsAirPlayLoading(false);
         if (shouldAutoplay) safePlay(video).catch(error => console.warn('Native playback:', error));
       };
