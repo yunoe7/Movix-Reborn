@@ -161,6 +161,11 @@ function buildVidRiftEmbedUrl(media: Media): string {
   url.searchParams.set('exit', '1');
   if (media.title) url.searchParams.set('title', media.title);
   if (media.poster?.startsWith('https://')) url.searchParams.set('poster', media.poster);
+  // Même préférence que le lecteur normal : sur iPad Safari, viser un serveur
+  // dont le bundle VidRift utilise le HLS natif. La cascade reste disponible.
+  if (isIpadSafari()) {
+    url.searchParams.set('pref', media.mediaType === 'tv' ? 'evion' : 'vexon');
+  }
   return url.toString();
 }
 

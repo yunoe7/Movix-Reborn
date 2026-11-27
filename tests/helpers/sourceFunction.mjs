@@ -19,6 +19,21 @@ export function sourceFunction(file, name, bindings = {}, includes = '') {
   return new Function(...Object.keys(bindings), `${js}\nreturn callback;`)(...Object.values(bindings));
 }
 
+export function sourceNamedFunction(file, name, bindings = {}) {
+  const source = ts.createSourceFile(file, readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let declaration;
+  const visit = node => {
+    if (ts.isFunctionDeclaration(node) && node.name?.getText(source) === name) {
+      declaration = node.getText(source);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  if (!declaration) throw new Error(`Fonction ${name} introuvable dans ${file}`);
+  const js = ts.transpile(declaration, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None });
+  return new Function(...Object.keys(bindings), `${js}\nreturn ${name};`)(...Object.values(bindings));
+}
+
 export function sourceEffect(file, includes, bindings = {}) {
   const source = ts.createSourceFile(file, readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   let expression;
