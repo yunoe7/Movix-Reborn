@@ -258,6 +258,23 @@ const watchpartyRooms = new Map();
 const HOST_RECONNECT_GRACE_MS = 5 * 60_000;
 const hostDisconnectTimers = new Map();
 
+// Une room supprimée ne doit laisser aucun timer capable de réveiller son état
+// plus tard (transfert d'hôte, contrôle, countdown ou vote).
+function clearRoomTimers(roomId) {
+  const transferTimer = hostDisconnectTimers.get(roomId);
+  if (transferTimer) {
+    clearTimeout(transferTimer);
+    hostDisconnectTimers.delete(roomId);
+  }
+  const room = watchpartyRooms.get(roomId);
+  if (!room) return;
+  if (room._cleanupTimer) { clearTimeout(room._cleanupTimer); room._cleanupTimer = null; }
+  if (room.pauseTimerTimeout) { clearTimeout(room.pauseTimerTimeout); room.pauseTimerTimeout = null; }
+  if (room.countdownTimer) { clearTimeout(room.countdownTimer); room.countdownTimer = null; }
+  if (room.pauseVote?.timeoutId) clearTimeout(room.pauseVote.timeoutId);
+  room.pauseVote = null;
+}
+
 async function ensureCacheDir() {
   try { await fsp.access(CACHE_DIR); } catch { await fsp.mkdir(CACHE_DIR, { recursive: true }); }
 }
@@ -590,6 +607,11 @@ watchpartyIO.on('connection', (socket) => {
 
   const room = watchpartyRooms.get(roomId);
 
+  // Un roomId seul ne suffit plus : il faut un token délivré par
+  // POST /create (hôte) ou POST /join (membre). Sans ça, toute personne
+  // connaissant l'identifiant pouvait entrer dans n'importe quelle room privée.
+  const role = resolveRoomRole(room, token);
+
   // A host returning during the grace period keeps ownership and their existing token.
   if (role === 'host') {
     const pendingTransfer = hostDisconnectTimers.get(roomId);
@@ -599,10 +621,6 @@ watchpartyIO.on('connection', (socket) => {
     }
   }
 
-  // Un roomId seul ne suffit plus : il faut un token délivré par
-  // POST /create (hôte) ou POST /join (membre). Sans ça, toute personne
-  // connaissant l'identifiant pouvait entrer dans n'importe quelle room privée.
-  const role = resolveRoomRole(room, token);
   if (!role) {
     socket.emit('error', { message: 'Unauthorized: missing or invalid room token' });
     socket.disconnect();
@@ -865,6 +883,8 @@ watchpartyIO.on('connection', (socket) => {
         previouslyGranted.forEach((participantId) => {
           watchpartyIO.sockets.get(participantId)?.emit('control:revoked');
         });
+        // Une demande restante pourrait être approuvée après le verrouillage.
+        r.pendingControlRequests = [];
       }
       const systemMsg = systemMessage(r, mode === 'democratic'
         ? '🎮 Mode démocratique activé - Tout le monde peut contrôler la lecture !'
@@ -924,9 +944,7 @@ watchpartyIO.on('connection', (socket) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return;
-    if (r.countdownTimer) clearTimeout(r.countdownTimer);
-    if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
-    if (r.pauseVote?.timeoutId) clearTimeout(r.pauseVote.timeoutId);
+    clearRoomTimers(roomId);
     watchpartyIO.to(roomId).emit('room:closed', { reason: 'L’hôte a fermé cette salle.' });
     for (const participant of [...r.participants]) {
       const participantSocket = watchpartyIO.sockets.get(participant.id);
@@ -1025,6 +1043,8 @@ watchpartyIO.on('connection', (socket) => {
     r.countdownTimer = null;
     if (r.countdown) watchpartyIO.to(roomId).emit('room:countdownCancelled');
     r.countdown = null;
+    if (r.pauseVote?.timeoutId) clearTimeout(r.pauseVote.timeoutId);
+    r.pauseVote = null;
     watchpartyIO.to(roomId).emit('ready:state', r.readyState);
     r.playbackState = {
       isPlaying: false,
@@ -1036,14 +1056,6 @@ watchpartyIO.on('connection', (socket) => {
     watchpartyIO.to(roomId).emit('media:updated', r.media);
     watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
     emitRoomInfo(roomId, r);
-  });
-
-  // Ready toggle
-  socket.on('ready:toggle', () => {
-    if (!watchpartyRooms.has(roomId)) return;
-    const r = watchpartyRooms.get(roomId);
-    r.readyState[socket.id] = !r.readyState[socket.id];
-    watchpartyIO.to(roomId).emit('ready:state', r.readyState);
   });
 
   // A synchronized start is only allowed after every current participant
@@ -1414,6 +1426,10 @@ watchpartyIO.on('connection', (socket) => {
       }, HOST_RECONNECT_GRACE_MS);
       transferTimer.unref?.();
       hostDisconnectTimers.set(roomId, transferTimer);
+    } else if (socket.id === r.hostId) {
+      // Sans participant, personne ne peut prendre le relais : libérer
+      // immédiatement l'identifiant pour ne pas conserver un socket mort.
+      r.hostId = null;
     }
 
     // Clean stale permission/request entries for the leaving participant.
