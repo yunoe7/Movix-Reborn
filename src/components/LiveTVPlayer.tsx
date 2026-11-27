@@ -2248,6 +2248,7 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
                         className="absolute inset-0 h-full w-full border-0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
                     />
 
                     {/* Floating control bar overlaid on top of the iframe */}
@@ -2270,7 +2271,10 @@ const LiveTVPlayer: React.FC<LiveTVPlayerProps> = ({
 
                             <div className="pointer-events-auto flex items-center gap-1.5">
                                 <button
-                                    onClick={() => window.open(activeEmbedUrl, '_blank', 'noopener,noreferrer')}
+                                    onClick={() => {
+                                        const safeUrl = safeEmbedUrl(activeEmbedUrl);
+                                        if (safeUrl) window.open(safeUrl, '_blank', 'noopener,noreferrer');
+                                    }}
                                     className="rounded-lg bg-black/50 p-2 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/70"
                                     title={t('watch.openInNewPage')}
                                 >

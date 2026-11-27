@@ -37,6 +37,7 @@ import SmoothScroll from './components/SmoothScroll';
 import { getProviderCatalogScope, ROUTES, type RouteEntry } from './routing/registry';
 import { IdleRoutePrefetch } from '@/routing/IdleRoutePrefetch';
 import { isTvPlatform } from './utils/tvPlatform';
+import { resolveProfileGate } from './utils/profileGate';
 import { useTvSpatialNav } from './hooks/useTvSpatialNav';
 import { useTvBackKey } from './hooks/useTvBackKey';
 import { DelayedSuspense } from './components/DelayedSuspense';
@@ -1723,21 +1724,44 @@ const ProfileGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [isLoading, profiles.length, isAuthenticated, loadingTimedOut]);
 
   // La démonstration Wrapped utilise exclusivement des fixtures, sans profil.
-  if (!isAuthenticated || isVipUser || isVipAuth || isWatchRoute || isBip39LinkRoute || isOauthAuthorizeRoute || isWrappedTestRoute(location.pathname, location.search)) {
-    if (isWatchRoute || isBip39LinkRoute || isOauthAuthorizeRoute) {
+  const skipGate = isVipUser || isVipAuth || isWatchRoute || isBip39LinkRoute
+    || isOauthAuthorizeRoute || isWrappedTestRoute(location.pathname, location.search);
+  const gateDecision = resolveProfileGate({
+    isAuthenticated,
+    skipGate,
+    loadingTimedOut,
+    isLoading,
+    profileCount: profiles.length,
+    hasCurrentProfile: Boolean(currentProfile),
+  });
+
+  if (gateDecision === 'pass') {
+    if (skipGate && (isWatchRoute || isBip39LinkRoute || isOauthAuthorizeRoute)) {
       debugAppLog('ProfileGate: Skipping profile gate for route:', location.pathname);
     }
     return <>{children}</>;
   }
 
-  // If loading timed out, continue without profile data
-  if (loadingTimedOut) {
-    debugAppLog('ProfileGate: Timeout reached, skipping profile gate');
-    return <>{children}</>;
+  // Un timeout n'autorise jamais le rendu : sans profil validé, toutes les
+  // restrictions d'âge retomberaient à 0.
+  if (gateDecision === 'error') {
+    debugAppLog('ProfileGate: Timeout reached, blocking until profiles are available');
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center px-4">
+        <div className="max-w-md text-center">
+          <p className="mb-6 text-white">{i18n.t('profile.loadTimeout')}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-lg bg-red-600 px-6 py-3 font-medium text-white transition-colors hover:bg-red-700"
+          >
+            {i18n.t('profile.reload')}
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  // Show loading while profiles are being loaded or created
-  if (isLoading || (profiles.length === 0 && isAuthenticated)) {
+  if (gateDecision === 'loading') {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -1748,17 +1772,11 @@ const ProfileGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
   }
 
-  // If no profiles exist or no profile is selected, show profile selection
-  if (profiles.length === 0 || !currentProfile) {
-    return (
-      <Suspense fallback={null}>
-        <ProfileSelectionLazy />
-      </Suspense>
-    );
-  }
-
-  // User has selected a profile, show the app
-  return <>{children}</>;
+  return (
+    <Suspense fallback={null}>
+      <ProfileSelectionLazy />
+    </Suspense>
+  );
 };
 
 const AppWithIntro: React.FC = () => {
