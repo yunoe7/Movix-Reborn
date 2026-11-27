@@ -1,5 +1,5 @@
 import React, { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { io, type Socket } from 'socket.io-client';
 import axios from 'axios';
 import { getTmdbLanguage } from '../i18n';
@@ -10,12 +10,13 @@ import {
 } from 'lucide-react';
 import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
 import { isIpadSafari } from '../utils/deviceDetection';
+import { WATCHPARTY_API as CONFIGURED_WATCHPARTY_API } from '../config/runtime';
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || '';
 
-const WATCHPARTY_API = String(
-  import.meta.env.VITE_WATCHPARTY_API || 'https://watchparty-api-production.up.railway.app',
-).trim().replace(/\/+$/, '');
+// Le fallback historique reste disponible pour les déploiements qui ne
+// configurent ni VITE_WATCHPARTY_API ni VITE_MAIN_API.
+const WATCHPARTY_API = CONFIGURED_WATCHPARTY_API || 'https://watchparty-api-production.up.railway.app';
 
 type Media = {
   src: string;
@@ -180,6 +181,7 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 
 const WatchPartyPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { code: routeCode, roomId } = useParams<{ code?: string; roomId?: string }>();
   const [nickname, setNickname] = useState(() => {
     try { return sessionStorage.getItem('watchPartyNickname') || ''; } catch { return ''; }
@@ -204,7 +206,10 @@ const WatchPartyPage: React.FC = () => {
   const [publicRooms, setPublicRooms] = useState<PublicRoom[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    const message = (location.state as { message?: string } | null)?.message;
+    return typeof message === 'string' ? message : '';
+  });
   const [room, setRoom] = useState<Room | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -244,6 +249,7 @@ const WatchPartyPage: React.FC = () => {
   const vidRiftActivationTimerRef = useRef<number | null>(null);
   const hasCustomLocalVolumeRef = useRef(false);
   const remoteCommandTimeoutRef = useRef<number | null>(null);
+  const remoteSuppressionUntilRef = useRef(0);
   const syncWorkerRef = useRef<Worker | null>(null);
   const syncTickTimerRef = useRef<number | null>(null);
   const clockOffsetRef = useRef(0);
@@ -516,6 +522,22 @@ const WatchPartyPage: React.FC = () => {
     navigate('/watchparty');
   }, [roomId, navigate]);
 
+  // Une commande distante et un snapshot peuvent arriver pendant la même
+  // fenêtre : la plus longue doit gagner, sinon un événement local tardif est
+  // rebroadcast et peut faire osciller la lecture.
+  const suppressRemotePlaybackEvents = useCallback((durationMs: number) => {
+    const now = Date.now();
+    const until = Math.max(remoteSuppressionUntilRef.current, now + durationMs);
+    remoteSuppressionUntilRef.current = until;
+    applyingRemoteRef.current = true;
+    if (remoteCommandTimeoutRef.current !== null) window.clearTimeout(remoteCommandTimeoutRef.current);
+    remoteCommandTimeoutRef.current = window.setTimeout(() => {
+      applyingRemoteRef.current = false;
+      remoteCommandTimeoutRef.current = null;
+      remoteSuppressionUntilRef.current = 0;
+    }, Math.max(0, until - now));
+  }, []);
+
   const applyRemotePlayback = useCallback(async (state: PlaybackSnapshot) => {
     authoritativePlaybackRef.current = state;
     const serverNow = Date.now() + clockOffsetRef.current;
@@ -530,27 +552,23 @@ const WatchPartyPage: React.FC = () => {
         pendingPlaybackRef.current = state;
         return;
       }
-      applyingRemoteRef.current = true;
-      try {
-        if (Number.isFinite(targetPosition) && Math.abs(vidriftPlaybackRef.current.currentTime - targetPosition) > 0.8) {
-          target.postMessage({ type: 'vidrift:resume', currentTime: targetPosition }, VIDRIFT_ORIGIN);
-        }
-        // Heartbeats repeat the authoritative playback state. Sending play/pause
-        // on every heartbeat makes VidRift reopen its controls for guests even
-        // when playback is already in the requested state.
-        const playbackStateChanged = vidriftPlaybackRef.current.paused !== !state.isPlaying;
-        if (playbackStateChanged) {
-          target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
-        }
-        vidriftPlaybackRef.current = {
-          ...vidriftPlaybackRef.current,
-          paused: !state.isPlaying,
-          currentTime: targetPosition,
-          updatedAt: performance.now(),
-        };
-      } finally {
-        window.setTimeout(() => { applyingRemoteRef.current = false; }, 1200);
+      suppressRemotePlaybackEvents(1200);
+      if (Number.isFinite(targetPosition) && Math.abs(vidriftPlaybackRef.current.currentTime - targetPosition) > 0.8) {
+        target.postMessage({ type: 'vidrift:resume', currentTime: targetPosition }, VIDRIFT_ORIGIN);
       }
+      // Heartbeats repeat the authoritative playback state. Sending play/pause
+      // on every heartbeat makes VidRift reopen its controls for guests even
+      // when playback is already in the requested state.
+      const playbackStateChanged = vidriftPlaybackRef.current.paused !== !state.isPlaying;
+      if (playbackStateChanged) {
+        target.postMessage({ type: state.isPlaying ? 'vidrift:play' : 'vidrift:pause' }, VIDRIFT_ORIGIN);
+      }
+      vidriftPlaybackRef.current = {
+        ...vidriftPlaybackRef.current,
+        paused: !state.isPlaying,
+        currentTime: targetPosition,
+        updatedAt: performance.now(),
+      };
       return;
     }
 
@@ -559,20 +577,16 @@ const WatchPartyPage: React.FC = () => {
       pendingPlaybackRef.current = state;
       return;
     }
-    applyingRemoteRef.current = true;
-    try {
-      if (Number.isFinite(targetPosition) && Math.abs(video.currentTime - targetPosition) > 0.8) {
-        video.currentTime = targetPosition;
-      }
-      if (state.isPlaying && video.paused) {
-        await video.play().then(() => setRequiresUserGesture(false)).catch(() => setRequiresUserGesture(true));
-      }
-      if (!state.isPlaying && !video.paused) video.pause();
-      if (!state.isPlaying) setRequiresUserGesture(false);
-    } finally {
-      window.setTimeout(() => { applyingRemoteRef.current = false; }, 250);
+    suppressRemotePlaybackEvents(250);
+    if (Number.isFinite(targetPosition) && Math.abs(video.currentTime - targetPosition) > 0.8) {
+      video.currentTime = targetPosition;
     }
-  }, []);
+    if (state.isPlaying && video.paused) {
+      await video.play().then(() => setRequiresUserGesture(false)).catch(() => setRequiresUserGesture(true));
+    }
+    if (!state.isPlaying && !video.paused) video.pause();
+    if (!state.isPlaying) setRequiresUserGesture(false);
+  }, [suppressRemotePlaybackEvents]);
 
   const closeVidRiftActivation = () => {
     setVidRiftActivationOpen(false);
@@ -609,6 +623,17 @@ const WatchPartyPage: React.FC = () => {
       return;
     }
     let active = true;
+    // Les handlers Socket.IO peuvent s'exécuter avant que l'effet React qui
+    // rafraîchit roomRef soit appliqué : garder la référence synchrone évite
+    // d'arbitrer avec un ancien média, rôle ou mode de synchronisation.
+    const updateRoom = (updater: (current: Room) => Room) => {
+      const current = roomRef.current ?? room;
+      if (!current) return;
+      const next = updater(current);
+      roomRef.current = next;
+      setRoom(next);
+    };
+    let resyncOnForeground: (() => void) | null = null;
     const loadRoom = async () => {
       try {
         const result = await apiRequest<{ room: Room }>(`/api/watchparty/room/${roomId}`, {
@@ -631,6 +656,7 @@ const WatchPartyPage: React.FC = () => {
         });
         socketRef.current = socket;
         socket.on('connect', () => {
+          setError('');
           setSocketState('connected');
           setSelfId(socket.id || '');
           // Calibrate the client clock against the server before interpolating
@@ -656,7 +682,7 @@ const WatchPartyPage: React.FC = () => {
           setSocketState('disconnected');
           setError(err.message || 'Connexion au salon impossible.');
         });
-        socket.on('room:info', (nextRoom: Room) => setRoom(current => current ? { ...current, ...nextRoom } : nextRoom));
+        socket.on('room:info', (nextRoom: Room) => updateRoom(current => ({ ...current, ...nextRoom })));
         socket.on('room:participants', (next: Participant[]) => setParticipants(next || []));
         socket.on('ready:state', (next: Record<string, boolean>) => setReadyState(next || {}));
         socket.on('room:countdown', (payload: { startAt: number }) => setCountdownTarget(payload.startAt));
@@ -664,7 +690,7 @@ const WatchPartyPage: React.FC = () => {
         socket.on('room:countdownFinished', () => setCountdownTarget(null));
         socket.on('room:startCountdownDenied', (payload: { message?: string }) => setControlNotice(payload?.message || 'Tout le monde doit être prêt.'));
         socket.on('room:chatToggled', (payload: { enabled: boolean }) => {
-          setRoom(current => current ? { ...current, chatEnabled: payload.enabled } : current);
+          updateRoom(current => ({ ...current, chatEnabled: payload.enabled }));
         });
         socket.on('pause:timerStarted', (payload: PauseTimer) => setPauseTimer(payload));
         socket.on('pause:timerCancelled', () => setPauseTimer(null));
@@ -682,14 +708,14 @@ const WatchPartyPage: React.FC = () => {
           setMessages(current => current.map(message => message.id === payload.messageId ? { ...message, deleted: true, text: 'Message supprimé par la modération.' } : message));
         });
         socket.on('host:transferred', (payload: { hostId: string }) => {
-          setRoom(current => current ? { ...current, hostId: payload.hostId } : current);
+          updateRoom(current => ({ ...current, hostId: payload.hostId }));
           setControlNotice(payload.hostId === socket.id ? 'Tu es maintenant l’hôte de cette Watch Party.' : 'Le rôle d’hôte a été transféré.');
         });
         socket.on('sync:modeChanged', (payload: { mode: 'classic' | 'pro' }) => {
-          setRoom(current => current ? { ...current, syncMode: payload.mode } : current);
+          updateRoom(current => ({ ...current, syncMode: payload.mode }));
         });
         socket.on('control:state', (state: { controlMode: 'host-only' | 'democratic'; coHosts: string[]; pendingRequests: ControlRequest[] }) => {
-          setRoom(current => current ? { ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] } : current);
+          updateRoom(current => ({ ...current, controlMode: state.controlMode, coHosts: state.coHosts || [] }));
           setControlRequests(state.pendingRequests || []);
         });
         socket.on('control:approved', () => setControlNotice('L’hôte t’a accordé le contrôle de la lecture.'));
@@ -758,24 +784,47 @@ const WatchPartyPage: React.FC = () => {
           setMessages(current => current.some(item => item.id === message.id) ? current : [...current.slice(-99), message]);
         });
         socket.on('media:updated', (media: Media) => {
-          setRoom(current => current ? { ...current, media, pauseTimer: null, pauseVote: null } : current);
+          updateRoom(current => ({ ...current, media, pauseTimer: null, pauseVote: null }));
+          // La position reçue avant le changement concernait l'ancien média.
+          pendingPlaybackRef.current = null;
           setPauseTimer(null);
           setPauseVote(null);
         });
         socket.on('host:token', (payload: { token: string }) => storeRoomToken(roomId, payload.token));
         socket.on('room:kicked', (payload: { reason?: string }) => {
-          setError(payload?.reason || 'Tu as été retiré du salon.');
           socket.disconnect();
           clearRoomToken(roomId);
-          navigate('/watchparty');
+          navigate('/watchparty', {
+            replace: true,
+            state: { message: payload?.reason || 'Tu as été retiré du salon.' }
+          });
         });
         socket.on('room:closed', (payload?: { reason?: string }) => {
-          setError(payload?.reason || 'Ce salon a été fermé.');
           clearRoomToken(roomId);
           socket.disconnect();
-          navigate('/watchparty');
+          navigate('/watchparty', {
+            replace: true,
+            state: { message: payload?.reason || 'Ce salon a été fermé.' }
+          });
         });
         socket.on('error', (payload: { message?: string }) => setError(payload?.message || 'Erreur de connexion au salon.'));
+
+        // Les navigateurs mobiles gèlent les timers en arrière-plan : à retour
+        // en avant-plan, l'hôte réémet sa position et l'invité redemande un
+        // snapshot au lieu d'attendre le prochain heartbeat.
+        resyncOnForeground = () => {
+          if (document.visibilityState !== 'visible') return;
+          if (socket.id && roomRef.current?.hostId === socket.id) {
+            socket.emit('playback:update', {
+              isPlaying: authoritativePlaybackRef.current?.isPlaying === true,
+              position: authoritativePlaybackRef.current?.position ?? 0,
+              reason: 'heartbeat'
+            });
+          } else {
+            socket.emit('playback:getState');
+          }
+        };
+        document.addEventListener('visibilitychange', resyncOnForeground);
       } catch (err) {
         if (active) {
           setError(err instanceof Error ? err.message : 'Impossible de charger le salon.');
@@ -786,6 +835,7 @@ const WatchPartyPage: React.FC = () => {
     void loadRoom();
     return () => {
       active = false;
+      if (resyncOnForeground) document.removeEventListener('visibilitychange', resyncOnForeground);
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
@@ -849,12 +899,7 @@ const WatchPartyPage: React.FC = () => {
     action: 'play' | 'pause' | 'seek' | 'setPlaybackRate' | 'resetPlaybackRate';
     value?: number;
   }) => {
-    applyingRemoteRef.current = true;
-    if (remoteCommandTimeoutRef.current !== null) window.clearTimeout(remoteCommandTimeoutRef.current);
-    remoteCommandTimeoutRef.current = window.setTimeout(() => {
-      applyingRemoteRef.current = false;
-      remoteCommandTimeoutRef.current = null;
-    }, 1300);
+    suppressRemotePlaybackEvents(1300);
 
     const isVidRift = roomRef.current?.media.playbackType === 'vidrift';
     const target = vidriftFrameRef.current?.contentWindow;
@@ -879,7 +924,7 @@ const WatchPartyPage: React.FC = () => {
     if (command.action === 'seek' && Number.isFinite(command.value)) video.currentTime = Math.max(0, command.value as number);
     if (command.action === 'setPlaybackRate' && Number.isFinite(command.value)) video.playbackRate = command.value as number;
     if (command.action === 'resetPlaybackRate') video.playbackRate = 1;
-  }, []);
+  }, [suppressRemotePlaybackEvents]);
 
   useEffect(() => {
     if (!roomId || !room) return;
@@ -911,6 +956,7 @@ const WatchPartyPage: React.FC = () => {
         remoteCommandTimeoutRef.current = null;
       }
       applyingRemoteRef.current = false;
+      remoteSuppressionUntilRef.current = 0;
       if (syncWorkerRef.current === worker) syncWorkerRef.current = null;
     };
   }, [roomId, room?.id]);
