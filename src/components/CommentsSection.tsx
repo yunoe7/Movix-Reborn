@@ -17,6 +17,7 @@ import { useTurnstileBypass } from '../hooks/useTurnstileBypass';
 import { ADMIN_BYPASS_TOKEN } from '../utils/turnstileBypass';
 import { getOverlayPortalRoot } from '@/utils/overlayPortal';
 import { Skeleton } from './ui/Skeleton';
+import ConfirmDialog from './ui/confirm-dialog';
 import { TURNSTILE_SITE_KEY } from '../utils/turnstileKeys';
 
 const MAIN_API = import.meta.env.VITE_MAIN_API;
