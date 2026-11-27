@@ -30,11 +30,21 @@ interface WasmEngine {
   get_status(): string;
 }
 
+// Une action explicite reste en attente jusqu'à son `scheduledAt`. Tant qu'il
+// en reste, aucun tick local ne peut anticiper la commande ni appliquer une
+// correction de dérive futures. Plusieurs actions rapides sont exécutées dans
+// l'ordre de leur échéance, pas en remplaçant le timer precedent.
+interface PendingSchedule {
+  event: ScheduledPlaybackEvent;
+  wasPlaying: boolean;
+}
+
 let mode: SyncMode = 'classic';
 let masterState: PlaybackState | null = null;
 let clockOffsetMs = 0;
 let lastStatus: SyncStatusMessage['status'] = 'classic';
 let scheduledActionTimer: number | null = null;
+const pendingSchedules: PendingSchedule[] = [];
 let lastRateSent = 1;
 let lastHardSyncAt = 0;
 let lastPlayPauseAt = 0;
@@ -69,12 +79,62 @@ const forwardWorkerOutputs = (rawOutputs: unknown) => {
   });
 };
 
-const clearScheduledAction = () => {
+const clearScheduledTimer = () => {
   if (scheduledActionTimer !== null) {
     clearTimeout(scheduledActionTimer);
     scheduledActionTimer = null;
   }
 };
+
+const clearPendingSchedules = () => {
+  pendingSchedules.length = 0;
+  clearScheduledTimer();
+};
+
+function executeNextSchedule() {
+  scheduledActionTimer = null;
+  const pending = pendingSchedules.shift();
+  if (!pending) return;
+
+  const { event, wasPlaying } = pending;
+  const executionServerTime = Date.now() + clockOffsetMs;
+  const isPlaying = event.action === 'seek' ? wasPlaying : event.action !== 'pause';
+  // L'hôte a appliqué son action localement à `serverNow`. Pendant les 250 ms
+  // de latence volontaire, un lecteur en lecture a avancé : viser la position
+  // brute ferait revenir les invités en arrière à l'exécution.
+  const elapsedSeconds = event.action === 'seek' && isPlaying
+    ? Math.max(0, (executionServerTime - event.serverNow) / 1000)
+    : 0;
+  const position = event.position + elapsedSeconds;
+
+  masterState = {
+    isPlaying,
+    position,
+    updatedAt: executionServerTime,
+    updatedBy: event.updatedBy
+  };
+
+  if (wasmEngine) {
+    forwardWorkerOutputs(wasmEngine.ingest_schedule({ ...event, position, scheduledAt: executionServerTime }));
+  }
+
+  if (event.action === 'seek') {
+    postCommand({ type: 'command', action: 'seek', value: position });
+  } else if (event.action === 'play') {
+    postCommand({ type: 'command', action: 'play' });
+  } else {
+    postCommand({ type: 'command', action: 'pause' });
+  }
+
+  armNextSchedule();
+}
+
+function armNextSchedule() {
+  clearScheduledTimer();
+  if (mode !== 'pro' || pendingSchedules.length === 0) return;
+  const delay = Math.max(0, pendingSchedules[0].event.scheduledAt - (Date.now() + clockOffsetMs));
+  scheduledActionTimer = self.setTimeout(executeNextSchedule, delay);
+}
 
 const tryLoadWasmBundle = async () => {
   try {
@@ -94,7 +154,7 @@ const tryLoadWasmBundle = async () => {
 };
 
 const resetEngine = () => {
-  clearScheduledAction();
+  clearPendingSchedules();
   masterState = null;
   clockOffsetMs = 0;
   offsetSamples.length = 0;
@@ -106,7 +166,7 @@ const resetEngine = () => {
 
 const setMode = (nextMode: SyncMode) => {
   mode = nextMode;
-  clearScheduledAction();
+  clearPendingSchedules();
 
   if (wasmEngine) {
     forwardWorkerOutputs(wasmEngine.set_mode(nextMode));
@@ -157,39 +217,32 @@ const getExpectedPosition = (nowMs: number) => {
 const handleSchedule = (event: ScheduledPlaybackEvent) => {
   if (mode !== 'pro') return;
 
-  clearScheduledAction();
+  // Socket.IO peut rediffuser le même snapshot après une reconnexion : ne pas
+  // exécuter deux fois la même action explicite.
+  const alreadyQueued = pendingSchedules.some(pending => (
+    pending.event.scheduledAt === event.scheduledAt
+    && pending.event.action === event.action
+    && pending.event.position === event.position
+    && pending.event.updatedBy === event.updatedBy
+  ));
+  if (alreadyQueued) return;
 
-  masterState = {
-    isPlaying: event.action === 'seek'
+  pendingSchedules.push({
+    event,
+    wasPlaying: event.action === 'seek'
       ? masterState?.isPlaying ?? false
-      : event.action !== 'pause',
-    position: event.position,
-    updatedAt: event.scheduledAt,
-    updatedBy: event.updatedBy
-  };
-
-  if (wasmEngine) {
-    forwardWorkerOutputs(wasmEngine.ingest_schedule(event));
-  }
-
-  const targetDelayMs = Math.max(0, event.scheduledAt - (Date.now() + clockOffsetMs));
-  scheduledActionTimer = self.setTimeout(() => {
-    scheduledActionTimer = null;
-    if (event.action === 'seek') {
-      postCommand({ type: 'command', action: 'seek', value: event.position });
-      return;
-    }
-
-    if (event.action === 'play') {
-      postCommand({ type: 'command', action: 'play' });
-      return;
-    }
-
-    postCommand({ type: 'command', action: 'pause' });
-  }, targetDelayMs);
+      : event.action !== 'pause'
+  });
+  pendingSchedules.sort((a, b) => a.event.scheduledAt - b.event.scheduledAt);
+  armNextSchedule();
 };
 
 const handleLocalState = (state: LocalPlayerSnapshot) => {
+  // Tant qu'une action explicite n'est pas exécutée, son état futur ne doit
+  // piloter ni le moteur WASM ni le repli JS : c'est la principale source des
+  // seeks/pause anticipés constatés pendant les tests réels.
+  if (pendingSchedules.length > 0) return;
+
   if (wasmEngine) {
     forwardWorkerOutputs(wasmEngine.tick(state));
     return;
@@ -268,9 +321,24 @@ self.addEventListener('message', (event: MessageEvent<WatchPartySyncWorkerInput>
     case 'set-mode':
       setMode(message.mode);
       break;
-    case 'master-state':
-      masterState = message.state;
+    case 'master-state': {
+      const state = message.state;
+      if (pendingSchedules.length > 0) {
+        const lastScheduledAt = Math.max(...pendingSchedules.map(pending => pending.event.scheduledAt));
+        // Un heartbeat émis avant l'échéance ne connaît pas encore l'action
+        // explicite : il ne doit pas écraser le schedule en attente.
+        if (state.updatedAt <= lastScheduledAt) break;
+        // Un état plus récent décrit déjà l'action de l'hôte : les commandes
+        // programmées deviennent obsolètes et doivent être annulées.
+        clearPendingSchedules();
+      }
+      if (masterState && state.updatedAt < masterState.updatedAt) break;
+      masterState = state;
+      // Le chemin WASM doit recevoir les heartbeats comme le repli JS, sinon
+      // sa position attendue reste figée sur le dernier snapshot reçu.
+      if (wasmEngine) forwardWorkerOutputs(wasmEngine.ingest_master_state(state));
       break;
+    }
     case 'local-state':
       handleLocalState(message.state);
       break;

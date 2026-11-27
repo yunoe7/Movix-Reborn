@@ -246,6 +246,10 @@ const WatchPartyPage: React.FC = () => {
   const lastHeartbeatRef = useRef(0);
   const pendingPlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
+  // Un `playback:getState` déclenché au retour en avant-plan est une resync
+  // autoritaire : il doit être appliqué même si le dernier état serveur vient
+  // d'une action explicite (reason: seek/play/pause).
+  const resyncRequestedRef = useRef(false);
   const vidRiftActivationTimerRef = useRef<number | null>(null);
   const hasCustomLocalVolumeRef = useRef(false);
   const remoteCommandTimeoutRef = useRef<number | null>(null);
@@ -752,22 +756,34 @@ const WatchPartyPage: React.FC = () => {
             .sort((a, b) => a - b);
           clockOffsetRef.current = bestSamples[Math.floor(bestSamples.length / 2)] ?? 0;
         });
-        const handleAuthoritativePlayback = (state: PlaybackSnapshot) => {
+        const handleAuthoritativePlayback = (state: PlaybackSnapshot, isRoomSnapshot = false) => {
           authoritativePlaybackRef.current = state;
           const activeSocketId = socket.id;
           const activeIsHost = Boolean(activeSocketId && roomRef.current?.hostId === activeSocketId);
-          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current && !activeIsHost) {
+          const isResync = isRoomSnapshot && resyncRequestedRef.current;
+          if (isResync) resyncRequestedRef.current = false;
+
+          if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
+            if (isResync) {
+              syncWorkerRef.current.postMessage({ type: 'master-state', state });
+              return;
+            }
             // Explicit actions arrive with a scheduled event; do not make the
             // worker execute them early from the unscheduled state broadcast.
-            if (state.reason === 'heartbeat' || state.reason === undefined) {
+            // C'est vrai aussi pour l'hôte : il reçoit le même schedule et ne
+            // doit pas appliquer l'état explicite deux fois.
+            if (!activeIsHost && (state.reason === 'heartbeat' || state.reason === undefined)) {
               syncWorkerRef.current.postMessage({ type: 'master-state', state });
             }
-          } else if (!(activeIsHost && state.reason === 'heartbeat' && state.updatedBy === activeSocketId)) {
+            return;
+          }
+
+          if (isResync || !(activeIsHost && state.reason === 'heartbeat' && state.updatedBy === activeSocketId)) {
             void applyRemotePlayback(state);
           }
         };
-        socket.on('room:playback', handleAuthoritativePlayback);
-        socket.on('playback:state', handleAuthoritativePlayback);
+        socket.on('room:playback', (state: PlaybackSnapshot) => handleAuthoritativePlayback(state, true));
+        socket.on('playback:state', (state: PlaybackSnapshot) => handleAuthoritativePlayback(state, false));
         socket.on('playback:schedule', (schedule: ScheduledPlaybackEvent) => {
           if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
             syncWorkerRef.current.postMessage({ type: 'schedule', event: schedule });
@@ -821,6 +837,7 @@ const WatchPartyPage: React.FC = () => {
               reason: 'heartbeat'
             });
           } else {
+            resyncRequestedRef.current = true;
             socket.emit('playback:getState');
           }
         };
