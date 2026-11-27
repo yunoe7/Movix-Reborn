@@ -39,7 +39,7 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     readyState: {},
     playbackState: { isPlaying: false, position: 0, updatedAt: Date.now(), updatedBy: 'system' }
   };
-  const state = { error: [], room: [], socketState: [], notices: [], navigate: [], participants: [], selfId: [] };
+  const state = { error: [], room: [], socketState: [], notices: [], navigate: [], participants: [], selfId: [], applied: [] };
   const refs = {
     roomRef: { current: room },
     pendingPlaybackRef: { current: { isPlaying: true, position: 99 } },
@@ -50,6 +50,7 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     syncWorkerRef: { current: null },
     socketRef: { current: null },
     authoritativePlaybackRef: { current: null },
+    resyncRequestedRef: { current: false },
   };
   const workerMessages = [];
   refs.syncWorkerRef.current = { postMessage: message => workerMessages.push(message) };
@@ -88,7 +89,7 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     setReactions: noop,
     setSyncStatus: noop,
     setSyncEngine: noop,
-    applyRemotePlayback: noop,
+    applyRemotePlayback: snapshot => state.applied.push(snapshot),
     window: fakeWindow,
     document: fakeDocument,
   };
@@ -214,6 +215,62 @@ test('Sync Pro continue à différer les actions explicites et à recevoir les h
     const schedule = fixture.workerMessages.find(message => message.type === 'schedule');
     assert.equal(schedule.event.action, 'play');
     assert.equal(schedule.event.scheduledAt, 1000);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('le retour en avant-plan applique le snapshot de resync même avec reason=seek', async () => {
+  for (const syncMode of ['classic', 'pro']) {
+    const fixture = roomFixture({ syncMode });
+    try {
+      await flushMicrotasks();
+      const listener = fixture.documentListeners.find(([name]) => name === 'visibilitychange');
+      assert.ok(listener, 'un écouteur visibilitychange doit être enregistré');
+      fixture.fakeDocument.visibilityState = 'visible';
+      listener[1]();
+      assert.ok(fixture.socket.emits.some(([event]) => event === 'playback:getState'));
+
+      const snapshot = { isPlaying: true, position: 42, reason: 'seek', updatedBy: 'host-1' };
+      fixture.socket.fire('room:playback', snapshot);
+
+      if (syncMode === 'pro') {
+        assert.equal(
+          fixture.workerMessages.filter(message => message.type === 'master-state').length,
+          1,
+          'le snapshot de resync doit alimenter le worker même après une action explicite',
+        );
+      } else {
+        assert.equal(fixture.state.applied.length, 1, 'le snapshot de resync doit être appliqué en classique');
+        assert.equal(fixture.state.applied[0].position, 42);
+      }
+    } finally {
+      fixture.cleanup();
+    }
+  }
+});
+
+test('un hôte Pro ne double pas une action explicite d’un autre contrôleur', async () => {
+  const fixture = roomFixture({ host: true, syncMode: 'pro' });
+  try {
+    await flushMicrotasks();
+    fixture.socket.fire('playback:state', {
+      isPlaying: false,
+      position: 88,
+      reason: 'pause',
+      updatedBy: 'co-host-1'
+    });
+
+    assert.equal(fixture.state.applied.length, 0, 'l’action doit passer par le schedule, pas par une application immédiate');
+    fixture.socket.fire('playback:schedule', {
+      action: 'pause',
+      position: 88,
+      scheduledAt: 2000,
+      serverNow: 1750,
+      updatedBy: 'co-host-1'
+    });
+    const schedule = fixture.workerMessages.find(message => message.type === 'schedule');
+    assert.equal(schedule?.event.action, 'pause');
   } finally {
     fixture.cleanup();
   }
