@@ -283,7 +283,8 @@ const expected = {
   movie: { route: '/watch/movie/42', embedPath: '/embed/movie/42' },
   tv: { route: '/watch/tv/84/s/2/e/3', embedPath: '/embed/tv/84/2/3' },
   anime: { route: '/watch/tv/99999/s/1/e/1', embedPath: '/embed/tv/99999/1/1' },
-  embedParams: { brand: 'Movix', download: '1', hide: 'server,settings' },
+  embedParams: { brand: 'Movix', download: '1', hide: null },
+  ipadPref: { movie: 'vexon', tv: 'evion' },
   forbiddenNetwork: ['/anime/', 'anime-sama', 'animesama', '/watch/anime'],
 };
 const seededProgress = {
@@ -426,6 +427,8 @@ function analyzeEmbed(src) {
     brandColor: url.searchParams.get('brandColor'),
     download: url.searchParams.get('download'),
     hide: url.searchParams.get('hide'),
+    pref: url.searchParams.get('pref'),
+    provider: url.searchParams.get('provider'),
   };
 }
 
@@ -447,6 +450,62 @@ async function observePage(page) {
 function assertNoAnimeNetwork(urls, label) {
   const offenders = urls.filter(url => expected.forbiddenNetwork.some(forbidden => String(url).includes(forbidden)));
   assert.deepEqual(offenders, [], `${label}: aucune URL Anime-Sama / mode anime (${offenders.join(' | ')})`);
+}
+
+// Safari sur iPad se présente parfois en UA « Macintosh » : on reproduit les
+// deux variantes avec plusieurs points tactiles, exactement comme le détecteur
+// isIpadSafari() utilisé par les deux lecteurs de production.
+async function observeIpadPlayer({ label, userAgent, route, embedPath, pref, screenshotName }) {
+  iframeMode = 'none';
+  const context = await browser.newContext({
+    viewport: { width: 1024, height: 768 },
+    userAgent,
+    hasTouch: true,
+  });
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'maxTouchPoints', {
+      configurable: true,
+      get: () => 5,
+    });
+  });
+  await context.route('**/*', routeFixture);
+  const page = await context.newPage();
+  const requests = [];
+  const errors = [];
+  page.on('request', request => requests.push(request.url()));
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(`http://vidrift.test${route}`);
+  await page.locator('iframe').waitFor();
+  await page.waitForFunction(() => (window.__vidriftInbound || []).some(message => message && message.type === 'vidrift:state'));
+  const observed = await observePage(page);
+  const embed = analyzeEmbed(await page.locator('iframe').getAttribute('src'));
+
+  assert.equal(embed.origin, 'https://embed.vidrift.net', `${label}: origine VidRift`);
+  assert.equal(embed.pathname, embedPath, `${label}: chemin de l’embed`);
+  assert.equal(embed.brand, expected.embedParams.brand, `${label}: marque Movix`);
+  assert.equal(embed.download, expected.embedParams.download, `${label}: panneau téléchargement conservé`);
+  assert.equal(embed.hide, expected.embedParams.hide, `${label}: menus serveur/réglages conservés`);
+  assert.equal(embed.pref, pref, `${label}: préférence HLS natif`);
+  assert.equal(embed.provider, null, `${label}: aucun provider forcé`);
+  assert.equal(observed.loads.length, 1, `${label}: une seule iframe montée`);
+  assert.deepEqual(errors, [], `${label}: aucune erreur JavaScript`);
+  assertNoAnimeNetwork([...requests, ...observed.requests], label);
+
+  const screenshot = path.join(artifactDir, screenshotName);
+  await page.screenshot({ path: screenshot });
+  observations.push({
+    scenario: label,
+    expected: { route, embedPath, embedParams: { ...expected.embedParams, pref }, iframeLoads: 1 },
+    observed: {
+      embed,
+      iframeLoads: observed.loads.length,
+      errors,
+      networkUrls: requests.length + observed.requests.length,
+    },
+    screenshot: path.basename(screenshot),
+    status: 'PASS',
+  });
+  await context.close();
 }
 
 browser = await chromium.launch({
@@ -486,7 +545,9 @@ browser = await chromium.launch({
     assert.equal(embed.pathname, expected.movie.embedPath, 'film: chemin de l’embed');
     assert.equal(embed.brand, expected.embedParams.brand, 'film: marque Movix');
     assert.equal(embed.download, expected.embedParams.download, 'film: panneau téléchargement conservé');
-    assert.equal(embed.hide, expected.embedParams.hide, 'film: menus serveur/réglages masqués');
+    assert.equal(embed.hide, expected.embedParams.hide, 'film: menus serveur/réglages conservés');
+    assert.equal(embed.pref, null, 'film: aucun serveur forcé hors iPad Safari');
+    assert.equal(embed.provider, null, 'film: aucun provider forcé');
     assert.equal(embed.brandColor, 'DC2626', 'film: couleur de marque');
     assert.equal(await page.locator('[data-testid="not-found"]').count(), 0, 'film: aucune route de compatibilité anime');
     assert.equal(observed.loads.length, 1, 'film: une seule iframe montée');
@@ -550,7 +611,9 @@ browser = await chromium.launch({
     assert.equal(embed.pathname, expected.tv.embedPath, 'série: chemin de l’embed avant message');
     assert.equal(embed.brand, expected.embedParams.brand, 'série: marque Movix');
     assert.equal(embed.download, expected.embedParams.download, 'série: panneau téléchargement conservé');
-    assert.equal(embed.hide, expected.embedParams.hide, 'série: menus serveur/réglages masqués');
+    assert.equal(embed.hide, expected.embedParams.hide, 'série: menus serveur/réglages conservés');
+    assert.equal(embed.pref, null, 'série: aucun serveur forcé hors iPad Safari');
+    assert.equal(embed.provider, null, 'série: aucun provider forcé');
     assert.deepEqual(resumeMessage, { type: 'vidrift:resume', currentTime: 480 }, 'série: reprise exacte depuis la fiche');
     assert.ok(observed.seeded && observed.seeded.position === 480, 'série: progression serveur recopiée avant lecture');
     assert.equal(observed.loads.length, beforeEpisodeMessage, 'série: aucun remontage iframe après vidrift:episode');
@@ -614,7 +677,9 @@ browser = await chromium.launch({
     assert.equal(embed.pathname, expected.anime.embedPath, 'animé: chemin de l’embed TV/TMDB');
     assert.equal(embed.brand, expected.embedParams.brand, 'animé: marque Movix');
     assert.equal(embed.download, expected.embedParams.download, 'animé: panneau téléchargement conservé');
-    assert.equal(embed.hide, expected.embedParams.hide, 'animé: menus serveur/réglages masqués');
+    assert.equal(embed.hide, expected.embedParams.hide, 'animé: menus serveur/réglages conservés');
+    assert.equal(embed.pref, null, 'animé: aucun serveur forcé hors iPad Safari');
+    assert.equal(embed.provider, null, 'animé: aucun provider forcé');
     assert.equal(observed.loads.length, 1, 'animé: une seule iframe montée');
     assert.deepEqual(errors, [], 'animé: aucune erreur JavaScript');
     assertNoAnimeNetwork([...requests, ...observed.requests], 'animé');
@@ -637,6 +702,29 @@ browser = await chromium.launch({
     });
     await context.close();
   }
+
+  // Scénario 4 — iPad 9 Safari : le lecteur normal sélectionne le serveur
+  // utilisant le HLS natif, sans retirer les contrôles VidRift.
+  await observeIpadPlayer({
+    label: 'ipad-movie',
+    userAgent: 'Mozilla/5.0 (iPad; CPU OS 13_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.5 Mobile/15E148 Safari/604.1',
+    route: '/watch/movie/42',
+    embedPath: expected.movie.embedPath,
+    pref: expected.ipadPref.movie,
+    screenshotName: 'ipad-movie-vidrift.png',
+  });
+
+  // Scénario 5 — iPad Safari en mode bureau (UA Macintosh + multi-touch) :
+  // même préférence pour une série ; la parité WatchParty est couverte par le
+  // test ciblé qui lit le constructeur d’URL de la salle.
+  await observeIpadPlayer({
+    label: 'ipad-desktop-tv',
+    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+    route: '/watch/tv/84/s/2/e/3',
+    embedPath: expected.tv.embedPath,
+    pref: expected.ipadPref.tv,
+    screenshotName: 'ipad-desktop-tv-vidrift.png',
+  });
 } catch (error) {
   runError = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 } finally {
@@ -658,6 +746,7 @@ const report = {
     anime: { id: anime.id, title: anime.name, source: 'TMDB' },
   },
   scope: 'Vérifie l’iframe, la navigation et les messages locaux ; aucun flux vidéo externe n’est lu.',
+  hardwareValidation: 'Aucun iPad physique validé : les scénarios iPad utilisent Chromium avec UA iPad/Macintosh et multi-touch simulé. Le bundle embed.vidrift.net reste externe et non instrumenté.',
   dataPolicy: 'Aucun secret, aucun compte ni appel réel : données de fixture et API simulées.',
   expected,
   observations,

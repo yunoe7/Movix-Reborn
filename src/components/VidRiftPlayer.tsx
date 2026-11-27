@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { isIpadSafari } from '../utils/deviceDetection';
 
 type VidRiftPlayerProps = {
   kind: 'movie' | 'tv';
@@ -100,6 +101,8 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
   const savedProgress = getSavedProgress(kind, tmdbId, season, episode);
 
   const src = useMemo(() => {
+    const numericTmdbId = Number(tmdbId);
+    if (!Number.isSafeInteger(numericTmdbId) || numericTmdbId <= 0) return '';
     const path = kind === 'movie'
       ? `/embed/movie/${encodeURIComponent(tmdbId)}`
       : `/embed/tv/${encodeURIComponent(tmdbId)}/${season ?? 1}/${episode ?? 1}`;
@@ -111,6 +114,13 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
     url.searchParams.set('download', '1');
     if (title) url.searchParams.set('title', title);
     if (posterPath?.startsWith('https://')) url.searchParams.set('poster', posterPath);
+    // Sur iPadOS, le player distant choisit par défaut HLS.js/MSE alors que
+    // Safari peut lire le master en natif. `pref` ne réordonne la cascade que
+    // si le serveur est réellement disponible : la couverture reste intacte
+    // ailleurs. Aucun `provider` n'est forcé.
+    if (isIpadSafari()) {
+      url.searchParams.set('pref', kind === 'tv' ? 'evion' : 'vexon');
+    }
     return url.toString();
   }, [kind, tmdbId, season, episode, title, posterPath]);
 
@@ -297,17 +307,23 @@ const VidRiftPlayer: React.FC<VidRiftPlayerProps> = ({
 
   return (
     <main className="fixed inset-0 z-50 flex h-[100dvh] w-full flex-col bg-black text-white">
-      <iframe
-        ref={iframeRef}
-        onLoad={handleIframeLoad}
-        key={src}
-        src={src}
-        title={title ? `VidRift — ${title}` : 'Lecteur VidRift'}
-        className="h-full w-full flex-1 border-0"
-        allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
-        allowFullScreen
-        loading="eager"
-      />
+      {src ? (
+        <iframe
+          ref={iframeRef}
+          onLoad={handleIframeLoad}
+          key={src}
+          src={src}
+          title={title ? `VidRift — ${title}` : 'Lecteur VidRift'}
+          className="h-full w-full flex-1 border-0"
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture; accelerometer; gyroscope"
+          allowFullScreen
+          loading="eager"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center px-6 text-center text-sm text-white/60">
+          Lecteur indisponible : identifiant VidRift invalide.
+        </div>
+      )}
     </main>
   );
 };
