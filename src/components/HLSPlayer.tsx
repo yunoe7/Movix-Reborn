@@ -7816,7 +7816,7 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
 
   // Thème Halloween : une citrouille remplace la boule des barres de
   // progression. C'est le réglage qui compte, la classe du thème étant
-  // retirée sur les lecteurs.
+  // retirée sur les lecteurs : la citrouille reste un repère de contrôle.
   const halloweenTheme = useHalloweenTheme();
 
   // ==========================================================================

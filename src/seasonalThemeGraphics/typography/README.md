@@ -57,8 +57,8 @@ Les rapports E2E sont écrits hors du dépôt, avec commande de relance, horloge
 - `tsc --noEmit -p tsconfig.app.json` : 268 erreurs préexistantes dans le dépôt, dont `adminDecor/AdminDecor.tsx:862` (`Palette`, ligne identique à la base LOT 4A). Aucune erreur dans les nouveaux modules `typography/`, dans `halloweenThemeAssets.ts`, `HalloweenAtmosphere.tsx`, `main.tsx` ni dans les tests LOT 4B. `tsconfig.json` ne contient que des références vides et ne vérifie rien sans `-p tsconfig.app.json`.
 - Build Vite : réussi avec des URL factices locales pour les deux variables obligatoires ; avertissements préexistants de taille de chunks et de Tailwind. Le bundle contient uniquement les WOFF2 attendus sous `dist/fonts/seasonal-theme/` et aucune URL Google Fonts.
 
-## Reporté au LOT 5
+## Intégration LOT 5
 
-- La migration complète des ambiances historiques localStorage vers le resolver publié reste hors périmètre : seuls leurs chargements de police et leurs points de suspension sont alignés ici.
-- L'aperçu graphique LOT 4A dans l'admin n'est pas étendu ; seul l'aperçu typographique LOT 4B est rendu.
+- Les ambiances historiques `localStorage` sont alignées sur la même politique d'exclusion que le moteur public : aucun marqueur, décor ou chargement de police sur une route sensible (voir `../README.md`).
+- L'aperçu typographique de l'admin reste isolé : il consomme `draftPreview`, jamais le resolver public.
 - La couverture `latin-ext` n'est pas déclarée : elle nécessiterait des fichiers et une validation de glyphes supplémentaires.
