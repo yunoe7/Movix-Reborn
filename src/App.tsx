@@ -45,6 +45,8 @@ import { RouteProgressBar } from './components/RouteProgressBar';
 import ScreenSaver from './components/ScreenSaver';
 import { HalloweenAtmosphere } from './components/HalloweenAtmosphere';
 import { ChristmasAtmosphere } from './components/ChristmasAtmosphere';
+import { SeasonalGraphicsProvider } from './seasonalThemeGraphics/SeasonalGraphicsProvider';
+import { useSeasonalGraphics } from './seasonalThemeGraphics/context';
 import { useIdleTimer } from './hooks/useIdleTimer';
 import { startVipVerification } from './utils/vipUtils';
 import { readLocalStorage, readSessionStorage } from './utils/browserStorage';
@@ -1946,6 +1948,9 @@ const AppWithIntro: React.FC = () => {
   const location = useLocation();
   const backgroundLocation = (location.state as { backgroundLocation?: typeof location } | null)?.backgroundLocation;
   const { showIntro, completeIntro } = useIntro();
+  // Une configuration publiée (ou une urgence) remplace les atmosphères
+  // historiques : elles ne doivent jamais se superposer au moteur LOT 4A.
+  const { suppressLegacy } = useSeasonalGraphics();
 
   // Couche TV : navigation D-pad, polyfill de la touche Retour et classe
   // racine qui déclenche le layout 10-foot (voir src/index.css). Tout est
@@ -2101,9 +2106,10 @@ const AppWithIntro: React.FC = () => {
       <SmoothScroll />
       {/* Ne pas afficher le Header sur les routes lecteur et Wrapped */}
       {shouldShowHeader && <Header />}
-      {/* Thème Halloween : coupé sur les mêmes routes que le Header */}
-      <HalloweenAtmosphere suspended={!shouldShowHeader} />
-      <ChristmasAtmosphere suspended={!shouldShowHeader} />
+      {/* Thèmes historiques : coupés sur les routes protégées et dès qu'une
+          configuration publiée est appliquée par le moteur LOT 4A. */}
+      <HalloweenAtmosphere suspended={!shouldShowHeader || suppressLegacy} />
+      <ChristmasAtmosphere suspended={!shouldShowHeader || suppressLegacy} />
       <PersistenceManager />
       <div className={shouldShowHeader && !isHeroHeaderPage ? 'pt-20' : ''}>
         <AlertNotificationManager />
@@ -2238,15 +2244,17 @@ function App() {
                 <ProfileProvider>
                   <TurnstileProvider>
                     <IntroProvider>
-                      <IOSHomeScreenHandler />
-                      <AppWithIntro />
-                      <TopProgressBar />
-                      <Toaster position="bottom-right" richColors />
-                      <UpdateAvailableNotifier />
-                      <WhatsNewNotifier />
-                      <DnsBlockBanner />
-                      <RequireUsernameChange />
-                      <ReferralManager />
+                      <SeasonalGraphicsProvider>
+                        <IOSHomeScreenHandler />
+                        <AppWithIntro />
+                        <TopProgressBar />
+                        <Toaster position="bottom-right" richColors />
+                        <UpdateAvailableNotifier />
+                        <WhatsNewNotifier />
+                        <DnsBlockBanner />
+                        <RequireUsernameChange />
+                        <ReferralManager />
+                      </SeasonalGraphicsProvider>
                     </IntroProvider>
                   </TurnstileProvider>
                 </ProfileProvider>
