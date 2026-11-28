@@ -54,6 +54,11 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
   };
   const workerMessages = [];
   refs.syncWorkerRef.current = { postMessage: message => workerMessages.push(message) };
+  const resetPlaybackEngine = () => {
+    refs.pendingPlaybackRef.current = null;
+    refs.authoritativePlaybackRef.current = null;
+    refs.syncWorkerRef.current.postMessage({ type: 'reset' });
+  };
   const documentListeners = [];
   const fakeDocument = {
     visibilityState: 'hidden',
@@ -90,6 +95,7 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     setSyncStatus: noop,
     setSyncEngine: noop,
     applyRemotePlayback: snapshot => state.applied.push(snapshot),
+    resetPlaybackEngine,
     window: fakeWindow,
     document: fakeDocument,
   };
@@ -376,6 +382,11 @@ test('une commande tardive ne raccourcit pas la fenêtre de suppression des év�
     const { suppressedCount, finalCount } = await fixture.run();
     assert.equal(suppressedCount, 0, 'un événement reçu pendant la commande distante ne doit pas être renvoyé au serveur');
     assert.equal(finalCount, suppressedCount + 1, 'la fenêtre doit se terminer et autoriser de nouveau les commandes locales');
+    const updates = fixture.emits.filter(([event]) => event === 'playback:update');
+    assert.equal(updates.length, 1);
+    assert.equal(typeof updates[0][1].commandId, 'string');
+    assert.ok(updates[0][1].commandId.length > 0);
+    assert.equal(updates[0][1].seq, 1, 'les commandes locales portent une séquence monotone');
   } finally {
     fixture.restore();
   }

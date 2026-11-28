@@ -251,13 +251,45 @@ function requireAdminSecret(req, res, next) {
   return next();
 }
 
-// --- Persistance basique des rooms ---
-const CACHE_DIR = path.join(__dirname, 'cache');
+// --- Persistance des rooms ---
+// Snapshot atomique + journal incrémental : un crash brutal ne doit pas perdre
+// les commandes confirmées depuis le dernier arrêt propre. WATCHPARTY_CACHE_DIR
+// permet aux tests et aux déploiements d'isoler cet état sans toucher au cache
+// de développement.
+const CACHE_DIR = process.env.WATCHPARTY_CACHE_DIR
+  ? path.resolve(process.env.WATCHPARTY_CACHE_DIR)
+  : path.join(__dirname, 'cache');
 const WATCHPARTY_ROOMS_FILE = path.join(CACHE_DIR, 'watchparty-rooms.json');
+const WATCHPARTY_ROOMS_JOURNAL = path.join(CACHE_DIR, 'watchparty-rooms.journal.ndjson');
+const ROOM_SNAPSHOT_VERSION = 2;
+const JOURNAL_COMPACTION_THRESHOLD = 50;
 const watchpartyRooms = new Map();
 // Allow a briefly disconnected host to reclaim the room before transferring ownership.
 const HOST_RECONNECT_GRACE_MS = 5 * 60_000;
 const hostDisconnectTimers = new Map();
+
+// Toutes les écritures sont sérialisées : un journal ne peut pas être renommé
+// pendant qu'une autre mutation y append, et le snapshot reflète toujours un
+// état cohérent avec les enregistrements déjà journalisés.
+let persistenceQueue = Promise.resolve();
+let journalWritesSinceSnapshot = 0;
+let isShuttingDown = false;
+
+// Les commandes de lecture d'une même room sont arbitrées dans l'ordre d'arrivée :
+// deux `playback:update` concurrents ne doivent pas pouvoir acquérir le même seq.
+const playbackCommandQueues = new Map();
+function enqueuePlaybackCommand(roomId, task) {
+  const previous = playbackCommandQueues.get(roomId) || Promise.resolve();
+  const next = previous
+    .catch(() => {})
+    .then(task)
+    .catch((error) => console.error('[Watchparty] Commande de lecture ignorée:', error.message));
+  playbackCommandQueues.set(roomId, next);
+  next.finally(() => {
+    if (playbackCommandQueues.get(roomId) === next) playbackCommandQueues.delete(roomId);
+  });
+  return next;
+}
 
 // Une room supprimée ne doit laisser aucun timer capable de réveiller son état
 // plus tard (transfert d'hôte, contrôle, countdown ou vote).
@@ -280,31 +312,102 @@ async function ensureCacheDir() {
   try { await fsp.access(CACHE_DIR); } catch { await fsp.mkdir(CACHE_DIR, { recursive: true }); }
 }
 
+// Les identifiants de socket ne survivent pas à un redémarrage : toute
+// l'appartenance basée dessus est repartie de zéro, mais les tokens, le média et
+// la séquence de lecture restent valides.
+function restoreRuntimeRoomState(room) {
+  if (!room || typeof room !== 'object' || !room.id) return null;
+  room.participants = [];
+  room.hostId = null;
+  room.coHosts = [];
+  room.pendingControlRequests = [];
+  room.readyState = {};
+  room.pauseVote = null;
+  room.pauseTimer = null;
+  room.pauseTimerTimeout = null;
+  room.countdownTimer = null;
+  room.countdown = null;
+  room._cleanupTimer = null;
+  room.playbackSeq = Number.isSafeInteger(room.playbackSeq) ? room.playbackSeq : 0;
+  room.mediaEpoch = Number.isSafeInteger(room.mediaEpoch) ? room.mediaEpoch : 1;
+  room.appliedCommands = room.appliedCommands && typeof room.appliedCommands === 'object'
+    ? room.appliedCommands
+    : {};
+  // `Set` devient `{}` en JSON : on restaure la vraie collection pour que les
+  // anciens tokens d'hôte restent révoqués après un redémarrage.
+  room.hostTokens = room.hostTokens instanceof Set
+    ? room.hostTokens
+    : new Set(Object.keys(room.hostTokens || (room.hostToken ? { [room.hostToken]: true } : {})));
+  if (!room.playbackState || typeof room.playbackState !== 'object') {
+    room.playbackState = {
+      isPlaying: false,
+      position: 0,
+      updatedAt: Date.now(),
+      updatedBy: 'system'
+    };
+  }
+  room.playbackState.seq = room.playbackSeq;
+  room.playbackState.mediaEpoch = room.mediaEpoch;
+  return room;
+}
+
+async function readJournalRecords(since) {
+  let lines;
+  try {
+    lines = (await fsp.readFile(WATCHPARTY_ROOMS_JOURNAL, 'utf-8')).split(/\r?\n/);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw error;
+  }
+  const records = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    try {
+      const record = JSON.parse(line);
+      if (record && Number.isFinite(record.ts) && record.ts >= since
+          && (record.room?.id || record.deleted === true)) records.push(record);
+    } catch {
+      // Une ligne partielle en fin de journal (crash pendant l'append) est
+      // ignorée : le snapshot complet reste la source de vérité.
+    }
+  }
+  return records.sort((a, b) => a.ts - b.ts);
+}
+
 async function loadRoomsFromDisk() {
   try {
     await ensureCacheDir();
-    const data = await fsp.readFile(WATCHPARTY_ROOMS_FILE, 'utf-8');
-    const roomsArray = JSON.parse(data);
-    roomsArray.forEach((room) => {
-      // Les identifiants de socket ne survivent pas à un redémarrage : toute
-      // l'appartenance basée dessus (participants, hôte, co-hosts, ready) est
-      // repartie de zéro. Les tokens d'accès, eux, restent valides.
-      room.participants = [];
-      room.hostId = null;
-      room.coHosts = [];
-      room.pendingControlRequests = [];
-      room.readyState = {};
-      room.pauseVote = null;
-      room.pauseTimer = null;
-      room.countdownTimer = null;
-      room.countdown = null;
-      room.pauseTimerTimeout = null;
-      watchpartyRooms.set(room.id, room);
-    });
-    // Optionnel: supprimer le fichier après restauration, comme dans le serveur principal
-    try { await fsp.unlink(WATCHPARTY_ROOMS_FILE); } catch { }
-    console.log(`[Watchparty] ${roomsArray.length} rooms restaurées depuis le disque.`);
-  } catch { }
+    let snapshot = { version: 1, savedAt: 0, rooms: [] };
+    try {
+      const parsed = JSON.parse(await fsp.readFile(WATCHPARTY_ROOMS_FILE, 'utf-8'));
+      if (Array.isArray(parsed)) {
+        snapshot = { version: 1, savedAt: 0, rooms: parsed };
+      } else if (parsed && Array.isArray(parsed.rooms)) {
+        snapshot = parsed;
+      }
+    } catch (error) {
+      if (error.code !== 'ENOENT') console.error('[Watchparty] Snapshot illisible:', error.message);
+    }
+
+    for (const raw of snapshot.rooms) {
+      const room = restoreRuntimeRoomState(raw);
+      if (room) watchpartyRooms.set(room.id, room);
+    }
+
+    const records = await readJournalRecords(Number(snapshot.savedAt) || 0);
+    for (const record of records) {
+      if (record.deleted === true) {
+        watchpartyRooms.delete(record.roomId);
+        continue;
+      }
+      const room = restoreRuntimeRoomState(record.room);
+      if (room) watchpartyRooms.set(room.id, room);
+    }
+    journalWritesSinceSnapshot = 0;
+    console.log(`[Watchparty] ${watchpartyRooms.size} rooms restaurées depuis le disque (${records.length} journal).`);
+  } catch (error) {
+    console.error('[Watchparty] Erreur lors de la restauration des rooms:', error.message);
+  }
 }
 
 // `pauseVote.timeoutId` est un objet Timeout de Node, dont les champs internes
@@ -317,22 +420,101 @@ function serializeRoom(room) {
   return { ...rest, pauseVote: voteRest };
 }
 
-async function saveRoomsToDisk() {
+async function writeAtomicJson(target, value) {
+  const temp = `${target}.${process.pid}.${uuidv4()}.tmp`;
+  const handle = await fsp.open(temp, 'w');
   try {
-    await ensureCacheDir();
-    const roomsArray = Array.from(watchpartyRooms.values()).map(serializeRoom);
-    await fsp.writeFile(WATCHPARTY_ROOMS_FILE, JSON.stringify(roomsArray, null, 2), 'utf-8');
-    console.log(`[Watchparty] ${roomsArray.length} rooms sauvegardées sur le disque.`);
-  } catch (e) {
-    console.error('[Watchparty] Erreur lors de la sauvegarde des rooms:', e);
+    await handle.writeFile(JSON.stringify(value, null, 2), 'utf-8');
+    await handle.sync();
+  } finally {
+    await handle.close();
   }
+  await fsp.rename(temp, target);
 }
 
-let isShuttingDown = false;
+async function writeSnapshotNow(compactJournal = false) {
+  await ensureCacheDir();
+  const rooms = Array.from(watchpartyRooms.values()).map(serializeRoom);
+  const savedAt = Date.now();
+  await writeAtomicJson(WATCHPARTY_ROOMS_FILE, {
+    version: ROOM_SNAPSHOT_VERSION,
+    savedAt,
+    rooms
+  });
+
+  if (compactJournal) {
+    // Rotation atomique du journal : les enregistrements déjà inclus dans le
+    // snapshot ne doivent jamais être rejoués après un crash pendant la rotation.
+    const processed = `${WATCHPARTY_ROOMS_JOURNAL}.processed`;
+    try {
+      await fsp.rename(WATCHPARTY_ROOMS_JOURNAL, processed);
+      await fsp.unlink(processed);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+    journalWritesSinceSnapshot = 0;
+  }
+  console.log(`[Watchparty] ${rooms.length} rooms sauvegardées sur le disque.`);
+}
+
+// Append fsyncé : la commande est durable dès que l'ack est envoyé au client.
+async function appendJournalNow(entry) {
+  await ensureCacheDir();
+  const record = `${JSON.stringify({ ts: Date.now(), ...entry })}\n`;
+  let handle;
+  try {
+    handle = await fsp.open(WATCHPARTY_ROOMS_JOURNAL, 'a');
+    await handle.writeFile(record, 'utf-8');
+    await handle.sync();
+  } finally {
+    if (handle) await handle.close();
+  }
+  journalWritesSinceSnapshot += 1;
+}
+
+function persistRoom(roomId) {
+  const room = watchpartyRooms.get(roomId);
+  if (isShuttingDown || !room) return Promise.resolve();
+  // Copie immediate : une fermeture peut retirer la room de la Map avant que
+  // la file de persistance ne traite l'enregistrement.
+  const serializedRoom = serializeRoom(room);
+  persistenceQueue = persistenceQueue.then(async () => {
+    await appendJournalNow({ roomId, room: serializedRoom });
+    if (journalWritesSinceSnapshot >= JOURNAL_COMPACTION_THRESHOLD) {
+      await writeSnapshotNow(true);
+    }
+  }).catch((error) => {
+    console.error('[Watchparty] Erreur lors de la persistance incrémentale:', error.message);
+  });
+  return persistenceQueue;
+}
+
+function persistRoomDeletion(roomId) {
+  if (isShuttingDown) return Promise.resolve();
+  persistenceQueue = persistenceQueue.then(async () => {
+    await appendJournalNow({ roomId, deleted: true });
+    if (journalWritesSinceSnapshot >= JOURNAL_COMPACTION_THRESHOLD) {
+      await writeSnapshotNow(true);
+    }
+  }).catch((error) => {
+    console.error('[Watchparty] Erreur lors de la persistance de la fermeture:', error.message);
+  });
+  return persistenceQueue;
+}
+
+async function saveRoomsToDisk() {
+  persistenceQueue = persistenceQueue
+    .then(() => writeSnapshotNow(true))
+    .catch((error) => console.error('[Watchparty] Erreur lors de la sauvegarde des rooms:', error.message));
+  return persistenceQueue;
+}
+
 async function gracefulShutdown(signal) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   console.log(`[Watchparty] Signal ${signal} reçu. Sauvegarde des rooms avant arrêt...`);
+  // Laisse les handlers déjà démarrés terminer avant de figer le snapshot.
+  await new Promise((resolve) => setTimeout(resolve, 50));
   await saveRoomsToDisk();
   try { io.close(); } catch { }
   try { server.close(() => process.exit(0)); } catch { process.exit(0); }
@@ -613,8 +795,54 @@ function buildScheduledPlaybackEvent(playbackUpdate, action) {
     position: playbackUpdate.position,
     scheduledAt: serverNow + SYNC_PRO_SCHEDULE_DELAY_MS,
     serverNow,
-    updatedBy: playbackUpdate.updatedBy
+    updatedBy: playbackUpdate.updatedBy,
+    seq: playbackUpdate.seq,
+    mediaEpoch: playbackUpdate.mediaEpoch
   };
+}
+
+// Tout changement d'état autoritaire passe par ici : la séquence et l'époque du
+// média sont incrémentées côté serveur, jamais acceptées telles quelles du client.
+function advancePlayback(roomId, room, patch, updatedBy, explicitSeq = null) {
+  room.playbackSeq = explicitSeq === null
+    ? (Number.isSafeInteger(room.playbackSeq) ? room.playbackSeq : 0) + 1
+    : explicitSeq;
+  room.playbackState = {
+    ...room.playbackState,
+    ...patch,
+    seq: room.playbackSeq,
+    mediaEpoch: room.mediaEpoch,
+    updatedAt: Date.now(),
+    updatedBy
+  };
+  return room.playbackState;
+}
+
+function emitPlaybackUpdate(roomId, room, state, options = {}) {
+  const { scheduleAction = null, exceptSocket = null } = options;
+  if (exceptSocket) {
+    exceptSocket.to(roomId).emit('playback:state', state);
+  } else {
+    watchpartyIO.to(roomId).emit('playback:state', state);
+  }
+  if (scheduleAction && room.syncMode === 'pro') {
+    const event = buildScheduledPlaybackEvent(state, scheduleAction);
+    if (exceptSocket) exceptSocket.to(roomId).emit('playback:schedule', event);
+    else watchpartyIO.to(roomId).emit('playback:schedule', event);
+  }
+  return state;
+}
+
+function sendPlaybackAck(socket, payload) {
+  socket.emit('playback:ack', {
+    commandId: payload.commandId || null,
+    seq: payload.seq,
+    accepted: payload.accepted,
+    code: payload.code || null,
+    reason: payload.reason || null,
+    mediaEpoch: payload.mediaEpoch,
+    state: payload.state
+  });
 }
 
 function schedulePauseAutoResume(roomId, room) {
@@ -632,17 +860,12 @@ function schedulePauseAutoResume(roomId, room) {
     current.pauseTimerTimeout = null;
 
     if (shouldResume) {
-      current.playbackState = {
-        ...current.playbackState,
+      const state = advancePlayback(roomId, current, {
         isPlaying: true,
-        updatedAt: Date.now(),
         updatedBy: 'pause-timer',
         reason: 'play'
-      };
-      watchpartyIO.to(roomId).emit('playback:state', current.playbackState);
-      if (current.syncMode === 'pro') {
-        watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(current.playbackState, 'play'));
-      }
+      }, 'pause-timer');
+      emitPlaybackUpdate(roomId, current, state, { scheduleAction: 'play' });
     }
 
     watchpartyIO.to(roomId).emit('pause:timerFinished');
@@ -803,39 +1026,113 @@ watchpartyIO.on('connection', (socket) => {
   });
 
   socket.on('playback:update', (data) => {
-    if (!watchpartyRooms.has(roomId)) return;
-    const r = watchpartyRooms.get(roomId);
-    // Check if user can control: host, co-host, or democratic mode
-    const canControl = socket.id === r.hostId ||
-      r.coHosts.includes(socket.id) ||
-      r.controlMode === 'democratic';
+    enqueuePlaybackCommand(roomId, async () => {
+      if (isShuttingDown || !watchpartyRooms.has(roomId)) return;
+      const r = watchpartyRooms.get(roomId);
+      // Check if user can control: host, co-host, or democratic mode
+      const canControl = socket.id === r.hostId ||
+        r.coHosts.includes(socket.id) ||
+        r.controlMode === 'democratic';
+      const commandId = sanitizeString(data?.commandId, 128) || uuidv4();
+      const requestedSeq = Number.isSafeInteger(data?.seq) ? data.seq : null;
 
-    if (canControl) {
+      if (!canControl) {
+        sendPlaybackAck(socket, {
+          commandId,
+          seq: requestedSeq || r.playbackSeq,
+          accepted: false,
+          code: 'NOT_AUTHORIZED',
+          mediaEpoch: r.mediaEpoch,
+          state: r.playbackState
+        });
+        return;
+      }
+
       const reason = ['play', 'pause', 'seek', 'heartbeat', 'ended'].includes(data?.reason)
         ? data.reason
         : 'heartbeat';
       // Playback controls may be shared with co-hosts/democratic members,
       // but periodic heartbeats must have a single source of truth.
-      if (reason === 'heartbeat' && socket.id !== r.hostId) return;
+      if (reason === 'heartbeat' && socket.id !== r.hostId) {
+        sendPlaybackAck(socket, {
+          commandId,
+          seq: requestedSeq || r.playbackSeq,
+          accepted: false,
+          code: 'HOST_ONLY_HEARTBEAT',
+          reason,
+          mediaEpoch: r.mediaEpoch,
+          state: r.playbackState
+        });
+        return;
+      }
+
+      r.appliedCommands = r.appliedCommands && typeof r.appliedCommands === 'object' ? r.appliedCommands : {};
+      if (r.appliedCommands[commandId]) {
+        sendPlaybackAck(socket, {
+          commandId,
+          seq: r.appliedCommands[commandId].seq,
+          accepted: false,
+          code: 'DUPLICATE_COMMAND',
+          reason,
+          mediaEpoch: r.mediaEpoch,
+          state: r.playbackState
+        });
+        return;
+      }
+
+      const seq = requestedSeq === null ? r.playbackSeq + 1 : requestedSeq;
+      if (seq <= r.playbackSeq) {
+        sendPlaybackAck(socket, {
+          commandId,
+          seq,
+          accepted: false,
+          code: 'STALE_SEQUENCE',
+          reason,
+          mediaEpoch: r.mediaEpoch,
+          state: r.playbackState
+        });
+        return;
+      }
 
       const position = sanitizeNumber(data?.position);
-      const playbackUpdate = {
-        isPlaying: data?.isPlaying === true,
-        position: position === null ? 0 : position,
-        updatedAt: Date.now(),
-        updatedBy: socket.id,
-        reason
-      };
-      r.playbackState = playbackUpdate;
-      // Broadcast aux autres clients (exclure le sender pour éviter la boucle de feedback)
-      socket.to(roomId).emit('playback:state', playbackUpdate);
-      if (r.syncMode === 'pro' && reason !== 'heartbeat') {
-        socket.to(roomId).emit(
-          'playback:schedule',
-          buildScheduledPlaybackEvent(playbackUpdate, reason === 'ended' ? 'pause' : reason)
-        );
+      // `ended` est une information de fin de lecture, jamais une demande de
+      // lecture : même si le lecteur envoie encore isPlaying=true, l'état serveur
+      // doit rester en pause.
+      const isPlaying = reason === 'ended' ? false : data?.isPlaying === true;
+      r.appliedCommands[commandId] = { seq, at: Date.now() };
+      const commandIds = Object.keys(r.appliedCommands);
+      if (commandIds.length > 200) {
+        commandIds
+          .sort((a, b) => r.appliedCommands[a].at - r.appliedCommands[b].at)
+          .slice(0, commandIds.length - 200)
+          .forEach((stale) => { delete r.appliedCommands[stale]; });
       }
-    }
+
+      const state = advancePlayback(roomId, r, {
+        isPlaying,
+        position: position === null ? 0 : position,
+        updatedBy: socket.id,
+        reason,
+        commandId
+      }, socket.id, seq);
+      // L'accusé n'est émis qu'après fsync du journal : un crash immédiat ne
+      // doit pas faire perdre une commande que le serveur a reconnue.
+      await persistRoom(roomId);
+      sendPlaybackAck(socket, {
+        commandId,
+        seq,
+        accepted: true,
+        reason,
+        mediaEpoch: r.mediaEpoch,
+        state
+      });
+
+      // Broadcast aux autres clients (exclure le sender pour éviter la boucle de feedback)
+      emitPlaybackUpdate(roomId, r, state, {
+        exceptSocket: socket,
+        scheduleAction: reason !== 'heartbeat' ? (reason === 'ended' ? 'pause' : reason) : null
+      });
+    });
   });
 
   // Control request from participant
@@ -871,6 +1168,9 @@ watchpartyIO.on('connection', (socket) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return; // Only host can approve
+    // Une demande inexistante ne doit pas pouvoir être approuvée « à l'aveugle ».
+    const pending = r.pendingControlRequests.find(req => req.participantId === participantId);
+    if (!pending) return;
     // Validate that the target is a current participant.
     const targetParticipant = r.participants.find((p) => p.id === participantId);
     if (!targetParticipant) return;
@@ -998,10 +1298,18 @@ watchpartyIO.on('connection', (socket) => {
   socket.on('playback:buffering', (payload) => {
     const { isBuffering, position } = payload || {};
     if (!watchpartyRooms.has(roomId)) return;
+    const r = watchpartyRooms.get(roomId);
+    if (!r.participants.some((participant) => participant.id === socket.id)) return;
+    const requestedSeq = Number.isSafeInteger(payload?.seq) ? payload.seq : null;
+    // Un buffering ancien (avant un seek plus récent) ne doit pas figer les
+    // autres participants sur une position obsolète.
+    if (requestedSeq !== null && requestedSeq < r.playbackSeq) return;
     socket.to(roomId).emit('playback:buffering', {
       participantId: socket.id,
       isBuffering: !!isBuffering,
-      position: Number.isFinite(position) ? position : 0
+      position: Number.isFinite(position) ? position : 0,
+      seq: requestedSeq || r.playbackSeq,
+      mediaEpoch: r.mediaEpoch
     });
   });
 
@@ -1010,6 +1318,7 @@ watchpartyIO.on('connection', (socket) => {
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return;
     clearRoomTimers(roomId);
+    persistRoomDeletion(roomId);
     watchpartyIO.to(roomId).emit('room:closed', { reason: 'L’hôte a fermé cette salle.' });
     for (const participant of [...r.participants]) {
       const participantSocket = watchpartyIO.sockets.get(participant.id);
@@ -1054,6 +1363,7 @@ watchpartyIO.on('connection', (socket) => {
     const message = systemMessage(r, `${target.nickname} est maintenant l'hôte de la Watch Party.`);
     watchpartyIO.to(roomId).emit('room:chat', message);
     watchpartyIO.to(roomId).emit('host:transferred', { hostId: target.id, previousHostId: oldHost?.id || null });
+    persistRoom(roomId);
     emitControlState(roomId, r);
     emitRoomInfo(roomId, r);
     watchpartyIO.to(roomId).emit('room:participants', r.participants);
@@ -1091,7 +1401,7 @@ watchpartyIO.on('connection', (socket) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     if (socket.id !== r.hostId) return;
-    const parsedMax = Math.max(r.participants.length, Math.min(MAX_PARTICIPANTS_CAP, Number(max) || 10));
+    const parsedMax = Math.max(2, r.participants.length, Math.min(MAX_PARTICIPANTS_CAP, Number(max) || 10));
     r.maxParticipants = parsedMax;
     emitRoomInfo(roomId, r);
   });
@@ -1107,6 +1417,7 @@ watchpartyIO.on('connection', (socket) => {
     const sanitized = sanitizeMedia(media);
     if (!sanitized) return;
     r.media = sanitized;
+    r.mediaEpoch = (Number.isSafeInteger(r.mediaEpoch) ? r.mediaEpoch : 1) + 1;
     if (r.pauseTimerTimeout) clearTimeout(r.pauseTimerTimeout);
     r.pauseTimerTimeout = null;
     r.pauseTimer = null;
@@ -1118,15 +1429,22 @@ watchpartyIO.on('connection', (socket) => {
     if (r.pauseVote?.timeoutId) clearTimeout(r.pauseVote.timeoutId);
     r.pauseVote = null;
     watchpartyIO.to(roomId).emit('ready:state', r.readyState);
-    r.playbackState = {
+    // Toute commande déjà programmée appartenait au média précédent : le client
+    // doit purge sa file avant d'appliquer le nouvel état.
+    watchpartyIO.to(roomId).emit('playback:scheduleCancelled', {
+      reason: 'media-changed',
+      mediaEpoch: r.mediaEpoch,
+      lastSeq: r.playbackSeq
+    });
+    const state = advancePlayback(roomId, r, {
       isPlaying: false,
       position: 0,
-      updatedAt: Date.now(),
-      updatedBy: socket.id
-    };
+      updatedBy: socket.id,
+      reason: 'media-changed'
+    }, socket.id);
 
     watchpartyIO.to(roomId).emit('media:updated', r.media);
-    watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
+    watchpartyIO.to(roomId).emit('playback:state', state);
     emitRoomInfo(roomId, r);
   });
 
@@ -1149,22 +1467,24 @@ watchpartyIO.on('connection', (socket) => {
       const current = watchpartyRooms.get(roomId);
       if (!current || current.countdown?.startAt !== startAt) return;
       const position = Number(current.playbackState?.position) || 0;
-      current.playbackState = {
+      const state = advancePlayback(roomId, current, {
         isPlaying: true,
         position,
         updatedAt: startAt,
         updatedBy: socket.id,
         reason: 'play'
-      };
+      }, socket.id);
       current.countdown = null;
       current.countdownTimer = null;
-      watchpartyIO.to(roomId).emit('playback:state', current.playbackState);
+      watchpartyIO.to(roomId).emit('playback:state', state);
       watchpartyIO.to(roomId).emit('playback:schedule', {
         action: 'play',
         position,
         scheduledAt: startAt,
         serverNow: Date.now(),
-        updatedBy: socket.id
+        updatedBy: socket.id,
+        seq: state.seq,
+        mediaEpoch: state.mediaEpoch
       });
       watchpartyIO.to(roomId).emit('room:countdownFinished', { startedAt: startAt });
     }, 5000);
@@ -1228,14 +1548,13 @@ watchpartyIO.on('connection', (socket) => {
     };
     schedulePauseAutoResume(roomId, r);
     // Pause playback
-    r.playbackState.isPlaying = false;
-    r.playbackState.updatedAt = Date.now();
-    r.playbackState.updatedBy = socket.id;
-    r.playbackState.reason = 'pause';
-    watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
-    if (r.syncMode === 'pro') {
-      watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'pause'));
-    }
+    const state = advancePlayback(roomId, r, {
+      isPlaying: false,
+      updatedBy: socket.id,
+      reason: 'pause'
+    }, socket.id);
+    emitPlaybackUpdate(roomId, r, state, { scheduleAction: 'pause' });
+    persistRoom(roomId);
     watchpartyIO.to(roomId).emit('pause:timerStarted', r.pauseTimer);
     // System message
     const me = r.participants.find(p => p.id === socket.id);
@@ -1254,17 +1573,12 @@ watchpartyIO.on('connection', (socket) => {
     r.pauseTimerTimeout = null;
     r.pauseTimer = null;
     if (shouldResume) {
-      r.playbackState = {
-        ...r.playbackState,
+      const state = advancePlayback(roomId, r, {
         isPlaying: true,
-        updatedAt: Date.now(),
         updatedBy: socket.id,
         reason: 'play'
-      };
-      watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
-      if (r.syncMode === 'pro') {
-        watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'play'));
-      }
+      }, socket.id);
+      emitPlaybackUpdate(roomId, r, state, { scheduleAction: 'play' });
     }
     watchpartyIO.to(roomId).emit('pause:timerCancelled');
   });
@@ -1323,8 +1637,9 @@ watchpartyIO.on('connection', (socket) => {
     if (!watchpartyRooms.has(roomId)) return;
     const r = watchpartyRooms.get(roomId);
     if (!r.pauseVote) return;
-    // Seuls les participants présents votent.
+    // Seuls les participants présents votent, et seulement avant la clôture.
     if (!r.participants.some(p => p.id === socket.id)) return;
+    if (Date.now() > r.pauseVote.endTime) return;
 
     // Record vote (true = yes, false = no)
     r.pauseVote.votes[socket.id] = vote === true;
@@ -1369,22 +1684,20 @@ watchpartyIO.on('connection', (socket) => {
       };
       schedulePauseAutoResume(roomId, r);
       // Pause playback
-      r.playbackState.isPlaying = false;
-      r.playbackState.updatedAt = Date.now();
-      r.playbackState.updatedBy = 'vote';
-      r.playbackState.reason = 'pause';
-      watchpartyIO.to(roomId).emit('playback:state', r.playbackState);
-      if (r.syncMode === 'pro') {
-        watchpartyIO.to(roomId).emit('playback:schedule', buildScheduledPlaybackEvent(r.playbackState, 'pause'));
-      }
+      const state = advancePlayback(roomId, r, {
+        isPlaying: false,
+        updatedBy: 'vote',
+        reason: 'pause'
+      }, 'vote');
+      emitPlaybackUpdate(roomId, r, state, { scheduleAction: 'pause' });
       watchpartyIO.to(roomId).emit('pause:timerStarted', r.pauseTimer);
 
       // System message
-      const passMsg = systemMessage(r, `✅ Vote accepté (${yesVotes}/${r.pauseVote.totalParticipants}). Pause de ${r.pauseVote.requestedDuration}s lancée.`);
+      const passMsg = systemMessage(r, `✅ Vote accepté (${yesVotes}/${totalParticipants}). Pause de ${r.pauseVote.requestedDuration}s lancée.`);
       watchpartyIO.to(roomId).emit('room:chat', passMsg);
     } else {
       // System message
-      const failMsg = systemMessage(r, `❌ Vote refusé (${yesVotes}/${r.pauseVote.totalParticipants}). La majorité n'a pas été atteinte.`);
+      const failMsg = systemMessage(r, `❌ Vote refusé (${yesVotes}/${totalParticipants}). La majorité n'a pas été atteinte.`);
       watchpartyIO.to(roomId).emit('room:chat', failMsg);
     }
 
@@ -1427,7 +1740,6 @@ watchpartyIO.on('connection', (socket) => {
     r.coHosts = r.coHosts.filter((id) => id !== participantId);
     r.pendingControlRequests = r.pendingControlRequests.filter((req) => req.participantId !== participantId);
     delete r.readyState[participantId];
-    emitVoteUpdate(roomId, r);
     const s = watchpartyIO.sockets.get(participantId);
     if (s) {
       // Sans révocation du token, l'exclu se reconnectait immédiatement.
@@ -1435,7 +1747,13 @@ watchpartyIO.on('connection', (socket) => {
       s.emit('room:kicked', { reason: 'You have been removed from the watch party by the host.' });
       s.disconnect(true);
     }
+    // La déconnexion asynchrone n'arrive pas toujours assez vite : publier
+    // immédiatement la liste sans l'exclu évite un participant fantôme.
+    r.participants = r.participants.filter(participant => participant.id !== participantId);
+    emitVoteUpdate(roomId, r);
+    watchpartyIO.to(roomId).emit('room:participants', r.participants);
     watchpartyIO.to(roomId).emit('ready:state', r.readyState);
+    persistRoom(roomId);
     const kickMessage = systemMessage(r, `${target.nickname} a été retiré de la Watch Party.`);
     watchpartyIO.to(roomId).emit('room:chat', kickMessage);
   });
@@ -1489,6 +1807,7 @@ watchpartyIO.on('connection', (socket) => {
         watchpartyIO.to(roomId).emit('room:chat', newHostMsg);
         watchpartyIO.to(roomId).emit('room:participants', current.participants);
         emitRoomInfo(roomId, current);
+        persistRoom(roomId);
         console.log(`[Watchparty] Host ownership transferred for room ${roomId} after reconnect grace period.`);
       }, HOST_RECONNECT_GRACE_MS);
       transferTimer.unref?.();
@@ -1509,6 +1828,8 @@ watchpartyIO.on('connection', (socket) => {
       r._cleanupTimer = setTimeout(() => {
         const still = watchpartyRooms.get(roomId);
         if (still && still.participants.length === 0) {
+          clearRoomTimers(roomId);
+          persistRoomDeletion(roomId);
           watchpartyRooms.delete(roomId);
           emitPublicRooms();
           console.log(`Room ${roomId} closed due to inactivity`);
@@ -1520,6 +1841,7 @@ watchpartyIO.on('connection', (socket) => {
       watchpartyIO.to(roomId).emit('room:chat', leaveMessage);
       emitRoomInfo(roomId, r);
     }
+    persistRoom(roomId);
   });
 });
 
@@ -1594,12 +1916,18 @@ app.post(
           isPlaying: media?.isPlaying === true,
           position: position === null ? 0 : position,
           updatedAt: Date.now(),
-          updatedBy: 'system'
+          updatedBy: 'system',
+          seq: 0,
+          mediaEpoch: 1
         },
+        playbackSeq: 0,
+        mediaEpoch: 1,
+        appliedCommands: {},
         createdAt: Date.now()
       };
 
       watchpartyRooms.set(roomId, newRoom);
+      persistRoom(roomId);
       emitPublicRooms();
       // `hostToken` n'est renvoyé qu'ici, au créateur, et lie l'hôte à la room.
       res.status(200).json({ success: true, roomId, roomCode: code, hostToken, token: hostToken, nickname: cleanNickname });
@@ -1628,6 +1956,7 @@ app.post(
       if (foundRoom.participants.length >= foundRoom.maxParticipants) return res.status(400).json({ success: false, message: 'This watch party is full.' });
 
       const token = issueAccessToken(foundRoom, cleanNickname);
+      persistRoom(foundRoomId);
       res.status(200).json({ success: true, roomId: foundRoomId, roomCode: cleanCode, token, nickname: cleanNickname });
     } catch (e) {
       console.error('Error joining watch party:', e);
@@ -1751,18 +2080,25 @@ setInterval(() => {
     const roomAge = nowTime - room.createdAt;
     const isExpired = roomAge > 12 * 60 * 60 * 1000; // 12 hours
     const isEmpty = room.participants.length === 0;
-    const inactiveFor = isEmpty ? nowTime - Math.max(...room.participants.map(p => p.joinedAt), room.createdAt) : 0;
+    const lastActivity = room.participants.length
+      ? Math.max(...room.participants.map(p => p.joinedAt), room.createdAt)
+      : room.createdAt;
+    const inactiveFor = isEmpty ? nowTime - lastActivity : 0;
     const isInactive = isEmpty && inactiveFor > 3 * 60 * 60 * 1000; // 3 hours
 
     if (isExpired || isInactive) {
       expiredRooms.push(roomId);
-      // Notify any remaining participants
-      watchpartyIO.to(roomId).emit('room:closed', 'The watch party has ended due to inactivity or expiration.');
+      // Même forme que la fermeture par l'hôte : les clients lisent `reason`.
+      watchpartyIO.to(roomId).emit('room:closed', {
+        reason: 'La Watch Party a été fermée pour inactivité ou expiration.'
+      });
     }
   }
 
   // Remove expired rooms
   expiredRooms.forEach(roomId => {
+    clearRoomTimers(roomId);
+    persistRoomDeletion(roomId);
     watchpartyRooms.delete(roomId);
     console.log(`Room ${roomId} closed due to expiration or inactivity`);
   });

@@ -217,13 +217,23 @@ const getExpectedPosition = (nowMs: number) => {
 const handleSchedule = (event: ScheduledPlaybackEvent) => {
   if (mode !== 'pro') return;
 
+  const eventEpoch = Number(event.mediaEpoch) || 0;
+  const masterEpoch = Number(masterState?.mediaEpoch) || 0;
+  const eventSeq = Number(event.seq) || 0;
+  // Après un `media:change`, une commande différée appartenant encore à l'ancien
+  // média ne doit jamais s'exécuter sur le nouveau lecteur.
+  if (eventEpoch && masterEpoch && eventEpoch < masterEpoch) return;
+
   // Socket.IO peut rediffuser le même snapshot après une reconnexion : ne pas
-  // exécuter deux fois la même action explicite.
+  // exécuter deux fois la même action explicite. La séquence et l'époque font
+  // partie de l'identité d'une commande.
   const alreadyQueued = pendingSchedules.some(pending => (
     pending.event.scheduledAt === event.scheduledAt
     && pending.event.action === event.action
     && pending.event.position === event.position
     && pending.event.updatedBy === event.updatedBy
+    && Number(pending.event.seq) === eventSeq
+    && Number(pending.event.mediaEpoch) === eventEpoch
   ));
   if (alreadyQueued) return;
 

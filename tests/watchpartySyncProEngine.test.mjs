@@ -230,6 +230,32 @@ test('pause programmée : une seule commande pause, aucun play fantôme', (t) =>
   assert.equal(engine.commands().filter(command => command.action === 'play').length, 0);
 });
 
+test('une action programmée pour un média précédent est ignorée', (t) => {
+  const engine = createEngine({
+    state: { ...FROZEN_STATE, seq: 1, mediaEpoch: 2 }
+  });
+  t.after(() => engine.dispose());
+
+  engine.send({
+    type: 'schedule',
+    event: {
+      action: 'play', position: 50, scheduledAt: T0 + 250, serverNow: T0,
+      updatedBy: 'host-1', seq: 2, mediaEpoch: 1
+    }
+  });
+  engine.send({
+    type: 'schedule',
+    event: {
+      action: 'pause', position: 50, scheduledAt: T0 + 250, serverNow: T0,
+      updatedBy: 'host-1', seq: 3, mediaEpoch: 2
+    }
+  });
+  engine.advanceTo(T0 + 300);
+
+  assert.equal(engine.commands().filter(command => command.action === 'play').length, 0);
+  assert.equal(engine.commands().filter(command => command.action === 'pause').length, 1);
+});
+
 test('reprise programmée : une seule commande play, aucun pause fantôme', (t) => {
   const engine = createEngine({
     state: { isPlaying: false, position: 50, updatedAt: T0 - 1000, updatedBy: 'host-1' }

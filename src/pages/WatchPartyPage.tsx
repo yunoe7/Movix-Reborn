@@ -9,7 +9,7 @@ import {
   LockKeyhole, MessageCircle, Pause, Play, Plus, RefreshCw, Send, Settings2,
   ShieldCheck, SkipBack, SkipForward, Users, Volume2, VolumeX, Wifi, X,
 } from 'lucide-react';
-import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
+import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackAck, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
 import { isIpadSafari } from '../utils/deviceDetection';
 import {
   getVidRiftTargetOrigin,
@@ -100,7 +100,7 @@ type Room = {
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
 type PlaybackSnapshot = PlaybackState & {
-  reason?: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended';
+  reason?: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended' | 'media-changed';
 };
 
 type TmdbMedia = {
@@ -299,6 +299,32 @@ const WatchPartyPage: React.FC = () => {
   const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
   const pendingClockProbesRef = useRef(new Map<string, number>());
   const clockProbeSequenceRef = useRef(0);
+
+  // Un changement de média (ou une annulation serveur) rend toutes les actions
+  // programmées et les positions interpolées invalides : le moteur Pro repart
+  // de zéro avant de recevoir le nouvel état autoritaire.
+  const resetPlaybackEngine = useCallback(() => {
+    pendingPlaybackRef.current = null;
+    authoritativePlaybackRef.current = null;
+    vidriftPlaybackRef.current = { currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 };
+    const worker = syncWorkerRef.current;
+    if (worker) {
+      worker.postMessage({ type: 'reset' });
+      worker.postMessage({ type: 'set-mode', mode: roomRef.current?.syncMode || 'classic' });
+      worker.postMessage({
+        type: 'master-state',
+        state: {
+          isPlaying: false,
+          position: 0,
+          updatedAt: Date.now(),
+          updatedBy: 'system',
+          seq: 0,
+          mediaEpoch: roomRef.current?.playbackState?.mediaEpoch || 1,
+          reason: 'media-changed'
+        } satisfies PlaybackSnapshot
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!routeCode) return;
@@ -854,6 +880,17 @@ const WatchPartyPage: React.FC = () => {
         };
         socket.on('room:playback', (state: PlaybackSnapshot) => handleAuthoritativePlayback(state, true));
         socket.on('playback:state', (state: PlaybackSnapshot) => handleAuthoritativePlayback(state, false));
+        socket.on('playback:ack', (ack: PlaybackAck) => {
+          if (!ack || typeof ack.seq !== 'number') return;
+          authoritativePlaybackRef.current = {
+            ...(ack.state || {}),
+            reason: ack.reason === 'media-changed' ? undefined : ack.reason
+          };
+          if (!ack.accepted && ack.code === 'STALE_SEQUENCE') socket.emit('playback:getState');
+        });
+        socket.on('playback:scheduleCancelled', (payload: { mediaEpoch?: number; reason?: string }) => {
+          if (payload?.reason === 'media-changed') resetPlaybackEngine();
+        });
         socket.on('playback:schedule', (schedule: ScheduledPlaybackEvent) => {
           if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
             syncWorkerRef.current.postMessage({ type: 'schedule', event: schedule });
@@ -871,8 +908,9 @@ const WatchPartyPage: React.FC = () => {
         });
         socket.on('media:updated', (media: Media) => {
           updateRoom(current => ({ ...current, media, pauseTimer: null, pauseVote: null }));
-          // La position reçue avant le changement concernait l'ancien média.
-          pendingPlaybackRef.current = null;
+          // La position reçue avant le changement concernait l'ancien média :
+          // ni le snapshot local, ni la file Pro ne doivent survivre.
+          resetPlaybackEngine();
           setPauseTimer(null);
           setPauseVote(null);
         });
@@ -926,7 +964,7 @@ const WatchPartyPage: React.FC = () => {
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, navigate, applyRemotePlayback]);
+  }, [roomId, navigate, applyRemotePlayback, resetPlaybackEngine]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -1128,6 +1166,16 @@ const WatchPartyPage: React.FC = () => {
     // competes with the others and makes the shared timeline oscillate.
     if (reason === 'heartbeat' && !isHost) return;
     if (reason === 'heartbeat') lastHeartbeatRef.current = Date.now();
+    // Le serveur arbitre avec une séquence et un identifiant de commande : les
+    // doublons réseau et les commandes anciennes sont ainsi rejetés côté serveur.
+    const commandId = globalThis.crypto?.randomUUID?.()
+      || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const currentSeq = Number(authoritativePlaybackRef.current?.seq) || 0;
+    const seq = currentSeq + 1;
+    authoritativePlaybackRef.current = {
+      ...(authoritativePlaybackRef.current || { isPlaying: false, position: 0, updatedAt: Date.now(), updatedBy: null }),
+      seq
+    };
     if (roomRef.current?.media.playbackType === 'vidrift') {
       const snapshot = vidriftPlaybackRef.current;
       const now = performance.now();
@@ -1140,6 +1188,8 @@ const WatchPartyPage: React.FC = () => {
         isPlaying: !snapshot.paused,
         position,
         reason,
+        commandId,
+        seq
       });
       return;
     }
@@ -1149,6 +1199,8 @@ const WatchPartyPage: React.FC = () => {
       isPlaying: !video.paused,
       position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
       reason,
+      commandId,
+      seq
     });
   }, [canControl, isHost]);
 
@@ -1520,14 +1572,42 @@ const WatchPartyPage: React.FC = () => {
                         setPlayerUi(previous => ({ ...previous, paused: false }));
                         sendPlayback('play');
                       }}
-                      onPause={() => {
+                      onPause={event => {
                         setPlayerUi(previous => ({ ...previous, paused: true }));
-                        sendPlayback('pause');
+                        // `ended` est déjà annoncé séparément : ne pas doubler
+                        // la fin de lecture avec une commande `pause`.
+                        if (!event.currentTarget.ended) sendPlayback('pause');
                       }}
                       onSeeked={event => {
                         const video = event.currentTarget;
                         setPlayerUi(previous => ({ ...previous, currentTime: video.currentTime }));
                         sendPlayback('seek');
+                      }}
+                      onEnded={() => {
+                        setPlayerUi(previous => ({ ...previous, paused: true }));
+                        sendPlayback('ended');
+                      }}
+                      onWaiting={event => {
+                        const video = event.currentTarget;
+                        const socket = socketRef.current;
+                        if (!socket?.connected) return;
+                        socket.emit('playback:buffering', {
+                          isBuffering: true,
+                          position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+                          seq: Number(authoritativePlaybackRef.current?.seq) || 0,
+                          mediaEpoch: Number(authoritativePlaybackRef.current?.mediaEpoch) || 1
+                        });
+                      }}
+                      onPlaying={event => {
+                        const video = event.currentTarget;
+                        const socket = socketRef.current;
+                        if (!socket?.connected) return;
+                        socket.emit('playback:buffering', {
+                          isBuffering: false,
+                          position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+                          seq: Number(authoritativePlaybackRef.current?.seq) || 0,
+                          mediaEpoch: Number(authoritativePlaybackRef.current?.mediaEpoch) || 1
+                        });
                       }}
                       onDurationChange={event => {
                         const duration = event.currentTarget.duration;
