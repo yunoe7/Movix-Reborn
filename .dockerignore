@@ -14,6 +14,13 @@ build
 
 # === Backends séparés (pas besoin pour le front) ===
 API
+# Le contrat de synchronisation est la source canonique unique : il vit sous
+# API/Mainapi (root directory Railway de la Main API) mais doit rester visible
+# par le build Vite du frontend. Aucune copie n'est maintenue ailleurs.
+!API/
+!API/Mainapi/
+!API/Mainapi/shared/
+!API/Mainapi/shared/syncKeys.json
 extension
 userscript
 wasm

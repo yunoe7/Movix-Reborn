@@ -1,4 +1,4 @@
-import syncKeys from '../../shared/syncKeys.json';
+import syncKeys from '../../API/Mainapi/shared/syncKeys.json';
 
 // Contrat unique partagé avec l'API Main. Toute divergence de allowlist
 // provoquait soit un rejet global du lot, soit une clé jamais synchronisée.

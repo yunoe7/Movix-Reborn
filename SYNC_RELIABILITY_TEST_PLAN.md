@@ -16,7 +16,7 @@ Ce document précède les modifications de code. Il recense les modes de défail
 ## Lot API sync déjà corrigé
 
 - Commit `ac945e2a` sur `fix/global-sync-reliability` (aucun push).
-- Contrat de clés unique dans `shared/syncKeys.json`, partagé par `API/Mainapi/utils/syncPolicy.js` et `src/utils/syncStorage.ts` ; `movixCalendarEntries` et `favorite_movies` sont synchronisables des deux côtés, `is_vip` n'est plus une clé writable.
+- Contrat de clés unique dans `API/Mainapi/shared/syncKeys.json`, partagé par `API/Mainapi/utils/syncPolicy.js` et `src/utils/syncStorage.ts` ; `movixCalendarEntries` et `favorite_movies` sont synchronisables des deux côtés, `is_vip` n'est plus une clé writable.
 - `/api/sync` applique désormais les opérations valides d'un lot même si d'autres sont refusées ; la réponse contient `partial: true` et `rejected[{index, code, message, status}]` uniquement en cas de rejet individuel. Les erreurs globales (`INVALID_OPS`, `TOO_MANY_OPS`) restent bloquantes.
 - L'outbox du navigateur ne conserve que les opérations réellement rejetées ; l'identité du profil est capturée à l'enqueue, vérifiée avant envoi et préservée en cas de changement de profil concurrent.
 - Invalidation du cache des listes partagées déplacée avant le retour de `writeLockedProfileSnapshot` ; cache VIP purgé pour l'ancienne et la nouvelle `access_code`.
