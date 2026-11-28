@@ -94,6 +94,8 @@ test('aucune asset hors catalogue ne peut être chargée', () => {
   assert.equal(registry.isAllowedSeasonalAsset('/assets/seasonal-theme/halloween/fog.webp'), '/assets/seasonal-theme/halloween/fog.webp');
   for (const value of [
     '/assets/seasonal-theme/../secret.png',
+    '/assets/seasonal-theme/halloween/../../secret.png',
+    '/assets/seasonal-theme/halloween//fog.webp',
     'https://cdn.test/assets/seasonal-theme/fog.webp',
     '/assets/autre/fog.webp',
     '/assets/seasonal-theme/A.png',
