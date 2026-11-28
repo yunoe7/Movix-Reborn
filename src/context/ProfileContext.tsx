@@ -25,8 +25,9 @@ import { getResolvedAccountContext } from '../utils/accountAuth';
 // We POST these to /api/sync BEFORE replaceProfileStorage wipes
 // localStorage — otherwise unsynced writes (Firefox keepalive flake, network
 // hiccup) would be destroyed by the wipe-and-restore restoring stale backend
-// state. On success the outbox is cleared; on transient failure it's kept for
-// the next boot to retry; on 401 it's discarded (auth no longer matches).
+// state. On success the accepted ops are cleared; individually rejected ops
+// are kept for the next boot; on transient failure everything is kept for
+// retry; on a permanent auth mismatch it's discarded.
 const SYNC_OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 interface SyncOutboxPayload {
@@ -110,7 +111,7 @@ async function replayOutboxIfAny(): Promise<void> {
   }
 
   try {
-    await axios.post(`${API_URL}/api/sync`, {
+    const response = await axios.post(`${API_URL}/api/sync`, {
       userType: payload.userType,
       profileId: payload.profileId,
       userId: payload.userId,
@@ -118,7 +119,36 @@ async function replayOutboxIfAny(): Promise<void> {
     }, {
       headers: { Authorization: `Bearer ${authToken}` }
     });
-    try { localStorage.removeItem(SYNC_OUTBOX_STORAGE_KEY); } catch { /* noop */ }
+
+    // Le serveur applique désormais chaque opération valide et rapporte les
+    // autres avec leur index dans le lot envoyé. On ne retire que celles qui
+    // ont été réellement acceptées ; les opérations rejetées restent dans
+    // l'outbox avec le même propriétaire pour une correction ou un retry.
+    const rejected = Array.isArray(response?.data?.rejected) ? response.data.rejected : [];
+    const rejectedOps = new Set<unknown>();
+    for (const item of rejected) {
+      const index = Number(item?.index);
+      if (Number.isInteger(index) && index >= 0 && index < validOps.length) {
+        rejectedOps.add(validOps[index]);
+      }
+    }
+
+    if (rejectedOps.size > 0) {
+      const remainingOps = payload.ops.filter((op) => rejectedOps.has(op));
+      if (remainingOps.length > 0) {
+        try {
+          localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, JSON.stringify({
+            ...payload,
+            ops: remainingOps,
+            ts: Date.now()
+          }));
+        } catch { /* noop */ }
+      } else {
+        try { localStorage.removeItem(SYNC_OUTBOX_STORAGE_KEY); } catch { /* noop */ }
+      }
+    } else {
+      try { localStorage.removeItem(SYNC_OUTBOX_STORAGE_KEY); } catch { /* noop */ }
+    }
   } catch (error: unknown) {
     const response = (error as { response?: { status?: number; data?: { error?: string } } })?.response;
     const status = response?.status;

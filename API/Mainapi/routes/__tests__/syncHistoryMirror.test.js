@@ -67,7 +67,7 @@ async function fixture(t, profile, { historyStore, ensureImported } = {}) {
     module, exports: module.exports, __dirname: path.join(dir, 'routes'),
     require: request => request in stubs ? stubs[request] : localRequire(request),
     Buffer, structuredClone, setInterval, clearInterval, setTimeout, clearTimeout,
-    process: { on() {} },
+    process: { on() {}, env: {} },
     console: { log() {}, warn(...args) { warnings.push(args.join(' ')); }, error() {} },
   }, { filename });
   const router = module.exports;

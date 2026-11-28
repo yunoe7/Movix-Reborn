@@ -1,49 +1,12 @@
-const SYNCABLE_EXACT_KEYS = new Set([
-  'access_code',
-  'access_code_expires',
-  'adWarningAccepted',
-  'anti_spoiler',
-  'continueWatching',
-  'custom_lists',
-  'episodeReleaseAlerts',
-  'favorite_collections',
-  'favorite_movie',
-  'favorites_tv',
-  'live_tv_favorite_channels',
-  'live_tv_favorite_iptv_categories',
-  'miniPlayerPosition',
-  'miniPlayerVolume',
-  'movixCalendarEntries',
-  'movix_intro_enabled',
-  'movix_intro_seen',
-  'privacy_data_collection',
-  'recentEmojis',
-  'screensaver_enabled',
-  'screensaver_mode',
-  'screensaver_timeout',
-  'shared_list_favorites',
-  'snow_enabled',
-  'subtitleStyle',
-  'support_popup_seen',
-  'user_language',
-  'is_vip',
-  'watched_movie',
-  'watched_tv',
-  'watchPartyNickname',
-]);
+import syncKeys from '../../shared/syncKeys.json';
 
-const SYNCABLE_PREFIXES = [
-  'favorite_',
-  'favorites_',
-  'miniPlayer',
-  'movix_intro_',
-  'player',
-  'progress_',
-  'screensaver_',
-  'settings_',
-  'watchlist_',
-  'watched_',
-];
+// Contrat unique partagé avec l'API Main. Toute divergence de allowlist
+// provoquait soit un rejet global du lot, soit une clé jamais synchronisée.
+// `is_vip` est absente : le statut VIP dérive de `access_code` vérifié côté
+// serveur et ne doit pas être écrit par le navigateur.
+const SYNCABLE_EXACT_KEYS = new Set<string>(syncKeys.exact);
+const SYNCABLE_PREFIXES: string[] = syncKeys.prefixes;
+export const SERVER_MANAGED_SYNC_KEYS: readonly string[] = syncKeys.serverManaged;
 
 // Persistent outbox of pending sync ops. Survives refresh so a user write that
 // didn't reach the server before unload (Firefox keepalive flake, network
@@ -51,50 +14,17 @@ const SYNCABLE_PREFIXES = [
 // localStorage. See ProfileContext.replayOutboxIfAny.
 export const SYNC_OUTBOX_STORAGE_KEY = '__movix_sync_outbox';
 
-const BLOCKED_SYNC_KEYS = new Set([
-  SYNC_OUTBOX_STORAGE_KEY,
-  'access_token',
-  'auth',
-  'auth_method',
-  'auth_token',
-  'avatar_url',
-  'bip39_auth',
-  'clear',
-  'discord_auth',
-  'discord_last_check',
-  'discord_rate_limit',
-  'discord_token',
-  'discord_user',
-  'episodeAlertsLastCheck',
-  'google_auth',
-  'google_token',
-  'google_user',
-  'guest_uuid',
-  'is_admin',
-  'lastCommentTime',
-  'lastReplyTime',
-  'movix_pending_auth_action',
-  'removeItem',
-  'resolved_user_id',
-  'resolved_user_type',
-  'selectedProfile',
-  'selected_profile',
-  'selected_profile_id',
-  'session_id',
-  'setItem',
-  'user_id',
-  'user_name',
-  'user_type',
-]);
+const BLOCKED_SYNC_KEYS = new Set<string>(syncKeys.blocked);
 
 const PROFILE_LOAD_PRESERVED_KEYS = new Set([
   SYNC_OUTBOX_STORAGE_KEY,
   // VIP credential/entitlement keys are server-authoritative (verified via
-  // /api/check-vip + refreshVipState), like is_admin. They stay syncable for
-  // cross-device propagation but MUST NOT be wiped during the profile-load
-  // wipe-and-restore: the transient removeItem('is_vip') fired a native
-  // cross-tab `storage` event that flipped VIPs to non-VIP for a tick and
-  // re-triggered the ad popup on open watch tabs. See AdFreePopupContext.
+  // /api/check-vip + refreshVipState). `access_code` and its expiry are
+  // still synced so a known device can verify entitlement immediately;
+  // `is_vip` is a local cache only and MUST NOT be wiped during the profile
+  // load: the transient removeItem('is_vip') fired a native cross-tab
+  // `storage` event that flipped VIPs to non-VIP for a tick and re-triggered
+  // the ad popup on open watch tabs. See AdFreePopupContext.
   'access_code',
   'access_code_expires',
   'access_token',

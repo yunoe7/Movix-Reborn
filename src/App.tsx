@@ -717,11 +717,72 @@ const PersistenceManager = () => {
     debugAppLog('localStorage available:', isLocalStorageAvailable);
     if (!isLocalStorageAvailable) return;
 
+    // Persiste les opérations qui n'ont pas été acceptées par le serveur.
+    // Le propriétaire est vérifié avant écriture : un changement de profil dans
+    // un autre onglet ne doit jamais faire atterrir une opération du profil A
+    // dans l'outbox du profil B.
+    const persistOpsToOutbox = (
+      failedOps: any[],
+      owner: { type: string; id?: string; profileId: string },
+      authTokenValue: string,
+      ownerCapturedAtEnqueue = false
+    ) => {
+      const validFailedOps = failedOps
+        .filter((op: any) => op && typeof op === 'object'
+          && typeof op.key === 'string' && isSyncableStorageKey(op.key))
+        .map(({ __owner, ...op }: any) => op);
+      if (validFailedOps.length === 0) return;
+
+      try {
+        if (localStorage.getItem('auth_token') !== authTokenValue) return;
+        if (!ownerCapturedAtEnqueue) {
+          const currentUser = getUserInfo();
+          if (currentUser.type !== owner.type
+            || currentUser.id !== owner.id
+            || currentUser.profileId !== owner.profileId) return;
+        }
+
+        const existingRaw = localStorage.getItem(SYNC_OUTBOX_STORAGE_KEY);
+        let mergedOps: any[] = [];
+        if (existingRaw) {
+          const existing = JSON.parse(existingRaw);
+          const sameOwner = existing
+            && existing.userType === owner.type
+            && existing.profileId === owner.profileId
+            && (existing.userId || null) === (owner.id || null);
+          if (!sameOwner) {
+            console.warn('[sync] preserving outbox belonging to another profile; failed ops remain local for retry');
+            return;
+          }
+          if (Array.isArray(existing.ops)) {
+            mergedOps = existing.ops.filter((op: any) => op && typeof op === 'object'
+              && typeof op.key === 'string' && isSyncableStorageKey(op.key));
+          }
+        }
+
+        const MAX_OUTBOX_OPS = 10000;
+        localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, JSON.stringify({
+          userType: owner.type,
+          profileId: owner.profileId,
+          userId: owner.id || undefined,
+          ops: [...mergedOps, ...validFailedOps].slice(-MAX_OUTBOX_OPS),
+          ts: Date.now()
+        }));
+        console.warn('[sync] failed operations saved for replay on next profile load');
+      } catch (persistError) {
+        console.error('[sync] could not persist failed operations for retry', persistError);
+      }
+    };
+
     const enqueueGeneralOp = (op: any) => {
       // Skip sync during profile data loading (but allow on watch routes)
       if (isProfileDataLoadingRef.current) { syncDiag.skipGateEnqueue++; return; }
 
-      generalOpsRef.current.push(op);
+      const snapshot = getUserInfo();
+      const owner = snapshot.type && snapshot.profileId
+        ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
+        : null;
+      generalOpsRef.current.push(owner ? { ...op, __owner: owner } : op);
       syncDiag.opsEnqueued++;
       if (generalFlushTimeoutRef.current) return;
       generalFlushTimeoutRef.current = setTimeout(() => {
@@ -762,15 +823,39 @@ const PersistenceManager = () => {
         debugAppLog('Skipping sync - no auth token available');
         return;
       }
+      const capturedOwner = ops.find((op: any) => op?.__owner)?.__owner as
+        | { type: string; id?: string; profileId: string }
+        | undefined;
+      const effectiveOwner = capturedOwner || {
+        type: userInfo.type,
+        id: userInfo.id || undefined,
+        profileId: userInfo.profileId
+      };
+      if (capturedOwner && (
+        capturedOwner.type !== userInfo.type
+        || capturedOwner.id !== (userInfo.id || undefined)
+        || capturedOwner.profileId !== userInfo.profileId
+      )) {
+        // Le profil a changé entre l'enqueue et le flush : ne pas envoyer les
+        // ops du profil A avec l'identité du profil B. On les met de côté pour
+        // le propriétaire d'origine.
+        persistOpsToOutbox(ops, capturedOwner, authToken, true);
+        return;
+      }
+
       syncDiag.sendOpsAttempted++;
 
       try {
+        const rejectedFromThisSend: any[] = [];
         for (let index = 0; index < ops.length; index += MAX_SYNC_OPS_PER_REQUEST) {
           const batch = ops.slice(index, index + MAX_SYNC_OPS_PER_REQUEST);
+          // `__owner` est une métadonnée locale : elle ne doit jamais atteindre
+          // l'API, qui valide strictement la forme des opérations.
+          const cleanBatch = batch.map(({ __owner, ...op }: any) => op);
           const syncPayload: any = {
             userType: userInfo.type,
             profileId: userInfo.profileId,
-            ops: batch
+            ops: cleanBatch
           };
 
           if (userInfo.id) {
@@ -778,9 +863,20 @@ const PersistenceManager = () => {
           }
 
           debugAppLog(`Sending sync request (${batch.length} operations) - route: ${location.pathname}`);
-          await axios.post(`${API_BASE_URL}/api/sync`, syncPayload, {
+          const response = await axios.post(`${API_BASE_URL}/api/sync`, syncPayload, {
             headers: { Authorization: `Bearer ${authToken}` }
           });
+          const rejected = Array.isArray(response?.data?.rejected) ? response.data.rejected : [];
+          for (const item of rejected) {
+            const opIndex = Number(item?.index);
+            if (Number.isInteger(opIndex) && opIndex >= 0 && opIndex < cleanBatch.length) {
+              rejectedFromThisSend.push(cleanBatch[opIndex]);
+            }
+          }
+        }
+
+        if (rejectedFromThisSend.length > 0) {
+          persistOpsToOutbox(rejectedFromThisSend, effectiveOwner, authToken, Boolean(capturedOwner));
         }
 
         // NOTE: don't clear SYNC_OUTBOX_STORAGE_KEY here. The outbox holds
@@ -802,50 +898,9 @@ const PersistenceManager = () => {
 
         // A failed delta request must not disappear: ProfileContext replays this
         // durable outbox before hydrating (and replacing) profile localStorage.
-        // Persist only while the same session is still active, and never replace
-        // an outbox owned by another account/profile.
-        try {
-          if (localStorage.getItem('auth_token') !== authToken) return;
-          const currentUser = getUserInfo();
-          if (currentUser.type !== userInfo.type
-            || currentUser.id !== userInfo.id
-            || currentUser.profileId !== userInfo.profileId) return;
-
-          const existingRaw = localStorage.getItem(SYNC_OUTBOX_STORAGE_KEY);
-          let mergedOps: any[] = [];
-          if (existingRaw) {
-            const existing = JSON.parse(existingRaw);
-            const sameOwner = existing
-              && existing.userType === userInfo.type
-              && existing.profileId === userInfo.profileId
-              && (existing.userId || null) === (userInfo.id || null);
-            if (!sameOwner) {
-              console.warn('[sync] preserving outbox belonging to another profile; failed ops remain local for retry');
-              return;
-            }
-            if (Array.isArray(existing.ops)) {
-              mergedOps = existing.ops.filter((op: any) => op && typeof op === 'object'
-                && typeof op.key === 'string' && isSyncableStorageKey(op.key));
-            }
-          }
-
-          const validFailedOps = ops.filter((op: any) => op && typeof op === 'object'
-            && typeof op.key === 'string' && isSyncableStorageKey(op.key));
-          if (validFailedOps.length) {
-            const MAX_OUTBOX_OPS = 10000;
-            mergedOps = [...mergedOps, ...validFailedOps].slice(-MAX_OUTBOX_OPS);
-            localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, JSON.stringify({
-              userType: userInfo.type,
-              profileId: userInfo.profileId,
-              userId: userInfo.id || undefined,
-              ops: mergedOps,
-              ts: Date.now()
-            }));
-            console.warn('[sync] failed operations saved for replay on next profile load');
-          }
-        } catch (persistError) {
-          console.error('[sync] could not persist failed operations for retry', persistError);
-        }
+        // L'identité capturée à l'enqueue est conservée, même si le profil
+        // courant a changé pendant la requête.
+        persistOpsToOutbox(ops, effectiveOwner, authToken, Boolean(capturedOwner));
       }
     };
 
@@ -866,14 +921,18 @@ const PersistenceManager = () => {
       // Skip sync during profile data loading (but allow on watch routes)
       if (isProfileDataLoadingRef.current) return;
 
+      const snapshot = getUserInfo();
+      const owner = snapshot.type && snapshot.profileId
+        ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
+        : null;
       const ops: any[] = [];
       for (const [key, deltaOrValue] of progressOpsMapRef.current.entries()) {
         // deltaOrValue is { set: {...}, remove: [...] }
         const delta = deltaOrValue?.delta;
         if (delta && (Object.keys(delta.set || {}).length || (delta.remove || []).length)) {
-          ops.push({ op: 'objPatch', key, delta });
+          ops.push(owner ? { op: 'objPatch', key, delta, __owner: owner } : { op: 'objPatch', key, delta });
         } else if (deltaOrValue && typeof deltaOrValue.value === 'string') {
-          ops.push({ op: 'set', key, value: deltaOrValue.value });
+          ops.push(owner ? { op: 'set', key, value: deltaOrValue.value, __owner: owner } : { op: 'set', key, value: deltaOrValue.value });
         }
       }
       progressOpsMapRef.current.clear();

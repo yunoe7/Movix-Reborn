@@ -1,4 +1,5 @@
 const path = require('path');
+const syncKeys = require('../../../shared/syncKeys.json');
 
 const ALLOWED_SYNC_USER_TYPES = Object.freeze(['oauth', 'bip39']);
 const RESERVED_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
@@ -7,52 +8,12 @@ const SAFE_USER_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 const SAFE_PROFILE_ID_PATTERN = /^[A-Za-z0-9-]{1,64}$/;
 const SAFE_GUEST_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
-const SYNCABLE_EXACT_KEYS = new Set([
-  'access_code',
-  'access_code_expires',
-  'adWarningAccepted',
-  'anti_spoiler',
-  'continueWatching',
-  'custom_lists',
-  'episodeReleaseAlerts',
-  'favorite_collections',
-  'favorite_movie',
-  'favorite_movies',
-  'favorites_tv',
-  'live_tv_favorite_channels',
-  'live_tv_favorite_iptv_categories',
-  'miniPlayerPosition',
-  'miniPlayerVolume',
-  'movix_intro_enabled',
-  'movix_intro_seen',
-  'privacy_data_collection',
-  'recentEmojis',
-  'screensaver_enabled',
-  'screensaver_mode',
-  'screensaver_timeout',
-  'shared_list_favorites',
-  'snow_enabled',
-  'subtitleStyle',
-  'support_popup_seen',
-  'user_language',
-  'is_vip',
-  'watched_movie',
-  'watched_tv',
-  'watchPartyNickname'
-]);
-
-const SYNCABLE_PREFIXES = Object.freeze([
-  'favorite_',
-  'favorites_',
-  'miniPlayer',
-  'movix_intro_',
-  'player',
-  'progress_',
-  'screensaver_',
-  'settings_',
-  'watchlist_',
-  'watched_'
-]);
+// Contrat unique partagé avec le frontend. `is_vip` est volontairement absent :
+// c'est une vérité serveur dérivée de `access_code`, jamais une clé writable par
+// le navigateur (voir SERVER_MANAGED_SYNC_KEYS).
+const SYNCABLE_EXACT_KEYS = Object.freeze(new Set(syncKeys.exact));
+const SYNCABLE_PREFIXES = Object.freeze(syncKeys.prefixes);
+const SERVER_MANAGED_SYNC_KEYS = Object.freeze(syncKeys.serverManaged);
 
 // Les mêmes préfixes en une seule expression : la validation d'un profil
 // teste des centaines de clés à chaque synchro, un `some` + `startsWith` par
@@ -61,40 +22,7 @@ const SYNCABLE_PREFIX_PATTERN = new RegExp(
   '^(?:' + SYNCABLE_PREFIXES.map((prefix) => prefix.replace(/[.*+?^$|()[\]{}\\]/g, '\\$&')).join('|') + ')'
 );
 
-const BLOCKED_SYNC_KEYS = new Set([
-  'access_token',
-  'auth',
-  'auth_method',
-  'auth_token',
-  'avatar_url',
-  'bip39_auth',
-  'clear',
-  'discord_auth',
-  'discord_last_check',
-  'discord_rate_limit',
-  'discord_token',
-  'discord_user',
-  'episodeAlertsLastCheck',
-  'google_auth',
-  'google_token',
-  'google_user',
-  'guest_uuid',
-  'is_admin',
-  'lastCommentTime',
-  'lastReplyTime',
-  'movix_pending_auth_action',
-  'removeItem',
-  'resolved_user_id',
-  'resolved_user_type',
-  'selectedProfile',
-  'selected_profile',
-  'selected_profile_id',
-  'session_id',
-  'setItem',
-  'user_id',
-  'user_name',
-  'user_type'
-]);
+const BLOCKED_SYNC_KEYS = Object.freeze(new Set(syncKeys.blocked));
 
 const SYNC_LIMITS = Object.freeze({
   maxRequestBytes: 5 * 1024 * 1024,
@@ -353,7 +281,47 @@ function sanitizeDelta(delta) {
   return { set, remove };
 }
 
-function validateAndNormalizeOps(ops) {
+function normalizeOneSyncOp(rawOp) {
+  if (!isPlainObject(rawOp)) {
+    throw new SyncPolicyError('Operation de synchronisation invalide', 400, 'INVALID_OP');
+  }
+
+  const key = ensureSyncableStorageKey(rawOp.key);
+  const op = typeof rawOp.op === 'string' ? rawOp.op : '';
+
+  switch (op) {
+    case 'set': {
+      if (typeof rawOp.value !== 'string') {
+        throw new SyncPolicyError('Valeur de synchronisation invalide', 400, 'INVALID_SET_VALUE');
+      }
+      assertWithinBytes(rawOp.value, SYNC_LIMITS.maxStringValueBytes, 'Valeur trop volumineuse', 413, 'VALUE_TOO_LARGE');
+      return { op, key, value: rawOp.value };
+    }
+
+    case 'remove':
+    case 'arrayClear':
+      return { op, key };
+
+    case 'arrayAdd':
+    case 'arrayRemove': {
+      const value = sanitizeStructuredValue(rawOp.value);
+      return { op, key, value };
+    }
+
+    case 'objPatch':
+      return { op, key, delta: sanitizeDelta(rawOp.delta) };
+
+    default:
+      throw new SyncPolicyError('Operation de synchronisation inconnue', 400, 'INVALID_OP');
+  }
+}
+
+// Une opération invalide ne doit pas entraîner la perte des opérations valides
+// co-batchées : elles sont appliquées, les autres sont rapportées avec leur
+// index pour que l'outbox client ne conserve que celles qui doivent être
+// rejouées. Les erreurs globales (type du lot, nombre d'opérations) restent
+// bloquantes car elles rendent le lot ininterprétable.
+function partitionSyncOps(ops) {
   if (!Array.isArray(ops)) {
     throw new SyncPolicyError('Operations de synchronisation invalides', 400, 'INVALID_OPS');
   }
@@ -362,40 +330,27 @@ function validateAndNormalizeOps(ops) {
     throw new SyncPolicyError('Trop d\'operations de synchronisation dans une seule requete', 413, 'TOO_MANY_OPS');
   }
 
-  return ops.map((rawOp) => {
-    if (!isPlainObject(rawOp)) {
-      throw new SyncPolicyError('Operation de synchronisation invalide', 400, 'INVALID_OP');
-    }
-
-    const key = ensureSyncableStorageKey(rawOp.key);
-    const op = typeof rawOp.op === 'string' ? rawOp.op : '';
-
-    switch (op) {
-      case 'set': {
-        if (typeof rawOp.value !== 'string') {
-          throw new SyncPolicyError('Valeur de synchronisation invalide', 400, 'INVALID_SET_VALUE');
-        }
-        assertWithinBytes(rawOp.value, SYNC_LIMITS.maxStringValueBytes, 'Valeur trop volumineuse', 413, 'VALUE_TOO_LARGE');
-        return { op, key, value: rawOp.value };
-      }
-
-      case 'remove':
-      case 'arrayClear':
-        return { op, key };
-
-      case 'arrayAdd':
-      case 'arrayRemove': {
-        const value = sanitizeStructuredValue(rawOp.value);
-        return { op, key, value };
-      }
-
-      case 'objPatch':
-        return { op, key, delta: sanitizeDelta(rawOp.delta) };
-
-      default:
-        throw new SyncPolicyError('Operation de synchronisation inconnue', 400, 'INVALID_OP');
+  const normalized = [];
+  const rejected = [];
+  ops.forEach((rawOp, index) => {
+    try {
+      normalized.push(normalizeOneSyncOp(rawOp));
+    } catch (error) {
+      if (!(error instanceof SyncPolicyError)) throw error;
+      rejected.push({ index, code: error.code, message: error.message, status: error.status });
     }
   });
+
+  return { ops: normalized, rejected };
+}
+
+// Conservé pour les appelants qui exigent un lot strictement valide.
+function validateAndNormalizeOps(ops) {
+  const { ops: normalized, rejected } = partitionSyncOps(ops);
+  if (rejected.length > 0) {
+    throw new SyncPolicyError(rejected[0].message, rejected[0].status, rejected[0].code);
+  }
+  return normalized;
 }
 
 function sanitizeStorageObject(rawData, options = {}) {
@@ -502,7 +457,11 @@ module.exports = {
   ALLOWED_SYNC_USER_TYPES,
   BLOCKED_SYNC_KEYS,
   IDENTITY_LIMITS,
+  SAFE_SYNC_KEY_PATTERN,
+  SERVER_MANAGED_SYNC_KEYS,
   SYNC_LIMITS,
+  SYNCABLE_EXACT_KEYS,
+  SYNCABLE_PREFIXES,
   SyncPolicyError,
   assertUserDataSize,
   ensureSafeProfileId,
@@ -513,6 +472,7 @@ module.exports = {
   getUserDataFilePath,
   getUtf8ByteLength,
   isSyncableStorageKey,
+  partitionSyncOps,
   resolveInside,
   sanitizeLegacySyncData,
   isProfileNameValid,
