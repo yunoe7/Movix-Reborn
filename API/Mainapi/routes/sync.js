@@ -42,6 +42,7 @@ const { createHistoryStore } = require('../utils/historyStore');
 const { createDefaultMediaStore } = require('../utils/mediaStore');
 const {
   ALLOWED_SYNC_USER_TYPES,
+  SERVER_MANAGED_SYNC_KEYS,
   SYNC_LIMITS,
   SyncPolicyError,
   assertUserDataSize,
@@ -56,6 +57,32 @@ const {
   sanitizeLegacySyncData,
   sanitizeProfileData
 } = require('../utils/syncPolicy');
+
+// Les réponses partielles gardent `success`/`partial`/`rejected` pour les
+// clients existants et ajoutent un marqueur explicite quand un refus vient
+// d'une clé gérée par le serveur (`is_vip`).
+function buildSyncResponse(stats, rejected) {
+  const response = {
+    success: true,
+    stats: {
+      profileBytes: stats.bytes,
+      profileKeyCount: stats.keyCount,
+      profileQuotaBytes: SYNC_LIMITS.maxProfileBytes
+    }
+  };
+  if (rejected.length > 0) {
+    response.partial = true;
+    response.rejected = rejected;
+    const serverManagedRejected = Array.from(new Set(
+      rejected
+        .filter((item) => item?.serverManagedRejected === true || item?.code === 'SERVER_MANAGED_KEY_REJECTED')
+        .map((item) => item?.key)
+        .filter((key) => typeof key === 'string' && SERVER_MANAGED_SYNC_KEYS.includes(key))
+    ));
+    if (serverManagedRejected.length > 0) response.serverManagedRejected = serverManagedRejected;
+  }
+  return response;
+}
 
 // === Data directories ===
 // DATA_DIR allows relocating user data to a persistent volume (Railway, etc.).
@@ -1014,19 +1041,7 @@ router.post('/sync', syncRateLimit, rejectOversizedSync, authorizeSyncWrite, ...
       }
     }
 
-    const response = {
-      success: true,
-      stats: {
-        profileBytes: syncResult.bytes,
-        profileKeyCount: syncResult.keyCount,
-        profileQuotaBytes: SYNC_LIMITS.maxProfileBytes
-      }
-    };
-    if (rejected.length > 0) {
-      response.partial = true;
-      response.rejected = rejected;
-    }
-    return res.status(200).json(response);
+    return res.status(200).json(buildSyncResponse(syncResult, rejected));
   } catch (error) {
     if (error instanceof SyncPolicyError) {
       return res.status(error.status).json({ success: false, error: error.message, code: error.code });

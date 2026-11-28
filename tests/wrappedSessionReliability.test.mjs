@@ -39,7 +39,7 @@ test('la confidentialité désactivée reste respectée', () => {
   assert.equal(session.collectionEnabled, false);
 });
 
-test('le tracker ne acquitte pas les secondes sur un 403 d’appartenance', async () => {
+test('le tracker acquitte les secondes sur un 403 d’appartenance (refus permanent)', async () => {
   const sends = [];
   const sendToApi = sourceFunction(PAGE, 'sendToApi', {
     useCallback: (fn) => fn,
@@ -53,7 +53,7 @@ test('le tracker ne acquitte pas les secondes sur un 403 d’appartenance', asyn
 
   const accepted = await sendToApi({ mode: 'page', data: { pageName: 'home' } }, 30);
 
-  assert.equal(accepted, false, 'un refus d’appartenance doit rester retryable');
+  assert.equal(accepted, true, 'un refus d’appartenance est permanent et ne doit pas être rejoué');
   assert.equal(sends.length, 1);
   assert.equal(JSON.parse(sends[0].init.body).profileId, 'profil-attendu');
 });

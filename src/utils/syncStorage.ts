@@ -12,7 +12,75 @@ export const SERVER_MANAGED_SYNC_KEYS: readonly string[] = syncKeys.serverManage
 // didn't reach the server before unload (Firefox keepalive flake, network
 // hiccup, browser crash) is replayed on next boot before loadProfileData wipes
 // localStorage. See ProfileContext.replayOutboxIfAny.
+//
+// History: v1 used the single global key below, which could mix two profiles
+// of the same account. v2 writes one key per captured owner and keeps the
+// global key only for a one-shot migration of legacy data.
 export const SYNC_OUTBOX_STORAGE_KEY = '__movix_sync_outbox';
+export const SYNC_OUTBOX_FORMAT_VERSION = 2;
+export const SYNC_OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+export const MAX_SYNC_OUTBOX_OPS = 10000;
+export const SYNC_OUTBOX_REPLAY_LOCK_KEY = '__movix_sync_outbox_replay_lock';
+export const SYNC_OUTBOX_REPLAY_LOCK_TTL_MS = 30_000;
+
+// Source unique de vérité pour le tri des refus `rejected` renvoyés par
+// `/api/sync`. Les anciennes copies dans App.tsx et ProfileContext.tsx
+// pouvaient diverger : un 401 traité comme permanent perdait une écriture,
+// un code de politique traité comme temporaire bloquait l'outbox indéfiniment.
+// Les getters sont des fonctions pures afin que les tests lisent exactement
+// les listes de production sans introspection de texte.
+function getPermanentSyncRejectionCodes(): ReadonlySet<string> {
+  return new Set([
+    'INVALID_SYNC_KEY', 'INVALID_OP', 'INVALID_OPS', 'INVALID_SET_VALUE',
+    'INVALID_SYNC_OP', 'INVALID_VALUE_TYPE', 'INVALID_NUMBER',
+    'INVALID_DELTA', 'INVALID_NESTED_KEY', 'VALUE_TOO_DEEP',
+    'VALUE_TOO_LARGE', 'DELTA_TOO_LARGE', 'TOO_MANY_OPS',
+    'TOO_MANY_KEYS', 'PROFILE_QUOTA_EXCEEDED', 'SERVER_MANAGED_KEY_REJECTED'
+  ]);
+}
+
+function getRetryableSyncStatusCodes(): ReadonlySet<number> {
+  return new Set([401, 403, 404, 408, 429]);
+}
+
+/** Un refus de politique est permanent ; un 401/403 reste rejouable. */
+function isPermanentSyncRejection(
+  status?: number,
+  code?: string,
+  message?: string
+): boolean {
+  const retryableStatuses = getRetryableSyncStatusCodes();
+  if (typeof status === 'number') {
+    if (retryableStatuses.has(status) || status >= 500) return false;
+  }
+  const normalizedCode = (typeof code === 'string' && code)
+    ? code
+    : (String(message || '').match(/[A-Z][A-Z0-9_]{3,}/)?.[0] || '');
+  if (getPermanentSyncRejectionCodes().has(normalizedCode)) return true;
+  return typeof status === 'number' && status >= 400 && status < 500;
+}
+
+function isRetryableSyncRejection(item: {
+  status?: unknown;
+  code?: unknown;
+  message?: unknown;
+} | null | undefined): boolean {
+  const status = Number(item?.status);
+  const retryableStatuses = getRetryableSyncStatusCodes();
+  if (retryableStatuses.has(status) || status >= 500) return true;
+  const code = typeof item?.code === 'string' && item.code
+    ? item.code
+    : (String(item?.message || '').match(/[A-Z][A-Z0-9_]{3,}/)?.[0] || '');
+  if (getPermanentSyncRejectionCodes().has(code)) return false;
+  return !(Number.isInteger(status) && status >= 400 && status < 500);
+}
+
+export {
+  getPermanentSyncRejectionCodes,
+  getRetryableSyncStatusCodes,
+  isPermanentSyncRejection,
+  isRetryableSyncRejection
+};
 
 const BLOCKED_SYNC_KEYS = new Set<string>(syncKeys.blocked);
 

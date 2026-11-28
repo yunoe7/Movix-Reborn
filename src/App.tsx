@@ -49,7 +49,14 @@ import { useIdleTimer } from './hooks/useIdleTimer';
 import { startVipVerification } from './utils/vipUtils';
 import { readLocalStorage, readSessionStorage } from './utils/browserStorage';
 import { getResolvedAccountContext } from './utils/accountAuth';
-import { isSyncableStorageKey, SYNC_OUTBOX_STORAGE_KEY } from './utils/syncStorage';
+import {
+  isRetryableSyncRejection,
+  isSyncableStorageKey,
+  MAX_SYNC_OUTBOX_OPS,
+  SYNC_OUTBOX_FORMAT_VERSION,
+  SYNC_OUTBOX_MAX_AGE_MS,
+  SYNC_OUTBOX_STORAGE_KEY
+} from './utils/syncStorage';
 import { isProfileIsolationWipeActive } from './utils/profileIsolation';
 import { isWrappedTestRoute } from './utils/wrappedExperiment';
 import i18n, { detectInitialLanguage } from './i18n';
@@ -554,6 +561,21 @@ const outboxKeyForOwner = (owner: SyncOwner): string => (
   `${SYNC_OUTBOX_STORAGE_KEY}:${owner.type}:${encodeURIComponent(owner.id || '')}:${encodeURIComponent(owner.profileId)}`
 );
 
+// Un lot peut contenir deux profils du même compte (ou deux comptes après un
+// changement d'auth). Le propriétaire est toujours celui capturé par opération,
+// jamais celui du premier élément ni celui du token courant.
+const groupOpsByOwner = (ops: any[], currentOwner: SyncOwner | null) => {
+  const groups = new Map<string, { owner: SyncOwner | null; ops: any[] }>();
+  for (const op of ops) {
+    const owner = opOwner(op) || currentOwner;
+    const key = `${owner?.type || ''}|${owner?.id || ''}|${owner?.profileId || ''}`;
+    const group = groups.get(key) || { owner, ops: [] };
+    group.ops.push(op);
+    groups.set(key, group);
+  }
+  return Array.from(groups.values());
+};
+
 // PersistenceManager component to sync localStorage with backend (disabled for guests and VIP)
 const PersistenceManager = () => {
   const [isInitialSyncDone, setIsInitialSyncDone] = useState<boolean>(false);
@@ -563,6 +585,14 @@ const PersistenceManager = () => {
   const generalOpsRef = useRef<any[]>([]);
   const progressOpsMapRef = useRef<Map<string, any>>(new Map());
   const suppressSyncRef = useRef<boolean>(false);
+
+  // Timer partagé entre l'effet de synchronisation et le drain `auth_changed`.
+  // Il était auparavant local au second effet, donc invisible du premier.
+  const generalFlushTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Le drain réel vit dans le second effet (il dépend de flushPendingOpsSync).
+  // Le premier effet ne doit pas capturer cette fonction locale : la ref est
+  // assignée dès que le drain existe, puis lue au moment de l'événement.
+  const authDrainRef = useRef<() => boolean>(() => true);
 
   const MAX_SYNC_OPS_PER_REQUEST = 100;
   const isProgressKey = (k: string) => k.startsWith('progress_');
@@ -634,13 +664,15 @@ const PersistenceManager = () => {
     };
 
     const handleAuthChanged = () => {
-      // Drain les écritures déjà en file AVANT de refermer le gate : leurs
+      // Drain et persistance SYNCHRONES avant toute mutation d'auth : les
       // propriétaires ont été capturés à l'écriture et doivent rejoindre leur
-      // outbox, pas le nouveau compte. Le nettoyage ProfileContext est lui
-      // silencieux grâce à runProfileIsolationWipe.
-      flushPendingOpsSync();
-      generalOpsRef.current = [];
-      progressOpsMapRef.current.clear();
+      // outbox, pas le nouveau compte. Les files ne sont vidées que si la
+      // persistance a réussi ; sinon les opérations restent avec leur __owner.
+      const drained = authDrainRef.current();
+      if (drained) {
+        generalOpsRef.current = [];
+        progressOpsMapRef.current.clear();
+      }
       // Re-arm the sync gate while ProfileContext.loadProfiles reloads the new
       // account's profiles + data. Without this, the ~100-500ms window before
       // the delayed loadProfiles fires lets setItem writes leak to the new
@@ -726,8 +758,6 @@ const PersistenceManager = () => {
 
     const prevValuesRefLocal = { current: prevValues } as { current: Map<string, string | null> };
 
-    const generalFlushTimeoutRef = { current: null as any };
-
     // Detect Safari and Firefox/Librewolf browsers and check localStorage availability
     const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
     const isFirefox = /firefox/i.test(navigator.userAgent) || /librewolf/i.test(navigator.userAgent);
@@ -749,40 +779,41 @@ const PersistenceManager = () => {
     debugAppLog('localStorage available:', isLocalStorageAvailable);
     if (!isLocalStorageAvailable) return;
 
-    // Persiste les opérations qui n'ont pas été acceptées par le serveur.
-    // Le propriétaire est vérifié avant écriture : un changement de profil dans
-    // un autre onglet ne doit jamais faire atterrir une opération du profil A
-    // dans l'outbox du profil B.
+    // Persiste les opérations non acceptées dans l'outbox de leur propriétaire
+    // capturé. Une opération capturée reste sauvable même si auth_token a
+    // changé pendant la requête : seul le gate d'envoi dépend du token courant.
+    // La clé historique n'est plus réécrite : sa migration est gérée par
+    // ProfileContext.replayOutboxIfAny.
     const persistOpsToOutbox = (
       failedOps: any[],
       owner: { type: string; id?: string; profileId: string },
       authTokenValue: string,
       ownerCapturedAtEnqueue = false
-    ) => {
+    ): boolean => {
       const validFailedOps = failedOps
         .filter((op: any) => op && typeof op === 'object'
           && typeof op.key === 'string' && isSyncableStorageKey(op.key))
         .map(({ __owner, ...op }: any) => op);
-      if (validFailedOps.length === 0) return;
+      if (validFailedOps.length === 0) return true;
 
       try {
-        if (localStorage.getItem('auth_token') !== authTokenValue) return;
-        const currentUser = getUserInfo();
-        if (!ownerCapturedAtEnqueue && !sameSyncOwner(owner, {
-          type: currentUser.type,
-          id: currentUser.id || undefined,
-          profileId: currentUser.profileId || ''
-        })) return;
+        if (!ownerCapturedAtEnqueue) {
+          if (localStorage.getItem('auth_token') !== authTokenValue) return false;
+          const currentUser = getUserInfo();
+          // Une identité inconnue n'est pas un propriétaire valide : on refuse
+          // l'écriture au lieu d'inventer un type de compte.
+          if (!currentUser.type) return false;
+          if (!sameSyncOwner(owner, {
+            type: currentUser.type,
+            id: currentUser.id || undefined,
+            profileId: currentUser.profileId || ''
+          })) return false;
+        }
 
         const ownerKey = outboxKeyForOwner(owner);
-        const legacyKey = sameSyncAccount(owner, {
-          type: currentUser.type,
-          id: currentUser.id || undefined,
-          profileId: currentUser.profileId || ''
-        }) ? SYNC_OUTBOX_STORAGE_KEY : null;
-        const existingRaw = localStorage.getItem(ownerKey)
-          || (legacyKey ? localStorage.getItem(legacyKey) : null);
         let mergedOps: any[] = [];
+        let createdAt = Date.now();
+        const existingRaw = localStorage.getItem(ownerKey);
         if (existingRaw) {
           const existing = JSON.parse(existingRaw);
           const sameOwner = existing
@@ -791,27 +822,49 @@ const PersistenceManager = () => {
             && (existing.userId || null) === (owner.id || null);
           if (!sameOwner) {
             console.warn('[sync] preserving outbox belonging to another profile; failed ops remain local for retry');
-            return;
+            return false;
           }
           if (Array.isArray(existing.ops)) {
             mergedOps = existing.ops.filter((op: any) => op && typeof op === 'object'
               && typeof op.key === 'string' && isSyncableStorageKey(op.key));
           }
+          const previousCreatedAt = existing.createdAt ?? existing.ts;
+          if (typeof previousCreatedAt === 'number' && Number.isFinite(previousCreatedAt)) {
+            createdAt = previousCreatedAt;
+          }
+          if (Date.now() - createdAt > SYNC_OUTBOX_MAX_AGE_MS) mergedOps = [];
         }
 
-        const MAX_OUTBOX_OPS = 10000;
-        const payload = JSON.stringify({
+        const seen = new Set<string>();
+        const ops = [...mergedOps, ...validFailedOps]
+          .filter((op: any) => {
+            const identity = JSON.stringify(op);
+            if (seen.has(identity)) return false;
+            seen.add(identity);
+            return true;
+          })
+          .slice(-MAX_SYNC_OUTBOX_OPS);
+        if (ops.length === 0) {
+          localStorage.removeItem(ownerKey);
+          return true;
+        }
+
+        const now = Date.now();
+        localStorage.setItem(ownerKey, JSON.stringify({
+          v: SYNC_OUTBOX_FORMAT_VERSION,
           userType: owner.type,
           profileId: owner.profileId,
           userId: owner.id || undefined,
-          ops: [...mergedOps, ...validFailedOps].slice(-MAX_OUTBOX_OPS),
-          ts: Date.now()
-        });
-        localStorage.setItem(ownerKey, payload);
-        if (legacyKey) localStorage.setItem(legacyKey, payload);
+          ops,
+          createdAt,
+          lastAttemptAt: now,
+          ts: now
+        }));
         console.warn('[sync] failed operations saved for replay on next profile load');
+        return true;
       } catch (persistError) {
         console.error('[sync] could not persist failed operations for retry', persistError);
+        return false;
       }
     };
 
@@ -843,6 +896,18 @@ const PersistenceManager = () => {
       if (!ops.length) { syncDiag.sendOpsEmpty++; return; }
       syncDiag.sendOpsCalled++;
 
+      const userInfo = getUserInfo();
+      const currentOwner: SyncOwner | null = userInfo.type && userInfo.profileId
+        ? { type: userInfo.type, id: userInfo.id || undefined, profileId: userInfo.profileId }
+        : null;
+      const groups = groupOpsByOwner(ops, currentOwner);
+      // Jamais déduire le propriétaire du lot du premier élément : chaque
+      // groupe part avec son propre triplet et son propre token d'envoi.
+      if (groups.length > 1) {
+        for (const group of groups) await sendOps(group.ops);
+        return;
+      }
+
       // Vérifier si un clear forcé est en cours (erreur 401)
       if ((window as any).__forceClearInProgress) {
         syncDiag.sendOpsBlockedForceClear++;
@@ -857,7 +922,6 @@ const PersistenceManager = () => {
         return;
       }
 
-      const userInfo = getUserInfo();
       // Only sync for oauth and bip39 users with a selected profile
       if (!userInfo.type || !userInfo.profileId || !['oauth', 'bip39'].includes(userInfo.type)) {
         syncDiag.sendOpsBlockedUserInfo++;
@@ -871,22 +935,13 @@ const PersistenceManager = () => {
         debugAppLog('Skipping sync - no auth token available');
         return;
       }
-      const capturedOwner = ops.find((op: any) => op?.__owner)?.__owner as
-        | { type: string; id?: string; profileId: string }
-        | undefined;
-      const effectiveOwner = capturedOwner || {
-        type: userInfo.type,
-        id: userInfo.id || undefined,
-        profileId: userInfo.profileId
-      };
-      if (capturedOwner && (
-        capturedOwner.type !== userInfo.type
-        || capturedOwner.id !== (userInfo.id || undefined)
-        || capturedOwner.profileId !== userInfo.profileId
-      )) {
-        // Le profil a changé entre l'enqueue et le flush : ne pas envoyer les
-        // ops du profil A avec l'identité du profil B. On les met de côté pour
-        // le propriétaire d'origine.
+
+      const capturedOwner = opOwner(ops[0]) as { type: string; id?: string; profileId: string } | null;
+      const effectiveOwner = capturedOwner || currentOwner;
+      if (!effectiveOwner) return;
+      if (capturedOwner && !sameSyncAccount(capturedOwner, currentOwner)) {
+        // Le token courant n'autorise pas un autre compte : les ops restent
+        // dans l'outbox de leur propriétaire, jamais sous le nouveau token.
         persistOpsToOutbox(ops, capturedOwner, authToken, true);
         return;
       }
@@ -901,13 +956,13 @@ const PersistenceManager = () => {
           // l'API, qui valide strictement la forme des opérations.
           const cleanBatch = batch.map(({ __owner, ...op }: any) => op);
           const syncPayload: any = {
-            userType: userInfo.type,
-            profileId: userInfo.profileId,
+            userType: effectiveOwner.type,
+            profileId: effectiveOwner.profileId,
             ops: cleanBatch
           };
 
-          if (userInfo.id) {
-            syncPayload.userId = userInfo.id;
+          if (effectiveOwner.id) {
+            syncPayload.userId = effectiveOwner.id;
           }
 
           debugAppLog(`Sending sync request (${batch.length} operations) - route: ${location.pathname}`);
@@ -917,7 +972,8 @@ const PersistenceManager = () => {
           const rejected = Array.isArray(response?.data?.rejected) ? response.data.rejected : [];
           for (const item of rejected) {
             const opIndex = Number(item?.index);
-            if (Number.isInteger(opIndex) && opIndex >= 0 && opIndex < cleanBatch.length) {
+            if (Number.isInteger(opIndex) && opIndex >= 0 && opIndex < cleanBatch.length
+              && isRetryableSyncRejection(item)) {
               rejectedFromThisSend.push(cleanBatch[opIndex]);
             }
           }
@@ -947,21 +1003,29 @@ const PersistenceManager = () => {
         // A failed delta request must not disappear: ProfileContext replays this
         // durable outbox before hydrating (and replacing) profile localStorage.
         // L'identité capturée à l'enqueue est conservée, même si le profil
-        // courant a changé pendant la requête.
+        // courant a changé pendant la requête (et donc même si auth_token a
+        // été remplacé entre-temps).
         persistOpsToOutbox(ops, effectiveOwner, authToken, Boolean(capturedOwner));
       }
     };
 
     const flushGeneralOps = () => {
       syncDiag.flushGeneralCalled++;
-      const ops = generalOpsRef.current;
-      generalOpsRef.current = [];
       // Skip sync during profile data loading (but allow on watch routes)
       if (isProfileDataLoadingRef.current) {
         syncDiag.flushGeneralBlockedGate++;
         return;
       }
-      if (ops.length) sendOps(ops);
+      const ops = generalOpsRef.current;
+      if (!ops.length) return;
+      generalOpsRef.current = [];
+      const snapshot = getUserInfo();
+      const currentOwner: SyncOwner | null = snapshot.type && snapshot.profileId
+        ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
+        : null;
+      // Chaque groupe garde son propriétaire capturé : sendOps reçoit des lots
+      // homogènes, même quand la file contient deux profils.
+      for (const group of groupOpsByOwner(ops, currentOwner)) sendOps(group.ops);
     };
 
     const flushProgressOps = () => {
@@ -970,7 +1034,7 @@ const PersistenceManager = () => {
       if (isProfileDataLoadingRef.current) return;
 
       const snapshot = getUserInfo();
-      const currentOwner = snapshot.type && snapshot.profileId
+      const currentOwner: SyncOwner | null = snapshot.type && snapshot.profileId
         ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
         : null;
       const ops: any[] = [];
@@ -987,7 +1051,7 @@ const PersistenceManager = () => {
         }
       }
       progressOpsMapRef.current.clear();
-      if (ops.length) sendOps(ops);
+      for (const group of groupOpsByOwner(ops, currentOwner)) sendOps(group.ops);
     };
 
     const getArrayItemIdentity = (item: any) => {
@@ -1203,7 +1267,7 @@ const PersistenceManager = () => {
       // Try array diff first
       const arrayOps = computeArrayDiffOps(key, oldVal, newVal);
       if (arrayOps && arrayOps.length) {
-        arrayOps.forEach((op) => enqueueGeneralOp(op, owner));
+        arrayOps.forEach((op: Record<string, unknown>) => enqueueGeneralOp(op, owner));
         return;
       }
 
@@ -1458,24 +1522,24 @@ const PersistenceManager = () => {
     // Flush any pending debounced ops when the tab is hidden or unloaded so
     // fast refresh / close after a toggle doesn't silently drop the change.
     // Uses fetch with keepalive so the request survives page unload.
-    const flushPendingOpsSync = () => {
-      if (isProfileDataLoadingRef.current) return;
-      if ((window as unknown as { __forceClearInProgress?: boolean }).__forceClearInProgress) return;
+    const flushPendingOpsSync = (): boolean => {
+      if (isProfileDataLoadingRef.current) return false;
+      if ((window as unknown as { __forceClearInProgress?: boolean }).__forceClearInProgress) return false;
 
       const userInfo = getUserInfo();
-      if (!userInfo.type || !userInfo.profileId || !['oauth', 'bip39'].includes(userInfo.type)) return;
+      if (!userInfo.type || !userInfo.profileId || !['oauth', 'bip39'].includes(userInfo.type)) return false;
       const authToken = readLocalStorage('auth_token');
-      if (!authToken) return;
+      if (!authToken) return false;
+      const currentOwner: SyncOwner = {
+        type: userInfo.type,
+        id: userInfo.id || undefined,
+        profileId: userInfo.profileId
+      };
 
       // Synchronously drain pendingDiffs FIRST. The microtask scheduled by
       // the wrapped setItem/removeItem may not have run yet on Firefox: its
       // unload sequencing can fire pagehide before the microtask checkpoint
-      // when the user refreshes immediately after a write (e.g., F5 right
-      // after submitting a VIP key). Without this explicit drain, in-flight
-      // diffs would never reach generalOpsRef and the outbox + keepalive
-      // path below would have nothing to flush — losing the user's write
-      // across reload. Chrome reliably drains microtasks before pagehide,
-      // which is why this manifests as "Firefox-only data loss".
+      // when the user refreshes immediately after a write.
       if (pendingDiffs.length) {
         const batch = pendingDiffs.splice(0);
         for (const entry of batch) {
@@ -1487,116 +1551,63 @@ const PersistenceManager = () => {
         }
       }
 
-      if (generalFlushTimeoutRef.current) {
-        clearTimeout(generalFlushTimeoutRef.current);
-        generalFlushTimeoutRef.current = null;
-      }
-      const currentOwner: SyncOwner = {
-        type: userInfo.type,
-        id: userInfo.id || undefined,
-        profileId: userInfo.profileId
-      };
-      const groups = new Map<string, { owner: SyncOwner; ops: Record<string, unknown>[] }>();
-      const addToGroup = (op: Record<string, unknown>, explicitOwner?: SyncOwner | null) => {
-        const owner = explicitOwner || opOwner(op) || currentOwner;
-        const key = `${owner.type}|${owner.id || ''}|${owner.profileId}`;
-        const group = groups.get(key) || { owner, ops: [] };
-        group.ops.push(stripOpOwner(op));
-        groups.set(key, group);
-      };
-
-      if (generalOpsRef.current.length) {
-        for (const op of generalOpsRef.current) addToGroup(op);
-        generalOpsRef.current = [];
+      // Chaque opération est attachée à son propriétaire capturé avant d'être
+      // groupée. Une opération legacy sans __owner suit le profil courant au
+      // moment du drain, puis reste avec ce propriétaire en cas d'échec.
+      const queuedOps: Array<{ op: Record<string, unknown>; original: unknown; progressKey?: string }> = [];
+      for (const op of generalOpsRef.current) {
+        queuedOps.push({ op: opOwner(op) ? op : { ...op, __owner: currentOwner }, original: op });
       }
       for (const [key, deltaOrValue] of progressOpsMapRef.current.entries()) {
         const owner = deltaOrValue?.owner || currentOwner;
         const delta = deltaOrValue?.delta;
         if (delta && (Object.keys(delta.set || {}).length || (delta.remove || []).length)) {
-          addToGroup({ op: 'objPatch', key, delta }, owner);
+          queuedOps.push({ op: { op: 'objPatch', key, delta, __owner: owner }, original: deltaOrValue, progressKey: key });
         } else if (deltaOrValue && typeof deltaOrValue.value === 'string') {
-          addToGroup({ op: 'set', key, value: deltaOrValue.value }, owner);
+          queuedOps.push({ op: { op: 'set', key, value: deltaOrValue.value, __owner: owner }, original: deltaOrValue, progressKey: key });
         }
       }
-      progressOpsMapRef.current.clear();
-      if (groups.size === 0) return;
+      if (queuedOps.length === 0) return true;
 
-      // Persist a recovery outbox to localStorage BEFORE the keepalive fetch.
-      // fetch keepalive is best-effort: on Firefox the Authorization header
-      // triggers a CORS preflight that the browser may drop on unload, and
-      // both engines cap inflight keepalive bytes. If the request never lands
-      // server-side, the next page load would otherwise wipe localStorage and
-      // restore stale backend state — losing the user's write. ProfileContext
-      // .replayOutboxIfAny reads this on boot and POSTs before the wipe runs.
-      //
-      // Chaque groupe est rangé sous la clé de son propriétaire capturé. Un
-      // changement de profil (ou de compte) survenu avant le pagehide ne peut
-      // ainsi pas réattribuer des écritures locales au profil courant. La clé
-      // historique n'est mise à jour que pour le compte courant, dont le token
-      // autorise bien les deux profils.
-      const isValidSyncOp = (op: unknown): op is Record<string, unknown> & { key: string } => {
-        if (!op || typeof op !== 'object') return false;
-        const candidateKey = (op as { key?: unknown }).key;
-        return typeof candidateKey === 'string' && isSyncableStorageKey(candidateKey);
-      };
+      const groups = groupOpsByOwner(queuedOps.map((entry) => entry.op), currentOwner);
+      let allPersisted = true;
+      const persistedOps = new Set<unknown>();
+      const readyToSend: Array<{ owner: SyncOwner; ops: Record<string, unknown>[] }> = [];
 
-      for (const { owner, ops } of groups.values()) {
-        const accountMatches = sameSyncAccount(owner, currentOwner);
-        try {
-          const MAX_OUTBOX_OPS = 10000;
-          const ownerKey = outboxKeyForOwner(owner);
-          let mergedOps: Array<Record<string, unknown>> = ops;
-          try {
-            const existingRaw = localStorage.getItem(ownerKey)
-              || (accountMatches ? localStorage.getItem(SYNC_OUTBOX_STORAGE_KEY) : null);
-            if (existingRaw) {
-              const parsed = JSON.parse(existingRaw) as {
-                userType?: string;
-                profileId?: string;
-                userId?: string;
-                ops?: unknown;
-              } | null;
-              if (parsed
-                  && parsed.userType === owner.type
-                  && parsed.profileId === owner.profileId
-                  && (parsed.userId || null) === (owner.id || null)
-                  && Array.isArray(parsed.ops)
-                  && parsed.ops.length > 0) {
-                mergedOps = [
-                  ...(parsed.ops as unknown[]).filter(isValidSyncOp),
-                  ...ops
-                ];
-              }
-            }
-          } catch { /* noop */ }
-
-          mergedOps = mergedOps.filter(isValidSyncOp);
-          if (mergedOps.length > MAX_OUTBOX_OPS) {
-            mergedOps = mergedOps.slice(mergedOps.length - MAX_OUTBOX_OPS);
-          }
-          if (mergedOps.length === 0) {
-            try { localStorage.removeItem(ownerKey); } catch { /* noop */ }
-            continue;
-          }
-
-          const payload = JSON.stringify({
-            userType: owner.type,
-            profileId: owner.profileId,
-            userId: owner.id || undefined,
-            ops: mergedOps,
-            ts: Date.now()
-          });
-          localStorage.setItem(ownerKey, payload);
-          if (accountMatches) localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, payload);
-        } catch (outboxErr) {
-          // Quota exceeded or other write error — proceed with keepalive anyway.
-          console.warn('[outbox] failed to persist outbox at unload:', outboxErr);
+      // Persist BEFORE clearing the queues: on auth_changed, nothing may leave
+      // memory until its owner-scoped outbox has confirmed the write.
+      for (const group of groups) {
+        const owner = group.owner || currentOwner;
+        const captured = Boolean(opOwner(group.ops[0]));
+        const cleanOps = group.ops.map((op) => stripOpOwner(op));
+        const persisted = persistOpsToOutbox(cleanOps, owner, authToken, captured);
+        if (!persisted) {
+          allPersisted = false;
+          continue;
         }
+        for (const queued of queuedOps) {
+          if (group.ops.includes(queued.op as any)) persistedOps.add(queued.original);
+        }
+        readyToSend.push({ owner, ops: cleanOps });
+      }
 
-        // Le token courant n'autorise que son propre compte : une file appartenant
-        // à un autre compte reste uniquement dans son outbox, pour son prochain
-        // démarrage. Deux profils du même compte peuvent être envoyés directement.
-        if (!accountMatches) continue;
+      if (allPersisted) {
+        generalOpsRef.current = generalOpsRef.current.filter((op) => !persistedOps.has(op));
+        for (const [key, deltaOrValue] of progressOpsMapRef.current.entries()) {
+          if (persistedOps.has(deltaOrValue)) progressOpsMapRef.current.delete(key);
+        }
+        if (generalFlushTimeoutRef.current) {
+          clearTimeout(generalFlushTimeoutRef.current);
+          generalFlushTimeoutRef.current = null;
+        }
+      }
+
+      // fetch keepalive is best-effort: only attempt groups whose owner belongs
+      // to the account authorised by the CURRENT token. The durable outbox is
+      // authoritative if the request never lands server-side.
+      if (readLocalStorage('auth_token') !== authToken) return allPersisted;
+      for (const { owner, ops } of readyToSend) {
+        if (!sameSyncAccount(owner, currentOwner)) continue;
         try {
           for (let index = 0; index < ops.length; index += MAX_SYNC_OPS_PER_REQUEST) {
             const batch = ops.slice(index, index + MAX_SYNC_OPS_PER_REQUEST);
@@ -1623,6 +1634,19 @@ const PersistenceManager = () => {
           void 0;
         }
       }
+      return allPersisted;
+    };
+
+    // Expose le drain au listener auth_changed monté plus haut. L'affectation
+    // est synchrone : aucun événement ne peut être traité avant la fin de cet
+    // effet, mais la ref garantit qu'on appelle toujours la version courante.
+    authDrainRef.current = () => {
+      const drained = flushPendingOpsSync();
+      if (drained && generalFlushTimeoutRef.current) {
+        clearTimeout(generalFlushTimeoutRef.current);
+        generalFlushTimeoutRef.current = null;
+      }
+      return drained;
     };
 
     const handlePageHide = () => flushPendingOpsSync();

@@ -16,10 +16,27 @@ function syncStorage() {
   };
 }
 
+const opOwner = (op) => op?.__owner || null;
+const outboxKeyForOwner = (owner) => `__movix_sync_outbox:${owner.type}:${owner.id || ''}:${owner.profileId}`;
+const groupOpsByOwner = sourceFunction(PAGE, 'groupOpsByOwner', { opOwner });
+
 function flushFixture({ currentOwner = OWNER_B, generalOps = [], progressOps = [], existingOutbox = null } = {}) {
   const storage = syncStorage();
-  if (existingOutbox) storage.setItem('__movix_sync_outbox', JSON.stringify(existingOutbox));
+  if (existingOutbox) storage.setItem(outboxKeyForOwner(OWNER_A), JSON.stringify(existingOutbox));
   const fetches = [];
+  const sameSyncAccount = (a, b) => Boolean(a && b && a.type === b.type && (a.id || null) === (b.id || null));
+  const sameSyncOwner = (a, b) => sameSyncAccount(a, b) && Boolean(a && b && a.profileId === b.profileId);
+  const persistOpsToOutbox = sourceFunction(PAGE, 'persistOpsToOutbox', {
+    isSyncableStorageKey: (key) => typeof key === 'string' && !key.startsWith('legacy_'),
+    localStorage: storage,
+    getUserInfo: () => currentOwner,
+    sameSyncOwner,
+    outboxKeyForOwner,
+    SYNC_OUTBOX_FORMAT_VERSION: 2,
+    SYNC_OUTBOX_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
+    MAX_SYNC_OUTBOX_OPS: 10000,
+    console: { warn() {}, error() {}, log() {} }
+  });
   const flush = sourceFunction(PAGE, 'flushPendingOpsSync', {
     isProfileDataLoadingRef: { current: false },
     window: { __forceClearInProgress: false },
@@ -33,10 +50,15 @@ function flushFixture({ currentOwner = OWNER_B, generalOps = [], progressOps = [
     progressOpsMapRef: { current: new Map(progressOps) },
     SYNC_OUTBOX_STORAGE_KEY: '__movix_sync_outbox',
     isSyncableStorageKey: (key) => typeof key === 'string' && !key.startsWith('legacy_'),
-    opOwner: (op) => op?.__owner || null,
+    opOwner,
     stripOpOwner: ({ __owner, ...clean }) => clean,
-    outboxKeyForOwner: (owner) => `__movix_sync_outbox:${owner.type}:${owner.id || ''}:${owner.profileId}`,
-    sameSyncAccount: (a, b) => Boolean(a && b && a.type === b.type && (a.id || null) === (b.id || null)),
+    outboxKeyForOwner,
+    groupOpsByOwner,
+    persistOpsToOutbox,
+    sameSyncAccount,
+    SYNC_OUTBOX_FORMAT_VERSION: 2,
+    SYNC_OUTBOX_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
+    MAX_SYNC_OUTBOX_OPS: 10000,
     localStorage: storage,
     MAX_SYNC_OPS_PER_REQUEST: 100,
     API_BASE_URL: 'https://api.test',
@@ -54,7 +76,7 @@ test('le flush de déconnexion adresse les opérations en attente à leur profil
 
   f.flush();
 
-  const outbox = JSON.parse(f.storage.getItem('__movix_sync_outbox'));
+  const outbox = JSON.parse(f.storage.getItem(outboxKeyForOwner(OWNER_A)));
   assert.equal(outbox.userType, OWNER_A.type);
   assert.equal(outbox.userId, OWNER_A.id);
   assert.equal(outbox.profileId, OWNER_A.profileId);
@@ -76,7 +98,7 @@ test('le flush fusionne avec l’outbox du même propriétaire uniquement', () =
 
   f.flush();
 
-  const outbox = JSON.parse(f.storage.getItem('__movix_sync_outbox'));
+  const outbox = JSON.parse(f.storage.getItem(outboxKeyForOwner(OWNER_A)));
   assert.equal(outbox.profileId, OWNER_A.profileId);
   assert.deepEqual(outbox.ops.map((op) => op.key), ['favorite_movies', 'user_language']);
 });
@@ -112,6 +134,7 @@ test('le flush périodique de progression respecte le propriétaire capturé à 
     progressOpsMapRef: { current: new Map([['progress_movie:1', { delta: { set: { position: 42 }, remove: [] }, owner: OWNER_A }]]) },
     isProfileDataLoadingRef: { current: false },
     getUserInfo: () => OWNER_B,
+    groupOpsByOwner,
     sendOps: (ops) => sent.push(ops)
   });
 

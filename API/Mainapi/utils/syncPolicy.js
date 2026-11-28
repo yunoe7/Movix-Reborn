@@ -286,6 +286,17 @@ function normalizeOneSyncOp(rawOp) {
     throw new SyncPolicyError('Operation de synchronisation invalide', 400, 'INVALID_OP');
   }
 
+  // `is_vip` et les autres clés serveur ne sont pas writables. Le refus est
+  // explicite (code + message) pour que les anciens clients comprennent la
+  // réponse partielle au lieu de croire à une erreur de clé inconnue.
+  if (typeof rawOp.key === 'string' && SERVER_MANAGED_SYNC_KEYS.includes(rawOp.key)) {
+    throw new SyncPolicyError(
+      `${rawOp.key} est géré par le serveur et ne peut pas être synchronisé par le client`,
+      400,
+      'INVALID_SYNC_KEY'
+    );
+  }
+
   const key = ensureSyncableStorageKey(rawOp.key);
   const op = typeof rawOp.op === 'string' ? rawOp.op : '';
 
@@ -337,7 +348,15 @@ function partitionSyncOps(ops) {
       normalized.push(normalizeOneSyncOp(rawOp));
     } catch (error) {
       if (!(error instanceof SyncPolicyError)) throw error;
-      rejected.push({ index, code: error.code, message: error.message, status: error.status });
+      rejected.push({
+        index,
+        code: error.code,
+        message: error.message,
+        status: error.status,
+        ...(typeof rawOp?.key === 'string' && SERVER_MANAGED_SYNC_KEYS.includes(rawOp.key)
+          ? { serverManagedRejected: true, key: rawOp.key }
+          : {})
+      });
     }
   });
 

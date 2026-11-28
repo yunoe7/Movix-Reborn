@@ -7,7 +7,13 @@ import { predefinedAvatars } from '../data/avatars';
 import {
   getSyncableLocalStorageEntries,
   hasSyncableLocalStorageData,
+  isPermanentSyncRejection,
   isSyncableStorageKey,
+  MAX_SYNC_OUTBOX_OPS,
+  SYNC_OUTBOX_FORMAT_VERSION,
+  SYNC_OUTBOX_MAX_AGE_MS,
+  SYNC_OUTBOX_REPLAY_LOCK_KEY,
+  SYNC_OUTBOX_REPLAY_LOCK_TTL_MS,
   SYNC_OUTBOX_STORAGE_KEY
 } from '../utils/syncStorage';
 import { checkVipStatus } from '../utils/vipUtils';
@@ -23,25 +29,48 @@ import { getResolvedAccountContext } from '../utils/accountAuth';
 import { runProfileIsolationWipe } from '../utils/profileIsolation';
 
 // Pending sync ops persisted by App.tsx flushPendingOpsSync at unload time.
-// We POST these to /api/sync BEFORE replaceProfileStorage wipes
-// localStorage — otherwise unsynced writes (Firefox keepalive flake, network
-// hiccup) would be destroyed by the wipe-and-restore restoring stale backend
-// state. On success the accepted ops are cleared; individually rejected ops
-// are kept for the next boot; on transient failure everything is kept for
-// retry; on a permanent auth mismatch it's discarded.
-const SYNC_OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
+// They are POSTed to /api/sync BEFORE replaceProfileStorage wipes localStorage.
+// v2 writes one outbox per captured owner; the global key is read only as a
+// one-shot migration source and removed once its scoped copy has been replayed.
 interface SyncOutboxPayload {
+  v?: number;
   userType: 'oauth' | 'bip39';
   profileId: string;
   userId: string;
   ops: unknown[];
-  ts: number;
+  createdAt?: number;
+  lastAttemptAt?: number;
+  ts?: number;
+}
+
+function getSyncOutboxCreatedAt(payload: { createdAt?: unknown; ts?: unknown; lastAttemptAt?: unknown }): number {
+  for (const candidate of [payload.createdAt, payload.ts, payload.lastAttemptAt]) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate) && candidate > 0) return candidate;
+  }
+  return 0;
+}
+
+function syncOutboxScopedKey(payload: { userType?: unknown; userId?: unknown; profileId?: unknown }): string {
+  return `${SYNC_OUTBOX_STORAGE_KEY}:${String(payload.userType || '')}:${encodeURIComponent(String(payload.userId || ''))}:${encodeURIComponent(String(payload.profileId || ''))}`;
+}
+
+function withOutboxMetadata(payload: unknown, ops: unknown[]): Record<string, unknown> {
+  const now = Date.now();
+  const source = (payload && typeof payload === 'object' ? payload : {}) as Record<string, unknown>;
+  return {
+    ...source,
+    v: SYNC_OUTBOX_FORMAT_VERSION,
+    ops: ops.slice(-MAX_SYNC_OUTBOX_OPS),
+    createdAt: getSyncOutboxCreatedAt(source) || now,
+    lastAttemptAt: now,
+    ts: now
+  };
 }
 
 function isSyncOutboxPayload(value: unknown): value is SyncOutboxPayload {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as Partial<SyncOutboxPayload>;
+  if (candidate.v !== undefined && candidate.v !== SYNC_OUTBOX_FORMAT_VERSION) return false;
   return (
     (candidate.userType === 'oauth' || candidate.userType === 'bip39')
     && typeof candidate.profileId === 'string'
@@ -53,9 +82,18 @@ function isSyncOutboxPayload(value: unknown): value is SyncOutboxPayload {
   );
 }
 
+function isIncompleteLegacyOutbox(value: unknown): value is Record<string, unknown> & { ops: unknown[] } {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Record<string, unknown>;
+  return Array.isArray(candidate.ops)
+    && typeof candidate.profileId === 'string'
+    && candidate.profileId.length > 0
+    && !(typeof candidate.userId === 'string' && candidate.userId.length > 0);
+}
+
 async function replayOutboxIfAny(): Promise<void> {
-  // La clé historique reste admise ; les files séparées par profil sont écrites
-  // par App.tsx avec le triplet complet du propriétaire capturé à l'écriture.
+  // La clé historique reste admise comme source de migration one-shot ; les
+  // files v2 sont séparées par propriétaire capturé à l'écriture.
   const storageKeys = [SYNC_OUTBOX_STORAGE_KEY];
   try {
     for (let index = 0; index < localStorage.length; index += 1) {
@@ -64,7 +102,16 @@ async function replayOutboxIfAny(): Promise<void> {
     }
   } catch { /* stockage indisponible : la clé historique reste tentée */ }
 
-  for (const storageKey of storageKeys) {
+  const replayRunId = `${Date.now()}:${Math.random()}`;
+  const processedKeys = new Set<string>();
+  const legacyToDelete = new Map<string, string>();
+  let accountContext: ReturnType<typeof getResolvedAccountContext> | null = null;
+
+  for (let index = 0; index < storageKeys.length; index += 1) {
+    const storageKey = storageKeys[index];
+    if (processedKeys.has(storageKey)) continue;
+    processedKeys.add(storageKey);
+
     let raw: string | null = null;
     try { raw = localStorage.getItem(storageKey); } catch { return; }
     if (!raw) continue;
@@ -75,72 +122,113 @@ async function replayOutboxIfAny(): Promise<void> {
       continue;
     }
 
-    if (!isSyncOutboxPayload(parsed)) {
-      // Une ancienne file sans userId n'est pas mal formée : elle appartient
-      // peut-être encore à son propriétaire. On la laisse inactive plutôt que
-      // de la supprimer sous une autre identité.
-      const incomplete = parsed && typeof parsed === 'object'
-        && Array.isArray((parsed as { ops?: unknown }).ops)
-        && typeof (parsed as { profileId?: unknown }).profileId === 'string'
-        && !(parsed as { userId?: unknown }).userId;
-      if (incomplete) {
+    let payload: SyncOutboxPayload | null = isSyncOutboxPayload(parsed) ? parsed : null;
+    let effectiveKey = storageKey;
+
+    if (!payload) {
+      // Une ancienne file sans userId n'est pas mal formée : on applique
+      // d'abord la TTL, puis on la migre vers la clé du compte courant avant
+      // d'arrêter son traitement ici. Sans userId, elle ne peut pas être
+      // envoyée directement avec le token courant.
+      if (storageKey === SYNC_OUTBOX_STORAGE_KEY && isIncompleteLegacyOutbox(parsed)) {
+        const createdAt = getSyncOutboxCreatedAt({
+          createdAt: parsed.createdAt,
+          ts: parsed.ts,
+          lastAttemptAt: parsed.lastAttemptAt
+        });
+        if (!createdAt || Date.now() - createdAt > SYNC_OUTBOX_MAX_AGE_MS) {
+          try { localStorage.removeItem(storageKey); } catch { /* noop */ }
+          continue;
+        }
+        // On ne devine pas le propriétaire : sans userId, la file reste sous
+        // sa clé historique avec une version v:2 et des horodatages fiables.
+        // Elle ne peut pas être envoyée avec le token du compte courant.
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(withOutboxMetadata(parsed, parsed.ops)));
+        } catch { /* noop */ }
         console.warn('[outbox] skipping replay — owner identity incomplete');
-        continue;
+      } else {
+        try { localStorage.removeItem(storageKey); } catch { /* noop */ }
       }
-      try { localStorage.removeItem(storageKey); } catch { /* noop */ }
       continue;
     }
 
-    const payload = parsed;
-    // Éviter de rejouer deux fois la même file : App.tsx écrit aussi la clé
-    // historique pour le compte courant.
+    // Une copie historique n'est jamais rejouée en plus de la copie scopée.
+    // Si aucune copie scopée n'existe, on la crée une fois (v:2) et on rejoue
+    // cette copie ; la clé historique n'est supprimée qu'après succès.
     if (storageKey === SYNC_OUTBOX_STORAGE_KEY) {
-      const scopedKey = `${SYNC_OUTBOX_STORAGE_KEY}:${payload.userType}:${encodeURIComponent(payload.userId)}:${encodeURIComponent(payload.profileId)}`;
-      try { if (localStorage.getItem(scopedKey)) continue; } catch { /* noop */ }
+      const scopedKey = syncOutboxScopedKey(payload);
+      if (localStorage.getItem(scopedKey)) {
+        legacyToDelete.set(scopedKey, storageKey);
+        continue;
+      }
+      const migrated = withOutboxMetadata(payload, payload.ops);
+      try {
+        localStorage.setItem(scopedKey, JSON.stringify(migrated));
+      } catch { return; }
+      legacyToDelete.set(scopedKey, storageKey);
+      if (!storageKeys.includes(scopedKey)) storageKeys.push(scopedKey);
+      processedKeys.add(scopedKey);
+      effectiveKey = scopedKey;
+      payload = migrated as unknown as SyncOutboxPayload;
     }
 
-    const ageMs = Date.now() - (typeof payload.ts === 'number' ? payload.ts : 0);
-    if (ageMs > SYNC_OUTBOX_MAX_AGE_MS) {
-      try { localStorage.removeItem(storageKey); } catch { /* noop */ }
+    const createdAt = getSyncOutboxCreatedAt(payload);
+    if (!createdAt || Date.now() - createdAt > SYNC_OUTBOX_MAX_AGE_MS) {
+      try { localStorage.removeItem(effectiveKey); } catch { /* noop */ }
+      legacyToDelete.delete(effectiveKey);
       continue;
     }
 
     const authToken = localStorage.getItem('auth_token');
-    if (!authToken) {
-      // No auth yet (e.g., logged out). Keep the outbox for a future replay.
-      return;
-    }
+    if (!authToken) return;
 
-    // Le triplet complet doit correspondre au compte sélectionné. Une file
-    // sans userId est déjà écartée plus haut : sans cette garde, une file A
-    // pourrait être POSTée avec le token B puis supprimée sur le 403.
-    const { userType: currentUserType, userId: currentUserId } = getResolvedAccountContext();
+    if (!accountContext) accountContext = getResolvedAccountContext();
+    const currentAccount = accountContext;
     if (
-      currentUserType !== payload.userType
-      || !currentUserId
-      || payload.userId !== currentUserId
+      currentAccount.userType !== payload.userType
+      || !currentAccount.userId
+      || payload.userId !== currentAccount.userId
     ) {
       console.warn('[outbox] skipping replay — different account logged in than outbox owner');
       continue;
     }
 
-    // Filter out ops whose keys are no longer syncable. Legacy outboxes may
-    // contain keys removed from the allowlist after a backend security update
-    // (e.g. `is_vip` per audit P0). Without filtering, the backend rejects the
-    // whole batch with 400 INVALID_SYNC_KEY → replayOutboxIfAny treats 400 as
-    // permanent → outbox is dropped, taking legitimate co-batched ops with it.
+    // Les clés retirées de l'allowlist (is_vip, etc.) sont Filtrées avant
+    // l'envoi pour ne pas faire rejeter tout le lot par la politique serveur.
     const validOps = payload.ops.filter((op): op is Record<string, unknown> & { key: string } => {
       if (!op || typeof op !== 'object') return false;
       const candidateKey = (op as { key?: unknown }).key;
       return typeof candidateKey === 'string' && isSyncableStorageKey(candidateKey);
-    });
+    }).slice(-MAX_SYNC_OUTBOX_OPS);
 
     if (validOps.length === 0) {
-      try { localStorage.removeItem(storageKey); } catch { /* noop */ }
+      try { localStorage.removeItem(effectiveKey); } catch { /* noop */ }
+      legacyToDelete.delete(effectiveKey);
       continue;
     }
 
+    // Plusieurs onglets peuvent démarrer en même temps : un bail local évite
+    // de poster deux fois la même file.
+    const now = Date.now();
+    let lock: { runId?: string; expiresAt?: number } | null = null;
+    try { lock = JSON.parse(localStorage.getItem(SYNC_OUTBOX_REPLAY_LOCK_KEY) || 'null'); } catch { /* noop */ }
+    if (lock && typeof lock.expiresAt === 'number' && lock.expiresAt > now && lock.runId !== replayRunId) continue;
     try {
+      localStorage.setItem(SYNC_OUTBOX_REPLAY_LOCK_KEY, JSON.stringify({
+        runId: replayRunId,
+        expiresAt: now + SYNC_OUTBOX_REPLAY_LOCK_TTL_MS
+      }));
+    } catch { /* stockage indisponible : on tente quand même le rejeu */ }
+
+    let lockHeld = true;
+    try {
+      try {
+        const held = JSON.parse(localStorage.getItem(SYNC_OUTBOX_REPLAY_LOCK_KEY) || 'null');
+        lockHeld = Boolean(held && held.runId === replayRunId);
+      } catch { lockHeld = false; }
+      if (!lockHeld) continue;
+
       const response = await axios.post(`${API_URL}/api/sync`, {
         userType: payload.userType,
         profileId: payload.profileId,
@@ -150,63 +238,60 @@ async function replayOutboxIfAny(): Promise<void> {
         headers: { Authorization: `Bearer ${authToken}` }
       });
 
-      // Le serveur applique désormais chaque opération valide et rapporte les
-      // autres avec leur index dans le lot envoyé. On ne retire que celles qui
-      // ont été réellement acceptées ; les opérations rejetées restent dans
-      // l'outbox avec le même propriétaire pour une correction ou un retry.
+      // Un rejet permanent (politique serveur) est évincé ; un rejet
+      // temporaire reste dans l'outbox du même propriétaire. createdAt ne
+      // bouge jamais, seul lastAttemptAt est rafraîchi.
       const rejected = Array.isArray(response?.data?.rejected) ? response.data.rejected : [];
-      const rejectedOps = new Set<unknown>();
+      const retryableRejected = new Set<unknown>();
       for (const item of rejected) {
-        const index = Number(item?.index);
-        if (Number.isInteger(index) && index >= 0 && index < validOps.length) {
-          rejectedOps.add(validOps[index]);
+        const opIndex = Number(item?.index);
+        if (!Number.isInteger(opIndex) || opIndex < 0 || opIndex >= validOps.length) continue;
+        if (!isPermanentSyncRejection(item?.status, item?.code, item?.message)) {
+          retryableRejected.add(validOps[opIndex]);
         }
       }
-
-      if (rejectedOps.size > 0) {
-        const remainingOps = payload.ops.filter((op) => rejectedOps.has(op));
-        if (remainingOps.length > 0) {
-          try {
-            localStorage.setItem(storageKey, JSON.stringify({
-              ...payload,
-              ops: remainingOps,
-              ts: Date.now()
-            }));
-          } catch { /* noop */ }
-        } else {
-          try { localStorage.removeItem(storageKey); } catch { /* noop */ }
-        }
+      const remainingOps = payload.ops.filter((op) => retryableRejected.has(op));
+      if (remainingOps.length > 0) {
+        try { localStorage.setItem(effectiveKey, JSON.stringify(withOutboxMetadata(payload, remainingOps))); } catch { /* noop */ }
       } else {
-        try { localStorage.removeItem(storageKey); } catch { /* noop */ }
+        try { localStorage.removeItem(effectiveKey); } catch { /* noop */ }
+      }
+      const legacyKey = legacyToDelete.get(effectiveKey);
+      if (legacyKey) {
+        try { localStorage.removeItem(legacyKey); } catch { /* noop */ }
+        legacyToDelete.delete(effectiveKey);
       }
     } catch (error: unknown) {
-      const response = (error as { response?: { status?: number; data?: { error?: string } } })?.response;
+      const response = (error as { response?: { status?: number; data?: { code?: string; error?: string } } })?.response;
       const status = response?.status;
+      const code = response?.data?.code;
       const errMsg = response?.data?.error || '';
-
-      // Un refus d'appartenance du profil signifie que la file n'est pas
-      // rejouable avec le compte courant, pas qu'elle est invalide. On la
-      // conserve pour son propriétaire légitime jusqu'à la TTL.
-      const ownershipRejected = status === 403
-        || (status === 404 && /profile|owner/i.test(errMsg));
+      const ownershipRejected = status === 403 || (status === 404 && /profile|owner/i.test(errMsg));
       if (ownershipRejected) {
+        // 401/403 sont retryables : on garde la file sous son propriétaire et
+        // on rafraîchit seulement la date de tentative (createdAt unchanged).
+        try { localStorage.setItem(effectiveKey, JSON.stringify(withOutboxMetadata(payload, payload.ops))); } catch { /* noop */ }
         console.warn('[outbox] skipping replay — profile is not owned by current account');
         continue;
       }
-
-      // Les autres 4xx sont permanentes : une requête mal formée ne deviendra
-      // pas valide en la rejouant. 401 Unauthorized, 408, 429, 5xx et les
-      // erreurs réseau restent retryables.
-      const isPermanent = typeof status === 'number'
-        && status >= 400 && status < 500
-        && status !== 408 && status !== 429
-        && !(status === 401 && errMsg === 'Unauthorized');
-
-      if (isPermanent) {
-        try { localStorage.removeItem(storageKey); } catch { /* noop */ }
-        console.warn('[outbox] replay rejected permanently, dropping outbox:', status, errMsg);
+      if (isPermanentSyncRejection(status, code, errMsg)) {
+        try { localStorage.removeItem(effectiveKey); } catch { /* noop */ }
+        const legacyKey = legacyToDelete.get(effectiveKey);
+        if (legacyKey) {
+          try { localStorage.removeItem(legacyKey); } catch { /* noop */ }
+          legacyToDelete.delete(effectiveKey);
+        }
+        console.warn('[outbox] replay rejected permanently, dropping outbox:', status, code || errMsg);
       } else {
+        try { localStorage.setItem(effectiveKey, JSON.stringify(withOutboxMetadata(payload, payload.ops))); } catch { /* noop */ }
         console.warn('[outbox] replay failed, will retry on next boot:', error);
+      }
+    } finally {
+      if (lockHeld) {
+        try {
+          const held = JSON.parse(localStorage.getItem(SYNC_OUTBOX_REPLAY_LOCK_KEY) || 'null');
+          if (held && held.runId === replayRunId) localStorage.removeItem(SYNC_OUTBOX_REPLAY_LOCK_KEY);
+        } catch { /* noop */ }
       }
     }
   }

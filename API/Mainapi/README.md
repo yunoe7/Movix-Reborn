@@ -102,6 +102,12 @@ L'historique, la progression et les marques « Déjà vu » sont stockés en MyS
 
 Code : `routes/history.js`, `utils/historyStore.js` (rangée « Reprendre »), `utils/historyOverview.js` (onglet Historique du profil), `utils/historyImport.js`, `utils/mediaStore.js` (cache TMDB).
 
+### Contrat de réponse partielle `/api/sync`
+
+`POST /api/sync` applique chaque opération valide et renvoie `200` avec `success: true`. Les opérations refusées par la politique (`shared/syncKeys.json`) sont rapportées dans `rejected` avec `index`, `code`, `message`, `status` et `partial: true` ; les anciens clients qui ignorent ces champs continuent à fonctionner.
+
+`is_vip` est une vérité calculée côté serveur (`serverManaged` dans `shared/syncKeys.json`) : le client ne peut ni l'écrire ni le synchroniser. Un envoi de cette clé est refusé avec le code historique `INVALID_SYNC_KEY`, `serverManagedRejected: true` et un message explicite. La réponse inclut en plus `serverManagedRejected: ["is_vip"]` pour que les clients récents puissent distinguer un refus de politique d'une erreur temporaire. Les erreurs réseau, `401/403/404/408/429` et `5xx` restent rejouables par l'outbox ; les `4xx` de politique sont abandonnées.
+
 Routes sous `/api/history`, pour les comptes connectés (OAuth ou BIP39) :
 
 | Route | Rôle |

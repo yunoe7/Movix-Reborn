@@ -3,7 +3,30 @@ import { test } from 'node:test';
 import { sourceNamedFunction } from './helpers/sourceFunction.mjs';
 
 const OUTBOX_KEY = '__movix_sync_outbox';
-const isSyncOutboxPayload = sourceNamedFunction('src/context/ProfileContext.tsx', 'isSyncOutboxPayload');
+const PROFILE_CONTEXT = 'src/context/ProfileContext.tsx';
+const SYNC_STORAGE = 'src/utils/syncStorage.ts';
+const FORMAT_VERSION = 2;
+const MAX_OPS = 10000;
+const getPermanentSyncRejectionCodes = sourceNamedFunction(SYNC_STORAGE, 'getPermanentSyncRejectionCodes');
+const getRetryableSyncStatusCodes = sourceNamedFunction(SYNC_STORAGE, 'getRetryableSyncStatusCodes');
+const isSyncOutboxPayload = sourceNamedFunction(PROFILE_CONTEXT, 'isSyncOutboxPayload', {
+  SYNC_OUTBOX_FORMAT_VERSION: FORMAT_VERSION
+});
+const syncOutboxScopedKey = sourceNamedFunction(PROFILE_CONTEXT, 'syncOutboxScopedKey', {
+  SYNC_OUTBOX_STORAGE_KEY: OUTBOX_KEY
+});
+const getSyncOutboxCreatedAt = sourceNamedFunction(PROFILE_CONTEXT, 'getSyncOutboxCreatedAt');
+const isPermanentSyncRejection = sourceNamedFunction(SYNC_STORAGE, 'isPermanentSyncRejection', {
+  getPermanentSyncRejectionCodes,
+  getRetryableSyncStatusCodes
+});
+const withOutboxMetadata = sourceNamedFunction(PROFILE_CONTEXT, 'withOutboxMetadata', {
+  getSyncOutboxCreatedAt,
+  SYNC_OUTBOX_FORMAT_VERSION: FORMAT_VERSION,
+  SYNC_OUTBOX_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
+  MAX_SYNC_OUTBOX_OPS: MAX_OPS
+});
+const isIncompleteLegacyOutbox = sourceNamedFunction(PROFILE_CONTEXT, 'isIncompleteLegacyOutbox');
 
 function fixture({ response = { success: true }, error = null, account = { userType: 'oauth', userId: 'user-1' } } = {}) {
   const values = new Map();
@@ -22,11 +45,20 @@ function fixture({ response = { success: true }, error = null, account = { userT
       return { data: response };
     }
   };
-  const replay = sourceNamedFunction('src/context/ProfileContext.tsx', 'replayOutboxIfAny', {
+  const replay = sourceNamedFunction(PROFILE_CONTEXT, 'replayOutboxIfAny', {
     localStorage,
     SYNC_OUTBOX_STORAGE_KEY: OUTBOX_KEY,
+    SYNC_OUTBOX_FORMAT_VERSION: FORMAT_VERSION,
     SYNC_OUTBOX_MAX_AGE_MS: 7 * 24 * 60 * 60 * 1000,
+    SYNC_OUTBOX_REPLAY_LOCK_KEY: '__movix_sync_outbox_replay_lock',
+    SYNC_OUTBOX_REPLAY_LOCK_TTL_MS: 30_000,
+    MAX_SYNC_OUTBOX_OPS: MAX_OPS,
     isSyncOutboxPayload,
+    syncOutboxScopedKey,
+    getSyncOutboxCreatedAt,
+    isPermanentSyncRejection,
+    withOutboxMetadata,
+    isIncompleteLegacyOutbox,
     isSyncableStorageKey: (key) => typeof key === 'string' && !key.startsWith('legacy_') && key !== 'is_vip',
     getResolvedAccountContext: () => account,
     axios,
@@ -40,6 +72,8 @@ function seed(payload, values) {
   values.set('auth_token', 'test-token');
   values.set(OUTBOX_KEY, JSON.stringify({ ...payload, ts: Date.now() }));
 }
+
+const scopedKey = (userType, userId, profileId) => `${OUTBOX_KEY}:${userType}:${userId}:${profileId}`;
 
 function httpError(status, message) {
   return { response: { status, data: { error: message } } };
@@ -62,9 +96,10 @@ test('un rejeu partiel ne conserve que les opérations réellement rejetées', a
 
   assert.equal(f.calls.length, 1);
   assert.deepEqual(f.calls[0].payload.ops.map((op) => op.key), ['user_language', 'favorite_movies']);
-  const remaining = JSON.parse(f.values.get(OUTBOX_KEY));
-  assert.deepEqual(remaining.ops.map((op) => op.key), ['favorite_movies']);
-  assert.equal(remaining.profileId, 'profile-1');
+  const key = scopedKey('oauth', 'user-1', 'profile-1');
+  assert.equal(f.values.has(OUTBOX_KEY), false, 'la copie legacy est supprimée après migration');
+  // INVALID_SYNC_KEY est un refus permanent : il n'est pas remis dans l'outbox.
+  assert.equal(f.values.has(key), false, 'aucune opération rejetée durablement ne reste rejouable');
 });
 
 test('un rejeu intégralement réussi vide l’outbox', async () => {
