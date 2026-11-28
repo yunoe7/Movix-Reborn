@@ -1,6 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Palette } from '../icons/Icons8';
+import {
+  Clapperboard,
+  GalleryHorizontalEnd,
+  Image,
+  Palette,
+  Sparkles,
+} from '../icons/Icons8';
 import { AdminPanel, AdminStateBlock } from './AdminUi';
 
 /**
@@ -11,11 +17,11 @@ import { AdminPanel, AdminStateBlock } from './AdminUi';
  * explicite pour les familles de décorations globales prévues.
  */
 export const ADMIN_DECOR_SURFACES = [
-  { id: 'animation', labelKey: 'admin.console.decorSurfaceAnimation', labelDefault: 'Animations' },
-  { id: 'effect', labelKey: 'admin.console.decorSurfaceEffect', labelDefault: 'Effets' },
-  { id: 'background', labelKey: 'admin.console.decorSurfaceBackground', labelDefault: 'Arrière-plans' },
-  { id: 'theme', labelKey: 'admin.console.decorSurfaceTheme', labelDefault: 'Thèmes' },
-  { id: 'graphic', labelKey: 'admin.console.decorSurfaceGraphic', labelDefault: 'Éléments graphiques' },
+  { id: 'animation', labelKey: 'admin.console.decorSurfaceAnimation', labelDefault: 'Animations', icon: Clapperboard },
+  { id: 'effect', labelKey: 'admin.console.decorSurfaceEffect', labelDefault: 'Effets', icon: Sparkles },
+  { id: 'background', labelKey: 'admin.console.decorSurfaceBackground', labelDefault: 'Arrière-plans', icon: Image },
+  { id: 'theme', labelKey: 'admin.console.decorSurfaceTheme', labelDefault: 'Thèmes', icon: Palette },
+  { id: 'graphic', labelKey: 'admin.console.decorSurfaceGraphic', labelDefault: 'Éléments graphiques', icon: GalleryHorizontalEnd },
 ] as const;
 
 export type AdminDecorSurfaceId = typeof ADMIN_DECOR_SURFACES[number]['id'];
@@ -47,14 +53,17 @@ const AdminDecorPlaceholder: React.FC = () => {
             {t('admin.console.decorSurfaceDesc', 'Périmètre architectural uniquement ; aucune donnée n’est chargée ou publiée ici.')}
           </p>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {ADMIN_DECOR_SURFACES.map((surface) => (
-              <div key={surface.id} className="admin-quick-action">
-                <Palette className="h-4 w-4 shrink-0 text-white/55" aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-white/80">
-                  {t(surface.labelKey, surface.labelDefault)}
-                </span>
-              </div>
-            ))}
+            {ADMIN_DECOR_SURFACES.map((surface) => {
+              const SurfaceIcon = surface.icon;
+              return (
+                <div key={surface.id} className="admin-quick-action">
+                  <SurfaceIcon className="h-4 w-4 shrink-0 text-white/55" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-white/80">
+                    {t(surface.labelKey, surface.labelDefault)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </AdminPanel>

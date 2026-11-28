@@ -1,15 +1,15 @@
 import React from 'react';
-import { Bitcoin, Coins } from 'lucide-react';
+import { Bitcoin, Litecoin } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';
 
-// Petit adaptateur conservé pour l'écran d'administration des réglages. Les
-// logos distants ont été retirés : BTC et LTC utilisent les mêmes SVG locaux
-// que la page publique, donc aucun carré ne peut apparaître hors ligne.
+// Adaptateur conservé pour l'écran d'administration des réglages : BTC et LTC
+// utilisent les masques Icons8 déjà présents dans le projet, avec le même
+// rendu que les autres icônes de la console.
 export type CryptoLogoCoin = 'btc' | 'ltc';
 
 export const CryptoLogo: React.FC<{ coin: CryptoLogoCoin; className?: string }> = ({ coin, className }) => {
-  const Icon = coin === 'btc' ? Bitcoin : Coins;
+  const Icon = coin === 'btc' ? Bitcoin : Litecoin;
   return <Icon className={cn('shrink-0', className)} aria-hidden="true" />;
 };
 

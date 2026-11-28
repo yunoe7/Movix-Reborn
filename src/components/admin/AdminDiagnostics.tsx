@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw } from '../icons/Icons8';
+import { RefreshCw, TerminalSquare } from '../icons/Icons8';
 import { MAIN_API } from '../../config/runtime';
 import { fetchStatsOverview } from '../../services/adminStatsService';
 import { getRoleLabel, type AdminRole } from './adminRegistry';
@@ -86,6 +86,7 @@ const AdminDiagnostics: React.FC<{ role: AdminRole }> = ({ role }) => {
           detail={t('admin.console.logsServiceDetail', 'Aucun endpoint de logs n’est exposé dans cette version')}
           healthy={false}
           unavailable
+          icon={TerminalSquare}
         />
         {state === 'error' && (
           <div className="mt-4">
