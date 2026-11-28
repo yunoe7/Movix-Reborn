@@ -91,7 +91,7 @@ function createFakePool({ row = null } = {}) {
         return [state.row ? [state.row] : [], []];
       }
       if (/FROM seasonal_theme_settings_history/i.test(sql)) {
-        const limit = Number(sql.match(/\\bLIMIT (\\d+)$/i)?.[1]);
+        const limit = Number(sql.match(/\bLIMIT (\d+)$/i)?.[1]);
         assert.deepEqual(params, [1]);
         const rows = state.history.slice(0, limit).map((entry) => ({
           id: entry.id,
@@ -103,7 +103,7 @@ function createFakePool({ row = null } = {}) {
         return [rows, []];
       }
       if (/FROM seasonal_theme_audit_log/i.test(sql)) {
-        const limit = Number(sql.match(/\\bLIMIT (\\d+)$/i)?.[1]);
+        const limit = Number(sql.match(/\bLIMIT (\d+)$/i)?.[1]);
         assert.deepEqual(params, []);
         const rows = state.audit.slice(0, limit).map((entry) => ({
           id: entry.id,
