@@ -94,7 +94,7 @@ const InlineStreamingCatalog: React.FC<Props> = ({ providerId, providerName }) =
     return () => controller.abort();
   }, [providerId]);
 
-  const title = <span className="catalog-section-title">Uniquement sur {providerName}</span>;
+  const title = <span data-seasonal-typography="categoryTitle" className="catalog-section-title">Uniquement sur {providerName}</span>;
 
   return (
     <section className="w-full min-w-0" aria-live="polite">

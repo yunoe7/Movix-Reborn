@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- point d'entrée de fixture, pas un module de composants réutilisables */
 /**
  * Fixture LOT 0 : reproduit le bootstrap et les deux atmosphères existantes
  * sans modifier l'application. Les composants hooks et atmosphères sont les
@@ -25,21 +26,20 @@ import {
   setChristmasTheme,
   useChristmasTheme,
 } from '@/hooks/useChristmasTheme';
-import { loadHalloweenTheme } from '@/utils/halloweenThemeAssets';
 import { getTvPlatform, persistTvPlatformFromUrl } from '@/utils/tvPlatform';
 
 const root = document.documentElement;
 const params = new URLSearchParams(window.location.search);
 const suspended = params.get('suspended') === '1';
 const showPumpkin = params.get('showPumpkin') === '1';
+const initialRoute = params.get('route') || window.location.pathname + window.location.search;
 
 // Même ordre que src/main.tsx : préférence explicite, puis saison par défaut.
-// Le bootstrap reste exécuté même sur route « suspendue » : c'est un écart
-// attendu que les E2E doivent mesurer, pas corriger dans ce lot.
+// LOT 4B : le bootstrap ne charge plus la police ; HalloweenAtmosphere ne la
+// demande que si l'ambiance est réellement affichée sur une route autorisée.
 if (readHalloweenTheme()) {
   root.classList.add(HALLOWEEN_THEME_CLASS);
   root.setAttribute(HALLOWEEN_ENABLED_ATTR, '');
-  loadHalloweenTheme();
 }
 if (readChristmasTheme()) {
   root.classList.add(CHRISTMAS_THEME_CLASS);
@@ -94,7 +94,7 @@ const Fixture = () => {
 };
 
 createRoot(document.getElementById('root')!).render(
-  <MemoryRouter initialEntries={[window.location.pathname + window.location.search]}>
+  <MemoryRouter initialEntries={[initialRoute]}>
     <LightModeProvider>
       <Fixture />
     </LightModeProvider>

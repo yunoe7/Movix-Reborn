@@ -358,7 +358,7 @@ const GenrePage: React.FC = () => {
           <ArrowLeft className="w-5 h-5 text-white opacity-70" />
               </motion.button>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-bold">
+                <h1 data-seasonal-typography="pageTitle" className="text-2xl md:text-3xl font-bold">
                   <ShinyText text={genreName} speed={4} />
                 </h1>
                 <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-sm text-white/60">

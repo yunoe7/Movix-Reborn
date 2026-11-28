@@ -56,6 +56,8 @@ import {
   summarizeSeasonalThemeConfig,
   validateSeasonalThemeDraft,
 } from './seasonalThemeForm';
+import { SeasonalTypographySample } from './SeasonalTypographySample';
+import { resolveDraftTypography } from '../../seasonalThemeGraphics/typography/draftPreview';
 import './adminDecor.css';
 
 type TabId = 'dashboard' | 'themes' | 'schedule' | 'publish' | 'history' | 'preview';
@@ -508,6 +510,10 @@ const AdminDecor: React.FC = () => {
   );
   const preview = useMemo(
     () => (draft ? buildSeasonalThemePreview(draft, previewContext) : null),
+    [draft, previewContext],
+  );
+  const previewTypography = useMemo(
+    () => (draft ? resolveDraftTypography(draft, previewContext) : null),
     [draft, previewContext],
   );
 
@@ -1173,9 +1179,9 @@ const AdminDecor: React.FC = () => {
         <AdminPanel
           eyebrow={t('admin.decor.preview.eyebrow', 'Aperçu isolé')}
           title={t('admin.decor.preview.title', 'Prévisualisation structurelle')}
-          description={t('admin.decor.preview.description', 'Contenu neutre et brouillon local. Aucune publication, aucun effet appliqué aux pages publiques. Les moteurs graphiques du LOT 4 ne sont pas disponibles.')}
+          description={t('admin.decor.preview.description', 'Rendu typographique local du brouillon : aucune publication, aucun effet sur les pages publiques, restauration à la fermeture.')}
         >
-          <AdminStateBlock tone="info" title={t('admin.decor.preview.notice', 'Aperçu administratif — non public')} description={t('admin.decor.preview.noticeDetail', 'Les paramètres ci-dessous décrivent la configuration que vous allez publier ; ils ne représentent pas un rendu visuel réel.')} />
+          <AdminStateBlock tone="info" title={t('admin.decor.preview.notice', 'Aperçu administratif — non public')} description={t('admin.decor.preview.noticeDetail', 'Les polices ci-dessous sont chargées localement depuis le brouillon. Aucune publication ni modification publique n’est effectuée.')} />
           <div className="admin-decor-fields">
             <SettingsField id="preview-platform" label={t('admin.decor.field.platform', 'Plateforme')}>
               <select
@@ -1215,6 +1221,7 @@ const AdminDecor: React.FC = () => {
             <p>{preview.sample}</p>
             <span className="admin-decor-state-pill" data-state="draft">{t('admin.decor.preview.draftBadge', 'Brouillon — non publié')}</span>
           </div>
+          {previewTypography && <SeasonalTypographySample selections={previewTypography} sample={preview.sample} />}
           <pre className="admin-decor-preview-json" aria-label={t('admin.decor.preview.parameters', 'Paramètres configurés')}>
             {JSON.stringify({ platform: preview.platform, capabilities: preview.capabilities, at: preview.at, themes: preview.themes, typography: preview.typography }, null, 2)}
           </pre>

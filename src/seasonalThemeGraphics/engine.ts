@@ -14,6 +14,7 @@ import {
   type ParticleRenderer,
 } from './renderers';
 import type { SeasonalRouteMode } from './routes';
+import { SeasonalTypographyController } from './typography/controller';
 
 /**
  * Cycle de vie du moteur : chargement du resolver, rendu, rafraîchissement,
@@ -80,9 +81,11 @@ export class SeasonalGraphicsEngine {
     cancelFrame: (handle) => window.cancelAnimationFrame(handle),
     now: () => performance.now(),
   }, (delta) => this.particles?.frame(delta));
+  private typography: SeasonalTypographyController;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private controller: AbortController | null = null;
   private generation = 0;
+  private appliedTypographyRevision: number | null = null;
   private destroyed = false;
   private started = false;
   private hidden = false;
@@ -98,6 +101,7 @@ export class SeasonalGraphicsEngine {
     const reduced = options.reducedMotion ?? (typeof window !== 'undefined'
       && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.motion = motionPolicy(this.platform, reduced);
+    this.typography = new SeasonalTypographyController({ staticOnly: this.motion !== 'full' });
     this.mode = options.mode;
     this.refreshMs = options.refreshMs ?? SEASONAL_GRAPHICS_REFRESH_MS;
     this.onState = options.onState;
@@ -159,6 +163,8 @@ export class SeasonalGraphicsEngine {
 
     if (!active) {
       delete root.dataset.seasonalComponents;
+      this.typography.clear();
+      this.appliedTypographyRevision = null;
       this.setState({
         ...this.state,
         ready: true,
@@ -200,6 +206,11 @@ export class SeasonalGraphicsEngine {
     else delete root.dataset.seasonalComponents;
 
     if (particle && !this.hidden) this.scheduler.start();
+
+    if (this.appliedTypographyRevision !== snapshot.revision) {
+      this.appliedTypographyRevision = snapshot.revision;
+      void this.typography.apply(snapshot.typography);
+    }
 
     this.setState({
       ...this.state,
@@ -262,6 +273,8 @@ export class SeasonalGraphicsEngine {
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('online', this.onFocus);
     this.clearVisuals();
+    this.typography.destroy();
+    this.appliedTypographyRevision = null;
     delete document.documentElement.dataset.seasonalGraphics;
     delete document.documentElement.dataset.seasonalComponents;
     this.setState({ ...EMPTY_STATE, platform: this.platform, reason: 'idle' });

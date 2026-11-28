@@ -36,6 +36,24 @@ export function artifactDirFor(key) {
   return path.resolve(process.env[envKey] || path.join(ARTIFACT_ROOT, key));
 }
 
+/**
+ * Commande de relance réellement exécutable dans l'environnement courant.
+ * Les artefacts ne doivent pas annoncer des variables absentes du source :
+ * le runtime Playwright hors dépôt et les options strictes sont intégrés ici.
+ */
+export function relaunchCommand(envKey, script, strictEnvKey) {
+  const quote = (value) => `'${String(value).replaceAll("'", "''")}'`;
+  const key = envKey.replace(/^SEASONAL_THEME_/, '').replace(/_DIR$/, '').toLowerCase();
+  const runtime = process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES;
+  const strict = strictEnvKey && process.env[strictEnvKey] === '1';
+  return [
+    runtime ? `$env:CODEX_PRIMARY_RUNTIME_NODE_MODULES=${quote(runtime)}` : null,
+    `$env:${envKey}=${quote(path.resolve(process.env[envKey] || path.join(ARTIFACT_ROOT, key)))}`,
+    strict ? `$env:${strictEnvKey}='1'` : null,
+    `node ${script}`,
+  ].filter(Boolean).join('; ');
+}
+
 export function readRepoFile(relativePath) {
   return readFile(path.join(REPO, relativePath), 'utf8');
 }
@@ -141,6 +159,9 @@ export async function mountFixture(context, { workDir, requests }) {
     let filePath;
     if (pathname.startsWith('/src/') || pathname.startsWith('/node_modules/')) {
       filePath = path.resolve(REPO, `.${pathname}`);
+    } else if (pathname.startsWith('/fonts/seasonal-theme/')) {
+      // Les polices LOT 4B sont servies depuis public/ sans serveur de dev.
+      filePath = path.resolve(REPO, 'public', `.${pathname}`);
     } else {
       filePath = path.resolve(workDir, `.${pathname === '/' ? '/index.html' : pathname}`);
     }
@@ -180,7 +201,10 @@ export async function buildFixtureBundle(workDir, entryFile, { outfile = 'app.js
       }));
       // Les images importées par les composants sont des URL Vite ; la fixture
       // les remplace par un pixel transparent, sans toucher aux fichiers réels.
-      builder.onResolve({ filter: /\.(webp|png|jpe?g|gif|avif|svg|woff2?|ttf|otf)$/i },
+      // Certains composants importent des assets avec le suffixe Vite `?url` :
+      // la résolution doit les intercepter avant esbuild, sinon il réclame un
+      // loader pour une extension qu'aucune fixture ne doit réellement charger.
+      builder.onResolve({ filter: /\.(webp|png|jpe?g|gif|avif|svg|woff2?|ttf|otf|mp3|mp4|webm|ogg|wav|m4a)(\?.*)?$/i },
         () => ({ path: 'empty-asset', namespace: 'seasonal-theme-asset' }));
       builder.onLoad({ filter: /.*/, namespace: 'seasonal-theme-asset' }, () => ({
         contents: 'export default "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";',
@@ -567,8 +591,11 @@ export async function runScenario(meta, fn) {
 }
 
 export function commonPrerequisites() {
+  const runtime = process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES;
   return [
-    'Node 20+, `playwright-core` et `esbuild` déjà présents dans `node_modules` (aucune installation).',
+    runtime
+      ? `Node 20+ ; \`playwright-core\` et \`esbuild\` installés hors dépôt et exposés via \`CODEX_PRIMARY_RUNTIME_NODE_MODULES='${runtime}'\` (aucune installation locale).`
+      : 'Node 20+, `playwright-core` et `esbuild` déjà présents dans `node_modules` (aucune installation).',
     'Chrome/Chromium local ; surcharge possible avec `SEASONAL_THEME_CHROME=<chemin>`.',
     'Aucun serveur de développement, aucun compte de production, aucun secret.',
   ];

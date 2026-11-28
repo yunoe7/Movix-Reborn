@@ -22,7 +22,6 @@ import './index.css'
 import './styles/light-mode.css'
 import './styles/halloween.css'
 import { HALLOWEEN_ENABLED_ATTR, HALLOWEEN_THEME_CLASS, readHalloweenTheme } from './hooks/useHalloweenTheme'
-import { loadHalloweenTheme } from './utils/halloweenThemeAssets'
 import { CHRISTMAS_ENABLED_ATTR, CHRISTMAS_THEME_CLASS, readChristmasTheme } from './hooks/useChristmasTheme'
 import { initErrorTracking } from './utils/errorTracking'
 import { initFlexGapSupport } from './utils/flexGapSupport'
@@ -183,13 +182,13 @@ if (safeLocalStorageGetItem('square_corners_enabled') === '1') {
 }
 
 // Thème Halloween : même principe, contre un flash de rouge au chargement
-// (réglage choisi, ou octobre par défaut). L'habillage et la police partent
-// tout de suite, en parallèle du reste de l'application. HalloweenAtmosphere
-// prend ensuite le relais (et retire la classe sur les lecteurs).
+// (réglage choisi, ou octobre par défaut). La classe est posée avant le premier
+// rendu, mais le chargement de la police locale est désormais déclenché par
+// HalloweenAtmosphere uniquement sur une route autorisée : aucun WOFF2 n'est
+// demandé sur les lecteurs, WatchParty, l'admin ou l'authentification.
 if (readHalloweenTheme()) {
   document.documentElement.classList.add(HALLOWEEN_THEME_CLASS);
   document.documentElement.setAttribute(HALLOWEEN_ENABLED_ATTR, '');
-  loadHalloweenTheme();
 }
 
 // Thème de Noël : activation avant le premier rendu pour éviter un flash.

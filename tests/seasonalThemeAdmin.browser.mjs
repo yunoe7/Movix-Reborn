@@ -1,9 +1,8 @@
 /**
  * LOT 3 — scénario navigateur de la console « Décoratif » réelle.
  *
- * Relance :
- *   $env:SEASONAL_THEME_ADMIN_DIR='<hors-depot>'
- *   node tests/seasonalThemeAdmin.browser.mjs
+ * Relance : la commande exacte, avec le runtime Playwright hors dépôt et le
+ * mode strict, est écrite dans le rapport généré depuis l'environnement courant.
  *
  * Le composant est monté avec i18next, le fournisseur de confirmation et une
  * fetch locale déterministe. Aucun serveur, aucun compte, aucun secret et
@@ -21,13 +20,18 @@ import {
   launchBrowser,
   mountFixture,
   readRepoFile,
+  relaunchCommand,
   runScenario,
   trackResource,
   writeFixtureFiles,
 } from './seasonalThemeHarness.mjs';
 import { writeFile } from 'node:fs/promises';
 
-const command = "$env:SEASONAL_THEME_ADMIN_DIR='<hors-depot>'; node tests/seasonalThemeAdmin.browser.mjs";
+const command = relaunchCommand(
+  'SEASONAL_THEME_ADMIN_DIR',
+  'tests/seasonalThemeAdmin.browser.mjs',
+  'SEASONAL_THEME_STRICT',
+);
 
 const mountAdmin = async (report, language, query = '') => {
   const workDir = path.join(report.artifactDir, `fixture-admin-${language}-${query ? 'conflict' : 'nominal'}`);
@@ -214,18 +218,26 @@ await runScenario({
   await fr.page.locator('#preview-platform').selectOption('tv');
   await fr.page.locator('#preview-capabilities-tvStaticEffects').check();
   const previewText = await fr.page.locator('[data-testid="admin-decor"]').innerText();
+  // `innerText` applique `text-transform: uppercase` : le libellé source est
+  // vérifié avec `textContent`, sans dépendre de la mise en forme CSS.
+  const previewRawText = await fr.page.locator('[data-testid="admin-decor"]').textContent();
   const afterPreview = (await adminCalls(fr.page)).length;
-  report.pass('ADMIN-08', 'Aperçu isolé et honnête', 'brouillon local, aucun appel de publication, mention explicite LOT 4', {
+  const typographyRows = await fr.page.locator('[data-testid="admin-decor-preview-pageTitle"], [data-testid="admin-decor-preview-sectionTitle"], [data-testid="admin-decor-preview-categoryTitle"]').count();
+  report.pass('ADMIN-08', 'Aperçu isolé et honnête', 'brouillon local, comparaison des trois catégories, aucun appel de publication', {
     beforePreview,
     afterPreview,
+    typographyRows,
     hasNotice: previewText.includes('Aperçu administratif — non public'),
     hasDraftBadge: previewText.includes('Brouillon — non publié'),
-    hasLot4Boundary: previewText.includes('Les moteurs graphiques du LOT 4 ne sont pas disponibles'),
+    hasLocalBoundary: previewText.includes('Les polices ci-dessous sont chargées localement depuis le brouillon'),
+    hasComparison: previewRawText.includes('Comparaison des trois catégories'),
   });
   assert.equal(beforePreview, afterPreview);
+  assert.equal(typographyRows, 3);
   assert.ok(previewText.includes('Aperçu administratif — non public'));
   assert.ok(previewText.includes('Brouillon — non publié'));
-  assert.ok(previewText.includes('Les moteurs graphiques du LOT 4 ne sont pas disponibles'));
+  assert.ok(previewText.includes('Les polices ci-dessous sont chargées localement depuis le brouillon'));
+  assert.ok(previewRawText.includes('Comparaison des trois catégories'));
   assert.deepEqual(fr.errors, []);
   await report.screenshot(fr.page, '05-admin-decor-preview-fr', { fullPage: true });
 

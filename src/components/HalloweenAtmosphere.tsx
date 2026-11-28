@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, type ComponentType } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useLightMode } from '@/context/LightModeContext';
+import { resolveSeasonalRouteMode } from '@/seasonalThemeGraphics/routes';
 import { HALLOWEEN_ENABLED_ATTR, HALLOWEEN_THEME_CLASS, useHalloweenTheme } from '@/hooks/useHalloweenTheme';
 import { loadHalloweenTheme } from '@/utils/halloweenThemeAssets';
 import type { HalloweenPageKind } from './halloween/HalloweenDecor';
@@ -36,6 +37,10 @@ export const HalloweenAtmosphere = ({ suspended }: { suspended: boolean }) => {
   const { isLightMode } = useLightMode();
   const { pathname } = useLocation();
   const active = enabled && !suspended;
+  // Les exclusions LOT 4A s'appliquent aussi à l'ambiance historique : un
+  // thème Halloween activé globalement ne doit pas charger Creepster sur une
+  // route exclue (auth, paiement, admin, lecteur, profil…).
+  const routeAllowed = resolveSeasonalRouteMode(pathname) !== 'none';
 
   useLayoutEffect(() => {
     const root = document.documentElement;
@@ -46,8 +51,10 @@ export const HalloweenAtmosphere = ({ suspended }: { suspended: boolean }) => {
   }, [active, enabled]);
 
   useEffect(() => {
-    if (enabled) loadHalloweenTheme();
-  }, [enabled]);
+    // La police n'est chargée que si l'ambiance est réellement affichée :
+    // jamais sur une route exclue ni quand une publication LOT 4 prend l'autorité.
+    if (active && routeAllowed) loadHalloweenTheme();
+  }, [active, routeAllowed]);
 
   // Le mode léger garde les couleurs et l'habillage, mais pas le décor :
   // plusieurs couches plein écran coûtent trop cher aux petits appareils.

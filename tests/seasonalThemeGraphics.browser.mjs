@@ -1,9 +1,8 @@
 /**
  * LOT 4A — scénario navigateur du moteur graphique saisonnier.
  *
- * Relance :
- *   $env:SEASONAL_THEME_GRAPHICS_DIR='<hors-depot>'
- *   node tests/seasonalThemeGraphics.browser.mjs
+ * Relance : la commande exacte, avec le runtime Playwright hors dépôt et le
+ * mode strict, est écrite dans le rapport généré depuis l'environnement courant.
  *
  * Monte le vrai provider du moteur avec un resolver déterministe local.
  * Aucun serveur, aucun compte, aucun secret, aucune configuration de production.
@@ -19,13 +18,18 @@ import {
   launchBrowser,
   mountFixture,
   readRepoFile,
+  relaunchCommand,
   runScenario,
   storageInit,
   trackResource,
   writeFixtureFiles,
 } from './seasonalThemeHarness.mjs';
 
-const command = "$env:SEASONAL_THEME_GRAPHICS_DIR='<hors-depot>'; node tests/seasonalThemeGraphics.browser.mjs";
+const command = relaunchCommand(
+  'SEASONAL_THEME_GRAPHICS_DIR',
+  'tests/seasonalThemeGraphics.browser.mjs',
+  'SEASONAL_THEME_STRICT',
+);
 
 async function createGraphicsFixture(report, options = {}) {
   const {

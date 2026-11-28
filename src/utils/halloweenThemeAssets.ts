@@ -5,29 +5,33 @@
  * Module à part du hook useHalloweenTheme, que l'en-tête et les fonds
  * importent : eux n'ont besoin que de savoir si le thème est actif, pas
  * d'embarquer ce chargement ni la feuille qu'il désigne.
+ *
+ * LOT 4B : Creepster est désormais servi depuis `/fonts/seasonal-theme/` via
+ * le chargeur partagé du moteur typographique. Aucune feuille Google Fonts
+ * n'est injectée ; le cache du chargeur évite les téléchargements répétés.
  */
-const FONT_LINK_ID = 'halloween-font';
-const FONT_URL = 'https://fonts.googleapis.com/css2?family=Creepster&display=swap';
+import { getBrowserSeasonalFontLoader } from '../seasonalThemeGraphics/typography/fontLoader';
+
+const LEGACY_FONT_LINK_ID = 'halloween-font';
 
 let requested = false;
 
 /**
- * Lance, une seule fois, le chargement de l'habillage et de la police.
+ * Lance, une seule fois, le chargement de l'habillage et de la police locale.
  * Appelé au démarrage si le thème est déjà actif (en parallèle du reste de
  * l'application), ou quand on l'active.
  */
 export const loadHalloweenTheme = (): void => {
   if (requested) return;
   requested = true;
+
   import('@/styles/halloween-ui.css').catch(() => {
     // Réseau coupé : on retentera à la prochaine activation.
     requested = false;
   });
-  if (!document.getElementById(FONT_LINK_ID)) {
-    const link = document.createElement('link');
-    link.id = FONT_LINK_ID;
-    link.rel = 'stylesheet';
-    link.href = FONT_URL;
-    document.head.appendChild(link);
-  }
+
+  // Nettoie l'ancien lien si une session précédente l'avait injecté avant la
+  // migration, sans jamais en créer un nouveau.
+  document.getElementById(LEGACY_FONT_LINK_ID)?.remove();
+  void getBrowserSeasonalFontLoader().load('creepster', 400);
 };

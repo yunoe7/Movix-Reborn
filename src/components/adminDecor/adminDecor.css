@@ -368,6 +368,31 @@
   letter-spacing: 0.08em;
 }
 
+.admin-decor-typography-preview {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid var(--admin-border, rgba(255, 255, 255, 0.12));
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.admin-decor-typography-preview-row {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-decor-typography-preview-label {
+  color: var(--admin-muted, rgba(255, 255, 255, 0.6));
+  font-size: 0.75rem;
+}
+
+.admin-decor-typography-preview-sample {
+  display: block;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
 .admin-decor-table-wrap {
   overflow-x: auto;
 }
