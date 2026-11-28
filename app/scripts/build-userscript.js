@@ -14,7 +14,13 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const userscriptPath = resolve(__dirname, '../../userscript/movix.user.js');
-const outputPath = resolve(__dirname, '../src/injection/userscript-source.ts');
+const args = process.argv.slice(2);
+const outputArgIndex = args.indexOf('--output');
+// `--output` sert aux tests : ils pointent vers un dossier temporaire plutôt
+// que vers la source générée ignorée par git.
+const outputPath = outputArgIndex >= 0 && args[outputArgIndex + 1]
+  ? resolve(args[outputArgIndex + 1])
+  : resolve(__dirname, '../src/injection/userscript-source.ts');
 
 let source = readFileSync(userscriptPath, 'utf-8');
 
@@ -39,14 +45,20 @@ const output = `/**
 export const USERSCRIPT_SOURCE = \`${escaped}\`;
 `;
 
-if (process.argv.slice(2).includes('--check')) {
+if (args.includes('--check')) {
   let current = null;
   try {
     current = readFileSync(outputPath, 'utf-8');
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error;
   }
-  if (current !== output) {
+  if (current === null) {
+    // Le fichier est volontairement gitignoré : son absence n'est pas une
+    // dérive de contenu, mais il faut le générer avant de builder l'app.
+    console.error(`[build-userscript] Source générée absente: ${outputPath}`);
+    console.error('[build-userscript] Générer avec: node scripts/build-userscript.js');
+    process.exitCode = 2;
+  } else if (current !== output) {
     console.error(`[build-userscript] Dérive détectée: ${outputPath}`);
     process.exitCode = 1;
   } else {

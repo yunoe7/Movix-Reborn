@@ -9,6 +9,24 @@ const PREFS = {
   livetv: { vavoo: true }
 };
 
+const NORMALIZED = {
+  version: 1,
+  m3u8: {
+    voe: false,
+    fsvid: true,
+    vidzy: true,
+    vidmoly: true,
+    sibnet: true,
+    uqload: true,
+    doodstream: true,
+    seekstreaming: true,
+    lulustream: true,
+    veev: true,
+    vidara: true
+  },
+  livetv: { northlive: true, vavoo: true, matches: true }
+};
+
 function bridgeGetValue(nativeStorage) {
   const source = readFileSync(new URL('../app/src/injection/bridge-runtime.ts', import.meta.url), 'utf8');
   const match = source.match(/function GM_getValue\(key, defaultValue\) \{[\s\S]*?\n  \}/);
@@ -29,6 +47,8 @@ test('une préférence modifiée dans les réglages est poussée dans la WebView
   const updateExtractionPrefs = sourceFunction('app/src/screens/SettingsScreen.tsx', 'updateExtractionPrefs', {
     useCallback: (fn) => fn,
     setExtractionPrefs: () => {},
+    normalizeExtractionPrefs: () => NORMALIZED,
+    MOVIX_EXTRACTION_PREFS_KEY: 'movix_extraction_prefs',
     AsyncStorage: { setItem: async (key, value) => { pushes.push(['AsyncStorage', key, JSON.parse(value)]); } },
     pushGmValueToWebViews: (key, value) => { pushes.push(['WebView', key, value]); }
   });
@@ -36,7 +56,7 @@ test('une préférence modifiée dans les réglages est poussée dans la WebView
   await updateExtractionPrefs(PREFS);
 
   assert.deepEqual(pushes, [
-    ['WebView', 'movix_extraction_prefs', PREFS],
-    ['AsyncStorage', 'movix_extraction_prefs', PREFS]
+    ['AsyncStorage', 'movix_extraction_prefs', NORMALIZED],
+    ['WebView', 'movix_extraction_prefs', NORMALIZED]
   ]);
 });

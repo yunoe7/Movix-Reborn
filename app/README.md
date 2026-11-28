@@ -160,7 +160,38 @@ Quand le userscript (`../userscript/movix.user.js`) est modifié :
 node scripts/build-userscript.js
 ```
 
-Puis rebuild l'app.
+Puis rebuild l'app. `src/injection/userscript-source.ts` est généré et gitignoré,
+il ne doit jamais être édité à la main. Pour vérifier qu'il est à jour sans
+écrire :
+
+```bash
+node scripts/build-userscript.js --check
+```
+
+Codes de sortie de `--check` : `0` = conforme, `1` = dérive de contenu,
+`2` = source générée absente (à régénérer). L'option `--output <chemin>` permet
+aux tests de viser un fichier temporaire.
+
+### Préférences d'extraction et pont GM
+
+`AsyncStorage` est la source de vérité persistante dans l'app : une préférence
+est écrite et confirmée avant d'être poussée dans la WebView. Le pont émet
+`movix:gm-value-changed` avec `{ key, value }` en plus de renseigner
+`window.__MOVIX_SET_NATIVE_GM_VALUE__` : le userscript met ainsi à jour sa
+configuration en mémoire sans rechargement. Au document-start, la WebView reçoit
+déjà `window.__MOVIX_NATIVE_GM_STORAGE__` depuis le cache natif restauré, sans
+attendre le premier message GM. La WebView s'abonne à `subscribeGmStorageChanges`
+pour rafraîchir ce snapshot dans un état React : une navigation suivant une
+poussée native réinjecte donc la valeur courante, pas un document-start périmé.
+`GM_deleteValue` supprime la valeur du cache WebView, du `localStorage`, du
+snapshot natif et de la carte native (avec
+`AsyncStorage.removeItem`). Le reset global émet `movix:gm-value-changed` avec
+`value: null`, ce qui supprime aussi la copie native persistée.
+
+La copie TV (`../app-tv/app/src/main/assets/extract/movix.user.js`) reste
+volontairement épinglée en 1.7.3 tandis que la source est en 1.7.9 : ne pas la
+remplacer aveuglément. Les tests d'alignement vérifient la divergence documentée
+et la politique commune `SET_EXTRACTION_PREFS` / `DEFAULT_EXTRACTION_PREFS`.
 
 ## Notes
 

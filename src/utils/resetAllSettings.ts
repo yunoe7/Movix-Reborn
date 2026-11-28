@@ -5,6 +5,12 @@ import { SUBTITLE_STYLE_STORAGE_KEY } from './subtitlePreferences';
 import { pushPrefsToExtension, resetExtractionPrefs } from './extractionPrefs';
 import { HALLOWEEN_THEME_STORAGE_KEY } from '../hooks/useHalloweenTheme';
 
+// Même événement que celui émis par le pont natif mobile. Sur le site il est
+// sans effet ; dans la WebView il atteint le userscript, qui supprime alors la
+// valeur native persistée (AsyncStorage comprise).
+const NATIVE_GM_CHANGE_EVENT = 'movix:gm-value-changed';
+const MOVIX_EXTRACTION_PREFS_KEY = 'movix_extraction_prefs';
+
 // Clés des réglages du menu Paramètres. Supprimer la clé suffit : chaque
 // réglage retombe sur sa valeur par défaut à la lecture suivante.
 //
@@ -61,4 +67,11 @@ export function resetAllSettings(): void {
   }
   resetExtractionPrefs();
   void pushPrefsToExtension();
+  try {
+    window.dispatchEvent(new CustomEvent(NATIVE_GM_CHANGE_EVENT, {
+      detail: { key: MOVIX_EXTRACTION_PREFS_KEY, value: null },
+    }));
+  } catch {
+    // CustomEvent indisponible : le reset localStorage reste effectif.
+  }
 }

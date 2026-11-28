@@ -1223,19 +1223,158 @@ interface BridgeResponse {
 
 const storage = new Map<string, any>();
 
+export const MOVIX_EXTRACTION_PREFS_KEY = 'movix_extraction_prefs';
+// Doit rester le même nom des deux côtés du pont : le natif pousse la valeur,
+// le userscript s'abonne pour rafraîchir sa configuration en mémoire.
+const GM_VALUE_CHANGE_EVENT = 'movix:gm-value-changed';
+const MOVIX_M3U8_KEYS = [
+  'voe', 'fsvid', 'vidzy', 'vidmoly', 'sibnet', 'uqload', 'doodstream',
+  'seekstreaming', 'lulustream', 'veev', 'vidara',
+] as const;
+const MOVIX_LIVETV_KEYS = ['northlive', 'vavoo', 'matches'] as const;
+
+export type MovixExtractionPrefs = {
+  version: 1;
+  m3u8: Record<(typeof MOVIX_M3U8_KEYS)[number], boolean>;
+  livetv: Record<(typeof MOVIX_LIVETV_KEYS)[number], boolean>;
+};
+
+type MovixAsyncStorage = {
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
+};
+
+// Import différé : le pont est aussi chargé par des harnais qui n'embarquent
+// pas AsyncStorage. Aucun accès au stockage n'est fait au chargement du module.
+async function getGmAsyncStorage(): Promise<MovixAsyncStorage | null> {
+  try {
+    const module = await import('@react-native-async-storage/async-storage');
+    return (module.default ?? null) as MovixAsyncStorage | null;
+  } catch {
+    return null;
+  }
+}
+
+/** Complète les champs absents ou corrompus sans rien inventer d'autre. */
+export function normalizeExtractionPrefs(value: unknown): MovixExtractionPrefs {
+  const m3u8 = {} as MovixExtractionPrefs['m3u8'];
+  const livetv = {} as MovixExtractionPrefs['livetv'];
+  for (const key of MOVIX_M3U8_KEYS) m3u8[key] = true;
+  for (const key of MOVIX_LIVETV_KEYS) livetv[key] = true;
+  const prefs = { version: 1 as const, m3u8, livetv };
+  if (!value || typeof value !== 'object') return prefs;
+
+  const raw = value as { m3u8?: unknown; livetv?: unknown };
+  if (raw.m3u8 && typeof raw.m3u8 === 'object') {
+    const source = raw.m3u8 as Record<string, unknown>;
+    for (const key of MOVIX_M3U8_KEYS) {
+      if (typeof source[key] === 'boolean') m3u8[key] = source[key] as boolean;
+    }
+  }
+  if (raw.livetv && typeof raw.livetv === 'object') {
+    const source = raw.livetv as Record<string, unknown>;
+    for (const key of MOVIX_LIVETV_KEYS) {
+      if (typeof source[key] === 'boolean') livetv[key] = source[key] as boolean;
+    }
+  }
+  return prefs;
+}
+
 // WebViews ayant ouvert le pont GM. Les réglages natifs peuvent ainsi pousser
 // une valeur dans la WebView déjà montée sans attendre un reload (les
 // préférences d'extraction du userscript en dépendent).
 const gmWebViewRefs = new Set<RefObject<WebView | null>>();
 
+export function registerGmWebViewRef(ref: RefObject<WebView | null>): void {
+  gmWebViewRefs.add(ref);
+}
+
+export function unregisterGmWebViewRef(ref: RefObject<WebView | null>): void {
+  gmWebViewRefs.delete(ref);
+}
+
+/** Snapshot synchrone pour l'injection au document-start de la WebView. */
+export function getGmStorageSnapshot(): Record<string, unknown> {
+  const snapshot: Record<string, unknown> = {};
+  storage.forEach((value, key) => {
+    snapshot[key] = value;
+  });
+  return snapshot;
+}
+
+type GmStorageListener = (snapshot: Record<string, unknown>) => void;
+const gmStorageListeners = new Set<GmStorageListener>();
+
+/** Abonnement utilisé par la WebView pour rafraîchir son script document-start. */
+export function subscribeGmStorageChanges(listener: GmStorageListener): () => void {
+  gmStorageListeners.add(listener);
+  return () => {
+    gmStorageListeners.delete(listener);
+  };
+}
+
+function notifyGmStorageListeners(): void {
+  const snapshot = getGmStorageSnapshot();
+  for (const listener of gmStorageListeners) {
+    try {
+      listener(snapshot);
+    } catch {
+      // Un abonné défectueux ne doit pas bloquer la poussée vers les WebViews.
+    }
+  }
+}
+
+/** AsyncStorage est la source de vérité : le cache natif en est restauré au boot. */
+export async function hydrateGmStorageFromAsyncStorage(): Promise<void> {
+  try {
+    const asyncStorage = await getGmAsyncStorage();
+    if (!asyncStorage) return;
+    const raw = await asyncStorage.getItem(MOVIX_EXTRACTION_PREFS_KEY);
+    if (raw === null || raw === undefined) {
+      storage.delete(MOVIX_EXTRACTION_PREFS_KEY);
+      notifyGmStorageListeners();
+      return;
+    }
+    let parsed: unknown = null;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // Valeur corrompue : on normalise seulement le cache mémoire ci-dessous.
+      // Ne pas réécrire AsyncStorage ici : on ne peut pas distinguer une
+      // corruption d'une valeur partielle encore utilisable par l'utilisateur.
+    }
+    const restored = normalizeExtractionPrefs(parsed);
+    storage.set(MOVIX_EXTRACTION_PREFS_KEY, restored);
+    // La WebView peut déjà être montée : pushGmValueToWebViews notifie aussi
+    // les abonnés, ce qui évite d'attendre la navigation suivante.
+    pushGmValueToWebViews(MOVIX_EXTRACTION_PREFS_KEY, restored);
+  } catch {
+    // Stockage indisponible : garder les valeurs déjà connues en mémoire.
+  }
+}
+
 export function pushGmValueToWebViews(key: string, value: unknown): void {
   storage.set(key, value);
+  // La WebView garde le snapshot dans un état React : sans notification, une
+  // navigation suivante réinjecterait l'ancien document-start.
+  notifyGmStorageListeners();
+  const serializedKey = JSON.stringify(key);
+  const serializedValue = JSON.stringify(value ?? null);
+  // Le setter seul ne suffisait pas : GM_getValue était rafraîchi, mais la
+  // variable `extractionPrefs` du userscript gardait son ancienne valeur.
+  // L'événement explicite déclenche son handler de changement sans reload.
   const script = `
     (function() {
       try {
         if (window.__MOVIX_SET_NATIVE_GM_VALUE__) {
-          window.__MOVIX_SET_NATIVE_GM_VALUE__(${JSON.stringify(key)}, ${JSON.stringify(value)});
+          window.__MOVIX_SET_NATIVE_GM_VALUE__(${serializedKey}, ${serializedValue});
         }
+      } catch (e) {}
+      try {
+        window.dispatchEvent(new CustomEvent('${GM_VALUE_CHANGE_EVENT}', {
+          detail: { key: ${serializedKey}, value: ${serializedValue} }
+        }));
       } catch (e) {}
     })();
   `;
@@ -1475,13 +1614,32 @@ function handleGMGetValue(req: BridgeRequest): BridgeResponse {
   };
 }
 
-function handleGMSetValue(req: BridgeRequest): BridgeResponse {
+async function handleGMSetValue(req: BridgeRequest): Promise<BridgeResponse> {
   storage.set(req.key!, req.value);
+  notifyGmStorageListeners();
+  const asyncStorage = await getGmAsyncStorage();
+  if (asyncStorage) {
+    try {
+      await asyncStorage.setItem(req.key!, JSON.stringify(req.value ?? null));
+    } catch {
+      // Le cache mémoire reste utilisable ; AsyncStorage reste la source de
+      // vérité dès que l'écriture redevient possible.
+    }
+  }
   return { id: req.id, success: true };
 }
 
-function handleGMDeleteValue(req: BridgeRequest): BridgeResponse {
+async function handleGMDeleteValue(req: BridgeRequest): Promise<BridgeResponse> {
   storage.delete(req.key!);
+  notifyGmStorageListeners();
+  const asyncStorage = await getGmAsyncStorage();
+  if (asyncStorage) {
+    try {
+      await asyncStorage.removeItem(req.key!);
+    } catch {
+      // Suppression mémoire effectuée même si le stockage persistant échoue.
+    }
+  }
   return { id: req.id, success: true };
 }
 
@@ -2019,10 +2177,10 @@ export async function handleBridgeMessage(
       response = handleGMGetValue(req);
       break;
     case 'GM_SET_VALUE':
-      response = handleGMSetValue(req);
+      response = await handleGMSetValue(req);
       break;
     case 'GM_DELETE_VALUE':
-      response = handleGMDeleteValue(req);
+      response = await handleGMDeleteValue(req);
       break;
     // La console de la WebView ne remonte nulle part : react-native-webview ne
     // la publie pas, et un build release n'expose pas le débogage distant. Sans

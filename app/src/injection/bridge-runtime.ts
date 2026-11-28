@@ -553,7 +553,22 @@ export function buildBridgeRuntime(
   // la seule source fraîche consultable sans aller-retour avec le pont.
   var _nativeStorageSnapshot = window.__MOVIX_NATIVE_GM_STORAGE__ || {};
   window.__MOVIX_NATIVE_GM_STORAGE__ = _nativeStorageSnapshot;
+
+  function forgetNativeGmValue(key) {
+    delete _storageCache[key];
+    delete _nativeStorageSnapshot[key];
+    try {
+      localStorage.removeItem('movix_userscript:' + key);
+    } catch(e) {}
+  }
+
+  // Poussée native (réglages, reset global) : la valeur nulle est une
+  // suppression, pas une chaîne "null" à persister dans les trois copies.
   window.__MOVIX_SET_NATIVE_GM_VALUE__ = function(key, value) {
+    if (value === null || value === undefined) {
+      forgetNativeGmValue(key);
+      return;
+    }
     _nativeStorageSnapshot[key] = value;
     _storageCache[key] = value;
     try {
@@ -591,10 +606,7 @@ export function buildBridgeRuntime(
   }
 
   function GM_deleteValue(key) {
-    delete _storageCache[key];
-    try {
-      localStorage.removeItem('movix_userscript:' + key);
-    } catch(e) {}
+    forgetNativeGmValue(key);
     sendToNative({ type: 'GM_DELETE_VALUE', id: generateId(), key: key });
   }
 
