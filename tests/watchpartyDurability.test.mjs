@@ -1130,4 +1130,3 @@ test('un seek en attente est supplanté par un media:change sans schedule périm
     'aucun état du seek supplanté ne doit être diffusé'
   );
 });
-

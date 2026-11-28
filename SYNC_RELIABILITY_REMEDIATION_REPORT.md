@@ -5,20 +5,28 @@
 **Prêt pour PR** : aucune constatation critique ou haute n’est restée ouverte après la revue finale et sa passe de confirmation. **Aucun push, aucune PR, aucun merge, aucun déploiement, aucune modification de `main`** n’a été effectué. Aucun serveur de développement ni panneau navigateur n’a été ouvert.
 
 - Branche : `fix/global-sync-reliability`
-- Base conservée : `b35ab4df` (ainsi que `ac945e2a`, `ae02bee1`)
+- Base conservée : `02483248` (les trois commits antérieurs `ac945e2a`, `ae02bee1` et `b35ab4df` sont conservés).
 - Arbre de travail propre après les commits.
 
 ## Commits locaux
 
-| Commit | Portée |
-| --- | --- |
-| `14270bc5` | Plan de remédiation et matrice des 30 modes de défaillance |
-| `737fc5e3` | WatchParty serveur : durabilité, `journalSeq`, arbitrage, verrou mono-instance, ACK |
-| `7847fe2e` | WatchParty client : intentions, retry `STALE_SEQUENCE`, ACK, dédup Pro |
-| `4e007dab` | Sync/outbox/profils/Wrapped/VIP : isolation, migration, TTL, propriétaire capturé |
-| `4ffc1bec` | Mobile/WebView/userscript/TV : bridge GM, snapshot, suppression, alignement |
+Les neuf commits présents avant le commit documentaire final sont listés ci-dessous dans leur ordre réel, du plus ancien au plus récent :
 
-Le présent rapport est ajouté dans un dernier commit documentaire.
+| # | SHA complet | Message |
+| --- | --- | --- |
+| 1 | `ac945e2a73fca752652204e26b95cb5725e9fe63` | `fix(sync): unify key policy and preserve rejected ops` |
+| 2 | `ae02bee16efa9d3a94d3194fab4ee55db5bbdf93` | `fix(watchparty): durabiliser les commandes et la synchronisation` |
+| 3 | `b35ab4dfba6552473b8093b372d4b05f4d2a4cc0` | `fix(sync): isoler les ecritures par proprietaire et fiabiliser les clients` |
+| 4 | `14270bc5658605d4a2cea0e5285be2c8bff8a372` | `docs(sync): plan de remédiation des 30 constats` |
+| 5 | `737fc5e3b44dcfe76287c9bfe606b729b8e7d07e` | `fix(watchparty): rendre la persistance et l'arbitrage serveur durables` |
+| 6 | `7847fe2e54be137e72688bd0ad3a1fbc24e7737e` | `fix(watchparty): préserver les intentions client et fiabiliser la dédup Pro` |
+| 7 | `4e007dab89d2ce5fbc1ad534f387c682dec6a622` | `fix(sync): isoler les outboxes par propriétaire et sécuriser Wrapped` |
+| 8 | `4ffc1bec4ea9f6d057456e28b94a01aa0a3e8b53` | `fix(mobile): synchroniser le bridge GM et le userscript embarqué` |
+| 9 | `c0d44315195b3bf99efa364f76c3babd6daf38c1` | `docs(sync): rapport de livraison de la remédiation` |
+
+Les commits 4 à 9 couvrent respectivement le plan de remédiation, le serveur WatchParty, le client WatchParty, la synchronisation/profils/Wrapped/VIP, le mobile/WebView/userscript/TV et le rapport de livraison.
+
+Le présent rapport est complété par un dernier commit documentaire dédié aux réserves de formatage et d’inventaire.
 
 ## Tests réellement exécutés
 
@@ -33,7 +41,8 @@ Baseline avant remédiation : WatchParty **69/69**, lot sync/mobile/Wrapped/VIP 
 | `npx tsc --noEmit -p tsconfig.json` | réussi (conteneur `files: []`, non probant pour le frontend) |
 | `node --check` sur `watchparty.js`, `routes/sync.js`, `utils/syncPolicy.js` | réussi |
 | `node app/scripts/build-userscript.js --check` | réussi, userscript 245,7 Ko |
-| `git diff --check` | propre |
+| `git diff --check` sur le worktree | propre |
+| `git diff --check 02483248..HEAD` | anomalie de formatage constatée lors du contrôle final : ligne blanche superflue en fin de `tests/watchpartyDurability.test.mjs` ; corrigée par le commit documentaire final |
 
 Les 2 échecs `app/tests` préexistants concernent des helpers absents de `HLSPlayer.tsx` et `app/node_modules/react-native-webview/src/WebViewShared.tsx` manquant dans l’environnement. Aucun E2E navigateur n’a été relancé pendant cette remédiation ; aucun artefact E2E nouveau n’est donc présenté comme réussi.
 
@@ -74,13 +83,17 @@ Les 2 échecs `app/tests` préexistants concernent des helpers absents de `HLSPl
 
 ## Fichiers modifiés
 
-- **WatchParty serveur** : `API/watchpartyAPI/watchparty.js`, `API/watchpartyAPI/README.md`, `API/watchpartyAPI/__tests__/watchpartySocket.test.mjs`, `tests/watchpartyDurability.test.mjs`, `.gitignore`.
-- **WatchParty client** : `src/pages/WatchPartyPage.tsx`, `src/workers/watchpartySync.worker.ts`, `src/utils/watchparty.ts`, `tests/watchpartyClientIntent.test.mjs`, `tests/watchpartyClientReliability.test.mjs`, `tests/watchpartySyncProEngine.test.mjs`, `tests/watchpartySyncReliability.test.mjs`.
-- **Sync/profils/Wrapped/VIP** : `src/App.tsx`, `src/context/ProfileContext.tsx`, `src/utils/syncStorage.ts`, `src/utils/wrappedTrackerCore.ts`, `src/hooks/useWrappedTracker.ts`, `API/Mainapi/routes/sync.js`, `API/Mainapi/utils/syncPolicy.js`, `API/Mainapi/README.md`, `tests/sync*.test.mjs`, `tests/wrapped*.test.mjs`.
-- **Mobile/userscript/TV** : `app/src/services/bridge.ts`, `app/src/injection/bridge-runtime.ts`, `app/src/screens/SettingsScreen.tsx`, `app/src/components/WebViewBrowser.tsx`, `src/utils/resetAllSettings.ts`, `app/scripts/build-userscript.js`, `userscript/movix.user.js`, `userscript/README.md`, `app/README.md`, `tests/mobile*.test.mjs`, `tests/userscriptSyncAlignment.test.mjs`.
-- **Documentation** : `SYNC_RELIABILITY_REMEDIATION_PLAN.md`, `SYNC_RELIABILITY_REMEDIATION_REPORT.md`.
+Inventaire complet des **57 fichiers** concernés entre `02483248` et HEAD :
 
-`app/src/injection/userscript-source.ts` est régénéré via `node app/scripts/build-userscript.js` et reste gitignoré.
+- **Racine et documentation** : `.gitignore`, `SYNC_RELIABILITY_REMEDIATION_PLAN.md`, `SYNC_RELIABILITY_REMEDIATION_REPORT.md`, `SYNC_RELIABILITY_TEST_PLAN.md`.
+- **API principale et contrat de clés** : `API/Mainapi/README.md`, `API/Mainapi/routes/__tests__/syncHistoryMirror.test.js`, `API/Mainapi/routes/__tests__/syncPerformance.test.js`, `API/Mainapi/routes/sync.js`, `API/Mainapi/utils/__tests__/syncPolicyPartial.test.js`, `API/Mainapi/utils/syncPolicy.js`, `shared/syncKeys.json`.
+- **WatchParty serveur** : `API/watchpartyAPI/README.md`, `API/watchpartyAPI/__tests__/watchpartySocket.test.mjs`, `API/watchpartyAPI/watchparty.js`, `tests/watchpartyDurability.test.mjs`.
+- **WatchParty client** : `src/pages/WatchPartyPage.tsx`, `src/workers/watchpartySync.worker.ts`, `src/utils/watchparty.ts`, `tests/watchpartyClientIntent.test.mjs`, `tests/watchpartyClientReliability.test.mjs`, `tests/watchpartySyncProEngine.test.mjs`, `tests/watchpartySyncReliability.test.mjs`, `tests/watchpartyReliability.test.mjs`.
+- **Sync, profils, historique, Wrapped et VIP** : `src/App.tsx`, `src/context/ProfileContext.tsx`, `src/utils/syncStorage.ts`, `src/utils/wrappedTrackerCore.ts`, `src/hooks/useWrappedTracker.ts`, `src/pages/WrappedPage.tsx`, `src/services/historyService.ts`, `src/utils/profileIsolation.ts`, `src/utils/vipUtils.ts`, `src/utils/wrappedSession.ts`, `tests/historyProfileScope.test.mjs`, `tests/historyService.test.ts`, `tests/syncOutboxReplay.test.mjs`, `tests/syncOwnerMigration.test.mjs`, `tests/syncPolicyContract.test.mjs`, `tests/syncProfileIsolation.test.mjs`, `tests/vipCacheReliability.test.mjs`, `tests/wrappedDeferredOwnership.test.mjs`, `tests/wrappedSessionReliability.test.mjs`, `tests/wrappedTracker.test.ts`.
+- **Mobile, WebView, userscript et configuration** : `app/README.md`, `app/scripts/build-userscript.js`, `app/src/components/WebViewBrowser.tsx`, `app/src/injection/bridge-runtime.ts`, `app/src/screens/SettingsScreen.tsx`, `app/src/services/bridge.ts`, `src/utils/resetAllSettings.ts`, `userscript/README.md`, `userscript/movix.user.js`, `tests/mobileExtractionPrefs.test.mjs`, `tests/mobileGmBridge.test.mjs`, `tests/userscriptSyncAlignment.test.mjs`, `tsconfig.app.json`.
+- **E2E navigateur** : `tests/syncReliability.browser.mjs`.
+
+`app/src/injection/userscript-source.ts` est généré via `node app/scripts/build-userscript.js` et reste gitignoré ; il n’est donc pas versionné et n’apparaît pas dans cet inventaire.
 
 ## Régression et décisions d’architecture
 
@@ -114,4 +127,7 @@ node --test tests/syncOutboxReplay.test.mjs tests/syncProfileIsolation.test.mjs 
 npx tsc --noEmit --incremental false -p tsconfig.app.json
 node app/scripts/build-userscript.js --check
 git diff --check
+git diff --check 02483248..HEAD
 ```
+
+Après le commit documentaire final, ces deux contrôles `git diff --check` sont propres.
