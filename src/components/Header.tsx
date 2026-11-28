@@ -27,7 +27,8 @@ import { getOverlayPortalRoot } from '../utils/overlayPortal';
 import { useAgeRestrictedContent } from '../hooks/useAgeRestrictedContent';
 import { readLocalStorage } from '../utils/browserStorage';
 import { AMBIENT_TOGGLE_EVENT, readAmbientActive } from './ambient/ambientOptions';
-import { API_BASE_URL } from '../config/api';
+import { checkAdminAccess } from '../services/adminAccessService';
+import { isHiddenOnTv } from '../routing/registry';
 
 // Le moteur des effets d'ambiance ne se télécharge qu'une fois ceux-ci activés.
 const AmbientLayer = lazy(() => import('./ambient/AmbientLayer'));
@@ -155,19 +156,9 @@ const Header: React.FC = () => {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        const access = await checkAdminAccess();
         if (!mounted) return;
-        if (!response.ok) {
-          setHasAdminAccess(false);
-          return;
-        }
-        const payload = await response.json();
-        setHasAdminAccess(
-          payload?.success === true
-          && ['admin', 'uploader', 'moderator'].includes(payload?.admin?.role),
-        );
+        setHasAdminAccess(Boolean(access));
       } catch {
         if (mounted) setHasAdminAccess(false);
       }
@@ -471,7 +462,7 @@ const Header: React.FC = () => {
                   </Link>
                 ))}
 
-                {isAprilFoolsAdminVisible && (
+                {isAprilFoolsAdminVisible && !isHiddenOnTv(APRIL_FOOLS_ADMIN_PATH) && (
                   <Link
                     to={APRIL_FOOLS_ADMIN_PATH}
                     className={`ml-1 flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm transition-all duration-200 ${
@@ -489,7 +480,7 @@ const Header: React.FC = () => {
                   </Link>
                 )}
 
-                {hasAdminAccess && (
+                {hasAdminAccess && !isHiddenOnTv('/admin') && (
                   <Link
                     to="/admin"
                     className={`ml-1 flex items-center gap-2 rounded-xl border px-3 py-1.5 text-sm transition-all duration-200 ${
@@ -509,7 +500,7 @@ const Header: React.FC = () => {
 
               {/* Right section */}
               <div className="flex shrink-0 items-center gap-1 rounded-[17px] border border-white/[0.12] bg-[#111]/85 p-1.5 shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-2xl sm:gap-1.5">
-                {isAprilFoolsAdminVisible && (
+                {isAprilFoolsAdminVisible && !isHiddenOnTv(APRIL_FOOLS_ADMIN_PATH) && (
                   <Link
                     to={APRIL_FOOLS_ADMIN_PATH}
                     aria-label={t('aprilAdmin.mobileAriaLabel')}

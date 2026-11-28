@@ -16,6 +16,7 @@ import { useProfile } from '../context/ProfileContext';
 import { broadcastAuthChange, clearStoredAuthSession } from '../utils/accountAuth';
 import { readLocalStorage } from '../utils/browserStorage';
 import { API_BASE_URL } from '../config/api';
+import { checkAdminAccess } from '../services/adminAccessService';
 import { getOverlayPortalRoot } from '../utils/overlayPortal';
 import { useIsDesktopNav } from '../hooks/useIsDesktopNav';
 import { LiquidButton } from './ui/liquid-button';
@@ -162,7 +163,7 @@ const ProfileMenu: React.FC = () => {
 
   useEffect(() => {
     let active = true;
-    const checkAdminAccess = async () => {
+    const refreshAdminAccess = async () => {
       let authToken: string | null;
       try { authToken = localStorage.getItem('auth_token'); } catch { return; }
       if (!isAuthenticated || !authToken) {
@@ -171,18 +172,10 @@ const ProfileMenu: React.FC = () => {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        const access = await checkAdminAccess();
         // Ignore stale responses from a previous login/session.
         if (!active || localStorage.getItem('auth_token') !== authToken) return;
-        if (!response.ok) {
-          setCanAccessAdminPanel(false);
-          return;
-        }
-        const data = await response.json();
-        const role = String(data?.admin?.role || '').toLowerCase();
-        setCanAccessAdminPanel(['admin', 'uploader', 'moderator'].includes(role));
+        setCanAccessAdminPanel(Boolean(access));
       } catch {
         if (active && localStorage.getItem('auth_token') === authToken) {
           setCanAccessAdminPanel(false);
@@ -190,13 +183,13 @@ const ProfileMenu: React.FC = () => {
       }
     };
 
-    void checkAdminAccess();
-    window.addEventListener('auth_changed', checkAdminAccess);
-    window.addEventListener('storage', checkAdminAccess);
+    void refreshAdminAccess();
+    window.addEventListener('auth_changed', refreshAdminAccess);
+    window.addEventListener('storage', refreshAdminAccess);
     return () => {
       active = false;
-      window.removeEventListener('auth_changed', checkAdminAccess);
-      window.removeEventListener('storage', checkAdminAccess);
+      window.removeEventListener('auth_changed', refreshAdminAccess);
+      window.removeEventListener('storage', refreshAdminAccess);
     };
   }, [isAuthenticated]);
 

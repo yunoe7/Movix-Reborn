@@ -6,6 +6,7 @@ const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const { getPool } = require("./mysqlPool");
 const { isAdmin } = require("./middleware/auth");
+const { resolveStaffRole } = require("./utils/staffAccess");
 const { verifyAccessKey } = require("./checkVip");
 // Réutiliser l'instance Redis partagée au lieu d'en créer une nouvelle (évite les fuites mémoire)
 const { redis } = require("./config/redis");
@@ -393,6 +394,11 @@ const requireAuth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
     const { sub: userId, userType, sessionId } = decoded;
+    // Même normalisation que /api/admin/check : le mode d'authentification vient
+    // du JWT signé, jamais d'un champ libre du client.
+    const authMethod = ["discord", "google", "bip39"].includes(decoded.authMethod)
+      ? decoded.authMethod
+      : (userType === "bip39" ? "bip39" : null);
 
     if (!["oauth", "bip39"].includes(userType) || !userId || !sessionId) {
       return res.status(401).json({ error: "Token invalide" });
@@ -413,6 +419,7 @@ const requireAuth = async (req, res, next) => {
       userId: userId,
       userType: userType,
       sessionId: sessionId,
+      authMethod: authMethod,
     };
     next();
   } catch (error) {
@@ -621,7 +628,7 @@ async function _fetchUserData(userId, userType, profileId = null) {
 }
 
 // Fonction publique avec cache Redis (#14)
-async function getUserData(userId, userType, profileId = null) {
+async function getUserData(userId, userType, profileId = null, authMethod = null) {
   const cacheKey = `userData:${userType}:${userId}:${profileId || "default"}`;
   let userData;
   try {
@@ -644,41 +651,21 @@ async function getUserData(userId, userType, profileId = null) {
     }
   }
 
-  // Les uploaders figurent aussi dans admins. Revalider le rôle en MySQL à
-  // chaque appel, même avec un ancien cache isAdmin=true ou après une révocation.
+  // Lot 3 — source unique de droits staff : plus de résolution Discord maison
+  // ici. `getUserData` peut viser un autre utilisateur que le demandeur : pour
+  // soi, le mode d'authentification vient du JWT vérifié ; pour un tiers, on ne
+  // consulte que la table `admins`. Aucun fail-open en cas d'erreur.
   userData.isAdmin = false;
   try {
-    const authType = userType === "bip39" ? "bip-39" : userType;
-    const pool = getCachedPool();
-    const [rows] = await pool.execute(
-      "SELECT role FROM admins WHERE user_id = ? AND auth_type = ? LIMIT 1",
-      [userId, authType],
-    );
-    // Même compatibilité avec les anciens admins que middleware/auth.js.
-    if (rows.length > 0 && (rows[0].role || "admin") === "admin") {
-      userData.isAdmin = true;
-    }
-
-    // Support des administrateurs Discord, même s'ils ne sont pas dans admins.
-    if (!userData.isAdmin) {
-      let discordUserId = String(userId).trim();
-      if (!/^\\d{17,20}$/.test(discordUserId)) {
-        const targetUserType = userType === "bip39" ? "bip39" : "oauth";
-        const [linkRows] = await pool.execute(
-          "SELECT provider_user_id FROM account_links WHERE provider = 'discord' AND target_user_type = ? AND target_user_id = ? LIMIT 1",
-          [targetUserType, String(userId)],
-        );
-        const candidate = String(linkRows[0]?.provider_user_id || "").trim();
-        discordUserId = /^\\d{17,20}$/.test(candidate) ? candidate : null;
-      }
-      if (discordUserId) {
-        const { getDiscordAdminRole } = require("./utils/discordAdminRoles");
-        const discordAccess = await getDiscordAdminRole(discordUserId);
-        if (discordAccess.configured && ["owner", "admin"].includes(discordAccess.role)) {
-          userData.isAdmin = true;
-        }
-      }
-    }
+    const effectiveAuthMethod = authMethod
+      || (userType === "bip39" ? "bip39" : (userType === "discord" ? "discord" : "oauth"));
+    const staff = await resolveStaffRole(getCachedPool(), {
+      userId,
+      userType,
+      authMethod: effectiveAuthMethod,
+    });
+    // `owner` est normalisé en admin ; `moderator` et `uploader` restent non-admin.
+    userData.isAdmin = staff?.role === "admin";
   } catch (err) {
     console.error("❌ Erreur lors de la vérification admin:", err);
   }
@@ -2361,7 +2348,7 @@ router.delete("/replies/:id", requireAuth, writeRateLimit, async (req, res) => {
     }
 
     // Vérifier que l'utilisateur est admin ou auteur de la réponse
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     const userMatch =
       String(reply.user_id) === String(req.user.userId) &&
       String(reply.user_type) === String(req.user.userType);
@@ -2408,7 +2395,7 @@ router.get("/admin/list", requireAuth, async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     // Vérifier que l'utilisateur est admin
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -2520,7 +2507,7 @@ router.get("/admin/moderated", requireAuth, async (req, res) => {
     const offset = (safePage - 1) * safeLimit;
 
     // Vérifier que l'utilisateur est admin
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -2628,6 +2615,7 @@ router.get("/admin/moderated", requireAuth, async (req, res) => {
 router.put(
   "/admin/moderated/:type/:id/approve",
   requireAuth,
+  writeRateLimit,
   async (req, res) => {
     try {
       const { type, id } = req.params;
@@ -2640,7 +2628,7 @@ router.put(
       }
 
       // Vérifier que l'utilisateur est admin
-      const userData = await getUserData(req.user.userId, req.user.userType);
+      const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
       if (!userData.isAdmin) {
         return res.status(403).json({ error: "Non autorisé" });
       }
@@ -2663,7 +2651,7 @@ router.put(
 );
 
 // DELETE /api/comments/admin/moderated/:type/:id - Supprimer définitivement un contenu modéré
-router.delete("/admin/moderated/:type/:id", requireAuth, async (req, res) => {
+router.delete("/admin/moderated/:type/:id", requireAuth, writeRateLimit, async (req, res) => {
   try {
     const { type, id } = req.params;
 
@@ -2675,7 +2663,7 @@ router.delete("/admin/moderated/:type/:id", requireAuth, async (req, res) => {
     }
 
     // Vérifier que l'utilisateur est admin
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -2706,9 +2694,9 @@ router.delete("/admin/moderated/:type/:id", requireAuth, async (req, res) => {
 // IMPORTANT: Ces routes doivent être AVANT /:contentType/:contentId pour éviter les conflits Express
 
 // POST /api/comments/admin/ban - Bannir un utilisateur ou une IP
-router.post("/admin/ban", requireAuth, async (req, res) => {
+router.post("/admin/ban", requireAuth, writeRateLimit, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -2723,10 +2711,20 @@ router.post("/admin/ban", requireAuth, async (req, res) => {
       deleteAll,
     } = req.body;
 
-    if (!["ip", "user"].includes(banType) || !banValue) {
+    if (
+      !["ip", "user"].includes(banType)
+      || typeof banValue !== "string"
+      || !banValue.trim()
+      || banValue.length > 255
+      || (targetUserType != null && (typeof targetUserType !== "string" || targetUserType.length > 32))
+      || (reason != null && (typeof reason !== "string" || reason.length > 500))
+      || (username != null && (typeof username !== "string" || username.length > 255))
+      || (duration != null && !["permanent", "1h", "24h", "7d", "30d"].includes(duration))
+      || (deleteAll != null && typeof deleteAll !== "boolean")
+    ) {
       return res
         .status(400)
-        .json({ error: "banType (ip/user) et banValue requis" });
+        .json({ error: "Paramètres de bannissement invalides" });
     }
 
     if (banType === "user" && !targetUserType) {
@@ -2809,9 +2807,9 @@ router.post("/admin/ban", requireAuth, async (req, res) => {
 });
 
 // DELETE /api/comments/admin/ban/:id - Débannir + restaurer les commentaires
-router.delete("/admin/ban/:id", requireAuth, async (req, res) => {
+router.delete("/admin/ban/:id", requireAuth, writeRateLimit, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -2844,9 +2842,9 @@ router.delete("/admin/ban/:id", requireAuth, async (req, res) => {
 });
 
 // DELETE /api/comments/admin/bans - Supprimer tous les bans + restaurer les commentaires
-router.delete("/admin/bans", requireAuth, async (req, res) => {
+router.delete("/admin/bans", requireAuth, writeRateLimit, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -2888,7 +2886,7 @@ router.delete("/admin/bans", requireAuth, async (req, res) => {
 // GET /api/comments/admin/bans - Lister les bans actifs
 router.get("/admin/bans", requireAuth, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -2942,16 +2940,23 @@ router.get("/admin/bans", requireAuth, async (req, res) => {
 });
 
 // POST /api/comments/admin/delete-all-by-user - Supprimer tous les commentaires d'un utilisateur
-router.post("/admin/delete-all-by-user", requireAuth, async (req, res) => {
+router.post("/admin/delete-all-by-user", requireAuth, writeRateLimit, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
 
-    const { userId } = req.body;
+    const { userId, userType } = req.body;
     if (!userId) {
       return res.status(400).json({ error: "userId requis" });
+    }
+    if (
+      (typeof userId !== "string" && !Number.isInteger(userId))
+      || String(userId).length > 255
+      || (userType != null && (typeof userType !== "string" || userType.length > 32))
+    ) {
+      return res.status(400).json({ error: "Utilisateur invalide" });
     }
 
     const commentsResult = await dbRun(
@@ -3141,7 +3146,7 @@ function containsFancyUnicode(text) {
 // POST /api/comments/admin/detect-duplicates - Détecter les commentaires en doublons
 router.post("/admin/detect-duplicates", requireAuth, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
@@ -3236,17 +3241,26 @@ router.post("/admin/detect-duplicates", requireAuth, async (req, res) => {
 });
 
 // POST /api/comments/admin/delete-duplicates - Supprimer les doublons et optionnellement bannir les auteurs
-router.post("/admin/delete-duplicates", requireAuth, async (req, res) => {
+router.post("/admin/delete-duplicates", requireAuth, writeRateLimit, async (req, res) => {
   try {
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     if (!userData.isAdmin) {
       return res.status(403).json({ error: "Non autorisé" });
     }
 
     const { commentIds, banAuthors, banDuration, banReason } = req.body;
 
-    if (!commentIds || !Array.isArray(commentIds) || commentIds.length === 0) {
-      return res.status(400).json({ error: "commentIds requis (tableau)" });
+    if (
+      !commentIds
+      || !Array.isArray(commentIds)
+      || commentIds.length === 0
+      || commentIds.length > 5000
+      || !commentIds.every((id) => typeof id === "string" || Number.isInteger(id))
+      || (banAuthors != null && typeof banAuthors !== "boolean")
+      || (banDuration != null && !["permanent", "1h", "24h", "7d", "30d"].includes(banDuration))
+      || (banReason != null && (typeof banReason !== "string" || banReason.length > 500))
+    ) {
+      return res.status(400).json({ error: "commentIds requis (5000 maximum, identifiants valides)" });
     }
 
     const BATCH_SIZE = 500;
@@ -4319,7 +4333,7 @@ router.delete("/:id", requireAuth, writeRateLimit, async (req, res) => {
     }
 
     // Vérifier que l'utilisateur est admin ou auteur du commentaire
-    const userData = await getUserData(req.user.userId, req.user.userType);
+    const userData = await getUserData(req.user.userId, req.user.userType, null, req.user.authMethod);
     const userMatch =
       String(comment.user_id) === String(req.user.userId) &&
       String(comment.user_type) === String(req.user.userType);

@@ -5,6 +5,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getPool } = require('../mysqlPool');
 const { isAdmin, getAuthIfValid } = require('../middleware/auth');
 const { createRedisRateLimitStore } = require('../utils/redisRateLimitStore');
+const { createAdminActionLimiter } = require('../utils/adminActionRateLimit');
 const { verifyTurnstileFromRequest } = require('../utils/turnstile');
 const {
   createVipInvoice,
@@ -20,6 +21,8 @@ const {
   cancelInvoice,
   serializePublicInvoice,
   serializeAdminInvoice,
+  buildInvoiceViewToken,
+  isInvoiceViewTokenValid,
   serializeGift,
   unsealGift,
   ensureVipDonationsTables,
@@ -36,6 +39,9 @@ const {
 
 const router = express.Router();
 
+// Limite les décisions financières prises depuis la console admin.
+const adminInvoiceActionLimiter = createAdminActionLimiter('vip-invoices', 30);
+
 // Codes renvoyés au client pour qu'il distingue pause, moyen coupé et montant refusé.
 const PUBLIC_DONATION_ERROR_CODES = new Set(Object.values(VIP_DONATION_ERROR_CODES));
 
@@ -44,12 +50,42 @@ const setNoStore = (req, res, next) => {
   return next();
 };
 
-const canAccessInvoice = (invoice, auth) => {
-  if (!invoice) {
-    return false;
-  }
+// Le publicId est un secret de capacité (96 bits) qui autorise le suivi du
+// paiement. Il ne suffit pas à révéler une clé VIP livrée.
+const canAccessInvoice = (invoice) => Boolean(invoice);
 
-  return true;
+const isInvoiceOwner = (invoice, auth) => {
+  if (!invoice || !auth?.userId || !auth?.userType) return false;
+  return String(invoice.created_by_user_id || '') === String(auth.userId)
+    && String(invoice.created_by_user_type || '') === String(auth.userType);
+};
+
+const canRevealInvoiceKey = (invoice, auth, viewToken) => {
+  if (!invoice) return false;
+  return isInvoiceOwner(invoice, auth)
+    || isInvoiceViewTokenValid(invoice.public_id, viewToken);
+};
+
+const getInvoiceViewToken = (req) => (
+  req.headers['x-invoice-view-token'] || req.headers['X-Invoice-View-Token'] || null
+);
+
+// Seuls les messages métier connus sont renvoyés au client : une erreur MySQL
+// ou d'un prestataire ne doit jamais fuir dans une réponse admin.
+const SAFE_INVOICE_ACTION_MESSAGES = new Set([
+  'Invoice introuvable',
+  'Cette invoice est annulée',
+  'Impossible d\'annuler une invoice déjà payée ou livrée',
+  'Invoice modifiée pendant l\'annulation',
+]);
+const getSafeInvoiceActionError = (error, fallback) => {
+  if (typeof error?.message === 'string' && SAFE_INVOICE_ACTION_MESSAGES.has(error.message)) {
+    return error.message;
+  }
+  if (typeof error?.code === 'string' && /^(VIP_|PAYGATE_)/.test(error.code)) {
+    return fallback;
+  }
+  return fallback;
 };
 
 const getRateLimitKey = (req) => req.headers['cf-connecting-ip']
@@ -187,7 +223,8 @@ router.post('/vip/invoices', setNoStore, createInvoiceRateLimit, async (req, res
 
     return res.status(201).json({
       success: true,
-      invoice: serializePublicInvoice(invoice)
+      invoice: serializePublicInvoice(invoice),
+      viewToken: buildInvoiceViewToken(invoice.public_id)
     });
   } catch (error) {
     console.error('VIP invoice create error:', error);
@@ -283,7 +320,9 @@ router.get('/vip/invoices/:publicId', setNoStore, async (req, res) => {
 
     return res.json({
       success: true,
-      invoice: serializePublicInvoice(invoice)
+      invoice: serializePublicInvoice(invoice, {
+        includeVipKey: canRevealInvoiceKey(invoice, auth, getInvoiceViewToken(req))
+      })
     });
   } catch (error) {
     console.error('VIP invoice fetch error:', error);
@@ -313,7 +352,9 @@ router.post('/vip/invoices/:publicId/check', setNoStore, invoiceCheckRateLimit, 
 
     return res.json({
       success: true,
-      invoice: serializePublicInvoice(refreshedInvoice)
+      invoice: serializePublicInvoice(refreshedInvoice, {
+        includeVipKey: canRevealInvoiceKey(refreshedInvoice, auth, getInvoiceViewToken(req))
+      })
     });
   } catch (error) {
     console.error('VIP invoice check error:', error);
@@ -323,7 +364,11 @@ router.post('/vip/invoices/:publicId/check', setNoStore, invoiceCheckRateLimit, 
     return res.status(502).json({
       success: false,
       error: 'Vérification de paiement indisponible temporairement',
-      invoice: canAccessInvoice(invoice, auth) ? serializePublicInvoice(invoice) : null
+      invoice: canAccessInvoice(invoice)
+        ? serializePublicInvoice(invoice, {
+            includeVipKey: canRevealInvoiceKey(invoice, auth, getInvoiceViewToken(req))
+          })
+        : null
     });
   }
 });
@@ -441,7 +486,7 @@ router.get('/admin/vip-invoices/:id', setNoStore, isAdmin, async (req, res) => {
   }
 });
 
-router.post('/admin/vip-invoices/:id/check', setNoStore, isAdmin, async (req, res) => {
+router.post('/admin/vip-invoices/:id/check', setNoStore, isAdmin, adminInvoiceActionLimiter, async (req, res) => {
   try {
     const pool = getPool();
     const refreshedInvoice = await refreshInvoiceStatus(pool, req.params.id, {
@@ -471,7 +516,7 @@ router.post('/admin/vip-invoices/:id/check', setNoStore, isAdmin, async (req, re
   }
 });
 
-router.post('/admin/vip-invoices/:id/validate', isAdmin, async (req, res) => {
+router.post('/admin/vip-invoices/:id/validate', isAdmin, adminInvoiceActionLimiter, async (req, res) => {
   try {
     const pool = getPool();
     const invoice = await forceValidateInvoice(pool, req.params.id, req.admin);
@@ -483,12 +528,12 @@ router.post('/admin/vip-invoices/:id/validate', isAdmin, async (req, res) => {
     console.error('VIP admin invoice validate error:', error);
     return res.status(409).json({
       success: false,
-      error: error.message || 'Impossible de valider cette invoice'
+      error: getSafeInvoiceActionError(error, 'Impossible de valider cette invoice')
     });
   }
 });
 
-router.post('/admin/vip-invoices/:id/cancel', isAdmin, async (req, res) => {
+router.post('/admin/vip-invoices/:id/cancel', isAdmin, adminInvoiceActionLimiter, async (req, res) => {
   try {
     const pool = getPool();
     const invoice = await cancelInvoice(pool, req.params.id, req.admin);
@@ -500,7 +545,7 @@ router.post('/admin/vip-invoices/:id/cancel', isAdmin, async (req, res) => {
     console.error('VIP admin invoice cancel error:', error);
     return res.status(409).json({
       success: false,
-      error: error.message || 'Impossible d\'annuler cette invoice'
+      error: getSafeInvoiceActionError(error, 'Impossible d\'annuler cette invoice')
     });
   }
 });

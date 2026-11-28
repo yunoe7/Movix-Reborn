@@ -137,6 +137,8 @@ const AdminComments: React.FC = () => {
         moderated: 0,
     });
     const [loading, setLoading] = useState(true);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [bansError, setBansError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'live' | 'moderated' | 'bans'>('live');
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -285,13 +287,19 @@ const AdminComments: React.FC = () => {
                 if (data && typeof data.total === 'number') {
                     setHasMore(data.total > loadedCommentCountRef.current);
                 }
+                setFetchError(null);
+            } else {
+                setComments([]);
+                setFetchError(t('admin.commentsLoadError', `Impossible de charger les commentaires (HTTP ${response.status}).`));
             }
         } catch (error) {
             console.error('Error fetching admin comments:', error);
+            setComments([]);
+            setFetchError(t('admin.commentsLoadError', 'Impossible de charger les commentaires.'));
         } finally {
             setLoading(false);
         }
-    }, [API_URL, debouncedSearch, contentTypeFilter, activeTab]);
+    }, [API_URL, debouncedSearch, contentTypeFilter, activeTab, t]);
 
     // Fetch bans with pagination (page by page)
     const fetchBans = useCallback(async (pageOverride?: number) => {
@@ -311,13 +319,19 @@ const AdminComments: React.FC = () => {
                 setBans(data.bans || []);
                 setBansHasMore(data.hasMore || false);
                 setBansTotal(data.total || 0);
+                setBansError(null);
+            } else {
+                setBans([]);
+                setBansError(t('admin.bansLoadError', `Impossible de charger les bannissements (HTTP ${response.status}).`));
             }
         } catch (error) {
             console.error('Error fetching bans:', error);
+            setBans([]);
+            setBansError(t('admin.bansLoadError', 'Impossible de charger les bannissements.'));
         } finally {
             setBansLoading(false);
         }
-    }, [API_URL, showExpiredBans, bansPage, bansSearch]);
+    }, [API_URL, showExpiredBans, bansPage, bansSearch, t]);
 
     useEffect(() => {
         if (activeTab === 'bans') {
@@ -357,9 +371,13 @@ const AdminComments: React.FC = () => {
             if (response.ok) {
                 setComments(prev => prev.filter(c => c.id !== comment.id));
                 setStats(prev => ({ ...prev, moderated: (prev.moderated || 1) - 1 }));
+                toast.success(t('admin.commentApproved'));
+            } else {
+                toast.error(t('admin.commentActionError', `Échec de l'approbation (HTTP ${response.status}).`));
             }
         } catch (error) {
             console.error('Error approving comment:', error);
+            toast.error(t('admin.commentActionError', 'Erreur lors de l’approbation du commentaire.'));
         } finally {
             setSubmitting(false);
         }
@@ -388,9 +406,13 @@ const AdminComments: React.FC = () => {
             if (response.ok) {
                 setComments(prev => prev.filter(c => c.id !== comment.id));
                 setStats(prev => ({ ...prev, moderated: (prev.moderated || 1) - 1 }));
+                toast.success(t('admin.commentDeleted'));
+            } else {
+                toast.error(t('admin.commentActionError', `Échec de la suppression (HTTP ${response.status}).`));
             }
         } catch (error) {
             console.error('Error deleting comment permanently:', error);
+            toast.error(t('admin.commentActionError', 'Erreur lors de la suppression du commentaire.'));
         } finally {
             setSubmitting(false);
         }
@@ -414,9 +436,12 @@ const AdminComments: React.FC = () => {
                 setComments(prev => prev.filter(c => c.id !== selectedComment.id));
                 setDeleteModalOpen(false);
                 setStats(prev => ({ ...prev, total: prev.total - 1 }));
+            } else {
+                toast.error(t('admin.commentActionError', `Échec de la suppression (HTTP ${response.status}).`));
             }
         } catch (error) {
             console.error('Error deleting comment:', error);
+            toast.error(t('admin.commentActionError', 'Erreur lors de la suppression du commentaire.'));
         } finally {
             setSubmitting(false);
         }
@@ -1134,6 +1159,11 @@ const AdminComments: React.FC = () => {
                     transition={{ duration: 0.4 }}
                     className="bg-white/5 rounded-lg border border-white/10 overflow-hidden"
                 >
+                    {bansError && (
+                        <div role="alert" className="m-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                            {bansError}
+                        </div>
+                    )}
                     {bansLoading ? (
                         <div className="flex items-center justify-center py-20">
                             <Loader2 className="h-8 w-8 animate-spin text-red-500" />
@@ -1191,6 +1221,11 @@ const AdminComments: React.FC = () => {
                     transition={{ duration: 0.4 }}
                     className="bg-white/5 rounded-lg border border-white/10 overflow-hidden"
                 >
+                    {fetchError && (
+                        <div role="alert" className="m-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                            {fetchError}
+                        </div>
+                    )}
                     {loading && comments.length === 0 ? (
                         <div className="flex items-center justify-center py-20">
                             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />

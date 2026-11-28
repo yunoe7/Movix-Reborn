@@ -194,6 +194,33 @@ interface JsonResponse<T> {
 
 const getAuthToken = () => localStorage.getItem('auth_token');
 
+const INVOICE_VIEW_TOKEN_PREFIX = 'movix:vip-invoice-view:';
+
+function rememberInvoiceViewToken(publicId: string, token: string): void {
+  try {
+    localStorage.setItem(`${INVOICE_VIEW_TOKEN_PREFIX}${publicId}`, token);
+  } catch {
+    // Stockage privé/désactivé : la clé restera accessible au propriétaire connecté.
+  }
+}
+
+function getInvoiceViewToken(publicId: string): string | null {
+  try {
+    return localStorage.getItem(`${INVOICE_VIEW_TOKEN_PREFIX}${publicId}`);
+  } catch {
+    return null;
+  }
+}
+
+function withInvoiceViewToken(publicId: string, headers?: HeadersInit): Headers {
+  const merged = new Headers(headers);
+  const token = getInvoiceViewToken(publicId);
+  if (token && !merged.has('x-invoice-view-token')) {
+    merged.set('x-invoice-view-token', token);
+  }
+  return merged;
+}
+
 type ApiError = Error & {
   statusCode?: number;
 };
@@ -271,7 +298,7 @@ export async function createVipInvoice(
   } = {}
 ): Promise<VipInvoice> {
   const token = getAuthToken();
-  const data = await requestJson<JsonResponse<VipInvoice>>('/api/vip/invoices', {
+  const data = await requestJson<JsonResponse<VipInvoice> & { viewToken?: string }>('/api/vip/invoices', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -293,13 +320,17 @@ export async function createVipInvoice(
     throw new Error('Invoice invalide');
   }
 
+  if (data.viewToken) {
+    rememberInvoiceViewToken(data.invoice.publicId, data.viewToken);
+  }
+
   return normalizeVipInvoice(data.invoice);
 }
 
 export async function getVipInvoice(publicId: string): Promise<VipInvoice> {
   const data = await requestJson<JsonResponse<VipInvoice>>(
     `/api/vip/invoices/${encodeURIComponent(publicId)}`,
-    undefined,
+    { headers: withInvoiceViewToken(publicId) },
     { includeAuth: true }
   );
   if (!data.invoice) {
@@ -332,7 +363,7 @@ export async function listMyVipInvoices(limit = 30): Promise<VipInvoice[]> {
 export async function checkVipInvoice(publicId: string): Promise<VipInvoice> {
   const response = await fetch(`${MAIN_API}/api/vip/invoices/${encodeURIComponent(publicId)}/check`, {
     method: 'POST',
-    headers: mergeRequestHeaders(undefined, { includeAuth: true })
+    headers: withInvoiceViewToken(publicId, mergeRequestHeaders(undefined, { includeAuth: true }))
   });
   const data = await response.json().catch(() => ({}));
 

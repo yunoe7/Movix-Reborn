@@ -1190,12 +1190,15 @@ function loadRouter({ pool, admin = true, createInvoice } = {}) {
     '../mysqlPool': { getPool: () => pool },
     '../middleware/auth': { isAdmin, getAuthIfValid: async () => null },
     '../utils/redisRateLimitStore': { createRedisRateLimitStore: () => ({}) },
+    '../utils/adminActionRateLimit': { createAdminActionLimiter: () => (_req, _res, next) => next() },
     '../utils/turnstile': { verifyTurnstileFromRequest: async () => ({ valid: true }) },
     '../utils/vipDonations': {
       createVipInvoice: createInvoice || (async () => {
         throw new Error('createVipInvoice inattendu');
       }),
       serializePublicInvoice: (invoice) => invoice,
+      buildInvoiceViewToken: () => 'test-view-token',
+      isInvoiceViewTokenValid: () => false,
       getClientIp: () => '203.0.113.7'
     },
     '../utils/vipDonationSettings': settingsModule

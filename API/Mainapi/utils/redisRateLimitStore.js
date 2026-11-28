@@ -9,7 +9,16 @@ class RedisRateLimitStore {
   constructor(options = {}) {
     this.windowMs = Number(options.windowMs) || 60_000;
     this.prefix = String(options.prefix || 'rate-limit:');
+    // 'open' : comportement historique (on continue sans compter).
+    // 'closed' : l'erreur est propagée au limiteur, qui répond 503.
+    this.onError = options.onError === 'closed' ? 'closed' : 'open';
     this.localKeys = false;
+  }
+
+  handleStoreError(error, fallback) {
+    if (this.onError === 'closed') throw error;
+    console.warn(`[rate-limit] Redis indisponible (${this.prefix}) :`, error?.message);
+    return fallback;
   }
 
   init(options) {
@@ -43,8 +52,8 @@ class RedisRateLimitStore {
         totalHits,
         resetTime: buildResetTime(ttlMs, this.windowMs)
       };
-    } catch {
-      return undefined;
+    } catch (error) {
+      return this.handleStoreError(error, undefined);
     }
   }
 
@@ -70,11 +79,11 @@ class RedisRateLimitStore {
         totalHits,
         resetTime: buildResetTime(ttlMs, this.windowMs)
       };
-    } catch {
-      return {
+    } catch (error) {
+      return this.handleStoreError(error, {
         totalHits: 1,
         resetTime: buildResetTime(this.windowMs, this.windowMs)
-      };
+      });
     }
   }
 

@@ -13,6 +13,11 @@ const { verifyAccessKey } = require('./checkVip');
 const { searchTmdb } = require('./utils/tmdbCache');
 const { verifyTurnstileFromRequest } = require('./utils/turnstile');
 const { resolveAdminIdentity } = require('./utils/adminIdentity');
+const { resolveStaffRole } = require('./utils/staffAccess');
+const { createAdminActionLimiter } = require('./utils/adminActionRateLimit');
+
+// Limite les mutations admin (changement de statut, notes, suppressions).
+const adminActionLimiter = createAdminActionLimiter('wishboard', 90);
 
 const TURNSTILE_INVISIBLE_SECRETKEY = process.env.TURNSTILE_INVISIBLE_SECRETKEY;
 const TMDB_API_URL = 'https://api.themoviedb.org/3';
@@ -52,6 +57,9 @@ function createWishboardRouter(mysqlPool, redis) {
         try {
             const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
             const { sub: userId, userType, sessionId } = decoded;
+            const authMethod = ['discord', 'google', 'bip39'].includes(decoded.authMethod)
+                ? decoded.authMethod
+                : (userType === 'bip39' ? 'bip39' : null);
 
             if (!['oauth', 'bip39'].includes(userType) || !userId || !sessionId) {
                 return res.status(401).json({ error: 'Token invalide' });
@@ -74,7 +82,8 @@ function createWishboardRouter(mysqlPool, redis) {
             req.user = {
                 userId: userId,
                 userType: userType,
-                sessionId: sessionId
+                sessionId: sessionId,
+                authMethod
             };
             next();
         } catch (error) {
@@ -88,34 +97,31 @@ function createWishboardRouter(mysqlPool, redis) {
         }
     };
 
-    // Middleware to check admin or uploader status (same pattern as server.js isUploaderOrAdmin)
+    // Même source de vérité que /api/admin/check : rôles Discord si le bot est
+    // configuré, table `admins` sinon. Les admins reconnus par la porte ne sont
+    // plus refusés ici.
     const requireUploaderOrAdmin = async (req, res, next) => {
         try {
             if (!mysqlPool) {
                 return res.status(503).json({ error: 'Service temporairement indisponible' });
             }
 
-            const authType = req.user.userType === 'bip39' ? 'bip-39' : req.user.userType;
-            const [rows] = await mysqlPool.execute(
-                'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
-                [req.user.userId, authType]
-            );
+            const staff = await resolveStaffRole(mysqlPool, {
+                userId: req.user.userId,
+                userType: req.user.userType,
+                authMethod: req.user.authMethod
+            });
 
-            if (rows.length === 0) {
-                return res.status(403).json({ error: 'Accès refusé - Droits requis' });
-            }
-
-            // Récupérer le rôle (par défaut 'admin' si non défini)
-            const role = rows[0].role || 'admin';
-
-            // Autoriser les rôles 'admin' et 'uploader'
-            if (role !== 'admin' && role !== 'uploader') {
+            if (!staff || !['admin', 'uploader'].includes(staff.role)) {
                 return res.status(403).json({ error: 'Accès refusé - Droits insuffisants' });
             }
 
-            req.admin = { userId: req.user.userId, userType: req.user.userType, role };
+            req.admin = { userId: req.user.userId, userType: req.user.userType, role: staff.role };
             next();
         } catch (error) {
+            if (String(error?.code || '').startsWith('DISCORD_')) {
+                return res.status(503).json({ error: 'Service temporairement indisponible' });
+            }
             console.error('Admin/Uploader check error:', error);
             return res.status(500).json({ error: 'Erreur lors de la vérification des droits' });
         }
@@ -851,7 +857,7 @@ function createWishboardRouter(mysqlPool, redis) {
      * PUT /api/wishboard/admin/:id/status
      * Update request status
      */
-    router.put('/admin/:id/status', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.put('/admin/:id/status', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const requestId = req.params.id;
             const { status, reason } = req.body;
@@ -859,6 +865,9 @@ function createWishboardRouter(mysqlPool, redis) {
             const validStatuses = ['pending', 'not_found', 'not_found_recent', 'searching', 'added', 'rejected'];
             if (!validStatuses.includes(status)) {
                 return res.status(400).json({ error: 'Invalid status' });
+            }
+            if (reason != null && (typeof reason !== 'string' || reason.length > 500)) {
+                return res.status(400).json({ error: 'Raison invalide (500 caractères maximum)' });
             }
 
             // Get admin info from middleware
@@ -884,10 +893,14 @@ function createWishboardRouter(mysqlPool, redis) {
      * PUT /api/wishboard/admin/history/:historyId
      * Update status history reason
      */
-    router.put('/admin/history/:historyId', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.put('/admin/history/:historyId', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const historyId = req.params.historyId;
             const { reason } = req.body;
+
+            if (reason != null && (typeof reason !== 'string' || reason.length > 500)) {
+                return res.status(400).json({ error: 'Raison invalide (500 caractères maximum)' });
+            }
 
             await mysqlPool.execute(
                 'UPDATE wishboard_status_history SET reason = ? WHERE id = ?',
@@ -905,14 +918,17 @@ function createWishboardRouter(mysqlPool, redis) {
      * POST /api/wishboard/admin/:id/notes
      * Add note to request
      */
-    router.post('/admin/:id/notes', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.post('/admin/:id/notes', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const requestId = req.params.id;
             const { note, is_public = true } = req.body;
             const adminId = req.user.userId;
 
-            if (!note || !note.trim()) {
-                return res.status(400).json({ error: 'Note content is required' });
+            if (!note || typeof note !== 'string' || !note.trim() || note.length > 2000) {
+                return res.status(400).json({ error: 'Note content is required (2000 characters maximum)' });
+            }
+            if (typeof is_public !== 'boolean') {
+                return res.status(400).json({ error: 'Invalid is_public value' });
             }
 
             // Check if note already exists for this request
@@ -1030,7 +1046,7 @@ function createWishboardRouter(mysqlPool, redis) {
      * DELETE /api/wishboard/admin/:id
      * Delete a request
      */
-    router.delete('/admin/:id', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.delete('/admin/:id', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const requestId = req.params.id;
 

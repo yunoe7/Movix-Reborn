@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Activity,
@@ -44,38 +44,40 @@ const AdminDashboardHome: React.FC<{
   const [data, setData] = useState<StatsOverview | null>(null);
   const [state, setState] = useState<LoadState>('loading');
   const [error, setError] = useState<string | null>(null);
+  const requestRef = useRef(0);
+
+  // L'endpoint /api/admin/stats/overview est réservé aux administrateurs.
+  // Les autres rôles gardent l'accès à la navigation mais voient un état clair
+  // plutôt qu'une erreur réseau.
+  const canReadStats = role === 'admin';
 
   const load = useCallback(async (nextRange: StatsRange) => {
+    const requestId = ++requestRef.current;
     setState('loading');
     setError(null);
+    // Ne jamais afficher les chiffres de la période précédente pendant le
+    // chargement d'une nouvelle période. Les réponses tardives restent filtrées
+    // par `requestRef`, seul arbitre des mises à jour d'état.
+    setData((current) => (current && current.range !== nextRange ? null : current));
     try {
-      setData(await fetchStatsOverview(nextRange));
+      const payload = await fetchStatsOverview(nextRange);
+      if (requestId !== requestRef.current) return;
+      setData(payload);
       setState('ready');
     } catch {
+      if (requestId !== requestRef.current) return;
+      // Ne jamais conserver d'anciens chiffres avec une nouvelle période.
+      setData(null);
       setError(t('admin.stats.loadError', 'Erreur de chargement des statistiques'));
       setState('error');
     }
   }, [t]);
 
   useEffect(() => {
-    let active = true;
-    setState('loading');
-    setError(null);
-    fetchStatsOverview(range)
-      .then((payload) => {
-        if (active) {
-          setData(payload);
-          setState('ready');
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError(t('admin.stats.loadError', 'Erreur de chargement des statistiques'));
-          setState('error');
-        }
-      });
-    return () => { active = false; };
-  }, [range, t]);
+    if (canReadStats) {
+      void load(range);
+    }
+  }, [canReadStats, load, range]);
 
   const providers = useMemo(() => {
     if (!data) return [];
@@ -112,6 +114,38 @@ const AdminDashboardHome: React.FC<{
   const generatedAt = data
     ? new Date(data.generatedAt).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
     : null;
+
+  // Les accès rapides restent disponibles à tous les rôles autorisés à voir
+  // l'administration, y compris moderator/uploader qui ne peuvent pas lire les
+  // statistiques globales.
+  const shortcutsPanel = quickActions.length > 0 ? (
+    <AdminPanel
+      eyebrow={t('admin.console.shortcutsEyebrow', 'Navigation')}
+      title={t('admin.console.shortcutsTitle', 'Accès rapides')}
+      description={t('admin.console.shortcutsDesc', 'Ouvrir directement une section autorisée.')}
+    >
+      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {quickActions.map((section) => {
+          const Icon = section.icon;
+          return (
+            <button
+              key={section.id}
+              type="button"
+              data-testid={`admin-quick-action-${section.id}`}
+              onClick={() => onNavigate(section.id)}
+              className="admin-quick-action group"
+            >
+              <Icon className="h-4 w-4 shrink-0 text-white/55" aria-hidden="true" />
+              <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-white/80">
+                {section.title}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-white/30 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </button>
+          );
+        })}
+      </div>
+    </AdminPanel>
+  ) : null;
 
   const kpis = [
     {
@@ -157,6 +191,22 @@ const AdminDashboardHome: React.FC<{
       caption: t('admin.console.deliveredDonations', 'Dons livrés'),
     },
   ];
+
+  if (!canReadStats) {
+    return (
+      <div className="space-y-5" data-testid="admin-overview">
+        <AdminStateBlock
+          tone="info"
+          title={t('admin.console.limitedAccessTitle', 'Accès restreint')}
+          description={t(
+            'admin.console.statsRestrictedDesc',
+            'Les statistiques globales ne sont pas accessibles à votre rôle. Les autres sections restent disponibles.'
+          )}
+        />
+        {shortcutsPanel}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5" data-testid="admin-overview" data-generated-at={data?.generatedAt ?? ''}>
@@ -275,11 +325,12 @@ const AdminDashboardHome: React.FC<{
         <AdminPanel
           eyebrow={t('admin.console.healthEyebrow', 'Disponibilité')}
           title={t('admin.console.servicesTitle', 'État des services')}
+          description={t('admin.console.healthNote', 'Statut déduit des réponses réelles des endpoints admin.')}
         >
           <AdminServiceRow
             label={t('admin.console.authService', 'Contrôle des droits admin')}
             detail={t('admin.console.authServiceDetail', 'Vérifié à l’ouverture du panneau')}
-            healthy
+            healthy={getRoleLabel(t, role).length > 0}
           />
           <AdminServiceRow
             label={t('admin.console.statsService', 'Source de statistiques')}
@@ -289,9 +340,6 @@ const AdminDashboardHome: React.FC<{
             healthy={state !== 'error'}
             pending={state === 'loading'}
           />
-          <p className="mt-4 text-[11px] leading-4 text-white/35">
-            {t('admin.console.healthNote', 'Statut déduit des réponses réelles des endpoints admin.')}
-          </p>
         </AdminPanel>
 
         <AdminPanel
@@ -327,33 +375,7 @@ const AdminDashboardHome: React.FC<{
         </AdminPanel>
       </div>
 
-      {quickActions.length > 0 && (
-        <AdminPanel
-          eyebrow={t('admin.console.shortcutsEyebrow', 'Navigation')}
-          title={t('admin.console.shortcutsTitle', 'Accès rapides')}
-          description={t('admin.console.shortcutsDesc', 'Ouvrir directement une section autorisée.')}
-        >
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-            {quickActions.map((section) => {
-              const Icon = section.icon;
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => onNavigate(section.id)}
-                  className="admin-quick-action group"
-                >
-                  <Icon className="h-4 w-4 shrink-0 text-white/55" aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-white/80">
-                    {section.title}
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-white/30 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                </button>
-              );
-            })}
-          </div>
-        </AdminPanel>
-      )}
+      {shortcutsPanel}
 
       {state === 'error' && (
         <p className="sr-only" aria-live="polite">

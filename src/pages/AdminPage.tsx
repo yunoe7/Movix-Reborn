@@ -3,8 +3,8 @@ import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import AdminDashboard from '../components/AdminDashboard';
 import { SquareBackground } from '../components/ui/square-background';
-import { API_BASE_URL } from '../config/api';
-import { normalizeAdminRole, type AdminRole } from '../components/admin/adminRegistry';
+import { checkAdminAccess } from '../services/adminAccessService';
+import type { AdminRole } from '../components/admin/adminRegistry';
 import '../components/admin/admin-console.css';
 
 interface AdminIdentity {
@@ -24,37 +24,18 @@ const AdminPage: React.FC = () => {
 
   useEffect(() => {
     const checkAdminAuth = async () => {
-      const authToken = localStorage.getItem('auth_token');
-      if (!authToken) {
+      const access = await checkAdminAccess();
+      if (!access) {
         setIsAuthenticated(false);
         return;
       }
 
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/admin/check`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
-        const data = response.ok ? await response.json() : null;
-        const role = normalizeAdminRole(data?.admin?.role);
-
-        if (response.ok && data?.success === true && role) {
-          setIdentity({
-            userId: data.admin.userId,
-            userType: data.admin.userType,
-            adminId: data.admin.adminId,
-          });
-          setAdminRole(role);
-          setIsAuthenticated(true);
-          return;
-        }
-        setIsAuthenticated(false);
-      } catch (error) {
-        console.error('Erreur lors de la vérification admin:', error);
-        setIsAuthenticated(false);
-      }
+      setIdentity(access.identity);
+      setAdminRole(access.role);
+      setIsAuthenticated(true);
     };
 
-    checkAdminAuth();
+    void checkAdminAuth().catch(() => setIsAuthenticated(false));
   }, []);
 
   if (isAuthenticated === null) {

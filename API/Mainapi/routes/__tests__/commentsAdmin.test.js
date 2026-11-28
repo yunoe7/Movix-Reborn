@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 
 // Exécuter les vraies routes et leurs requêtes SQL sur des comptes fictifs,
 // sans connecter MySQL/Redis ni charger la configuration locale.
-function fixture(t, { role = 'admin', userType = 'oauth', cachedAdmin } = {}) {
+function fixture(t, { role = 'admin', userType = 'oauth', authMethod = null, cachedAdmin } = {}) {
   const db = new DatabaseSync(':memory:');
   t.after(() => db.close());
   db.exec(`
@@ -54,8 +54,40 @@ function fixture(t, { role = 'admin', userType = 'oauth', cachedAdmin } = {}) {
   } };
   const rateLimit = () => (_req, _res, next) => next();
   rateLimit.ipKeyGenerator = ip => ip;
+
+  // Même contrat que utils/staffAccess.js : le mode Discord n'est pris en
+  // compte que s'il vient du JWT signé, sinon la table admins fait foi.
+  const staffAccess = {
+    async resolveStaffRole(_pool, auth) {
+      const authType = auth.userType === 'bip39' ? 'bip-39' : auth.userType;
+      const [rows] = await pool.execute(
+        'SELECT role FROM admins WHERE user_id = ? AND auth_type = ? LIMIT 1',
+        [auth.userId, authType],
+      );
+      if (!rows.length) return null;
+      if (auth.authMethod === 'discord') return null;
+      const role = rows[0].role || 'admin';
+      return { role: role === 'owner' ? 'admin' : role, source: 'database', adminId: null };
+    },
+  };
   const dependencies = {
     express, path, jsonwebtoken: jwt,
+    './middleware/auth': { isAdmin: async (req, res, next) => {
+      try {
+        const staff = await staffAccess.resolveStaffRole(pool, {
+          userId: req.user?.userId || 'author',
+          userType: req.user?.userType || userType,
+          authMethod: req.user?.authMethod || null,
+        });
+        if (!staff || staff.role !== 'admin') {
+          return res.status(403).json({ error: 'Accès refusé - Droits admin requis' });
+        }
+        return next();
+      } catch {
+        return res.status(403).json({ error: 'Accès refusé - Droits admin requis' });
+      }
+    } },
+    './utils/staffAccess': staffAccess,
     fs: { promises: { async readFile() {
       return JSON.stringify({ profiles: [{ id: 'profile', name: 'Profil actuel', avatar: '/avatars/current.png' }] });
     } } },
@@ -81,7 +113,7 @@ function fixture(t, { role = 'admin', userType = 'oauth', cachedAdmin } = {}) {
       return dependencies[name];
     },
   }, { filename });
-  const token = jwt.sign({ sub: 'author', userType, sessionId: 'session' }, secret);
+  const token = jwt.sign({ sub: 'author', userType, sessionId: 'session', authMethod }, secret);
 
   async function request(routePath, { method = 'get', params = {}, query = {}, body = {} } = {}) {
     const route = module.exports.stack.find(layer => layer.route?.path === routePath && layer.route.methods[method])?.route;
@@ -109,14 +141,17 @@ function fixture(t, { role = 'admin', userType = 'oauth', cachedAdmin } = {}) {
   };
 }
 
-for (const [label, role, expected] of [
-  ['administrateur', 'admin', 1],
-  ['uploader', 'uploader', 0],
-  ['rôle inconnu', 'viewer', 0],
-  ['ancien administrateur sans rôle', null, 1],
+for (const [label, role, authMethod, expected] of [
+  ['administrateur', 'admin', null, 1],
+  ['uploader', 'uploader', null, 0],
+  ['modérateur', 'moderator', null, 0],
+  ['owner normalisé en admin', 'owner', null, 1],
+  ['rôle inconnu', 'viewer', null, 0],
+  ['ancien administrateur sans rôle', null, null, 1],
+  ['ancien admin sans rôle, connexion Google', null, 'google', 1],
 ]) {
   test(`le badge des commentaires et réponses respecte le rôle : ${label}`, async t => {
-    const f = fixture(t, { role });
+    const f = fixture(t, { role, authMethod });
     const comments = await f.comments();
     const replies = await f.replies();
     assert.equal(comments.statusCode, 200);
@@ -125,6 +160,14 @@ for (const [label, role, expected] of [
     assert.equal(replies.body.replies[0].is_admin, expected);
   });
 }
+
+test('sans ligne admins, un compte Google n’hérite d’aucun rôle Discord', async t => {
+  const f = fixture(t, { role: 'admin', authMethod: 'google' });
+  f.db.exec('DELETE FROM admins');
+  assert.equal((await f.comments()).body.comments[0].is_admin, 0);
+  assert.equal((await f.limits()).body.isAdmin, false);
+  assert.equal((await f.request('/admin/ban', { method: 'post' })).statusCode, 403);
+});
 
 test('un uploader ne reçoit ni dispense de limite ni accès à la modération', async t => {
   const f = fixture(t, { role: 'uploader' });
