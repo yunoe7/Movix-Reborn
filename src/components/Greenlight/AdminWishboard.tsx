@@ -203,6 +203,7 @@ const AdminWishboard: React.FC = () => {
     // Leaderboard state
     const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
     const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+    const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
     const [leaderboardType, setLeaderboardType] = useState<'wishboard' | 'downloads'>('wishboard');
     const [leaderboardScope, setLeaderboardScope] = useState<'month' | 'all-time'>('month');
     const [selectedLeaderboardMonth, setSelectedLeaderboardMonth] = useState(() => formatMonthKey(new Date()));
@@ -227,6 +228,8 @@ const AdminWishboard: React.FC = () => {
     const [batchResults, setBatchResults] = useState<BatchCheckResult[]>([]);
     const [batchCompleted, setBatchCompleted] = useState(false);
     const [deletingBatch, setDeletingBatch] = useState(false);
+    const [batchRejectConfirmOpen, setBatchRejectConfirmOpen] = useState(false);
+    const [batchActionError, setBatchActionError] = useState<string | null>(null);
     const tmdbCacheRef = useRef<Record<string, { title: string; year: string; poster_path: string | null }>>({});
 
     const handleSort = (key: string) => {
@@ -409,6 +412,7 @@ const AdminWishboard: React.FC = () => {
     // Fetch leaderboard data
     const fetchLeaderboard = useCallback(async () => {
         setLeaderboardLoading(true);
+        setLeaderboardError(null);
         try {
             const authToken = localStorage.getItem('auth_token');
             let url: string;
@@ -430,18 +434,27 @@ const AdminWishboard: React.FC = () => {
             const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${authToken}` },
             });
-            if (response.ok) {
-                const data = await response.json();
-                // Normalize: map both shapes to a common LeaderboardEntry
-                const entries = (data.leaderboard || []).map((entry: LeaderboardEntry) => ({
-                    ...entry,
-                    greenlight_count: entry.greenlight_count ?? entry.score ?? 0,
-                    last_greenlight_at: entry.last_greenlight_at ?? entry.last_action_at ?? '',
-                }));
-                setLeaderboard(entries);
+            if (!response.ok) {
+                setLeaderboard([]);
+                setLeaderboardError(`Impossible de charger le classement (HTTP ${response.status}).`);
+                return;
             }
+            const data = await response.json();
+            // Normalize: map both shapes to a common LeaderboardEntry
+            const entries = (data.leaderboard || []).map((entry: LeaderboardEntry) => ({
+                ...entry,
+                greenlight_count: entry.greenlight_count ?? entry.score ?? 0,
+                last_greenlight_at: entry.last_greenlight_at ?? entry.last_action_at ?? '',
+            }));
+            setLeaderboard(entries);
         } catch (error) {
             console.error('Error fetching leaderboard:', error);
+            setLeaderboard([]);
+            setLeaderboardError(
+                error instanceof Error
+                    ? `Impossible de charger le classement : ${error.message}`
+                    : 'Impossible de charger le classement.'
+            );
         } finally {
             setLeaderboardLoading(false);
         }
@@ -1012,6 +1025,7 @@ const AdminWishboard: React.FC = () => {
     const handleBatchCheck = async () => {
         setBatchCheckModalOpen(true);
         setBatchChecking(true);
+        setBatchActionError(null);
         setBatchCompleted(false);
         setBatchResults([]);
         setBatchProgress(0);
@@ -1079,13 +1093,17 @@ const AdminWishboard: React.FC = () => {
         const toReject = batchResults.filter(r => r.availableCategories >= 2);
         if (toReject.length === 0) return;
 
+        setBatchRejectConfirmOpen(false);
+        setBatchActionError(null);
         setDeletingBatch(true);
         const authToken = localStorage.getItem('auth_token');
         const rejectionReason = 'Déjà disponible, pour plus d\'assistance : ' + IX_MATRIX_URL;
+        let rejectedCount = 0;
+        const failedTitles: string[] = [];
 
         for (const item of toReject) {
             try {
-                await fetch(`${API_URL}/api/wishboard/admin/${item.request.id}/status`, {
+                const response = await fetch(`${API_URL}/api/wishboard/admin/${item.request.id}/status`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1096,17 +1114,29 @@ const AdminWishboard: React.FC = () => {
                         reason: rejectionReason,
                     }),
                 });
+                if (!response.ok) {
+                    failedTitles.push(item.request.title);
+                } else {
+                    rejectedCount += 1;
+                }
                 // Rate limiting
                 await sleep(200);
             } catch (error) {
                 console.error(`Error rejecting ${item.request.title}:`, error);
+                failedTitles.push(item.request.title);
             }
         }
 
         // Refresh the list
         await fetchRequests();
         setDeletingBatch(false);
-        setBatchCheckModalOpen(false);
+        if (failedTitles.length > 0) {
+            setBatchActionError(
+                `${rejectedCount}/${toReject.length} demandes rejetées. Échec pour : ${failedTitles.slice(0, 5).join(', ')}${failedTitles.length > 5 ? '…' : ''}`
+            );
+        } else {
+            setBatchCheckModalOpen(false);
+        }
     };
 
     const formatDate = (date: string) => {
@@ -1266,6 +1296,11 @@ const AdminWishboard: React.FC = () => {
                         </div>
                     </div>
 
+                    {leaderboardError && (
+                        <div role="alert" className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                            {leaderboardError}
+                        </div>
+                    )}
                     {leaderboardLoading ? (
                         <div className="flex items-center justify-center py-20">
                             <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
@@ -1860,6 +1895,17 @@ const AdminWishboard: React.FC = () => {
             </ReusableModal >
 
             <ConfirmDialog isOpen={deleteModalOpen} title={t('admin.deleteRequest')} message={t('admin.confirmDeleteRequest', { title: selectedRequest?.title })} confirmLabel={t('admin.delete')} cancelLabel={t('admin.cancel')} variant="destructive" busy={submitting} onCancel={() => setDeleteModalOpen(false)} onConfirm={handleDelete} />
+            <ConfirmDialog
+                isOpen={batchRejectConfirmOpen}
+                title={t('admin.batchRejectTitle')}
+                message={t('admin.confirmBatchReject', { count: batchResults.filter(r => r.availableCategories >= 2).length })}
+                confirmLabel={t('admin.reject')}
+                cancelLabel={t('admin.cancel')}
+                variant="destructive"
+                busy={deletingBatch}
+                onCancel={() => setBatchRejectConfirmOpen(false)}
+                onConfirm={handleRejectWithMultipleSources}
+            />
 
             {/* Status Change Modal */}
             < ReusableModal
@@ -2178,6 +2224,11 @@ const AdminWishboard: React.FC = () => {
 
                             {/* Actions */}
                             <div className="flex flex-col items-start justify-between gap-3 border-t border-white/[0.08] pt-4 sm:flex-row sm:items-center">
+                                {batchActionError && (
+                                    <p role="alert" className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                                        {batchActionError}
+                                    </p>
+                                )}
                                 <p className="text-white/50 text-xs">
                                     {t('admin.twoSourcesRejectNote')}
                                 </p>
@@ -2192,7 +2243,10 @@ const AdminWishboard: React.FC = () => {
                                     {batchResults.filter(r => r.availableCategories >= 2).length > 0 && (
                                         <Button
                                             variant="destructive"
-                                            onClick={handleRejectWithMultipleSources}
+                                            onClick={() => {
+                                                setBatchActionError(null);
+                                                setBatchRejectConfirmOpen(true);
+                                            }}
                                             disabled={deletingBatch}
                                         >
                                             {deletingBatch ? (

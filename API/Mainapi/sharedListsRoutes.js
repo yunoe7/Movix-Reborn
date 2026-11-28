@@ -12,6 +12,11 @@ const {
 } = require('./mysqlPool');
 const { verifyAccessKey } = require('./checkVip');
 const { verifyTurnstileFromRequest } = require('./utils/turnstile');
+const { resolveStaffRole } = require('./utils/staffAccess');
+const { createAdminActionLimiter } = require('./utils/adminActionRateLimit');
+
+// Limite les suppressions/approbations admin de listes partagées.
+const adminActionLimiter = createAdminActionLimiter('shared-lists', 60);
 // Réutiliser l'instance Redis partagée au lieu d'en créer une nouvelle (évite les fuites mémoire)
 const { redis } = require('./config/redis');
 
@@ -294,6 +299,9 @@ const requireAdmin = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     const { sub: userId, userType, sessionId } = decoded;
+    const authMethod = ['discord', 'google', 'bip39'].includes(decoded.authMethod)
+      ? decoded.authMethod
+      : (userType === 'bip39' ? 'bip39' : null);
 
     if (!['oauth', 'bip39'].includes(userType) || !userId || !sessionId) {
       return res.status(401).json({ error: 'Token invalide' });
@@ -310,19 +318,15 @@ const requireAdmin = async (req, res, next) => {
       return res.status(401).json({ error: 'Session invalide ou expirée' });
     }
 
-    // Vérifier le rôle admin
-    const [adminRows] = await pool.execute(
-      'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
-      [userId, userType === 'bip39' ? 'bip-39' : userType]
-    );
-    // La table `admins` contient aussi les uploaders (role = 'uploader') : une
-    // ligne ne suffit pas, la modération des listes est réservée au rôle admin.
-    if (adminRows.length === 0 || (adminRows[0].role || 'admin') !== 'admin') {
+    // La table `admins` contient aussi des uploaders : resolveStaffRole
+    // applique explicitement le rôle admin, y compris pour les admins Discord.
+    const staff = await resolveStaffRole(pool, { userId, userType, authMethod });
+    if (!staff || staff.role !== 'admin') {
       return res.status(403).json({ error: 'Accès refusé - Droits admin requis' });
     }
 
     req.user = { userId, userType, sessionId };
-    req.admin = { userId, userType, adminId: adminRows[0].id, role: adminRows[0].role || 'admin' };
+    req.admin = { userId, userType, adminId: staff.adminId, role: staff.role };
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
@@ -854,7 +858,7 @@ router.get('/admin/public', requireAdmin, async (req, res) => {
 });
 
 // DELETE /admin/public/:id — Supprimer une liste publique (admin uniquement)
-router.delete('/admin/public/:id', requireAdmin, async (req, res) => {
+router.delete('/admin/public/:id', requireAdmin, adminActionLimiter, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -935,7 +939,7 @@ router.get('/admin/moderated', requireAdmin, async (req, res) => {
 });
 
 // PUT /admin/moderated/:id/approve — Approuver une liste modérée (remettre dans le catalogue)
-router.put('/admin/moderated/:id/approve', requireAdmin, async (req, res) => {
+router.put('/admin/moderated/:id/approve', requireAdmin, adminActionLimiter, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -962,7 +966,7 @@ router.put('/admin/moderated/:id/approve', requireAdmin, async (req, res) => {
 });
 
 // DELETE /admin/moderated/:id — Supprimer définitivement une liste modérée
-router.delete('/admin/moderated/:id', requireAdmin, async (req, res) => {
+router.delete('/admin/moderated/:id', requireAdmin, adminActionLimiter, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -42,10 +42,12 @@ interface AdminStats {
     moderatedCount: number;
 }
 
+const EMPTY_STATS: AdminStats = { total: 0, publicCount: 0, moderatedCount: 0 };
+
 const AdminSharedLists: React.FC = () => {
     const { t, i18n } = useTranslation();
     const [lists, setLists] = useState<SharedList[]>([]);
-    const [stats, setStats] = useState<AdminStats>({ total: 0, publicCount: 0, moderatedCount: 0 });
+    const [stats, setStats] = useState<AdminStats>(EMPTY_STATS);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<'public' | 'moderated'>('public');
@@ -59,13 +61,12 @@ const AdminSharedLists: React.FC = () => {
 
     const API_URL = import.meta.env.VITE_MAIN_API || '';
 
-    const fetchLists = useCallback(async (isNewSearch = false) => {
+    const fetchLists = useCallback(async (requestedPage: number = 1, append: boolean = false) => {
         setLoading(true);
         try {
             const authToken = localStorage.getItem('auth_token');
-            const currentPage = isNewSearch ? 1 : page;
             const params = new URLSearchParams();
-            params.append('page', currentPage.toString());
+            params.append('page', requestedPage.toString());
             params.append('limit', '50');
 
             const endpoint = activeTab === 'public'
@@ -78,14 +79,16 @@ const AdminSharedLists: React.FC = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                const fetchedLists = data.lists || [];
+                const fetchedLists: SharedList[] = data.lists || [];
 
-                if (isNewSearch) {
-                    setLists(fetchedLists);
-                    setPage(1);
-                } else {
-                    setLists(prev => [...prev, ...fetchedLists]);
-                }
+                setLists(prev => {
+                    if (!append) return fetchedLists;
+                    // La page demandée est explicite : on déduplique quand même
+                    // au cas où le backend renverrait des lignes déjà vues.
+                    const knownIds = new Set(prev.map((list) => list.id));
+                    return [...prev, ...fetchedLists.filter((list) => !knownIds.has(list.id))];
+                });
+                setPage(requestedPage);
 
                 if (data.stats) {
                     setStats(data.stats);
@@ -94,19 +97,27 @@ const AdminSharedLists: React.FC = () => {
                 setHasMore(data.hasMore || false);
                 setError(null);
             } else {
+                // Ne jamais laisser des listes ou compteurs périmés après une erreur.
+                setLists([]);
+                setStats(EMPTY_STATS);
+                setHasMore(false);
                 setError(`HTTP ${response.status}`);
             }
         } catch (error) {
             console.error('Error fetching admin shared lists:', error);
+            setLists([]);
+            setStats(EMPTY_STATS);
+            setHasMore(false);
             setError(error instanceof Error ? error.message : 'Erreur réseau');
         } finally {
             setLoading(false);
         }
-    }, [API_URL, page, activeTab]);
+    }, [API_URL, activeTab]);
 
     useEffect(() => {
-        fetchLists(true);
-    }, [activeTab]);
+        setPage(1);
+        void fetchLists(1, false);
+    }, [activeTab, fetchLists]);
 
     // Approve moderated list
     const handleApprove = async (list: SharedList) => {
@@ -444,8 +455,7 @@ const AdminSharedLists: React.FC = () => {
                         <Button className="group/icon"
                             variant="ghost"
                             onClick={() => {
-                                setPage(prev => prev + 1);
-                                fetchLists(false);
+                                void fetchLists(page + 1, true);
                             }}
                             disabled={loading}
                         >

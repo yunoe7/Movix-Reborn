@@ -29,6 +29,30 @@ import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
 import { copyText } from '../utils/clipboard';
 
+/**
+ * `busy` est un état React : une double validation avant le prochain rendu
+ * peut envoyer deux mutations (création d'app, régénération de secret...).
+ * Le référentiel synchrone garantit une seule opération en vol.
+ */
+function useBusyGuard() {
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+
+  const beginBusy = useCallback(() => {
+    if (busyRef.current) return false;
+    busyRef.current = true;
+    setBusy(true);
+    return true;
+  }, []);
+
+  const endBusy = useCallback(() => {
+    busyRef.current = false;
+    setBusy(false);
+  }, []);
+
+  return { busy, beginBusy, endBusy };
+}
+
 interface OAuthAppRow {
   id: number;
   clientId: string;
@@ -105,6 +129,7 @@ const AdminOAuthApps: React.FC = () => {
   const [statsLoading, setStatsLoading] = useState(false);
   const [deleteCandidate, setDeleteCandidate] = useState<OAuthAppRow | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
 
   const getAuth = () => ({ Authorization: `Bearer ${localStorage.getItem('auth_token')}` });
 
@@ -145,7 +170,8 @@ const AdminOAuthApps: React.FC = () => {
   }, [apps, search]);
 
   const handleDeleteConfirmed = async () => {
-    if (!deleteCandidate) return;
+    if (!deleteCandidate || deletingRef.current) return;
+    deletingRef.current = true;
     setDeleting(true);
     try {
       await axios.delete(`${API_URL}/api/admin/oauth-apps/${deleteCandidate.clientId}`, { headers: getAuth() });
@@ -155,6 +181,7 @@ const AdminOAuthApps: React.FC = () => {
     } catch (err) {
       toast.error(getRequestErrorMessage(err) || t('common.error'));
     } finally {
+      deletingRef.current = false;
       setDeleting(false);
     }
   };
@@ -312,7 +339,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, onEdit, onStats, onDelete, onTog
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [balanceDelta, setBalanceDelta] = useState<number>(30);
-  const [busy, setBusy] = useState(false);
+  const { busy, beginBusy, endBusy } = useBusyGuard();
   const [iconHover, setIconHover] = useState(false);
   // Drag & drop state. On compte les enter/leave (dragCounter) parce qu'au
   // passage de la souris entre 2 child elements, dragenter et dragleave se
@@ -333,7 +360,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, onEdit, onStats, onDelete, onTog
       toast.error(t('adminOauthApps.iconTypeInvalid'));
       return;
     }
-    setBusy(true);
+    if (!beginBusy()) return;
     try {
       const reader = new FileReader();
       const dataBase64: string = await new Promise((resolve, reject) => {
@@ -355,13 +382,13 @@ const AppCard: React.FC<AppCardProps> = ({ app, onEdit, onStats, onDelete, onTog
     } catch (err) {
       toast.error(getRequestErrorMessage(err) || t('common.error'));
     } finally {
-      setBusy(false);
+      endBusy();
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
   const handleIconDeleteConfirmed = async () => {
-    setBusy(true);
+    if (!beginBusy()) return;
     try {
       await axios.delete(`${API_URL}/api/admin/oauth-apps/${app.clientId}/icon`, { headers: getAuth() });
       toast.success(t('adminOauthApps.iconRemoved'));
@@ -370,7 +397,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, onEdit, onStats, onDelete, onTog
     } catch (err) {
       toast.error(getRequestErrorMessage(err) || t('common.error'));
     } finally {
-      setBusy(false);
+      endBusy();
     }
   };
 
@@ -379,7 +406,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, onEdit, onStats, onDelete, onTog
       toast.error(t('adminOauthApps.balanceDeltaInvalid'));
       return;
     }
-    setBusy(true);
+    if (!beginBusy()) return;
     try {
       const res = await axios.post(
         `${API_URL}/api/admin/oauth-apps/${app.clientId}/vip-balance`,
@@ -391,12 +418,12 @@ const AppCard: React.FC<AppCardProps> = ({ app, onEdit, onStats, onDelete, onTog
     } catch (err) {
       toast.error(getRequestErrorMessage(err) || t('common.error'));
     } finally {
-      setBusy(false);
+      endBusy();
     }
   };
 
   const handleRegenerateSecretConfirmed = async () => {
-    setBusy(true);
+    if (!beginBusy()) return;
     try {
       const res = await axios.post(
         `${API_URL}/api/admin/oauth-apps/${app.clientId}/regenerate-secret`,
@@ -416,7 +443,7 @@ const AppCard: React.FC<AppCardProps> = ({ app, onEdit, onStats, onDelete, onTog
     } catch (err) {
       toast.error(getRequestErrorMessage(err) || t('common.error'));
     } finally {
-      setBusy(false);
+      endBusy();
     }
   };
 
@@ -698,13 +725,13 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ scopes, onClose, onCrea
   const [redirectUris, setRedirectUris] = useState('');
   const [selectedScopes, setSelectedScopes] = useState<Set<string>>(new Set());
   const [publicClient, setPublicClient] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const { busy, beginBusy, endBusy } = useBusyGuard();
   const [createdSecret, setCreatedSecret] = useState<string | null>(null);
 
   const getAuth = () => ({ Authorization: `Bearer ${localStorage.getItem('auth_token')}` });
 
   const handleCreate = async () => {
-    setBusy(true);
+    if (!beginBusy()) return;
     try {
       const res = await axios.post(
         `${API_URL}/api/admin/oauth-apps`,
@@ -729,7 +756,7 @@ const CreateAppModal: React.FC<CreateAppModalProps> = ({ scopes, onClose, onCrea
     } catch (err) {
       toast.error(getRequestErrorMessage(err) || t('common.error'));
     } finally {
-      setBusy(false);
+      endBusy();
     }
   };
 
@@ -857,12 +884,12 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ app, scopes, onClose, onSav
   const [homepageUrl, setHomepageUrl] = useState(app.homepageUrl || '');
   const [redirectUris, setRedirectUris] = useState(app.redirectUris.join('\n'));
   const [selectedScopes, setSelectedScopes] = useState<Set<string>>(new Set(app.allowedScopes));
-  const [busy, setBusy] = useState(false);
+  const { busy, beginBusy, endBusy } = useBusyGuard();
 
   const getAuth = () => ({ Authorization: `Bearer ${localStorage.getItem('auth_token')}` });
 
   const handleSave = async () => {
-    setBusy(true);
+    if (!beginBusy()) return;
     try {
       await axios.put(
         `${API_URL}/api/admin/oauth-apps/${app.clientId}`,
@@ -880,7 +907,7 @@ const EditAppModal: React.FC<EditAppModalProps> = ({ app, scopes, onClose, onSav
     } catch (err) {
       toast.error(getRequestErrorMessage(err) || t('common.error'));
     } finally {
-      setBusy(false);
+      endBusy();
     }
   };
 

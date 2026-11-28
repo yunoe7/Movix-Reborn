@@ -42,6 +42,9 @@ const VipKeysManager: React.FC = () => {
   const [hasMore, setHasMore] = useState(false);
   const [total, setTotal] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Une seule réponse par requête : ignore les résultats périmés (changement de
+  // filtre/page) et les doublons déclenchés par StrictMode en développement.
+  const requestRef = useRef(0);
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,7 +56,7 @@ const VipKeysManager: React.FC = () => {
   const API_URL = API_BASE_URL;
 
   const getAuthToken = () => localStorage.getItem('auth_token');
-  const getRequestErrorMessage = (error: unknown) => {
+  const getRequestErrorMessage = useCallback((error: unknown) => {
     if (axios.isAxiosError(error)) {
       return error.response?.data?.error || error.message;
     }
@@ -63,7 +66,7 @@ const VipKeysManager: React.FC = () => {
     }
 
     return t('admin.unknownError');
-  };
+  }, [t]);
 
   const generateKey = () => {
     const length = 16;
@@ -105,7 +108,8 @@ const VipKeysManager: React.FC = () => {
     }
   };
 
-  const loadKeys = async (pageOverride?: number) => {
+  const loadKeys = useCallback(async (pageOverride?: number) => {
+    const requestId = ++requestRef.current;
     setIsLoading(true);
     try {
       const p = pageOverride ?? page;
@@ -121,18 +125,20 @@ const VipKeysManager: React.FC = () => {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
 
+      if (requestId !== requestRef.current) return;
       const data = response.data;
       setKeys(data.keys || []);
       setHasMore(data.hasMore || false);
       setTotal(data.total || 0);
-      setPage(data.page || p);
+      if (typeof data.page === 'number' && data.page !== p) setPage(data.page);
     } catch (error: unknown) {
+      if (requestId !== requestRef.current) return;
       console.error('Erreur lors du chargement des clés:', error);
       toast.error(`Erreur: ${getRequestErrorMessage(error)}`);
     } finally {
-      setIsLoading(false);
+      if (requestId === requestRef.current) setIsLoading(false);
     }
-  };
+  }, [API_URL, currentFilter, debouncedSearch, page, getRequestErrorMessage]);
 
   const copyKey = async (key: string) => {
     if (await copyText(key)) {
@@ -237,15 +243,12 @@ const VipKeysManager: React.FC = () => {
     }, 400);
   }, []);
 
+  // Effet unique : filtre, recherche et page déclenchent exactement un chargement.
+  // `filterKeys` et le debounce mettent déjà `page` à 1, sans quoi deux effets
+  // séparés envoyaient la même requête au montage et à chaque changement.
   useEffect(() => {
-    setPage(1);
-    loadKeys(1);
-  }, [currentFilter, debouncedSearch]);
-
-  // Fetch when page changes
-  useEffect(() => {
-    loadKeys();
-  }, [page]);
+    void loadKeys(page);
+  }, [loadKeys, page]);
 
   const getKeyStatus = (key: VipKey) => {
     const isActive = key.active === 1;

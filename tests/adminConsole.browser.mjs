@@ -429,10 +429,19 @@ try {
       nodes.map((node) => node.dataset.testid.replace('admin-nav-', ''))
     ));
     const expectedNavIds = [
-      'overview', 'wishboard', 'link-submissions', 'comments', 'reports', 'shared-lists',
-      'links', 'vip-keys', 'vip-invoices', 'vip-donation-settings', 'monetization',
-      'hero-promos', 'referral', 'oauth-apps', 'team', 'help-feedback',
+      'overview',
+      'team',
+      'vip-keys', 'vip-invoices', 'vip-donation-settings', 'referral',
+      'links', 'team-selection', 'hero-promos', 'wishboard', 'link-submissions',
+      'comments', 'reports', 'shared-lists',
+      'oauth-apps',
+      'decor',
+      'monetization', 'whats-new', 'release-notes',
+      'diagnostics',
+      'help-feedback',
     ];
+    assert.equal(expectedNavIds.length, 21);
+    assert.equal(navIds.length, 21);
     assert.deepEqual(navIds, expectedNavIds, 'admin: navigation groupée complète');
 
     const usersText = compactText(await page.locator('[data-testid="admin-stat-users"]').innerText());
@@ -448,6 +457,17 @@ try {
     });
     const chartBars = await page.locator('[aria-label="Inscriptions par jour"] > div').count();
     assert.equal(chartBars, 7, 'admin: graphique alimenté par la série serveur');
+
+    const quickActionIds = await page.locator('[data-testid^="admin-quick-action-"]')
+      .evaluateAll((nodes) => nodes.map((node) => node.dataset.testid.replace('admin-quick-action-', '')));
+    assert.deepEqual(quickActionIds, ['team', 'vip-keys', 'vip-invoices', 'vip-donation-settings'],
+      'admin: accès rapides des admin');
+
+    await page.locator('[data-testid="admin-nav-whats-new"]').click();
+    await page.locator('textarea[placeholder="adminComms.postSummaryPlaceholder"]').waitFor();
+    await page.locator('[data-testid="admin-nav-release-notes"]').click();
+    await page.locator('textarea[placeholder="adminComms.releaseSummaryPlaceholder"]').waitFor();
+    const i18nPlaceholders = 2;
 
     const search = page.locator('[data-testid="admin-search"]');
     await page.locator('h1').first().click();
@@ -486,6 +506,8 @@ try {
       usersText,
       registrationsText,
       chartBars,
+      quickActionIds,
+      i18nPlaceholders,
       roleText: 'Admin',
       nativeConfirmCalls: 0,
       screenshot,
@@ -529,18 +551,65 @@ try {
     return { overflow, screenshot };
   });
 
+  await withScenario('decor-admin', { token: 'valid-admin', role: 'admin' }, async (page) => {
+    await page.locator('[data-testid="admin-nav-decor"]').click();
+    await page.locator('[data-testid="admin-decor"]').waitFor();
+    const text = await page.locator('[data-testid="admin-decor"]').innerText();
+    assert.ok(text.includes('Catégorie en préparation'), 'decor: état honnête de préparation');
+    assert.ok(text.includes('April Fools'), 'decor: séparation explicite avec April Fools');
+    assert.equal(
+      await page.locator('[data-testid="admin-decor"] button').count(),
+      0,
+      'decor: aucun bouton ni action simulée',
+    );
+    const screenshot = screenshotName('decor-admin');
+    await page.screenshot({ path: path.join(artifactDir, screenshot), fullPage: true });
+    return { screenshot, fakeActions: 0 };
+  });
+
+  await withScenario('diagnostics-admin', { token: 'valid-admin', role: 'admin' }, async (page) => {
+    await page.locator('[data-testid="admin-nav-diagnostics"]').click();
+    await page.locator('[data-testid="admin-diagnostics"]').waitFor();
+    const text = await page.locator('[data-testid="admin-diagnostics"]').innerText();
+    assert.ok(text.includes('Journalisation non exposée'), 'diagnostics: aucun faux journal');
+    assert.equal(
+      await page.locator('[data-testid="admin-diagnostics"] [data-state="unavailable"]').count(),
+      1,
+      'diagnostics: flux de logs marqué indisponible',
+    );
+    const screenshot = screenshotName('diagnostics-admin');
+    await page.screenshot({ path: path.join(artifactDir, screenshot), fullPage: true });
+    return { screenshot, unavailableRows: 1 };
+  });
+
   await withScenario('uploader', { token: 'valid-uploader', role: 'uploader' }, async (page) => {
     await page.locator('[data-testid="admin-overview"]').waitFor();
     const navIds = await page.locator('[data-testid^="admin-nav-"]').evaluateAll((nodes) => (
       nodes.map((node) => node.dataset.testid.replace('admin-nav-', ''))
     ));
-    assert.deepEqual(navIds, ['overview', 'wishboard', 'link-submissions', 'links'], 'uploader: périmètre limité');
+    assert.deepEqual(navIds, ['overview', 'links', 'wishboard', 'link-submissions'], 'uploader: périmètre limité');
     assert.equal(await page.locator('[data-testid="admin-nav-comments"]').count(), 0);
+    assert.equal(await page.locator('[data-testid="admin-nav-decor"]').count(), 0);
+    assert.equal(await page.locator('[data-testid="admin-nav-diagnostics"]').count(), 0);
     assert.ok((await page.locator('[data-testid="admin-role"]').innerText()).includes('Uploader'));
     assert.ok(await page.getByText('Accès restreint').count() >= 1, 'uploader: alerte de périmètre');
     const screenshot = screenshotName('uploader');
     await page.screenshot({ path: path.join(artifactDir, screenshot), fullPage: true });
-    return { navIds, screenshot };
+    const quickActionIds = await page.locator('[data-testid^="admin-quick-action-"]')
+      .evaluateAll((nodes) => nodes.map((node) => node.dataset.testid.replace('admin-quick-action-', '')));
+    assert.deepEqual(quickActionIds, ['links', 'wishboard', 'link-submissions'],
+      'uploader: accès rapides conservés');
+    assert.equal(apiRequests.filter((request) => (
+      request.path === '/api/admin/stats/overview' && request.token === 'valid-uploader'
+    )).length, 0, 'uploader: aucun appel statistics admin');
+    await page.locator('[data-testid="admin-quick-action-links"]').click();
+    await page.locator('[data-testid="section-links"]').waitFor();
+    assert.equal(
+      await page.locator('[data-testid="router-location"]').getAttribute('data-search'),
+      '?section=links',
+      'uploader: accès rapide navigue vers la section autorisée',
+    );
+    return { navIds, quickActionIds, screenshot };
   });
 
   await withScenario('uploader-forbidden-section', {
@@ -564,8 +633,16 @@ try {
       nodes.map((node) => node.dataset.testid.replace('admin-nav-', ''))
     ));
     assert.deepEqual(navIds, ['overview', 'links'], 'moderator: périmètre limité');
+    assert.equal(await page.locator('[data-testid="admin-nav-decor"]').count(), 0);
+    assert.equal(await page.locator('[data-testid="admin-nav-diagnostics"]').count(), 0);
     assert.ok((await page.locator('[data-testid="admin-role"]').innerText()).includes('Modérateur'));
-    return { navIds };
+    const quickActionIds = await page.locator('[data-testid^="admin-quick-action-"]')
+      .evaluateAll((nodes) => nodes.map((node) => node.dataset.testid.replace('admin-quick-action-', '')));
+    assert.deepEqual(quickActionIds, ['links'], 'moderator: accès rapide conservé');
+    assert.equal(apiRequests.filter((request) => (
+      request.path === '/api/admin/stats/overview' && request.token === 'valid-moderator'
+    )).length, 0, 'moderator: aucun appel statistics admin');
+    return { navIds, quickActionIds };
   });
 
   await withScenario('stats-error', { token: 'stats-error', role: 'admin' }, async (page) => {
@@ -625,6 +702,8 @@ const staticChecks = {
     'src/components/Greenlight/AdminLinkSubmissions.tsx',
     'src/components/StreamingLinksManager.tsx',
     'src/components/VipKeysManager.tsx',
+    'src/components/admin/AdminDecorPlaceholder.tsx',
+    'src/components/admin/AdminDiagnostics.tsx',
   ].map(async (file) => !/window\.confirm\s*\(|(?<!await )confirm\s*\(/.test(
     await readFile(path.join(repo, file), 'utf8'),
   ))).then((results) => results.every(Boolean)),
@@ -633,9 +712,18 @@ const staticChecks = {
     ['diff', '--quiet', '--', 'src/components/VidRiftPlayer.tsx'],
     { cwd: repo },
   ).then(() => true, () => false),
+  distinctAdminCommsPlaceholders: Promise.all(['fr', 'en'].map(async (locale) => {
+    const source = await readFile(path.join(repo, 'src', 'i18n', 'locales', `${locale}.json`), 'utf8');
+    const messages = JSON.parse(source);
+    return (source.match(/"summaryPlaceholder"\s*:/g) || []).length === 0
+      && Boolean(messages.adminComms.postSummaryPlaceholder)
+      && Boolean(messages.adminComms.releaseSummaryPlaceholder)
+      && messages.adminComms.postSummaryPlaceholder !== messages.adminComms.releaseSummaryPlaceholder;
+  })).then((results) => results.every(Boolean)),
 };
 staticChecks.noNativeConfirmInAdminComponents = await staticChecks.noNativeConfirmInAdminComponents;
 staticChecks.vidriftPlayerUntouched = await staticChecks.vidriftPlayerUntouched;
+staticChecks.distinctAdminCommsPlaceholders = await staticChecks.distinctAdminCommsPlaceholders;
 
 const files = await readdir(artifactDir);
 const report = {
@@ -661,9 +749,11 @@ const report = {
     checkTokens: Object.fromEntries(Object.entries(adminResponses).map(([token, value]) => [token, value.admin.role])),
   },
   expected: {
-    adminNavIds: 16,
-    uploaderNavIds: ['overview', 'wishboard', 'link-submissions', 'links'],
+    adminNavIds: 21,
+    uploaderNavIds: ['overview', 'links', 'wishboard', 'link-submissions'],
     moderatorNavIds: ['overview', 'links'],
+    decor: 'catégorie préparée, sans bouton ni publication simulée',
+    diagnostics: 'sources réelles uniquement, logs marqués indisponibles',
     statsSource: 'GET /api/admin/stats/overview uniquement',
     deniedGates: ['success=false avec HTTP 200', 'rôle inconnu', 'aucun token'],
   },
@@ -693,7 +783,7 @@ const markdown = [
   '| --- | --- | --- |',
   ...observations.map((entry) => {
     const summary = Object.entries(entry)
-      .filter(([key]) => ['navIds', 'usersText', 'registrationsText', 'overflow', 'fallback', 'granted', 'role', 'nativeConfirmCalls'].includes(key))
+      .filter(([key]) => ['navIds', 'quickActionIds', 'i18nPlaceholders', 'usersText', 'registrationsText', 'overflow', 'fallback', 'granted', 'role', 'nativeConfirmCalls', 'fakeActions', 'unavailableRows'].includes(key))
       .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
       .join(' ; ');
     return `| ${entry.name} | ${summary || 'ok'} | ${entry.screenshot ?? `trace-${entry.name}.zip`} |`;

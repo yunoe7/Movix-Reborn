@@ -4,7 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ChevronRight, LayoutGrid, Search, ShieldCheck, X } from '../icons/Icons8';
 import {
   getGroupIcon,
+  getGroupMeta,
   getRoleLabel,
+  getSubgroupMeta,
   groupSections,
   searchSections,
   type AdminGroupMeta,
@@ -34,7 +36,9 @@ const AdminShell: React.FC<{
   const grouped = useMemo(() => groupSections(sections), [sections]);
   const results = useMemo(() => searchSections(sections, query).slice(0, 8), [sections, query]);
   const activeMeta = sections.find((section) => section.id === activeSection);
+  const activeGroup = activeMeta ? getGroupMeta(activeMeta.group) : null;
   const ActiveIcon = activeMeta?.icon ?? LayoutGrid;
+  const ActiveGroupIcon = getGroupIcon(activeGroup?.id ?? 'dashboard');
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -72,35 +76,48 @@ const AdminShell: React.FC<{
         key={section.id}
         type="button"
         aria-current={isActive ? 'page' : undefined}
+        aria-label={`${section.title} — ${section.description}`}
         onClick={() => navigate(section.id)}
         data-testid={`admin-nav-${section.id}`}
         className={`admin-nav-item ${isActive ? 'is-active' : ''} ${compact ? 'is-compact' : ''}`}
-        title={section.description}
+        title={`${section.title} — ${section.description}`}
       >
         <Icon className="h-[17px] w-[17px] shrink-0" aria-hidden="true" />
         {!compact && <span className="min-w-0 flex-1 truncate text-left">{section.title}</span>}
-        {isActive && !compact && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/80" aria-hidden="true" />}
+        {isActive && !compact && <span className="admin-nav-active-dot" aria-hidden="true" />}
       </button>
     );
   };
 
-  const navGroups = (compact = false) => grouped.map(({ group, items }: { group: AdminGroupMeta; items: AdminSectionMeta[] }) => {
+  const navGroups = () => grouped.map(({ group, items }: { group: AdminGroupMeta; items: AdminSectionMeta[] }) => {
     const GroupIcon = getGroupIcon(group.id);
     return (
       <div key={group.id} className="admin-nav-group">
-        {!compact && (
-          <p className="admin-nav-group-label">
-            <GroupIcon className="h-3.5 w-3.5" aria-hidden="true" />
-            {t(group.labelKey, group.labelDefault)}
-          </p>
-        )}
-        <div className="space-y-1">{items.map((section) => navItem(section, compact))}</div>
+        <p className="admin-nav-group-label">
+          <GroupIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">{t(group.labelKey, group.labelDefault)}</span>
+        </p>
+        <div className="admin-nav-group-items">
+          {items.map((section, index) => {
+            const previous = items[index - 1];
+            const subgroup = getSubgroupMeta(section.subgroup);
+            const showSubgroup = Boolean(subgroup) && section.subgroup !== previous?.subgroup;
+            return (
+              <React.Fragment key={section.id}>
+                {showSubgroup && subgroup && (
+                  <p className="admin-nav-subgroup-label">{t(subgroup.labelKey, subgroup.labelDefault)}</p>
+                )}
+                {navItem(section)}
+              </React.Fragment>
+            );
+          })}
+        </div>
       </div>
     );
   });
 
   return (
-    <div className="admin-console min-h-screen bg-black text-white">
+    <div className="admin-console min-h-screen text-white">
       <aside data-testid="admin-sidebar" className="admin-sidebar hidden lg:flex" aria-label={t('admin.console.sidebarLabel', 'Navigation administration')}>
         <div className="admin-sidebar-brand">
           <span className="admin-brand-mark"><img src="/movix-monogram.svg" alt="Movix" className="h-6 w-6 object-contain" draggable={false} /></span>
@@ -111,7 +128,7 @@ const AdminShell: React.FC<{
             </p>
           </div>
         </div>
-        <nav className="admin-sidebar-nav">{navGroups(false)}</nav>
+        <nav className="admin-sidebar-nav">{navGroups()}</nav>
         <div className="admin-sidebar-foot">
           <Link to="/" className="admin-sidebar-link">
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
@@ -125,14 +142,24 @@ const AdminShell: React.FC<{
           <button
             type="button"
             aria-label={t('common.close', 'Fermer')}
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            className="admin-drawer-backdrop"
             onClick={() => setDrawerOpen(false)}
           />
-          <aside className="admin-drawer" aria-label={t('admin.console.sidebarLabel', 'Navigation administration')}>
-            <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
+          <aside
+            className="admin-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('admin.console.sidebarLabel', 'Navigation administration')}
+          >
+            <div className="admin-drawer-head">
               <div className="flex items-center gap-2.5">
                 <span className="admin-brand-mark h-8 w-8"><img src="/movix-monogram.svg" alt="Movix" className="h-5 w-5 object-contain" draggable={false} /></span>
-                <p className="text-sm font-extrabold tracking-tight text-white">MOVIX</p>
+                <div>
+                  <p className="text-sm font-extrabold tracking-tight text-white">MOVIX</p>
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                    {t('admin.console.control', 'Control')}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -143,12 +170,12 @@ const AdminShell: React.FC<{
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-            <nav className="admin-sidebar-nav px-3 py-4">{navGroups(false)}</nav>
+            <nav className="admin-sidebar-nav admin-drawer-nav">{navGroups()}</nav>
           </aside>
         </div>
       )}
 
-      <div className="admin-main lg:pl-[268px]">
+      <div className="admin-main lg:pl-[280px]">
         <header className="admin-topbar">
           <div className="flex min-w-0 items-center gap-3">
             <button
@@ -160,12 +187,13 @@ const AdminShell: React.FC<{
               <LayoutGrid className="h-4 w-4" aria-hidden="true" />
             </button>
             <div className="hidden min-w-0 sm:block">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-                {t('admin.console.control', 'Control')}
-              </p>
-              <div className="flex items-center gap-1.5 text-[13px] font-semibold text-white/85">
-                <ActiveIcon className="h-4 w-4 text-white/50" aria-hidden="true" />
-                <span className="truncate">{activeMeta?.title}</span>
+              <div className="admin-breadcrumb">
+                <ActiveGroupIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {activeGroup ? t(activeGroup.labelKey, activeGroup.labelDefault) : t('admin.console.control', 'Control')}
+                </span>
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden="true" />
+                <span className="truncate font-semibold text-white/85">{activeMeta?.title}</span>
               </div>
             </div>
           </div>
@@ -179,13 +207,18 @@ const AdminShell: React.FC<{
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('admin.console.searchPlaceholder', 'Rechercher une section… ( / )')}
               aria-label={t('admin.console.searchLabel', 'Recherche globale administration')}
+              role="combobox"
+              aria-expanded={results.length > 0}
+              aria-controls="admin-search-results"
+              aria-autocomplete="list"
               data-testid="admin-search"
               className="admin-search-input"
             />
             {results.length > 0 && (
-              <div className="admin-search-results" role="listbox">
+              <div className="admin-search-results" id="admin-search-results" role="listbox">
                 {results.map((section) => {
                   const Icon = section.icon;
+                  const group = getGroupMeta(section.group);
                   return (
                     <button
                       key={section.id}
@@ -198,7 +231,9 @@ const AdminShell: React.FC<{
                       <Icon className="h-4 w-4 shrink-0 text-white/45" aria-hidden="true" />
                       <span className="min-w-0 flex-1 text-left">
                         <span className="block truncate text-[13px] font-semibold text-white/85">{section.title}</span>
-                        <span className="block truncate text-[11px] text-white/40">{section.description}</span>
+                        <span className="block truncate text-[11px] text-white/40">
+                          {t(group.labelKey, group.labelDefault)} · {section.description}
+                        </span>
                       </span>
                       <ChevronRight className="h-4 w-4 shrink-0 text-white/25" aria-hidden="true" />
                     </button>
@@ -214,28 +249,37 @@ const AdminShell: React.FC<{
           </div>
 
           <div className="flex shrink-0 items-center gap-2.5">
-            <span data-testid="admin-role" className="admin-role-badge" title={identity ? `${identity.userId ?? ''} ${identity.userType ?? ''}`.trim() : undefined}>
+            <span
+              data-testid="admin-role"
+              data-role={role}
+              className="admin-role-badge"
+              title={identity ? `${identity.userId ?? ''} ${identity.userType ?? ''}`.trim() : undefined}
+            >
+              <span className="admin-role-dot" aria-hidden="true" />
               <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
               <span className="hidden sm:inline">{getRoleLabel(t, role)}</span>
             </span>
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1600px] px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">
-                {t('admin.console.control', 'Control')}
+        <main className="admin-main-content">
+          <div className="admin-page-heading">
+            <div className="min-w-0">
+              <p className="admin-page-eyebrow">
+                {activeGroup ? t(activeGroup.labelKey, activeGroup.labelDefault) : t('admin.console.control', 'Control')}
+                {' · '}
+                {getRoleLabel(t, role)}
               </p>
-              <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-                {role === 'admin'
-                  ? t('admin.movixAdministration', 'Administration Movix')
-                  : t('admin.uploaderSpace', 'Espace opérateur')}
+              <h1 className="admin-page-title">
+                {activeMeta?.title ?? t('admin.movixAdministration', 'Administration Movix')}
               </h1>
+              <p className="admin-page-description">
+                {activeMeta?.description ?? t('admin.console.headerHint', 'Toutes les données affichées proviennent des endpoints admin existants.')}
+              </p>
             </div>
-            <p className="max-w-md text-xs leading-5 text-white/40">
-              {t('admin.console.headerHint', 'Toutes les données affichées proviennent des endpoints admin existants.')}
-            </p>
+            <span className="admin-page-icon" aria-hidden="true">
+              <ActiveIcon className="h-6 w-6" />
+            </span>
           </div>
           {children}
         </main>

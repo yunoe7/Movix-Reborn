@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -8,6 +9,8 @@ import {
 } from '../icons/Icons8';
 import type { StatPoint } from '../../services/adminStatsService';
 
+export type AdminTone = 'loading' | 'empty' | 'error' | 'success' | 'info' | 'warning';
+
 export const AdminPanel: React.FC<{
   eyebrow?: string;
   title: string;
@@ -16,20 +19,18 @@ export const AdminPanel: React.FC<{
   className?: string;
   children: React.ReactNode;
 }> = ({ eyebrow, title, description, action, className = '', children }) => (
-  <section className={`admin-panel rounded-2xl border border-white/[0.08] bg-[#0a0a0b] ${className}`}>
+  <section className={`admin-panel ${className}`}>
     {(eyebrow || action || description) && (
-      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/[0.07] px-5 py-4 sm:px-6">
+      <header className="admin-panel-head">
         <div className="min-w-0">
-          {eyebrow && (
-            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/65">{eyebrow}</p>
-          )}
-          <h2 className="text-base font-bold tracking-tight text-white sm:text-lg">{title}</h2>
-          {description && <p className="mt-1 text-sm leading-6 text-white/70">{description}</p>}
+          {eyebrow && <p className="admin-panel-eyebrow">{eyebrow}</p>}
+          <h2 className="admin-panel-title">{title}</h2>
+          {description && <p className="admin-panel-description">{description}</p>}
         </div>
-        {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+        {action && <div className="admin-panel-action">{action}</div>}
       </header>
     )}
-    <div className="p-5 sm:p-6">{children}</div>
+    <div className="admin-panel-body">{children}</div>
   </section>
 );
 
@@ -40,13 +41,13 @@ export const AdminStatCard: React.FC<{
   caption?: string;
   testId?: string;
 }> = ({ label, value, icon: Icon, caption, testId }) => (
-  <div data-testid={testId} className="admin-stat rounded-xl border border-white/[0.08] bg-[#0e0e10] p-4">
-    <div className="flex items-start justify-between gap-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-white/70">{label}</p>
-      <Icon className="h-[18px] w-[18px] text-white/55" aria-hidden="true" />
+  <div data-testid={testId} className="admin-stat">
+    <div className="admin-stat-top">
+      <p className="admin-stat-label">{label}</p>
+      <span className="admin-stat-icon"><Icon className="h-[18px] w-[18px]" aria-hidden="true" /></span>
     </div>
-    <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-white">{value}</p>
-    {caption && <p className="mt-1 text-[13px] text-white/65">{caption}</p>}
+    <p className="admin-stat-value">{value}</p>
+    {caption && <p className="admin-stat-caption">{caption}</p>}
   </div>
 );
 
@@ -59,24 +60,22 @@ export const AdminMiniChart: React.FC<{
 
   return (
     <div className="min-w-0">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-white/70">{title}</p>
+      <p className="admin-chart-title">{title}</p>
       {points.length === 0 || max === 0 ? (
-        <div className="flex h-24 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.02] text-xs text-white/40">
-          {emptyLabel}
-        </div>
+        <div className="admin-chart-empty">{emptyLabel}</div>
       ) : (
-        <div className="admin-chart -mx-1 overflow-x-auto px-1 pb-1">
-          <div className="flex h-24 min-w-[320px] items-end gap-[3px]" role="img" aria-label={title}>
+        <div className="admin-chart">
+          <div className="admin-chart-bars" role="img" aria-label={title}>
             {points.map((point) => (
               <div
                 key={point.date}
-                className="min-w-0 flex-1 rounded-t-[3px] bg-white/25 transition-colors hover:bg-white/60"
+                className="admin-chart-bar"
                 style={{ height: `${Math.max(4, Math.round((point.count / max) * 100))}%` }}
                 title={`${point.date} · ${point.count}`}
               />
             ))}
           </div>
-          <div className="mt-2 flex justify-between text-xs text-white/60">
+          <div className="admin-chart-axis">
             <span>{points[0]?.date}</span>
             <span>{points[points.length - 1]?.date}</span>
           </div>
@@ -86,63 +85,74 @@ export const AdminMiniChart: React.FC<{
   );
 };
 
+const STATE_ICONS: Record<AdminTone, React.ReactNode> = {
+  error: <XCircle className="h-4 w-4" aria-hidden="true" />,
+  success: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
+  warning: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
+  info: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
+  loading: <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />,
+  empty: <Clock className="h-4 w-4" aria-hidden="true" />,
+};
+
 export const AdminStateBlock: React.FC<{
-  tone: 'loading' | 'empty' | 'error' | 'info';
+  tone: AdminTone;
   title: string;
   description?: string;
   action?: React.ReactNode;
-}> = ({ tone, title, description, action }) => {
-  const icon = tone === 'error'
-    ? <XCircle className="h-4 w-4" aria-hidden="true" />
-    : tone === 'info'
-      ? <AlertTriangle className="h-4 w-4" aria-hidden="true" />
-      : tone === 'loading'
-        ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-        : <Clock className="h-4 w-4" aria-hidden="true" />;
-
-  const toneClass = tone === 'error'
-    ? 'border-red-500/25 bg-red-500/[0.06] text-red-200'
-    : 'border-white/[0.08] bg-white/[0.02] text-white/70';
-
-  return (
-    <div className={`flex flex-wrap items-start gap-3 rounded-xl border px-4 py-3 ${toneClass}`}>
-      <span className="mt-0.5 shrink-0">{icon}</span>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-semibold text-white">{title}</p>
-        {description && <p className="mt-0.5 text-xs leading-5 text-white/50">{description}</p>}
-      </div>
-      {action}
+}> = ({ tone, title, description, action }) => (
+  <div className={`admin-state admin-state--${tone}`} data-state={tone}>
+    <span className="admin-state-icon">{STATE_ICONS[tone]}</span>
+    <div className="min-w-0 flex-1">
+      <p className="admin-state-title">{title}</p>
+      {description && <p className="admin-state-description">{description}</p>}
     </div>
-  );
-};
+    {action && <div className="admin-state-action">{action}</div>}
+  </div>
+);
 
 export const AdminServiceRow: React.FC<{
   label: string;
   detail: string;
   healthy: boolean;
   pending?: boolean;
-}> = ({ label, detail, healthy, pending }) => (
-  <div className="flex items-start gap-3 border-b border-white/[0.06] py-3 last:border-0 last:pb-0">
-    <span className={`mt-0.5 shrink-0 ${healthy ? 'text-white/80' : 'text-red-300'}`}>
-      {pending
-        ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-        : healthy
-          ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-          : <XCircle className="h-4 w-4" aria-hidden="true" />}
-    </span>
-    <div className="min-w-0">
-      <p className="text-[13px] font-semibold text-white">{label}</p>
-      <p className="mt-0.5 text-xs leading-5 text-white/45">{detail}</p>
+  unavailable?: boolean;
+}> = ({ label, detail, healthy, pending, unavailable }) => {
+  const { t } = useTranslation();
+  const state = unavailable ? 'unavailable' : pending ? 'pending' : healthy ? 'ok' : 'error';
+  const icon = state === 'pending'
+    ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+    : state === 'ok'
+      ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+      : state === 'error'
+        ? <XCircle className="h-4 w-4" aria-hidden="true" />
+        : <Clock className="h-4 w-4" aria-hidden="true" />;
+  const statusLabel = state === 'ok'
+    ? t('admin.console.statusOk', { defaultValue: 'OK' })
+    : state === 'error'
+      ? t('admin.console.statusError', { defaultValue: 'KO' })
+      : state === 'pending'
+        ? t('admin.console.statusPending', { defaultValue: '…' })
+        : t('admin.console.statusUnavailable', { defaultValue: 'N/A' });
+
+  return (
+    <div className="admin-service-row" data-state={state}>
+      <span className="admin-service-icon">{icon}</span>
+      <div className="min-w-0">
+        <p className="admin-service-label">{label}</p>
+        <p className="admin-service-detail">{detail}</p>
+      </div>
+      <span
+        className="admin-service-status"
+        aria-label={t('admin.console.serviceStatus', {
+          defaultValue: 'Statut du service : {{status}}',
+          status: statusLabel,
+        })}
+      >
+        {statusLabel}
+      </span>
     </div>
-    <span className={`ml-auto shrink-0 text-[11px] font-semibold ${healthy ? 'text-white/55' : 'text-red-300'}`}>
-      {pending
-        ? '…'
-        : healthy
-          ? 'OK'
-          : 'KO'}
-    </span>
-  </div>
-);
+  );
+};
 
 export const AdminBarRow: React.FC<{
   label: string;
@@ -152,15 +162,15 @@ export const AdminBarRow: React.FC<{
 }> = ({ label, value, max, suffix }) => {
   const width = max > 0 ? Math.max(2, Math.round((value / max) * 100)) : 0;
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline justify-between gap-3 text-xs">
-        <span className="truncate text-white/65">{label}</span>
-        <span className="shrink-0 font-semibold tabular-nums text-white/80">
+    <div className="admin-bar-row">
+      <div className="admin-bar-meta">
+        <span className="truncate">{label}</span>
+        <span className="shrink-0 font-semibold tabular-nums">
           {value.toLocaleString('fr-FR')}{suffix ? ` ${suffix}` : ''}
         </span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
-        <div className="h-full rounded-full bg-white/35" style={{ width: `${width}%` }} />
+      <div className="admin-bar-track">
+        <div className="admin-bar-fill" style={{ width: `${width}%` }} />
       </div>
     </div>
   );

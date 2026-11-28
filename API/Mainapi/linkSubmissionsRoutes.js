@@ -15,6 +15,12 @@ const path = require('path');
 const { verifyAccessKey } = require('./checkVip');
 const { isHttpUrl } = require('./utils/safeLinkUrl');
 const { escapeLikePattern } = require('./utils/likePattern');
+const { resolveStaffRole } = require('./utils/staffAccess');
+const { createAdminActionLimiter } = require('./utils/adminActionRateLimit');
+
+// Limite les décisions et suppressions admin (approbation, rejet, rejet en masse).
+const adminActionLimiter = createAdminActionLimiter('link-submissions', 90);
+const MAX_REJECTION_REASON_LENGTH = 500;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -41,6 +47,9 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
         try {
             const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
             const { sub: userId, userType, sessionId } = decoded;
+            const authMethod = ['discord', 'google', 'bip39'].includes(decoded.authMethod)
+                ? decoded.authMethod
+                : (userType === 'bip39' ? 'bip39' : null);
 
             if (!['oauth', 'bip39'].includes(userType) || !userId || !sessionId) {
                 return res.status(401).json({ error: 'Token invalide' });
@@ -59,7 +68,7 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
                 return res.status(401).json({ error: 'Session invalide ou expirée' });
             }
 
-            req.user = { userId, userType, sessionId };
+            req.user = { userId, userType, sessionId, authMethod };
             next();
         } catch (error) {
             if (error instanceof jwt.JsonWebTokenError) {
@@ -72,31 +81,29 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
         }
     };
 
-    // Check admin or uploader status
+    // Même résolution des droits que /api/admin/check (Discord puis base).
     const requireUploaderOrAdmin = async (req, res, next) => {
         try {
             if (!mysqlPool) {
                 return res.status(503).json({ error: 'Service temporairement indisponible' });
             }
 
-            const authType = req.user.userType === 'bip39' ? 'bip-39' : req.user.userType;
-            const [rows] = await mysqlPool.execute(
-                'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
-                [req.user.userId, authType]
-            );
+            const staff = await resolveStaffRole(mysqlPool, {
+                userId: req.user.userId,
+                userType: req.user.userType,
+                authMethod: req.user.authMethod
+            });
 
-            if (rows.length === 0) {
-                return res.status(403).json({ error: 'Accès refusé - Droits requis' });
-            }
-
-            const role = rows[0].role || 'admin';
-            if (role !== 'admin' && role !== 'uploader') {
+            if (!staff || !['admin', 'uploader'].includes(staff.role)) {
                 return res.status(403).json({ error: 'Accès refusé - Droits insuffisants' });
             }
 
-            req.admin = { userId: req.user.userId, userType: req.user.userType, role };
+            req.admin = { userId: req.user.userId, userType: req.user.userType, role: staff.role };
             next();
         } catch (error) {
+            if (String(error?.code || '').startsWith('DISCORD_')) {
+                return res.status(503).json({ error: 'Service temporairement indisponible' });
+            }
             console.error('Admin/Uploader check error:', error);
             return res.status(500).json({ error: 'Erreur lors de la vérification des droits' });
         }
@@ -546,7 +553,7 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
      * PUT /api/link-submissions/admin/:id/approve
      * Admin: approve a submission and add the link to films/series table
      */
-    router.put('/admin/:id/approve', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.put('/admin/:id/approve', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const submissionId = req.params.id;
 
@@ -650,10 +657,14 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
      * PUT /api/link-submissions/admin/:id/reject
      * Admin: reject a submission with optional reason
      */
-    router.put('/admin/:id/reject', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.put('/admin/:id/reject', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const submissionId = req.params.id;
             const { reason } = req.body;
+
+            if (reason != null && (typeof reason !== 'string' || reason.length > MAX_REJECTION_REASON_LENGTH)) {
+                return res.status(400).json({ error: 'Raison invalide (500 caractères maximum)' });
+            }
 
             const [submissions] = await mysqlPool.execute(
                 'SELECT * FROM link_submissions WHERE id = ?',
@@ -684,7 +695,7 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
      * PUT /api/link-submissions/admin/bulk-approve
      * Admin: approve multiple submissions at once
      */
-    router.put('/admin/bulk-approve', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.put('/admin/bulk-approve', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const { ids } = req.body;
             if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -758,11 +769,17 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
      * PUT /api/link-submissions/admin/bulk-reject
      * Admin: reject multiple submissions at once
      */
-    router.put('/admin/bulk-reject', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.put('/admin/bulk-reject', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const { ids, reason } = req.body;
-            if (!ids || !Array.isArray(ids) || ids.length === 0) {
-                return res.status(400).json({ error: 'IDs requis' });
+            if (!ids || !Array.isArray(ids) || ids.length === 0 || ids.length > 100) {
+                return res.status(400).json({ error: 'IDs requis (100 maximum)' });
+            }
+            if (!ids.every((id) => typeof id === 'string' || Number.isInteger(id))) {
+                return res.status(400).json({ error: 'IDs invalides' });
+            }
+            if (reason != null && (typeof reason !== 'string' || reason.length > MAX_REJECTION_REASON_LENGTH)) {
+                return res.status(400).json({ error: 'Raison invalide (500 caractères maximum)' });
             }
 
             const placeholders = ids.map(() => '?').join(',');
@@ -782,7 +799,7 @@ function createLinkSubmissionsRouter(mysqlPool, redis) {
      * DELETE /api/link-submissions/admin/:id
      * Admin: permanently delete a submission
      */
-    router.delete('/admin/:id', requireAuth, requireUploaderOrAdmin, async (req, res) => {
+    router.delete('/admin/:id', requireAuth, adminActionLimiter, requireUploaderOrAdmin, async (req, res) => {
         try {
             const submissionId = req.params.id;
             await mysqlPool.execute('DELETE FROM link_submissions WHERE id = ?', [submissionId]);

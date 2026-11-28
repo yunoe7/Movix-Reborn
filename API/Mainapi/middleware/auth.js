@@ -11,23 +11,8 @@ const { redis } = require('../config/redis');
 const { readAccountData } = require('../utils/accountDataCache');
 const { createSessionActivityUpdater } = require('../utils/sessionActivity');
 const { getUserDataFilePath } = require('../utils/syncPolicy');
-const { getDiscordAdminRole } = require('../utils/discordAdminRoles');
+const { resolveStaffRole } = require('../utils/staffAccess');
 
-async function resolveDiscordUserId(pool, userType, userId) {
-  const candidate = String(userId || '').trim();
-  if (/^\d{17,20}$/.test(candidate)) {
-    return candidate;
-  }
-
-  const targetUserType = userType === 'bip39' ? 'bip39' : 'oauth';
-  const [rows] = await pool.execute(
-    "SELECT provider_user_id FROM account_links WHERE provider = 'discord' AND target_user_type = ? AND target_user_id = ? LIMIT 1",
-    [targetUserType, candidate]
-  );
-
-  const discordUserId = String(rows[0]?.provider_user_id || '').trim();
-  return /^\d{17,20}$/.test(discordUserId) ? discordUserId : null;
-}
 const AUTH_METHODS = ['discord', 'google', 'bip39'];
 const USER_DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
@@ -304,41 +289,13 @@ async function isAdmin(req, res, next) {
     }
 
     const { userId, userType } = auth;
+    const staff = await resolveStaffRole(pool, auth);
 
-    // Pour Discord, le bot est l'autorité dès que sa configuration est présente.
-    // Cette branche ne dépend pas de la table admins : elle fonctionne aussi
-    // sur une base neuve où aucun administrateur n'a encore été inscrit.
-    if (auth.authMethod === 'discord') {
-      const discordUserId = await resolveDiscordUserId(pool, userType, userId);
-      const discordAccess = await getDiscordAdminRole(discordUserId);
-      if (discordAccess.configured) {
-        if (!['owner', 'admin'].includes(discordAccess.role)) {
-          return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord admin requis' });
-        }
-        req.admin = {
-          userId,
-          userType,
-          adminId: null,
-          role: discordAccess.role === 'owner' ? 'admin' : discordAccess.role,
-        };
-        return next();
-      }
-    }
-
-    // Repli historique pour les comptes Google/BIP39 ou tant que le bot
-    // Discord n'a pas encore été configuré.
-    const [rows] = await pool.execute(
-      'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
-      [userId, userType === 'bip39' ? 'bip-39' : userType]
-    );
-    const databaseAdmin = rows[0] || null;
-    const role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
-
-    if (role !== 'admin') {
+    if (!staff || staff.role !== 'admin') {
       return res.status(403).json({ success: false, error: 'Accès refusé - Droits admin requis' });
     }
 
-    req.admin = { userId, userType, adminId: databaseAdmin.id, role };
+    req.admin = { userId, userType, adminId: staff.adminId, role: staff.role };
     return next();
   } catch (error) {
     console.error('❌ Admin verification error:', error);
@@ -372,25 +329,8 @@ async function isAdminRequest(req) {
     const pool = getDbPool();
     if (!pool) return false;
 
-    const { userId, userType } = auth;
-
-    if (auth.authMethod === 'discord') {
-      const discordUserId = await resolveDiscordUserId(pool, userType, userId);
-      const discordAccess = await getDiscordAdminRole(discordUserId);
-      if (discordAccess.configured) {
-        return ['owner', 'admin'].includes(discordAccess.role);
-      }
-    }
-
-    const [rows] = await pool.execute(
-      'SELECT role FROM admins WHERE user_id = ? AND auth_type = ?',
-      [userId, userType === 'bip39' ? 'bip-39' : userType]
-    );
-
-    if (rows.length === 0) return false;
-
-    // role absent : lignes legacy créées avant l'ajout de la colonne.
-    return (rows[0].role || 'admin') === 'admin';
+    const staff = await resolveStaffRole(pool, auth);
+    return staff?.role === 'admin';
   } catch (error) {
     console.error('❌ Admin request check error:', error.message);
     return false;
@@ -412,38 +352,13 @@ async function isUploaderOrAdmin(req, res, next) {
     }
 
     const { userId, userType } = auth;
+    const staff = await resolveStaffRole(pool, auth);
 
-    // Admin et uploader Discord sont accordés directement par les rôles du bot.
-    if (auth.authMethod === 'discord') {
-      const discordUserId = await resolveDiscordUserId(pool, userType, userId);
-      const discordAccess = await getDiscordAdminRole(discordUserId);
-      if (discordAccess.configured) {
-        if (!['owner', 'admin', 'moderator', 'uploader'].includes(discordAccess.role)) {
-          return res.status(403).json({ success: false, error: 'Accès refusé - Rôle Discord requis' });
-        }
-        req.admin = {
-          userId,
-          userType,
-          adminId: null,
-          role: discordAccess.role === 'owner' ? 'admin' : discordAccess.role,
-        };
-        return next();
-      }
-    }
-
-    // Repli historique pour les autres connexions / bot non configuré.
-    const [rows] = await pool.execute(
-      'SELECT * FROM admins WHERE user_id = ? AND auth_type = ?',
-      [userId, userType === 'bip39' ? 'bip-39' : userType]
-    );
-    const databaseAdmin = rows[0] || null;
-    const role = databaseAdmin ? (databaseAdmin.role || 'admin') : null;
-
-    if (role !== 'admin' && role !== 'uploader') {
+    if (!staff || !['admin', 'moderator', 'uploader'].includes(staff.role)) {
       return res.status(403).json({ success: false, error: 'Accès refusé - Droits insuffisants' });
     }
 
-    req.admin = { userId, userType, adminId: databaseAdmin.id, role };
+    req.admin = { userId, userType, adminId: staff.adminId, role: staff.role };
     return next();
   } catch (error) {
     console.error('❌ Admin/Uploader verification error:', error);

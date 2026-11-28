@@ -132,6 +132,46 @@ function getInvoicePath(publicId) {
   return `/vip/invoice/${encodeURIComponent(publicId)}`;
 }
 
+/**
+ * Secret de consultation remis au créateur de la facture au moment où il la
+ * crée. Le `publicId` seul autorise le suivi du paiement, mais jamais la
+ * révélation d'une clé VIP livrée : il faut soit être le propriétaire
+ * authentifié, soit présenter ce jeton. Dérivé de façon déterministe via HMAC,
+ * il n'y a pas de colonne supplémentaire à migrer.
+ *
+ * Lot 3 : `VIP_INVOICE_VIEW_SECRET` est le secret d'émission. `JWT_SECRET` n'est
+ * conservé que comme secret de vérification pour les jetons déjà émis avant la
+ * configuration du secret dédié : une rotation du secret JWT ne casse donc pas
+ * le suivi des factures, et un nouveau jeton n'est plus forgé à partir de
+ * `JWT_SECRET`. Sans secret dédié, le comportement historique reste inchangé.
+ */
+function invoiceViewSecrets() {
+  const dedicated = String(process.env.VIP_INVOICE_VIEW_SECRET || '').trim();
+  const legacy = String(process.env.JWT_SECRET || '').trim();
+  if (dedicated) {
+    return [dedicated, ...(legacy && legacy !== dedicated ? [legacy] : [])];
+  }
+  return legacy ? [legacy] : [];
+}
+
+function buildInvoiceViewToken(publicId) {
+  if (!publicId) return null;
+  const [secret] = invoiceViewSecrets();
+  if (!secret) return null;
+  return crypto.createHmac('sha256', secret).update(String(publicId)).digest('base64url');
+}
+
+function isInvoiceViewTokenValid(publicId, token) {
+  if (!publicId || typeof token !== 'string') return false;
+  const provided = Buffer.from(token);
+  return invoiceViewSecrets().some((secret) => {
+    const expected = Buffer.from(
+      crypto.createHmac('sha256', secret).update(String(publicId)).digest('base64url')
+    );
+    return expected.length === provided.length && crypto.timingSafeEqual(expected, provided);
+  });
+}
+
 function getGiftPath(giftToken) {
   return `/vip/cadeau/${encodeURIComponent(giftToken)}`;
 }
@@ -801,9 +841,10 @@ function safeJsonParse(value) {
   }
 }
 
-function serializePublicInvoice(invoice) {
+function serializePublicInvoice(invoice, options = {}) {
   if (!invoice) return null;
 
+  const includeVipKey = options.includeVipKey === true;
   const paymentMethod = getInvoicePaymentMethod(invoice);
   const isCryptoInvoice = isCryptoPaymentMethod(paymentMethod);
   const invoicePath = getInvoicePath(invoice.public_id);
@@ -847,7 +888,7 @@ function serializePublicInvoice(invoice) {
     invoiceUrl: buildFrontendUrl(invoicePath),
     giftPath: isGiftDelivered ? giftPath : null,
     giftUrl: isGiftDelivered ? buildFrontendUrl(giftPath) : null,
-    vipKey: isSelfDelivered ? invoice.vip_key_value : null,
+    vipKey: isSelfDelivered && includeVipKey ? invoice.vip_key_value : null,
     externalOrderId: null,
     externalGateway: null,
     externalAmount: null,
@@ -860,7 +901,7 @@ function serializeAdminInvoice(invoice) {
   if (!invoice) return null;
 
   return {
-    ...serializePublicInvoice(invoice),
+    ...serializePublicInvoice(invoice, { includeVipKey: true }),
     id: parseNumber(invoice.id),
     callbackUrl: null,
     derivationIndex: parseNumber(invoice.derivation_index, -1) >= 0
@@ -939,7 +980,7 @@ async function listUserVipInvoices(pool, auth, options = {}) {
     rows.map((invoice) => expireAwaitingInvoiceIfOverdue(pool, invoice))
   );
 
-  return normalizedRows.map(serializePublicInvoice);
+  return normalizedRows.map((invoice) => serializePublicInvoice(invoice, { includeVipKey: true }));
 }
 
 async function recordPaygateUnpaidReconciliation(
@@ -3581,6 +3622,8 @@ module.exports = {
   listVipInvoices,
   serializePublicInvoice,
   serializeAdminInvoice,
+  buildInvoiceViewToken,
+  isInvoiceViewTokenValid,
   serializeGift,
   unsealGift,
   ensureVipDonationsTables,

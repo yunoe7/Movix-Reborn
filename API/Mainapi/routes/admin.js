@@ -6,6 +6,11 @@
 
 const express = require('express');
 const router = express.Router();
+
+const { createAdminActionLimiter } = require('../utils/adminActionRateLimit');
+
+// Limite les suppressions définitives depuis la console admin.
+const adminDeleteLimiter = createAdminActionLimiter('admin-deletes', 30);
 const path = require('path');
 const fsp = require('fs').promises;
 const rateLimit = require('express-rate-limit');
@@ -208,8 +213,7 @@ router.get('/links/:type/:id', async (req, res) => {
     console.error('Error fetching streaming links:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des liens',
-      message: error.message
+      error: 'Erreur lors de la récupération des liens'
     });
   }
 });
@@ -516,8 +520,7 @@ router.post('/admin/links', isUploaderOrAdmin, async (req, res) => {
     console.error('Error adding streaming links:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'ajout des liens',
-      message: error.message
+      error: 'Erreur lors de l\'ajout des liens'
     });
   }
 });
@@ -533,7 +536,7 @@ router.post('/admin/links', isUploaderOrAdmin, async (req, res) => {
  *    uploaders are preserved. Clears the `links` array in place — the film /
  *    episode row itself is kept (so download_links and other columns survive).
  */
-router.delete('/admin/links', isUploaderOrAdmin, async (req, res) => {
+router.delete('/admin/links', isUploaderOrAdmin, adminDeleteLimiter, async (req, res) => {
   try {
     const { type, id, season, episode, url } = req.body;
 
@@ -644,8 +647,7 @@ router.delete('/admin/links', isUploaderOrAdmin, async (req, res) => {
     console.error('Error deleting streaming links:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la suppression des liens',
-      message: error.message
+      error: 'Erreur lors de la suppression des liens'
     });
   }
 });
@@ -738,8 +740,7 @@ router.put('/admin/links', isUploaderOrAdmin, async (req, res) => {
     console.error('Error updating streaming links:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la modification des liens',
-      message: error.message
+      error: 'Erreur lors de la modification des liens'
     });
   }
 });
@@ -916,7 +917,7 @@ router.post('/admin/admins', isAdmin, async (req, res) => {
  * Remove an uploader. Admin only. Admins cannot be removed through this route
  * (guards against accidental / malicious privilege removal).
  */
-router.delete('/admin/admins/:id', isAdmin, async (req, res) => {
+router.delete('/admin/admins/:id', isAdmin, adminDeleteLimiter, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) {
@@ -1054,8 +1055,7 @@ router.get('/admin/vip-keys', isAdmin, async (req, res) => {
     console.error('Error fetching VIP keys:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la récupération des clés VIP',
-      message: error.message
+      error: 'Erreur lors de la récupération des clés VIP'
     });
   }
 });
@@ -1131,8 +1131,7 @@ router.post('/admin/vip-keys', isAdmin, async (req, res) => {
     console.error('Error adding VIP key:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de l\'ajout de la clé VIP',
-      message: error.message
+      error: 'Erreur lors de l\'ajout de la clé VIP'
     });
   }
 });
@@ -1228,8 +1227,7 @@ router.put('/admin/vip-keys/:key', isAdmin, async (req, res) => {
     console.error('Error updating VIP key:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la modification de la clé VIP',
-      message: error.message
+      error: 'Erreur lors de la modification de la clé VIP'
     });
   }
 });
@@ -1238,7 +1236,7 @@ router.put('/admin/vip-keys/:key', isAdmin, async (req, res) => {
  * DELETE /admin/vip-keys/:key
  * Delete a VIP key
  */
-router.delete('/admin/vip-keys/:key', isAdmin, async (req, res) => {
+router.delete('/admin/vip-keys/:key', isAdmin, adminDeleteLimiter, async (req, res) => {
   try {
     const { key } = req.params;
 
@@ -1268,8 +1266,7 @@ router.delete('/admin/vip-keys/:key', isAdmin, async (req, res) => {
     console.error('Error deleting VIP key:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors de la suppression de la clé VIP',
-      message: error.message
+      error: 'Erreur lors de la suppression de la clé VIP'
     });
   }
 });
@@ -1413,11 +1410,11 @@ router.post('/admin/download-links', isUploaderOrAdmin, async (req, res) => {
     res.json({ success: true, addedCount: added.length, totalCount: merged.length });
   } catch (error) {
     console.error('Error adding download links:', error);
-    res.status(500).json({ success: false, error: 'Failed to add download links', message: error.message });
+    res.status(500).json({ success: false, error: 'Impossible d’ajouter les liens de téléchargement' });
   }
 });
 
-router.delete('/admin/download-links', isUploaderOrAdmin, async (req, res) => {
+router.delete('/admin/download-links', isUploaderOrAdmin, adminDeleteLimiter, async (req, res) => {
   try {
     const { type, id, season, episode, url, fullSeason } = req.body;
     if (!type || !id || !url) {
@@ -1782,7 +1779,7 @@ router.put('/admin/whats-new/:id', isAdmin, async (req, res) => {
     return res.json({ success: true, post });
   } catch (error) { return res.status(500).json({ success: false, error: 'Impossible de modifier la publication' }); }
 });
-router.delete('/admin/whats-new/:id', isAdmin, async (req, res) => {
+router.delete('/admin/whats-new/:id', isAdmin, adminDeleteLimiter, async (req, res) => {
   try {
     const posts = await readWhatsNew();
     const next = posts.filter((post) => post.id !== req.params.id);

@@ -66,7 +66,16 @@ Le fichier `API/Mainapi/.env.example` est la référence complète. En pratique,
 - scraping / proxy : `PROXY_SERVER_URL`, `IPTV_STREAM_PROXY`, `SOCKS5_PROXIES`, `HTTP_PROXIES`
 - anti-abuse / forms : `TURNSTILE_SECRET_KEY`, `TURNSTILE_INVISIBLE_SECRETKEY`, puis `TURNSTILE_DOMAINS_n`, `TURNSTILE_SECRET_KEY_n` et `TURNSTILE_INVISIBLE_SECRETKEY_n` (n de 2 à 10) au-delà de 10 domaines : la clé suit l'`Origin` de la requête (`utils/turnstile.js`)
 - connexion Discord / Google : `DISCORD_CLIENT_ID`, `GOOGLE_CLIENT_ID` (les mêmes que `src/config/discord.ts` et `src/config/google.ts`)
-- paiement / VIP : variables `VIP_*`, `BLOCKCYPHER_TOKEN`
+- paiement / VIP : variables `VIP_*`, `BLOCKCYPHER_TOKEN`. `VIP_INVOICE_VIEW_SECRET` signe les jetons de consultation des factures ; `JWT_SECRET` n'est plus qu'un secret de repli à la vérification des jetons déjà émis (compatibilité ascendante), il ne doit pas être utilisé comme secret d'émission. Tant que le secret dédié n'est pas configuré, une rotation de `JWT_SECRET` invalide les jetons historiques : configurer `VIP_INVOICE_VIEW_SECRET` avant toute rotation.
+
+### Rôles staff — périmètre explicite (Lot 3)
+
+`utils/staffAccess.js` est la source unique de résolution des droits. Les rôles canoniques sont `admin`, `moderator`, `uploader` ; `owner` (Discord ou table `admins`) est normalisé en `admin`, et une ligne `admins` sans rôle reste `admin` pour compatibilité historique.
+
+- `isAdmin` n'accepte que `admin` ; `isUploaderOrAdmin` accepte `admin`, `moderator` et `uploader` (élargissement assumé du Lot 1, cohérent avec la navigation `links` des modérateurs). Les autres listes, notamment `linkSubmissionsRoutes.js` (`admin`/`uploader` seulement), ne sont pas élargies.
+- Le mode Discord n'est consulté que si le JWT signé porte `authMethod: 'discord'` ; un compte Google simplement lié à un Discord staff n'hérite pas de ses droits. Si Discord est configuré sans rôle Movix, la table `admins` n'est pas consultée en repli.
+- `commentsRoutes.getUserData()` utilise désormais le même résolveur : le mode d'authentification du JWT est transmis pour l'utilisateur courant, et un tiers n'est évalué que sur la table `admins`. `moderator`/`uploader` ne sont pas affichés comme admin.
+- Les limiteurs d'actions admin utilisent l'identité du compte après authentification (jamais `cf-connecting-ip`/`x-forwarded-for`) et répondent 503 si Redis est indisponible, sauf `onStoreError: 'open'` explicite.
 
 Certaines intégrations sont très spécifiques à des sources données, par exemple les cookies `DARKIWORLD_*` ou `XTREAM_*`.
 

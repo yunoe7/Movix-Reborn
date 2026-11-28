@@ -899,7 +899,7 @@ router.post('/vip/invoices', async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      invoice: serializePublicInvoice(invoice),
+      invoice: serializePublicInvoice(invoice, { includeVipKey: true }),
     });
   } catch (error) {
     return sendOauthJsonError(
@@ -923,7 +923,7 @@ router.get('/vip/invoices/:publicId', setNoStore, async (req, res) => {
 
     return res.json({
       success: true,
-      invoice: serializePublicInvoice(invoice),
+      invoice: serializePublicInvoice(invoice, { includeVipKey: true }),
     });
   } catch (error) {
     return sendOauthJsonError(
@@ -952,7 +952,7 @@ router.post('/vip/invoices/:publicId/check', setNoStore, async (req, res) => {
 
     return res.json({
       success: true,
-      invoice: serializePublicInvoice(refreshedInvoice),
+      invoice: serializePublicInvoice(refreshedInvoice, { includeVipKey: true }),
     });
   } catch (error) {
     return sendOauthJsonError(
@@ -2159,7 +2159,7 @@ router.post('/vip/grant', async (req, res) => {
       res,
       error.statusCode || 400,
       error.oauthError || 'invalid_request',
-      error.message || 'Impossible d\'attribuer des jours VIP',
+      'Impossible d\'attribuer des jours VIP',
     );
   }
 });

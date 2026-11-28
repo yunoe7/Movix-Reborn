@@ -19,6 +19,8 @@ import AdminVipDonationSettings from './AdminVipDonationSettings';
 import StreamingLinksManager from './StreamingLinksManager';
 import VipInvoicesManager from './VipInvoicesManager';
 import VipKeysManager from './VipKeysManager';
+import AdminDecorPlaceholder from './admin/AdminDecorPlaceholder';
+import AdminDiagnostics from './admin/AdminDiagnostics';
 import { AdminConfirmProvider } from './admin/AdminConfirmProvider';
 import AdminDashboardHome from './admin/AdminDashboardHome';
 import AdminShell from './admin/AdminShell';
@@ -97,6 +99,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role, identity = null }
         return <AdminReleaseNotes />;
       case 'whats-new':
         return <AdminWhatsNew />;
+      case 'decor':
+        return <AdminDecorPlaceholder />;
+      case 'diagnostics':
+        return <AdminDiagnostics role={role} />;
       default:
         return (
           <AdminStateBlock

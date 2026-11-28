@@ -97,10 +97,18 @@ export const ROUTES: RouteEntry[] = [
   { path: '/download/:type/:id',      loader: lz(() => import('../pages/DownloadPage')) },
 ];
 
+// Routes montées directement dans App.tsx (donc absentes de ROUTES) mais qui
+// ne doivent pas être proposées sur TV. Le centre de contrôle April Fools est
+// une parodie : il ne fait pas partie de la console administrative auditable.
+const AUXILIARY_TV_EXCLUDED_PATHS = ['/admin-control-center'] as const;
+
 /**
  * Vrai sur TV si `href` pointe vers une route hors périmètre V1 : sert à
  * masquer les entrées de menu qui mèneraient sinon à <NotFound />.
  */
 export function isHiddenOnTv(href: string): boolean {
-  return isTvPlatform() && isPathTvExcluded(ROUTES, href);
+  if (!isTvPlatform()) return false;
+  const pathname = href.split(/[?#]/)[0];
+  return isPathTvExcluded(ROUTES, href)
+    || AUXILIARY_TV_EXCLUDED_PATHS.some((path) => pathname === path);
 }
