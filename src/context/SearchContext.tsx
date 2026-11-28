@@ -278,6 +278,7 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [actorSuggestions, setActorSuggestions] = useState<PersonSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState<SearchResult[]>([]);
+  const autocompleteRequestSeqRef = useRef(0);
   const [loadingAutocomplete, setLoadingAutocomplete] = useState(false);
   const [selectedKeywords, setSelectedKeywords] = useState<TmdbKeyword[]>([]);
   const [keywordSuggestions, setKeywordSuggestions] = useState<TmdbKeyword[]>([]);
@@ -396,8 +397,11 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Function to fetch autocomplete suggestions
   const fetchAutocompleteSuggestions = async (searchQuery: string) => {
+    const requestSeq = ++autocompleteRequestSeqRef.current;
+    const isLatest = () => requestSeq === autocompleteRequestSeqRef.current;
     if (!searchQuery || searchQuery.length < 2) {
       setAutocompleteSuggestions([]);
+      setLoadingAutocomplete(false);
       return;
     }
 
@@ -449,18 +453,25 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .sort((a: any, b: any) => b.popularity - a.popularity)
         .slice(0, 5); // Limit to 5 suggestions
 
-      setAutocompleteSuggestions(suggestions);
+      if (isLatest()) setAutocompleteSuggestions(suggestions);
     } catch (error) {
       console.error('Error fetching autocomplete suggestions:', error);
-      setAutocompleteSuggestions([]);
+      if (isLatest()) setAutocompleteSuggestions([]);
     } finally {
-      setLoadingAutocomplete(false);
+      // Une réponse tardive ne doit ni écraser la recherche courante ni
+      // laisser le spinner actif après un clear.
+      if (isLatest()) setLoadingAutocomplete(false);
     }
   };
 
-  const clearAutocompleteSuggestions = () => {
+  // Référence stable : Header annule ce timer de debounce dans ses effets de
+  // navigation. Une fonction recréée à chaque rendu ferait rerunner ces effets
+  // et annulerait la requête en cours dès la première frappe.
+  const clearAutocompleteSuggestions = useCallback(() => {
+    autocompleteRequestSeqRef.current += 1;
     setAutocompleteSuggestions([]);
-  };
+    setLoadingAutocomplete(false);
+  }, []);
 
   const fetchKeywordSuggestions = async (searchQuery: string) => {
     if (!searchQuery || searchQuery.length < 2) {

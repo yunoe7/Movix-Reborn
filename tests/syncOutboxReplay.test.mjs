@@ -7,6 +7,7 @@ const PROFILE_CONTEXT = 'src/context/ProfileContext.tsx';
 const SYNC_STORAGE = 'src/utils/syncStorage.ts';
 const FORMAT_VERSION = 2;
 const MAX_OPS = 10000;
+const buildSyncBatches = sourceNamedFunction(SYNC_STORAGE, 'buildSyncBatches');
 const getPermanentSyncRejectionCodes = sourceNamedFunction(SYNC_STORAGE, 'getPermanentSyncRejectionCodes');
 const getRetryableSyncStatusCodes = sourceNamedFunction(SYNC_STORAGE, 'getRetryableSyncStatusCodes');
 const isSyncOutboxPayload = sourceNamedFunction(PROFILE_CONTEXT, 'isSyncOutboxPayload', {
@@ -53,6 +54,7 @@ function fixture({ response = { success: true }, error = null, account = { userT
     SYNC_OUTBOX_REPLAY_LOCK_KEY: '__movix_sync_outbox_replay_lock',
     SYNC_OUTBOX_REPLAY_LOCK_TTL_MS: 30_000,
     MAX_SYNC_OUTBOX_OPS: MAX_OPS,
+    buildSyncBatches,
     isSyncOutboxPayload,
     syncOutboxScopedKey,
     getSyncOutboxCreatedAt,

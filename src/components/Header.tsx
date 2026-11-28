@@ -85,6 +85,7 @@ const Header: React.FC = () => {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const mobileSearchInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
+  const autocompleteDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const notificationsTriggerRef = useRef<HTMLButtonElement>(null);
   const notificationsSheetScrollerRef = useRef<HTMLDivElement>(null);
   // Calque de l'en-tête où coulent les menus d'ordinateur du profil (rendu
@@ -124,6 +125,17 @@ const Header: React.FC = () => {
     clearAutocompleteSuggestions
   } = useSearch();
   const { items: ageFilteredAutocomplete } = useAgeRestrictedContent(autocompleteSuggestions);
+
+  // Le timer de debounce doit être annulé avec les suggestions : sans cela,
+  // une frappe suivie d'un Enter, d'un clic hors champ ou d'une navigation
+  // relançait encore une requête TMDB après la fermeture de l'autocomplete.
+  const clearAutocomplete = useCallback(() => {
+    if (autocompleteDebounceRef.current) {
+      clearTimeout(autocompleteDebounceRef.current);
+      autocompleteDebounceRef.current = null;
+    }
+    clearAutocompleteSuggestions();
+  }, [clearAutocompleteSuggestions]);
 
   const filteredAutocomplete = useMemo(() => ageFilteredAutocomplete.filter((item: any) => {
     if (autocompleteType === 'movie') return item.media_type === 'movie';
@@ -198,6 +210,7 @@ const Header: React.FC = () => {
   // Notifications
   const refreshUnreadCount = useCallback(async () => {
     if (!isAuthenticated) { setUnreadCount(0); return; }
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     try {
       const count = await getUnreadNotificationsCount();
       setUnreadCount(count);
@@ -210,8 +223,15 @@ const Header: React.FC = () => {
     if (isAuthenticated) {
       refreshUnreadCount();
       getNotificationsDisabled().then(setNotificationsDisabled);
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') void refreshUnreadCount();
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
       const interval = setInterval(refreshUnreadCount, 30000);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     } else {
       setUnreadCount(0);
       setNotificationsDisabled(false);
@@ -226,14 +246,20 @@ const Header: React.FC = () => {
     return () => window.removeEventListener('notifications_disabled_changed', handler);
   }, []);
 
+  useEffect(() => () => {
+    if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
+  }, []);
+
   // Click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (autocompleteRef.current && !autocompleteRef.current.contains(target)
-        && !searchInputRef.current?.contains(target)
+      // Le timer peut être en vol avant même que le dropdown existe : tester
+      // uniquement les champs évite qu'un clic extérieur précoce relance TMDB.
+      if (!searchInputRef.current?.contains(target)
         && !mobileSearchInputRef.current?.contains(target)) {
         setShowAutocomplete(false);
+        clearAutocomplete();
       }
       // Le menu des notifications (déroulant ou panneau mobile) porte
       // data-notifications-popup : ses clics, liquide compris, restent
@@ -245,7 +271,7 @@ const Header: React.FC = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showNotifications]);
+  }, [showNotifications, clearAutocomplete]);
 
   // Même chose pour les notifications : focus rendu à la cloche.
   useEffect(() => {
@@ -279,12 +305,12 @@ const Header: React.FC = () => {
 
   // Reset on navigation
   useEffect(() => {
-    clearAutocompleteSuggestions();
+    clearAutocomplete();
     setShowAutocomplete(false);
     setIsMobileSearchOpen(false);
     setShowNotifications(false);
     if (location.pathname !== '/search') setHeaderQuery('');
-  }, [location.pathname]);
+  }, [location.pathname, clearAutocomplete]);
 
   // Autocomplete dropdown position
   const prevDropdownPosRef = useRef<{ top: number; left: number; width: number } | null>(null);
@@ -329,26 +355,37 @@ const Header: React.FC = () => {
     if (!isMobileSearchOpen) return;
     mobileSearchInputRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { setIsMobileSearchOpen(false); setShowAutocomplete(false); mobileSearchInputRef.current?.blur(); }
+      if (event.key === 'Escape') {
+        setIsMobileSearchOpen(false);
+        setShowAutocomplete(false);
+        clearAutocomplete();
+        mobileSearchInputRef.current?.blur();
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isMobileSearchOpen]);
+  }, [isMobileSearchOpen, clearAutocomplete]);
 
   const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setHeaderQuery(value);
+    if (autocompleteDebounceRef.current) clearTimeout(autocompleteDebounceRef.current);
     if (value.length >= 2) {
-      fetchAutocompleteSuggestions(value);
       setShowAutocomplete(true);
+      // L'autocomplete peut lancer jusqu'à 6 requêtes TMDB : attendre la fin
+      // de la frappe comme sur la page Search évite 2 à 6 appels par caractère.
+      autocompleteDebounceRef.current = setTimeout(() => {
+        autocompleteDebounceRef.current = null;
+        fetchAutocompleteSuggestions(value);
+      }, 300);
     } else {
-      clearAutocompleteSuggestions();
+      clearAutocomplete();
       setShowAutocomplete(false);
     }
   };
 
   const handleSelectAutocomplete = (item: any) => {
-    clearAutocompleteSuggestions();
+    clearAutocomplete();
     setShowAutocomplete(false);
     setHeaderQuery('');
     setIsMobileSearchOpen(false);
@@ -359,7 +396,7 @@ const Header: React.FC = () => {
     e.preventDefault();
     if (headerQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(headerQuery)}`);
-      clearAutocompleteSuggestions();
+      clearAutocomplete();
       setShowAutocomplete(false);
       setHeaderQuery('');
       setIsMobileSearchOpen(false);
@@ -501,7 +538,7 @@ const Header: React.FC = () => {
                         placeholder={t('header.searchPlaceholder')} autoComplete="off"
                         className="h-full min-w-0 flex-1 bg-transparent px-2 text-sm text-white outline-none placeholder:text-white/40" />
                       <button type="button" aria-label={t('common.close', 'Fermer')}
-                        onClick={() => { setIsMobileSearchOpen(false); setHeaderQuery(''); clearAutocompleteSuggestions(); setShowAutocomplete(false); }}
+                        onClick={() => { setIsMobileSearchOpen(false); setHeaderQuery(''); clearAutocomplete(); setShowAutocomplete(false); }}
                         className="mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white"><X size={16} /></button>
                     </motion.form>
                   ) : (

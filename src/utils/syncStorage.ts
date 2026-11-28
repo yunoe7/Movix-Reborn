@@ -23,6 +23,37 @@ export const MAX_SYNC_OUTBOX_OPS = 10000;
 export const SYNC_OUTBOX_REPLAY_LOCK_KEY = '__movix_sync_outbox_replay_lock';
 export const SYNC_OUTBOX_REPLAY_LOCK_TTL_MS = 30_000;
 
+// Découpage partagé entre l'envoi courant (App) et le rejeu de la file
+// (ProfileContext). Le serveur refuse > 200 opérations et > 5 MiB par requête ;
+// on reste volontairement en dessous pour absorber la métadonnée `__owner`.
+function buildSyncBatches<T>(ops: readonly T[], maxOps: number, maxBytes: number): T[][] {
+  const byteLength = (value: string): number => {
+    if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(value).length;
+    // Repli pour les moteurs très anciens (TV/webOS) sans TextEncoder.
+    try {
+      return encodeURIComponent(value).replace(/%[0-9A-F]{2}/gi, 'x').length;
+    } catch {
+      return value.length;
+    }
+  };
+
+  const batches: T[][] = [];
+  let batch: T[] = [];
+  let bytes = 0;
+  for (const op of ops) {
+    const opBytes = byteLength(JSON.stringify(op) ?? '');
+    if (batch.length > 0 && (batch.length >= maxOps || bytes + opBytes > maxBytes)) {
+      batches.push(batch);
+      batch = [];
+      bytes = 0;
+    }
+    batch.push(op);
+    bytes += opBytes;
+  }
+  if (batch.length > 0) batches.push(batch);
+  return batches;
+}
+
 // Source unique de vérité pour le tri des refus `rejected` renvoyés par
 // `/api/sync`. Les anciennes copies dans App.tsx et ProfileContext.tsx
 // pouvaient diverger : un 401 traité comme permanent perdait une écriture,
@@ -76,6 +107,7 @@ function isRetryableSyncRejection(item: {
 }
 
 export {
+  buildSyncBatches,
   getPermanentSyncRejectionCodes,
   getRetryableSyncStatusCodes,
   isPermanentSyncRejection,

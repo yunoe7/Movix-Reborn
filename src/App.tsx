@@ -50,6 +50,7 @@ import { startVipVerification } from './utils/vipUtils';
 import { readLocalStorage, readSessionStorage } from './utils/browserStorage';
 import { getResolvedAccountContext } from './utils/accountAuth';
 import {
+  buildSyncBatches,
   isRetryableSyncRejection,
   isSyncableStorageKey,
   MAX_SYNC_OUTBOX_OPS,
@@ -595,6 +596,7 @@ const PersistenceManager = () => {
   const authDrainRef = useRef<() => boolean>(() => true);
 
   const MAX_SYNC_OPS_PER_REQUEST = 100;
+  const MAX_SYNC_BYTES_PER_REQUEST = 4 * 1024 * 1024;
   const isProgressKey = (k: string) => k.startsWith('progress_');
 
   // Track if we're in the middle of loading profile data to avoid sync.
@@ -950,8 +952,8 @@ const PersistenceManager = () => {
 
       try {
         const rejectedFromThisSend: any[] = [];
-        for (let index = 0; index < ops.length; index += MAX_SYNC_OPS_PER_REQUEST) {
-          const batch = ops.slice(index, index + MAX_SYNC_OPS_PER_REQUEST);
+        const batches = buildSyncBatches(ops, MAX_SYNC_OPS_PER_REQUEST, MAX_SYNC_BYTES_PER_REQUEST);
+        for (const batch of batches) {
           // `__owner` est une métadonnée locale : elle ne doit jamais atteindre
           // l'API, qui valide strictement la forme des opérations.
           const cleanBatch = batch.map(({ __owner, ...op }: any) => op);
@@ -1609,8 +1611,8 @@ const PersistenceManager = () => {
       for (const { owner, ops } of readyToSend) {
         if (!sameSyncAccount(owner, currentOwner)) continue;
         try {
-          for (let index = 0; index < ops.length; index += MAX_SYNC_OPS_PER_REQUEST) {
-            const batch = ops.slice(index, index + MAX_SYNC_OPS_PER_REQUEST);
+          const batches = buildSyncBatches(ops, MAX_SYNC_OPS_PER_REQUEST, MAX_SYNC_BYTES_PER_REQUEST);
+          for (const batch of batches) {
             const syncPayload: Record<string, unknown> = {
               userType: owner.type,
               profileId: owner.profileId,
