@@ -62,6 +62,23 @@ const sectionSources = new Map(sectionPairs.map(([specifier, testId, label]) => 
   specifier,
   genericSectionSource(testId, label),
 ]));
+const cryptoLogoPath = path.join(repo, 'src', 'components', 'vipDonation', 'DonationMethodIcons').replace(/\\/g, '/');
+const icons8Path = path.join(repo, 'src', 'components', 'icons', 'Icons8').replace(/\\/g, '/');
+sectionSources.set('./AdminVipDonationSettings', `
+import React from 'react';
+import { CryptoLogo } from ${JSON.stringify(cryptoLogoPath)};
+import { CreditCard } from ${JSON.stringify(icons8Path)};
+
+export default function AdminVipDonationSettingsIconStub() {
+  return (
+    <div data-testid="section-vip-donation-settings">
+      <div data-testid="vip-method-cryptogate"><CreditCard className="h-5 w-5" aria-hidden="true" /></div>
+      <div data-testid="vip-method-btc"><CryptoLogo coin="btc" className="h-5 w-5" /></div>
+      <div data-testid="vip-method-ltc"><CryptoLogo coin="ltc" className="h-5 w-5" /></div>
+    </div>
+  );
+}
+`);
 sectionSources.set('./StreamingLinksManager', `
 import React from 'react';
 import { useAdminConfirm } from ${JSON.stringify(confirmProviderPath)};
@@ -325,6 +342,14 @@ async function routeFixture(route) {
     return;
   }
 
+  if (url.hostname === 'img.icons8.com') {
+    const name = (url.pathname.split('/').pop() || 'icons8').replace(/\.png$/, '');
+    const label = name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="6" y="55" font-family="monospace" font-size="15" fill="white">${label}</text></svg>`;
+    await route.fulfill({ status: 200, headers: corsHeaders, contentType: 'image/svg+xml', body: svg });
+    return;
+  }
+
   if (url.hostname !== 'main-api.test') {
     await route.fulfill({ status: 404, headers: corsHeaders, body: '{}' });
     return;
@@ -420,6 +445,9 @@ async function withScenario(name, options, scenario) {
 }
 
 const compactText = (value) => value.replace(/\s/g, '');
+const iconMaskUrls = (locator) => locator.evaluateAll((nodes) => (
+  nodes.map((node) => getComputedStyle(node).maskImage || '')
+));
 const screenshotName = (name) => `admin-${name}.png`;
 
 try {
@@ -457,6 +485,16 @@ try {
     });
     const chartBars = await page.locator('[aria-label="Inscriptions par jour"] > div').count();
     assert.equal(chartBars, 7, 'admin: graphique alimenté par la série serveur');
+
+    const statIconUrls = await iconMaskUrls(page.locator('[data-testid^="admin-stat-"] .admin-stat-icon > span'));
+    assert.equal(statIconUrls.length, 6, 'admin: six cartes statistiques avec icône');
+    assert.ok(statIconUrls.every((url) => url.includes('img.icons8.com/')), 'admin: icônes Icons8 sur toutes les cartes');
+    assert.ok(statIconUrls.some((url) => url.includes('/add-user-male.png')), 'admin: Inscriptions utilise UserPlus Icons8');
+    assert.ok(statIconUrls.some((url) => url.includes('/comments.png')), 'admin: Commentaires utilise une icône de message Icons8');
+    assert.doesNotMatch(statIconUrls.join('|'), /\/message\.png|\/add-user\.png/, 'admin: aucun masque Icons8 introuvable');
+
+    const commentsNavIconUrl = await iconMaskUrls(page.locator('[data-testid="admin-nav-comments"] > span').first());
+    assert.match(commentsNavIconUrl[0] || '', /\/comments\.png/, 'admin: navigation Commentaires a une vraie icône');
 
     const quickActionIds = await page.locator('[data-testid^="admin-quick-action-"]')
       .evaluateAll((nodes) => nodes.map((node) => node.dataset.testid.replace('admin-quick-action-', '')));
@@ -506,6 +544,8 @@ try {
       usersText,
       registrationsText,
       chartBars,
+      statIcons: statIconUrls.length,
+      commentsNavIcon: commentsNavIconUrl[0] || '',
       quickActionIds,
       i18nPlaceholders,
       roleText: 'Admin',
@@ -562,9 +602,17 @@ try {
       0,
       'decor: aucun bouton ni action simulée',
     );
+    const decorIconUrls = await iconMaskUrls(page.locator('[data-testid="admin-decor"] .admin-quick-action > span:first-child'));
+    assert.equal(decorIconUrls.length, 5, 'decor: cinq familles avec icône');
+    assert.equal(new Set(decorIconUrls).size, 5, 'decor: icônes distinctes par famille');
+    for (const expected of ['clapperboard', 'sparkles', 'image', 'color-palette', 'gallery']) {
+      assert.ok(decorIconUrls.some((url) => url.includes(`/${expected}.png`)), `decor: icône ${expected} présente`);
+    }
+    const decorStateIcon = await iconMaskUrls(page.locator('[data-testid="admin-decor"] [data-state="info"] .admin-state-icon > span'));
+    assert.match(decorStateIcon[0] || '', /\/info\.png/, 'decor: état de préparation utilise l’icône Info');
     const screenshot = screenshotName('decor-admin');
     await page.screenshot({ path: path.join(artifactDir, screenshot), fullPage: true });
-    return { screenshot, fakeActions: 0 };
+    return { screenshot, fakeActions: 0, decorIcons: decorIconUrls.length };
   });
 
   await withScenario('diagnostics-admin', { token: 'valid-admin', role: 'admin' }, async (page) => {
@@ -577,9 +625,32 @@ try {
       1,
       'diagnostics: flux de logs marqué indisponible',
     );
+    const logsIconUrl = await iconMaskUrls(page.locator('[data-testid="admin-diagnostics"] [data-state="unavailable"] .admin-service-icon > span'));
+    assert.match(logsIconUrl[0] || '', /\/command-line\.png/, 'diagnostics: icône terminal pour le flux indisponible');
+    const logsStateIconUrl = await iconMaskUrls(page.locator('[data-testid="admin-diagnostics"] [data-state="info"] .admin-state-icon > span'));
+    assert.match(logsStateIconUrl[0] || '', /\/info\.png/, 'diagnostics: journalisation non exposée utilise Info');
     const screenshot = screenshotName('diagnostics-admin');
     await page.screenshot({ path: path.join(artifactDir, screenshot), fullPage: true });
-    return { screenshot, unavailableRows: 1 };
+    return { screenshot, unavailableRows: 1, logsIcon: logsIconUrl[0] || '' };
+  });
+
+  await withScenario('payment-icons-admin', { token: 'valid-admin', role: 'admin' }, async (page) => {
+    await page.locator('[data-testid="admin-nav-vip-donation-settings"]').click();
+    await page.locator('[data-testid="section-vip-donation-settings"]').waitFor();
+    const cryptoGateIcon = await iconMaskUrls(page.locator('[data-testid="vip-method-cryptogate"] > span'));
+    const btcIcon = await iconMaskUrls(page.locator('[data-testid="vip-method-btc"] > span'));
+    const ltcIcon = await iconMaskUrls(page.locator('[data-testid="vip-method-ltc"] > span'));
+    assert.match(cryptoGateIcon[0] || '', /\/pos-terminal\.png/, 'paiements: CryptoGate utilise CreditCard Icons8');
+    assert.match(btcIcon[0] || '', /\/bitcoin\.png/, 'paiements: Bitcoin utilise Bitcoin Icons8');
+    assert.match(ltcIcon[0] || '', /\/litecoin\.png/, 'paiements: Litecoin utilise Litecoin Icons8');
+    const screenshot = screenshotName('payment-icons-admin');
+    await page.screenshot({ path: path.join(artifactDir, screenshot), fullPage: true });
+    return {
+      screenshot,
+      cryptoGateIcon: cryptoGateIcon[0] || '',
+      btcIcon: btcIcon[0] || '',
+      ltcIcon: ltcIcon[0] || '',
+    };
   });
 
   await withScenario('uploader', { token: 'valid-uploader', role: 'uploader' }, async (page) => {
@@ -720,10 +791,44 @@ const staticChecks = {
       && Boolean(messages.adminComms.releaseSummaryPlaceholder)
       && messages.adminComms.postSummaryPlaceholder !== messages.adminComms.releaseSummaryPlaceholder;
   })).then((results) => results.every(Boolean)),
+  icons8OnlyInAdminIcons: Promise.all([
+    'src/components/vipDonation/DonationMethodIcons.tsx',
+    'src/components/adminVipDonations/DonationSettingsSections.tsx',
+    'src/components/admin/AdminDecorPlaceholder.tsx',
+    'src/components/admin/AdminDiagnostics.tsx',
+  ].map(async (file) => {
+    const source = await readFile(path.join(repo, file), 'utf8');
+    return !source.includes("from 'lucide-react'") && source.includes('../icons/Icons8');
+  })).then((results) => results.every(Boolean)),
+  icons8WorkingPaths: (async () => {
+    const source = await readFile(path.join(repo, 'src/components/icons/Icons8.tsx'), 'utf8');
+    return [
+      '"userplus": "add-user-male"',
+      '"message": "comments"',
+      '"creditcard": "pos-terminal"',
+      '"terminal": "command-line"',
+      '"serveroff": "server--v1"',
+      '"contact": "address-book"',
+      '"euro": "currency"',
+      '"power": "switch"',
+      '"images": "gallery"',
+      '"imageplus": "add-image"',
+      '"imageoff": "no-image"',
+      '"sliders": "slider-control"',
+      '"atsign": "username"',
+      'export const ArrowBigUp = (p: Omit<Props, "name">) => <Icons8Icon name="arrowbigup"',
+      '"bitcoin": "bitcoin"',
+      '"litecoin": "litecoin"',
+      'export const Bitcoin',
+      'export const Litecoin',
+    ].every((marker) => source.includes(marker));
+  })(),
 };
 staticChecks.noNativeConfirmInAdminComponents = await staticChecks.noNativeConfirmInAdminComponents;
 staticChecks.vidriftPlayerUntouched = await staticChecks.vidriftPlayerUntouched;
 staticChecks.distinctAdminCommsPlaceholders = await staticChecks.distinctAdminCommsPlaceholders;
+staticChecks.icons8OnlyInAdminIcons = await staticChecks.icons8OnlyInAdminIcons;
+staticChecks.icons8WorkingPaths = await staticChecks.icons8WorkingPaths;
 
 const files = await readdir(artifactDir);
 const report = {
@@ -754,6 +859,7 @@ const report = {
     moderatorNavIds: ['overview', 'links'],
     decor: 'catégorie préparée, sans bouton ni publication simulée',
     diagnostics: 'sources réelles uniquement, logs marqués indisponibles',
+    paymentMethods: 'CryptoGate, Bitcoin et Litecoin avec masques Icons8',
     statsSource: 'GET /api/admin/stats/overview uniquement',
     deniedGates: ['success=false avec HTTP 200', 'rôle inconnu', 'aucun token'],
   },
@@ -783,7 +889,7 @@ const markdown = [
   '| --- | --- | --- |',
   ...observations.map((entry) => {
     const summary = Object.entries(entry)
-      .filter(([key]) => ['navIds', 'quickActionIds', 'i18nPlaceholders', 'usersText', 'registrationsText', 'overflow', 'fallback', 'granted', 'role', 'nativeConfirmCalls', 'fakeActions', 'unavailableRows'].includes(key))
+      .filter(([key]) => ['navIds', 'statIcons', 'commentsNavIcon', 'quickActionIds', 'decorIcons', 'logsIcon', 'cryptoGateIcon', 'btcIcon', 'ltcIcon', 'i18nPlaceholders', 'usersText', 'registrationsText', 'overflow', 'fallback', 'granted', 'role', 'nativeConfirmCalls', 'fakeActions', 'unavailableRows'].includes(key))
       .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
       .join(' ; ');
     return `| ${entry.name} | ${summary || 'ok'} | ${entry.screenshot ?? `trace-${entry.name}.zip`} |`;

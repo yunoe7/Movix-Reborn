@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'network' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading' | 'arrow-up-right' | 'check' | 'trash' | 'chevron-left' | 'chevron-right' | 'target' | 'flame' | 'compass' | 'download' | 'video' | 'alert' | 'eye' | 'eyeoff' | 'arrowdownup' | 'filter' | 'award' | 'globe' | 'tag' | 'arrowupdown' | 'heart' | 'login' | 'copy' | 'share' | 'message' | 'send' | 'clipboard' | 'userx' | 'maximize' | 'minimize' | 'hand' | 'clock' | 'checkcircle' | 'xcircle' | 'arrowleft' | 'tablet' | 'snowflake' | 'activity' | 'volume' | 'database' | 'key' | 'lock' | 'palette' | 'upload' | 'belloff' | 'zap' | 'listordered' | 'gauge' | 'megaphone' | 'square' | 'captions' | 'ghost' | 'leaf' | 'cloudrain' | 'flower' | 'popcorn' | 'link' | 'messagecircle' | 'calendarclock' | 'tree' | 'chevronup' | 'chevronright' | 'arrowup' | 'arrowdown' | 'videoicon' | 'loader' | 'tabletdevice' | 'volume2' | 'share2' | 'messagesquare' | 'checkcircle2' | 'xcircle2' | 'arrowdownup2' | 'arrowupdown2' | 'eyeoff2' | 'userx2' | 'arrowright' | 'shieldalert' | 'bellring' | 'flag' | 'gallery' | 'gift' | 'handcoins' | 'plug' | 'sprout' | 'wrench' | 'folder' | 'sortasc' | 'sortdesc' | 'type' | 'messageSquare' | 'server' | 'pause' | 'volumex' | 'volume1' | 'rewind' | 'fastforward' | 'repeat' | 'cast' | 'airplay' | 'pip' | 'scissors' | 'edit' | 'calendarplus' | 'sliders' | 'wifi' | 'rotate' | 'alertcircle' | 'drama' | 'ticket' | 'gridicon' | 'building' | 'mappin' | 'languages' | 'dollar' | 'trending' | 'bookmark' | 'trophy' | 'barchart' | 'timer' | 'hash' | 'checkcircleplain' | 'monitorsmartphone' | 'shuffle' | 'clipboardlist' | 'library' | 'handshake' | 'drag' | 'layers' | 'more' | 'cloudoff' | 'hourglass' | 'serveroff' | 'playlist' | 'camera' | 'thumbsup' | 'thumbsdown' | 'ban' | 'arrowupfromline' | 'coins' | 'image' | 'userplus' | 'minus' | 'arrowupleft' | 'arrowupright' | 'circle' | 'arrowdownleft' | 'arrowdownright' | 'folderplus' | 'smile' | 'euro' | 'scale' | 'apple' | 'flask' | 'map' | 'pointer' | 'arrowdownwide' | 'arrowupwide' | 'creditcard' | 'handheart' | 'timeroff' | 'bellplus' | 'bookmarkminus' | 'bookmarkplus' | 'filepen' | 'folderx' | 'heartoff' | 'listchecks' | 'listminus' | 'listplus' | 'playcircle' | 'staroff' | 'usercog' | 'qrcode' | 'rocket' | 'vote' | 'alignleft' | 'arrowbigup' | 'tags' | 'layouttemplate' | 'images' | 'imageplus' | 'imageoff' | 'pausecircle' | 'power' | 'save' | 'undo' | 'atsign' | 'contact' | 'mail' | 'wallet' | 'folderheart' | 'lifebuoy' | 'badgecheck' | 'grid3x3' | 'bookopen' | 'candy' | 'skull' | 'battery' | 'filetext' | 'skipforward' | 'gamepad' | 'expand' | 'locatefixed' | 'zoomin' | 'zoomout' | 'pin' | 'pinoff' | 'bug' | 'toggleright' | 'terminal' | 'baby' | 'facebook' | 'twitter' | 'bold' | 'italic' | 'code' | 'quote' | 'strikethrough' | 'music' | 'shoppingbag' | 'cloud' | 'discord';
+export type Icons8Name = 'home' | 'film' | 'tv' | 'search' | 'bell' | 'star' | 'list' | 'settings' | 'shield' | 'crown' | 'history' | 'user' | 'users' | 'logout' | 'arrows' | 'chevron' | 'refresh' | 'clapper' | 'radio' | 'network' | 'unlock' | 'external' | 'grid' | 'dice' | 'sparkles' | 'help' | 'github' | 'calendar' | 'puzzle' | 'phone' | 'monitor' | 'plus' | 'close' | 'info' | 'play' | 'loading' | 'arrow-up-right' | 'check' | 'trash' | 'chevron-left' | 'chevron-right' | 'target' | 'flame' | 'compass' | 'download' | 'video' | 'alert' | 'eye' | 'eyeoff' | 'arrowdownup' | 'filter' | 'award' | 'globe' | 'tag' | 'arrowupdown' | 'heart' | 'login' | 'copy' | 'share' | 'message' | 'send' | 'clipboard' | 'userx' | 'maximize' | 'minimize' | 'hand' | 'clock' | 'checkcircle' | 'xcircle' | 'arrowleft' | 'tablet' | 'snowflake' | 'activity' | 'volume' | 'database' | 'key' | 'lock' | 'palette' | 'upload' | 'belloff' | 'zap' | 'listordered' | 'gauge' | 'megaphone' | 'square' | 'captions' | 'ghost' | 'leaf' | 'cloudrain' | 'flower' | 'popcorn' | 'link' | 'messagecircle' | 'calendarclock' | 'tree' | 'chevronup' | 'chevronright' | 'arrowup' | 'arrowdown' | 'videoicon' | 'loader' | 'tabletdevice' | 'volume2' | 'share2' | 'messagesquare' | 'checkcircle2' | 'xcircle2' | 'arrowdownup2' | 'arrowupdown2' | 'eyeoff2' | 'userx2' | 'arrowright' | 'shieldalert' | 'bellring' | 'flag' | 'gallery' | 'gift' | 'handcoins' | 'bitcoin' | 'litecoin' | 'plug' | 'sprout' | 'wrench' | 'folder' | 'sortasc' | 'sortdesc' | 'type' | 'messageSquare' | 'server' | 'pause' | 'volumex' | 'volume1' | 'rewind' | 'fastforward' | 'repeat' | 'cast' | 'airplay' | 'pip' | 'scissors' | 'edit' | 'calendarplus' | 'sliders' | 'wifi' | 'rotate' | 'alertcircle' | 'drama' | 'ticket' | 'gridicon' | 'building' | 'mappin' | 'languages' | 'dollar' | 'trending' | 'bookmark' | 'trophy' | 'barchart' | 'timer' | 'hash' | 'checkcircleplain' | 'monitorsmartphone' | 'shuffle' | 'clipboardlist' | 'library' | 'handshake' | 'drag' | 'layers' | 'more' | 'cloudoff' | 'hourglass' | 'serveroff' | 'playlist' | 'camera' | 'thumbsup' | 'thumbsdown' | 'ban' | 'arrowupfromline' | 'coins' | 'image' | 'userplus' | 'minus' | 'arrowupleft' | 'arrowupright' | 'circle' | 'arrowdownleft' | 'arrowdownright' | 'folderplus' | 'smile' | 'euro' | 'scale' | 'apple' | 'flask' | 'map' | 'pointer' | 'arrowdownwide' | 'arrowupwide' | 'creditcard' | 'handheart' | 'timeroff' | 'bellplus' | 'bookmarkminus' | 'bookmarkplus' | 'filepen' | 'folderx' | 'heartoff' | 'listchecks' | 'listminus' | 'listplus' | 'playcircle' | 'staroff' | 'usercog' | 'qrcode' | 'rocket' | 'vote' | 'alignleft' | 'arrowbigup' | 'tags' | 'layouttemplate' | 'images' | 'imageplus' | 'imageoff' | 'pausecircle' | 'power' | 'save' | 'undo' | 'atsign' | 'contact' | 'mail' | 'wallet' | 'folderheart' | 'lifebuoy' | 'badgecheck' | 'grid3x3' | 'bookopen' | 'candy' | 'skull' | 'battery' | 'filetext' | 'skipforward' | 'gamepad' | 'expand' | 'locatefixed' | 'zoomin' | 'zoomout' | 'pin' | 'pinoff' | 'bug' | 'toggleright' | 'terminal' | 'baby' | 'facebook' | 'twitter' | 'bold' | 'italic' | 'code' | 'quote' | 'strikethrough' | 'music' | 'shoppingbag' | 'cloud' | 'discord';
 type Props = { name: Icons8Name; size?: number | string; className?: string; title?: string; style?: React.CSSProperties; strokeWidth?: number; absoluteStrokeWidth?: boolean };
 
 const paths: Record<Icons8Name, string> = {
@@ -19,7 +19,7 @@ const paths: Record<Icons8Name, string> = {
 
   "bug": "bug",
   "toggleright": "toggle-right",
-  "terminal": "terminal",
+  "terminal": "command-line",
   "pin": "pin",
   "pinoff": "unpin",
   "expand": "expand",
@@ -35,18 +35,18 @@ const paths: Record<Icons8Name, string> = {
   "badgecheck": "verified",
   "grid3x3": "grid",
   "bookopen": "open-book",
-  "atsign": "at-sign",
-  "contact": "contact",
+  "atsign": "username",
+  "contact": "address-book",
   "mail": "email",
   "wallet": "wallet",
   "folderheart": "folder-heart",
   "lifebuoy": "life-buoy",
   "layouttemplate": "template",
-  "images": "images",
-  "imageplus": "image-add",
-  "imageoff": "image-off",
+  "images": "gallery",
+  "imageplus": "add-image",
+  "imageoff": "no-image",
   "pausecircle": "pause",
-  "power": "power",
+  "power": "switch",
   "save": "save",
   "undo": "undo",
   "tags": "tags",
@@ -67,7 +67,7 @@ const paths: Record<Icons8Name, string> = {
   "vote": "vote",
   "alignleft": "align-left",
   "arrowbigup": "up",
-  "creditcard": "credit-card",
+  "creditcard": "pos-terminal",
   "handheart": "hand-heart",
   "timeroff": "timer-off",
   "apple": "apple",
@@ -78,7 +78,7 @@ const paths: Record<Icons8Name, string> = {
   "arrowupwide": "sort-up",
   "folderplus": "add-to-folder",
   "smile": "happy",
-  "euro": "euro",
+  "euro": "currency",
   "scale": "scales",
   "arrowupleft": "up-left",
   "arrowup": "up",
@@ -92,15 +92,17 @@ const paths: Record<Icons8Name, string> = {
   "ban": "block",
   "arrowupfromline": "upload",
   "coins": "coins",
+  "bitcoin": "bitcoin",
+  "litecoin": "litecoin",
   "image": "image",
-  "userplus": "add-user",
+  "userplus": "add-user-male",
   "minus": "minus",
   "drag": "drag",
   "layers": "layers",
   "more": "more",
   "cloudoff": "cloud-off",
   "hourglass": "hourglass",
-  "serveroff": "server-off",
+  "serveroff": "server--v1",
   "playlist": "playlist",
   "camera": "camera",
   "gridicon": "grid",
@@ -122,7 +124,7 @@ const paths: Record<Icons8Name, string> = {
   "handshake": "handshake",
   "edit": "edit",
   "calendarplus": "calendar-plus",
-  "sliders": "sliders",
+  "sliders": "slider-control",
   "wifi": "wi-fi",
   "rotate": "rotate-left",
   "unlock": "unlock",
@@ -151,19 +153,19 @@ const paths: Record<Icons8Name, string> = {
   "sortasc": "sort-up",
   "sortdesc": "sort-down",
   "type": "text",
-  "messageSquare": "message",
+  "messageSquare": "comments",
   "plus": "plus",
   "arrowright": "right",
-  "shieldalert": "warning",
+  "shieldalert": "exclamation-mark",
   "bellring": "bell",
   "info": "info",
   "target": "target",
-  "flame": "fire",
+  "flame": "campfire",
   "compass": "compass",
   "download": "download",
   "video": "video",
   "calendar": "calendar",
-  "alert": "warning",
+  "alert": "exclamation-mark",
   "eye": "visible",
   "eyeoff": "invisible",
   "arrowdownup": "sort",
@@ -176,7 +178,7 @@ const paths: Record<Icons8Name, string> = {
   "login": "login",
   "copy": "copy",
   "share": "share",
-  "message": "message",
+  "message": "comments",
   "send": "sent",
   "clipboard": "clipboard",
   "userx": "remove-user",
@@ -199,7 +201,7 @@ const paths: Record<Icons8Name, string> = {
   "palette": "color-palette",
   "upload": "upload",
   "belloff": "no-notifications",
-  "zap": "flash",
+  "zap": "lightning-bolt",
   "listordered": "numbered-list",
   "gauge": "speed",
   "megaphone": "megaphone",
@@ -211,7 +213,7 @@ const paths: Record<Icons8Name, string> = {
   "flower": "flower",
   "popcorn": "popcorn",
   "link": "link",
-  "messagecircle": "message",
+  "messagecircle": "comments",
   "calendarclock": "calendar",
   "tree": "pine-tree",
   "chevronup": "up",
@@ -222,7 +224,7 @@ const paths: Record<Icons8Name, string> = {
   "tabletdevice": "tablet",
   "volume2": "high-volume",
   "share2": "share",
-  "messagesquare": "message",
+  "messagesquare": "comments",
   "checkcircle2": "checked",
   "xcircle2": "cancel",
   "arrowdownup2": "sort",
@@ -486,6 +488,8 @@ export const ThumbsDown = (p: Omit<Props, "name">) => <Icons8Icon name="thumbsdo
 export const Ban = (p: Omit<Props, "name">) => <Icons8Icon name="ban" {...p} />;
 export const ArrowUpFromLine = (p: Omit<Props, "name">) => <Icons8Icon name="arrowupfromline" {...p} />;
 export const Coins = (p: Omit<Props, "name">) => <Icons8Icon name="coins" {...p} />;
+export const Bitcoin = (p: Omit<Props, "name">) => <Icons8Icon name="bitcoin" {...p} />;
+export const Litecoin = (p: Omit<Props, "name">) => <Icons8Icon name="litecoin" {...p} />;
 export const Image = (p: Omit<Props, "name">) => <Icons8Icon name="image" {...p} />;
 export const UserPlus = (p: Omit<Props, "name">) => <Icons8Icon name="userplus" {...p} />;
 export const Minus = (p: Omit<Props, "name">) => <Icons8Icon name="minus" {...p} />;
@@ -535,7 +539,7 @@ export const QrCode = (p: Omit<Props, "name">) => <Icons8Icon name="qrcode" {...
 export const Rocket = (p: Omit<Props, "name">) => <Icons8Icon name="rocket" {...p} />;
 export const Vote = (p: Omit<Props, "name">) => <Icons8Icon name="vote" {...p} />;
 export const AlignLeft = (p: Omit<Props, "name">) => <Icons8Icon name="alignleft" {...p} />;
-export const ArrowBigUp = (p: Omit<Props, "name">) => <Icons8Icon name="arrowbig" {...p} />;
+export const ArrowBigUp = (p: Omit<Props, "name">) => <Icons8Icon name="arrowbigup" {...p} />;
 export const LinkIcon = (p: Omit<Props, "name">) => <Icons8Icon name="link" {...p} />;
 
 export const Tags = (p: Omit<Props, "name">) => <Icons8Icon name="tags" {...p} />;

@@ -1,23 +1,30 @@
 import React, { useState } from 'react';
-import { Contact, Crown, Euro, Gift, Power, Ticket, Wallet, type LucideIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
   ArrowRight,
   AtSign,
+  Contact,
+  Crown,
   CreditCard,
+  Euro,
   Eye,
   EyeOff,
+  Gift,
   Hash,
   Link2,
   Mail,
   MessageCircle,
   PauseCircle,
   Plus,
+  Power,
   Send,
   ServerOff,
   Star,
+  Ticket,
+  Wallet,
   X,
+  type LucideIcon,
 } from '../icons/Icons8';
 
 import { cn } from '@/lib/utils';

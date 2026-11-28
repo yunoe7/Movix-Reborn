@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock,
+  Info,
   RefreshCw,
   XCircle,
 } from '../icons/Icons8';
@@ -89,7 +90,7 @@ const STATE_ICONS: Record<AdminTone, React.ReactNode> = {
   error: <XCircle className="h-4 w-4" aria-hidden="true" />,
   success: <CheckCircle2 className="h-4 w-4" aria-hidden="true" />,
   warning: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
-  info: <AlertTriangle className="h-4 w-4" aria-hidden="true" />,
+  info: <Info className="h-4 w-4" aria-hidden="true" />,
   loading: <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />,
   empty: <Clock className="h-4 w-4" aria-hidden="true" />,
 };
@@ -116,16 +117,19 @@ export const AdminServiceRow: React.FC<{
   healthy: boolean;
   pending?: boolean;
   unavailable?: boolean;
-}> = ({ label, detail, healthy, pending, unavailable }) => {
+  icon?: React.ComponentType<{ className?: string }>;
+}> = ({ label, detail, healthy, pending, unavailable, icon: Icon }) => {
   const { t } = useTranslation();
   const state = unavailable ? 'unavailable' : pending ? 'pending' : healthy ? 'ok' : 'error';
-  const icon = state === 'pending'
-    ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
-    : state === 'ok'
-      ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-      : state === 'error'
-        ? <XCircle className="h-4 w-4" aria-hidden="true" />
-        : <Clock className="h-4 w-4" aria-hidden="true" />;
+  const icon = Icon
+    ? <Icon className="h-4 w-4" aria-hidden="true" />
+    : state === 'pending'
+      ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" />
+      : state === 'ok'
+        ? <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+        : state === 'error'
+          ? <XCircle className="h-4 w-4" aria-hidden="true" />
+          : <Clock className="h-4 w-4" aria-hidden="true" />;
   const statusLabel = state === 'ok'
     ? t('admin.console.statusOk', { defaultValue: 'OK' })
     : state === 'error'
