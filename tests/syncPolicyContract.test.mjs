@@ -6,7 +6,7 @@ import { sourceNamedFunction } from './helpers/sourceFunction.mjs';
 
 const require = createRequire(import.meta.url);
 const policy = require('../API/Mainapi/utils/syncPolicy.js');
-const contract = JSON.parse(readFileSync(new URL('../shared/syncKeys.json', import.meta.url), 'utf8'));
+const contract = JSON.parse(readFileSync(new URL('../API/Mainapi/shared/syncKeys.json', import.meta.url), 'utf8'));
 
 const SYNC_STORAGE = 'src/utils/syncStorage.ts';
 const getPermanentSyncRejectionCodes = sourceNamedFunction(SYNC_STORAGE, 'getPermanentSyncRejectionCodes');

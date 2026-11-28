@@ -13,7 +13,16 @@ build
 .codex-remote-attachments
 
 # === Backends séparés (pas besoin pour le front) ===
-API
+# Exclure le contenu de API/ plutôt que le répertoire lui-même : une négation
+# sur un descendant ne traverse pas un parent exclu. Le contrat canonique est
+# réinclus à chaque niveau, puis tout le reste est exclu avant la dernière
+# négation ciblée.
+API/*
+!API/Mainapi/
+API/Mainapi/*
+!API/Mainapi/shared/
+API/Mainapi/shared/*
+!API/Mainapi/shared/syncKeys.json
 extension
 userscript
 wasm

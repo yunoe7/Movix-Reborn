@@ -1,5 +1,5 @@
 const path = require('path');
-const syncKeys = require('../../../shared/syncKeys.json');
+const syncKeys = require('../shared/syncKeys.json');
 
 const ALLOWED_SYNC_USER_TYPES = Object.freeze(['oauth', 'bip39']);
 const RESERVED_OBJECT_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
