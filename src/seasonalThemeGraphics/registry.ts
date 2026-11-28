@@ -96,6 +96,12 @@ const ASSET_PATTERN = /^\/assets\/seasonal-theme\/[a-z0-9][a-z0-9._/-]{0,180}$/;
  */
 export function isAllowedSeasonalAsset(path: unknown): string | null {
   if (typeof path !== 'string' || !ASSET_PATTERN.test(path)) return null;
+  const segments = path.slice('/assets/seasonal-theme/'.length).split('/');
+  // Le préfixe autorisé ne suffit pas : refuser aussi les traversées internes,
+  // les segments vides et les séparateurs encodés ou alternatifs.
+  if (segments.length === 0 || segments.some((segment) => (
+    segment.length === 0 || segment === '.' || segment === '..'
+  ))) return null;
   return path;
 }
 
