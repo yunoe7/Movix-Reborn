@@ -19,7 +19,7 @@ import AdminVipDonationSettings from './AdminVipDonationSettings';
 import StreamingLinksManager from './StreamingLinksManager';
 import VipInvoicesManager from './VipInvoicesManager';
 import VipKeysManager from './VipKeysManager';
-import AdminDecorPlaceholder from './admin/AdminDecorPlaceholder';
+import AdminDecor from './adminDecor/AdminDecor';
 import AdminDiagnostics from './admin/AdminDiagnostics';
 import { AdminConfirmProvider } from './admin/AdminConfirmProvider';
 import AdminDashboardHome from './admin/AdminDashboardHome';
@@ -100,7 +100,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ role, identity = null }
       case 'whats-new':
         return <AdminWhatsNew />;
       case 'decor':
-        return <AdminDecorPlaceholder />;
+        return <AdminDecor />;
       case 'diagnostics':
         return <AdminDiagnostics role={role} />;
       default:
