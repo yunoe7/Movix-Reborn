@@ -25,6 +25,12 @@ import {
   loadNetworkJournalPreference,
   setNetworkJournalEnabled,
 } from '../services/networkJournal';
+import {
+  MOVIX_EXTRACTION_PREFS_KEY,
+  normalizeExtractionPrefs,
+  pushGmValueToWebViews,
+  type MovixExtractionPrefs,
+} from '../services/bridge';
 
 const { DnsModule } = NativeModules;
 
@@ -45,17 +51,9 @@ function switchColors(value: boolean) {
 const M3U8_KEYS = ['voe','fsvid','vidzy','vidmoly','sibnet','uqload','doodstream','seekstreaming','lulustream','veev','vidara'] as const;
 const LIVETV_KEYS = ['northlive','vavoo','matches'] as const;
 
-type ExtractionPrefs = {
-  version: 1;
-  m3u8: Record<typeof M3U8_KEYS[number], boolean>;
-  livetv: Record<typeof LIVETV_KEYS[number], boolean>;
-};
+type ExtractionPrefs = MovixExtractionPrefs;
 
-const buildDefaultExtractionPrefs = (): ExtractionPrefs => ({
-  version: 1,
-  m3u8: M3U8_KEYS.reduce((acc, k) => ({ ...acc, [k]: true }), {} as ExtractionPrefs['m3u8']),
-  livetv: LIVETV_KEYS.reduce((acc, k) => ({ ...acc, [k]: true }), {} as ExtractionPrefs['livetv']),
-});
+const buildDefaultExtractionPrefs = (): ExtractionPrefs => normalizeExtractionPrefs(null);
 
 export default function SettingsScreen() {
   const { config } = useAddress();
@@ -153,28 +151,43 @@ export default function SettingsScreen() {
     return () => subscription.remove();
   }, [refreshDnsState]);
 
-  useEffect(() => {
-    AsyncStorage.getItem('movix_extraction_prefs').then((raw) => {
-      if (!raw) return;
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && parsed.version === 1 && parsed.m3u8 && parsed.livetv) {
-          const defaults = buildDefaultExtractionPrefs();
-          setExtractionPrefs({
-            version: 1,
-            m3u8: { ...defaults.m3u8, ...parsed.m3u8 },
-            livetv: { ...defaults.livetv, ...parsed.livetv },
-          });
+  const restoreExtractionPrefs = useCallback(async () => {
+    try {
+      const raw = await AsyncStorage.getItem(MOVIX_EXTRACTION_PREFS_KEY);
+      let parsed: unknown = null;
+      if (raw) {
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          // Valeur corrompue : on repart d'un jeu complet de défauts.
         }
-      } catch {
-        // corrupted — keep defaults
       }
-    });
+      const restored = normalizeExtractionPrefs(parsed);
+      setExtractionPrefs(restored);
+      // Après un reset global la clé est absente : ne pas réinjecter une
+      // ancienne valeur qui ferait réapparaître le réglage au redémarrage.
+      if (raw) pushGmValueToWebViews(MOVIX_EXTRACTION_PREFS_KEY, restored);
+    } catch {
+      // Stockage indisponible : l'état par défaut reste affiché.
+    }
   }, []);
 
-  const updateExtractionPrefs = useCallback((next: ExtractionPrefs) => {
-    setExtractionPrefs(next);
-    AsyncStorage.setItem('movix_extraction_prefs', JSON.stringify(next));
+  useEffect(() => {
+    void restoreExtractionPrefs();
+  }, [restoreExtractionPrefs]);
+
+  const updateExtractionPrefs = useCallback(async (next: ExtractionPrefs) => {
+    const normalized = normalizeExtractionPrefs(next);
+    setExtractionPrefs(normalized);
+    // AsyncStorage est la source de vérité : on confirme l'écriture avant de
+    // pousser la valeur à la WebView déjà montée.
+    try {
+      await AsyncStorage.setItem(MOVIX_EXTRACTION_PREFS_KEY, JSON.stringify(normalized));
+    } catch {
+      // Ne pas publier une valeur qui ne survivrait pas au redémarrage.
+      return;
+    }
+    pushGmValueToWebViews(MOVIX_EXTRACTION_PREFS_KEY, normalized);
   }, []);
 
   const toggleDns = useCallback(async (value: boolean) => {

@@ -548,10 +548,42 @@ export function buildBridgeRuntime(
   // --- GM_getValue / GM_setValue / GM_deleteValue ---
   // Version synchrone avec cache local + sync async vers le natif
   var _storageCache = {};
+  // Le natif pousse les valeurs qui changent hors de la WebView (réglages
+  // d'extraction depuis l'app). GM_getValue étant synchrone, ce snapshot est
+  // la seule source fraîche consultable sans aller-retour avec le pont.
+  var _nativeStorageSnapshot = window.__MOVIX_NATIVE_GM_STORAGE__ || {};
+  window.__MOVIX_NATIVE_GM_STORAGE__ = _nativeStorageSnapshot;
+
+  function forgetNativeGmValue(key) {
+    delete _storageCache[key];
+    delete _nativeStorageSnapshot[key];
+    try {
+      localStorage.removeItem('movix_userscript:' + key);
+    } catch(e) {}
+  }
+
+  // Poussée native (réglages, reset global) : la valeur nulle est une
+  // suppression, pas une chaîne "null" à persister dans les trois copies.
+  window.__MOVIX_SET_NATIVE_GM_VALUE__ = function(key, value) {
+    if (value === null || value === undefined) {
+      forgetNativeGmValue(key);
+      return;
+    }
+    _nativeStorageSnapshot[key] = value;
+    _storageCache[key] = value;
+    try {
+      localStorage.setItem('movix_userscript:' + key, JSON.stringify(value));
+    } catch(e) {}
+  };
 
   function GM_getValue(key, defaultValue) {
     if (key in _storageCache) {
       return _storageCache[key];
+    }
+    var nativeSnapshot = window.__MOVIX_NATIVE_GM_STORAGE__ || {};
+    if (key in nativeSnapshot) {
+      _storageCache[key] = nativeSnapshot[key];
+      return nativeSnapshot[key];
     }
     // Fallback sur localStorage
     try {
@@ -565,6 +597,7 @@ export function buildBridgeRuntime(
 
   function GM_setValue(key, value) {
     _storageCache[key] = value;
+    _nativeStorageSnapshot[key] = value;
     try {
       localStorage.setItem('movix_userscript:' + key, JSON.stringify(value));
     } catch(e) {}
@@ -573,10 +606,7 @@ export function buildBridgeRuntime(
   }
 
   function GM_deleteValue(key) {
-    delete _storageCache[key];
-    try {
-      localStorage.removeItem('movix_userscript:' + key);
-    } catch(e) {}
+    forgetNativeGmValue(key);
     sendToNative({ type: 'GM_DELETE_VALUE', id: generateId(), key: key });
   }
 

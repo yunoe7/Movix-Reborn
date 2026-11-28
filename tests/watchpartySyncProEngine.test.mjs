@@ -230,6 +230,32 @@ test('pause programmée : une seule commande pause, aucun play fantôme', (t) =>
   assert.equal(engine.commands().filter(command => command.action === 'play').length, 0);
 });
 
+test('une action programmée pour un média précédent est ignorée', (t) => {
+  const engine = createEngine({
+    state: { ...FROZEN_STATE, seq: 1, mediaEpoch: 2 }
+  });
+  t.after(() => engine.dispose());
+
+  engine.send({
+    type: 'schedule',
+    event: {
+      action: 'play', position: 50, scheduledAt: T0 + 250, serverNow: T0,
+      updatedBy: 'host-1', seq: 2, mediaEpoch: 1
+    }
+  });
+  engine.send({
+    type: 'schedule',
+    event: {
+      action: 'pause', position: 50, scheduledAt: T0 + 250, serverNow: T0,
+      updatedBy: 'host-1', seq: 3, mediaEpoch: 2
+    }
+  });
+  engine.advanceTo(T0 + 300);
+
+  assert.equal(engine.commands().filter(command => command.action === 'play').length, 0);
+  assert.equal(engine.commands().filter(command => command.action === 'pause').length, 1);
+});
+
 test('reprise programmée : une seule commande play, aucun pause fantôme', (t) => {
   const engine = createEngine({
     state: { isPlaying: false, position: 50, updatedAt: T0 - 1000, updatedBy: 'host-1' }
@@ -367,4 +393,59 @@ test('mode classique : aucun schedule ni commande n’est piloté par le worker'
   engine.advanceTo(T0 + 400);
 
   assert.deepEqual(engine.commands().slice(initialCommands), []);
+});
+
+test('deux schedules legacy sans seq ni mediaEpoch ne sont pas dédupliqués', (t) => {
+  const engine = createEngine();
+  t.after(() => engine.dispose());
+
+  // Un serveur legacy envoie des identifiants à 0 (ou les omet) : ils ne doivent
+  // pas servir de clé de dédup. Deux `serverNow` distincts sont deux actions.
+  const event = {
+    action: 'seek', position: 110, scheduledAt: T0 + 250, serverNow: T0,
+    updatedBy: 'host-1', seq: 0, mediaEpoch: 0
+  };
+  engine.send({ type: 'schedule', event });
+  engine.send({ type: 'schedule', event: { ...event, serverNow: T0 + 80 } });
+  engine.advanceTo(T0 + 400);
+
+  assert.deepEqual(
+    engine.commands().map(command => command.action),
+    ['seek', 'seek'],
+    'sans seq ni mediaEpoch, les deux actions explicites doivent rester distinctes'
+  );
+});
+
+test('la dédup stricte reste active quand seq et mediaEpoch sont présents', (t) => {
+  const engine = createEngine({ state: { ...FROZEN_STATE, seq: 1, mediaEpoch: 2 } });
+  t.after(() => engine.dispose());
+
+  const event = {
+    action: 'play', position: 50, scheduledAt: T0 + 250, serverNow: T0,
+    updatedBy: 'host-1', seq: 2, mediaEpoch: 2
+  };
+  engine.send({ type: 'schedule', event });
+  engine.send({ type: 'schedule', event: { ...event } });
+  engine.advanceTo(T0 + 400);
+
+  assert.equal(engine.commands().filter(command => command.action === 'play').length, 1, 'un même snapshot rediffusé ne doit jouer qu’une fois');
+});
+
+test('sans clé legacy exploitable, deux actions identiques ne sont pas dédupliquées', (t) => {
+  const engine = createEngine();
+  t.after(() => engine.dispose());
+
+  const event = {
+    action: 'seek', position: 110, scheduledAt: T0 + 250,
+    updatedBy: 'host-1', seq: 0, mediaEpoch: 0
+  };
+  engine.send({ type: 'schedule', event });
+  engine.send({ type: 'schedule', event: { ...event } });
+  engine.advanceTo(T0 + 400);
+
+  assert.deepEqual(
+    engine.commands().map(command => command.action),
+    ['seek', 'seek'],
+    'sans seq, époque ni serverNow exploitable, la dédup doit être désactivée'
+  );
 });

@@ -123,6 +123,78 @@ test('envoi raté : le temps est gardé et renvoyé, dans la limite de 60 s', as
     assert.equal(tracker.pendingSeconds(), 60);
 });
 
+test('changement de cible avec envoi raté : le temps est gardé pour la cible d’origine', async () => {
+    const { tracker, sent, wait, state } = setup({ failing: true });
+    tracker.setActive(true);
+    tracker.setTarget('film');
+    wait(25);
+    tracker.setTarget('autre film');
+    await Promise.resolve();
+    await Promise.resolve();
+
+    state.failing = false;
+    wait(10);
+    assert.equal(await tracker.tick(), false);
+    assert.deepEqual(sent, [['film', 25], ['autre film', 10]]);
+
+    wait(30);
+    assert.equal(await tracker.tick(), false);
+    assert.deepEqual(sent, [['film', 25], ['autre film', 10], ['autre film', 30]]);
+});
+
+test('plusieurs changements de cible en échec gardent chaque cible', async () => {
+    const { tracker, sent, wait, state } = setup({ failing: true });
+    tracker.setActive(true);
+    tracker.setTarget('a');
+    wait(10);
+    tracker.setTarget('b');
+    wait(12);
+    tracker.setTarget('c');
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    state.failing = false;
+    wait(5);
+    assert.equal(await tracker.tick(), false);
+    assert.deepEqual(sent, [['a', 10], ['b', 12], ['c', 5]]);
+});
+
+test('échec pendant un changement de cible : l’envoi en vol n’est pas perdu', async () => {
+    const state = { now: 1_000_000 };
+    const sent: [string, number][] = [];
+    let release: (() => void) | null = null;
+    let calls = 0;
+    const tracker = createWrappedTracker<string>({
+        now: () => state.now,
+        collectionEnabled: () => true,
+        send: async (target, seconds) => {
+            calls += 1;
+            if (calls === 1) {
+                await new Promise<void>((resolve) => { release = resolve; });
+                return false;
+            }
+            sent.push([target, seconds]);
+            return true;
+        },
+    });
+
+    tracker.setActive(true);
+    tracker.setTarget('film');
+    state.now += 30_000;
+    const ticking = tracker.tick();
+    for (let i = 0; i < 10 && !release; i += 1) await Promise.resolve();
+    assert.ok(release, 'le premier envoi doit être en vol');
+    tracker.setTarget('autre film');
+    release();
+    assert.equal(await ticking, true);
+
+    state.now += 10_000;
+    assert.equal(await tracker.tick(), false);
+    assert.deepEqual(sent, [['film', 30], ['autre film', 10]]);
+});
+
 test('trou de plus d’une minute (appareil endormi) : rien n’est compté', async () => {
     const { tracker, sent, wait } = setup();
     tracker.setActive(true);

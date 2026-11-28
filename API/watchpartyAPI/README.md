@@ -122,7 +122,7 @@ la priorité.
 Les familles d'événements à connaître :
 
 - room : `room:info`, `room:participants`, `room:chat`, `room:chatToggled`, `room:close`, `room:setVisibility`, `room:setMaxParticipants`
-- playback : `playback:update`, `playback:getState`, `playback:state`, `playback:schedule`, `playback:buffering`
+- playback : `playback:update`, `playback:getState`, `playback:state`, `playback:schedule`, `playback:buffering`, `playback:ack` (`accepted`, `durable`, `code` : `STALE_SEQUENCE`, `INVALID_SEQUENCE`, `DUPLICATE_COMMAND`, `SUPERSEDED`, `PERSISTENCE_FAILED`)
 - contrôle : `control:request`, `control:approve`, `control:deny`, `control:revoke`, `control:setMode`, `host:transfer`
 - sync pro : `sync:setMode`, `sync:probe`, `sync:probeResult`
 - collaboration : `ready:toggle`, `room:startCountdown`, `room:cancelCountdown`, `room:countdown`, `reaction:send`, `reaction:received`, `media:change`
@@ -131,17 +131,75 @@ Les familles d'événements à connaître :
 
 ## Persistance et cycle de vie
 
-- les rooms sont gardées en mémoire dans un `Map` propre au processus : derrière
-  plusieurs instances sans store partagé (Redis/DB), chaque instance ne
-  voit que ses propres rooms. Le déploiement doit donc rester mono-instance ou
-  garantir l'affinité de session (sticky sessions) ; la liste publique n'est pas
-  fédérée entre processus.
-- au shutdown, le service sauve dans `API/watchpartyAPI/cache/watchparty-rooms.json`
-  (le `timeoutId` d'un vote en cours est retiré : c'est un objet circulaire qui
-  faisait échouer `JSON.stringify` et donc perdre toutes les rooms)
-- au redémarrage, ce fichier est relu puis supprimé ; les identifiants de socket
-  ne survivant pas, participants / hôte / co-hosts sont réinitialisés, mais les
-  tokens d'accès restent valides
+- les rooms sont gardées en mémoire dans un `Map` propre au processus. Le service
+  est **mono-instance** : un verrou `.watchparty.lock` dans `WATCHPARTY_CACHE_DIR`
+  refuse un second écrivain sur le même répertoire. Un PID étranger encore vivant
+  est toujours refusé ; l'âge du verrou ne sert qu'à récupérer un verrou orphelin
+  dont le PID n'existe plus (ou illisible). Ne partagez jamais ce répertoire entre
+  deux processus, même avec des sticky sessions : la liste publique et les ACK ne
+  sont pas fédérés entre instances.
+- `WATCHPARTY_CACHE_DIR` (par défaut `API/watchpartyAPI/cache`) contient deux
+  artefacts complémentaires :
+  - `watchparty-rooms.json` : snapshot atomique (`rename` + fsync du fichier et
+    du répertoire), versionné, avec `journalSeq` monotone ;
+  - `watchparty-rooms.journal.ndjson` : deltas journalisés et fsyncés avant ACK.
+    Les écritures sont sérialisées, la rotation est atomique, les anciens
+    journaux `.processed.*` sont purgés au démarrage.
+- **l'append journal fsyncé est le point de commit**, toujours **avant** toute
+  écriture de snapshot. Si l'append échoue, aucun snapshot n'est écrit et la
+  mutation n'est pas publiée. Si le snapshot demandé par la mutation ou la
+  compaction qui suit échoue **après** l'append, la mutation reste valable :
+  l'erreur est journalisée, une compaction ultérieure est reprogrammée et aucun
+  `PERSISTENCE_FAILED` n'est renvoyé. Au redémarrage, les enregistrements déjà
+  inclus dans le snapshot sont ignorés : pas de double application.
+- les snapshots ne lisent jamais le `Map` de runtime, qui contient des états
+  spéculatifs. Une copie « committed » par room est figée au moment de la
+  mutation et publiée seulement après l'append réussi ; `journalSeq` du snapshot
+  suit le dernier append commité. Ainsi, même une compaction déclenchée par une
+  autre room ne peut pas figer une commande encore en attente de fsync.
+- le journal ne contient ni token, ni URL de flux, ni paramètre de requête
+  sensible. L'enregistrement `room-created` est construit à partir d'une liste
+  blanche de métadonnées (identifiant, code, nom, dates, visibilité, syncMode,
+  titre/métadonnées du média) : aucune clé `src`, `url`, `file`, `poster`,
+  `token` ni `createdByIp` n'est journalisée, y compris dans les sources imbriquées.
+  Les tokens stockés dans le snapshot sont des empreintes SHA-256, jamais les
+  secrets.
+- toute mutation de lecture passe par `enqueuePlaybackCommand` et par une file
+  de persistance unique. Une commande durable n'est accusée (`playback:ack`)
+  qu'après fsync du journal ; un échec **d'écriture** renvoie
+  `PERSISTENCE_FAILED` et restaure l'état précédent. Une commande devenue
+  périmée pendant l'écriture renvoie `SUPERSEDED`, sans `playback:state` ni
+  `playback:schedule` périmé : un `media:change` reçu pendant le fsync d'un seek
+  invalide immédiatement ce seek, même si son handler est encore en file.
+  Le champ `durable` vaut `true` uniquement pour une mutation journalisée
+  acceptée ; rejets et heartbeats sont accusés avec `durable: false` (champ
+  optionnel, donc compatible avec les clients anciens).
+- après **chaque** `await`, les handlers de contrôle revérifient la participation,
+  la validité du token et le couple `seq`/`mediaEpoch` attendu
+  (`assertStillAuthorized`). Un participant expulsé ou remplacé pendant la
+  persistance ne peut donc ni muter ni diffuser ; l'état spéculatif est restauré.
+- les clients anciens sans `seq` restent acceptés : le serveur attribue une
+  séquence sûre, renvoie l'état corrigé à l'émetteur et diffuse
+  `originCommandId`. `seq` doit rester un entier sûr dans la fenêtre autorisée ;
+  les identifiants de commande sont dédupliqués via un objet sans prototype.
+- au redémarrage, le replay suit `journalSeq` (pas `Date.now()`), puis les timers
+  de pause, countdown et deadline de vote sont restaurés. Un countdown restauré
+  est conservé lors de la première connexion et réémis au nouvel arrivant ; seul
+  un countdown créé par un participant est annulé quand la liste des prêts change.
+  Les identifiants de socket ne survivant pas, participants / hôte / co-hosts sont
+  réinitialisés, mais les empreintes de tokens restent valides. Un vote ancien est
+  résolu sans pouvoir être accepté sur d'anciens identifiants de socket.
+- les fichiers du cache sont créés en `0700` (répertoire) / `0600` (fichiers)
+  lorsque la plateforme le permet. Les droits d'un snapshot ou d'un journal
+  préexistant sont renormalisés à chaque démarrage. Windows ne prend pas en
+  charge le fsync d'un répertoire : la tentative est faite sans faire échouer
+  l'écriture.
+- la suppression d'une room (fermeture par l'hôte, inactivité, expiration) est
+  journalisée et **attendue** avant le `room:closed` et le retrait du `Map` : une
+  suppression non persistée laisse la salle en mémoire.
+- limite résiduelle : les très anciens journaux sans `journalSeq` sont encore
+  filtrés par `ts > savedAt` lors de la migration. Ils sont purgés juste après la
+  restauration, mais un horloge système très décalée peut sauter un delta legacy.
 - les rooms vides sont nettoyées après 5 minutes
 - un cleanup périodique ferme aussi les rooms trop vieilles ou inactives
 - l'historique de chat est plafonné à 100 messages, messages système compris

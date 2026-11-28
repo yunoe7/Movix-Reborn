@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { MAIN_API } from '../config/runtime';
+import { getResolvedAccountContext } from '../utils/accountAuth';
 
 // --- Types ---
 
@@ -130,9 +131,26 @@ const recentlyHidden = new Map<string, number>();
 // Retraits en cours : une lecture attend qu'ils soient finis avant de partir.
 const pendingHides = new Set<Promise<boolean>>();
 
+// La clé globale peut encore appartenir au compte précédent pendant une
+// transition. La sélection account-scopée est la seule autorité fiable dès
+// qu'un compte est résolu ; sans sélection, on n'envoie aucune requête plutôt
+// que de cibler un profil étranger.
+function readProfileId(): string | null {
+  try {
+    const { userType, userId } = getResolvedAccountContext();
+    if (userType && userId) {
+      return readStorage(`movix_selected_profile:${userType}:${encodeURIComponent(userId)}`);
+    }
+  } catch {
+    // Contexte indisponible : repli sur la clé historique uniquement si aucun
+    // compte n'est résolu (invité/tests).
+  }
+  return readStorage('selected_profile_id');
+}
+
 function getHiddenScope(): string {
   const token = readStorage('auth_token') || '';
-  const profileId = readStorage('selected_profile_id') || '';
+  const profileId = readProfileId() || '';
   return `${token.slice(0, 12)}:${profileId}`;
 }
 
@@ -170,7 +188,7 @@ function readStorage(key: string): string | null {
 // historique sur le serveur. Les invités n'ont pas de jeton.
 function readOwner(): { token: string; profileId: string } | null {
   const token = readStorage('auth_token');
-  const profileId = readStorage('selected_profile_id');
+  const profileId = readProfileId();
   if (!token || !profileId || !MAIN_API) return null;
   return { token, profileId };
 }

@@ -42,6 +42,7 @@ const { createHistoryStore } = require('../utils/historyStore');
 const { createDefaultMediaStore } = require('../utils/mediaStore');
 const {
   ALLOWED_SYNC_USER_TYPES,
+  SERVER_MANAGED_SYNC_KEYS,
   SYNC_LIMITS,
   SyncPolicyError,
   assertUserDataSize,
@@ -52,10 +53,36 @@ const {
   getProfileFilePath,
   getUserDataFilePath,
   getUtf8ByteLength,
+  partitionSyncOps,
   sanitizeLegacySyncData,
-  sanitizeProfileData,
-  validateAndNormalizeOps
+  sanitizeProfileData
 } = require('../utils/syncPolicy');
+
+// Les réponses partielles gardent `success`/`partial`/`rejected` pour les
+// clients existants et ajoutent un marqueur explicite quand un refus vient
+// d'une clé gérée par le serveur (`is_vip`).
+function buildSyncResponse(stats, rejected) {
+  const response = {
+    success: true,
+    stats: {
+      profileBytes: stats.bytes,
+      profileKeyCount: stats.keyCount,
+      profileQuotaBytes: SYNC_LIMITS.maxProfileBytes
+    }
+  };
+  if (rejected.length > 0) {
+    response.partial = true;
+    response.rejected = rejected;
+    const serverManagedRejected = Array.from(new Set(
+      rejected
+        .filter((item) => item?.serverManagedRejected === true || item?.code === 'SERVER_MANAGED_KEY_REJECTED')
+        .map((item) => item?.key)
+        .filter((key) => typeof key === 'string' && SERVER_MANAGED_SYNC_KEYS.includes(key))
+    ));
+    if (serverManagedRejected.length > 0) response.serverManagedRejected = serverManagedRejected;
+  }
+  return response;
+}
 
 // === Data directories ===
 // DATA_DIR allows relocating user data to a persistent volume (Railway, etc.).
@@ -623,6 +650,11 @@ function applySyncOperation(serverData, op) {
       serverData[key] = JSON.stringify(next);
       break;
     }
+
+    default:
+      // partitionSyncOps doit garantir cette invariant ; ne jamais absorber
+      // silencieusement une opération inconnue.
+      throw new SyncPolicyError(`Operation de synchronisation inconnue: ${String(op.op)}`, 400, 'INVALID_OP');
   }
 
   return serverData;
@@ -816,13 +848,12 @@ async function writeLockedProfileSnapshot(userType, userId, profileId, snapshot)
       await fsp.mkdir(path.dirname(profilePath), { recursive: true });
       await writeFileAtomic(profilePath, snapshot.serialized, profileWriteOptions());
     }
+    await invalidateSharedListCache(userType, userId, profileId);
     return true;
   } catch (error) {
     console.error(`Erreur de sauvegarde atomique pour le profil ${profileId}:`, error && error.message ? error.message : error);
     return false;
   }
-  await invalidateSharedListCache(userType, userId, profileId);
-  return true;
 }
 
 async function writeProfileData(userType, userId, profileId, data) {
@@ -831,24 +862,8 @@ async function writeProfileData(userType, userId, profileId, data) {
       throw new SyncPolicyError('Donnees de profil invalides', 400, 'INVALID_PROFILE_DATA');
     }
 
-    const success = await writeProfileSnapshot(userType, userId, profileId, sanitizeProfileData(data));
-    if (success) {
-      // Invalidate cached shared lists for this profile (best-effort, non-blocking).
-      try {
-        const pool = getPool();
-        const [rows] = await pool.execute(
-          'SELECT share_code FROM shared_lists WHERE user_id = ? AND user_type = ? AND profile_id = ?',
-          [userId, userType, profileId],
-        );
-        if (rows.length > 0) {
-          const { redis } = require('../config/redis');
-          await Promise.all(rows.map((row) => redis.del(`sharedList:${row.share_code}`).catch(() => {})));
-        }
-      } catch {
-        /* ignore cache invalidation failures */
-      }
-    }
-    return success;
+    // writeProfileSnapshot invalide déjà le cache des listes partagées.
+    return await writeProfileSnapshot(userType, userId, profileId, sanitizeProfileData(data));
   } catch (error) {
     console.error(`Erreur de sauvegarde du profil ${profileId}:`, error.message);
     return false;
@@ -910,13 +925,16 @@ router.post('/sync', syncRateLimit, rejectOversizedSync, authorizeSyncWrite, ...
     }
 
     const profileId = ensureSafeProfileId(req.body?.profileId);
-    const ops = validateAndNormalizeOps(req.body?.ops);
+    const { ops, rejected } = partitionSyncOps(req.body?.ops);
 
     syncContext.userType = userType;
     syncContext.userId = finalUserId;
     syncContext.profileId = profileId;
     syncContext.opsCount = ops.length;
+    syncContext.rejectedOpsCount = rejected.length;
 
+    let previousAccessCode;
+    let nextAccessCode;
     const syncResult = await withProfileSyncLock(userType, finalUserId, profileId, async () => {
       // Profils du compte lus sans copie : la synchro ne les modifie pas.
       getOwnedProfile({ profiles: await readAccountProfiles(userType, finalUserId) }, profileId);
@@ -930,7 +948,9 @@ router.post('/sync', syncRateLimit, rejectOversizedSync, authorizeSyncWrite, ...
       const importSource = { ...serverData };
 
       const previousValues = new Map(ops.map(op => [op.key, serverData[op.key]]));
+      previousAccessCode = previousValues.get('access_code');
       ops.forEach((op) => applySyncOperation(serverData, op));
+      nextAccessCode = serverData.access_code;
       // Progression renvoyée sans nouveauté (lecteur en pause, onglet resté
       // ouvert : même position, horodatage neuf) : la valeur enregistrée est
       // gardée, rien n'est écrit ni recopié pour elle.
@@ -993,8 +1013,19 @@ router.post('/sync', syncRateLimit, rejectOversizedSync, authorizeSyncWrite, ...
 
     // Si la clé VIP du profil vient d'être ajoutée/modifiée, synchroniser
     // immédiatement le rôle Discord des comptes liés au lieu d'attendre le
-    // prochain passage du réconciliateur (5 minutes).
+    // prochain passage du réconciliateur (5 minutes), et purger le cache VIP
+    // de l'ancienne comme de la nouvelle clé : une révocation doit être
+    // effective avant la fin du TTL.
     if (ops.some((op) => op.key === 'access_code')) {
+      try {
+        const { normalizeVipKey, invalidateVipCache } = require('../checkVip');
+        for (const candidate of [previousAccessCode, nextAccessCode]) {
+          const normalized = normalizeVipKey(candidate);
+          if (normalized) invalidateVipCache(normalized);
+        }
+      } catch (vipCacheError) {
+        console.error('[VIP Cache] Immediate invalidation failed:', vipCacheError.message);
+      }
       try {
         const [discordLinks] = await getPool().execute(
           "SELECT provider_user_id FROM account_links WHERE provider = 'discord' AND target_user_type = ? AND target_user_id = ?",
@@ -1010,14 +1041,7 @@ router.post('/sync', syncRateLimit, rejectOversizedSync, authorizeSyncWrite, ...
       }
     }
 
-    return res.status(200).json({
-      success: true,
-      stats: {
-        profileBytes: syncResult.bytes,
-        profileKeyCount: syncResult.keyCount,
-        profileQuotaBytes: SYNC_LIMITS.maxProfileBytes
-      }
-    });
+    return res.status(200).json(buildSyncResponse(syncResult, rejected));
   } catch (error) {
     if (error instanceof SyncPolicyError) {
       return res.status(error.status).json({ success: false, error: error.message, code: error.code });

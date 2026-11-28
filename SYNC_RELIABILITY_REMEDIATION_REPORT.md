@@ -1,0 +1,133 @@
+# Rapport de livraison — remédiation `fix/global-sync-reliability`
+
+## Verdict
+
+**Prêt pour PR** : aucune constatation critique ou haute n’est restée ouverte après la revue finale et sa passe de confirmation. **Aucun push, aucune PR, aucun merge, aucun déploiement, aucune modification de `main`** n’a été effectué. Aucun serveur de développement ni panneau navigateur n’a été ouvert.
+
+- Branche : `fix/global-sync-reliability`
+- Base conservée : `02483248` (les trois commits antérieurs `ac945e2a`, `ae02bee1` et `b35ab4df` sont conservés).
+- Arbre de travail propre après les commits.
+
+## Commits locaux
+
+Les neuf commits présents avant le commit documentaire final sont listés ci-dessous dans leur ordre réel, du plus ancien au plus récent :
+
+| # | SHA complet | Message |
+| --- | --- | --- |
+| 1 | `ac945e2a73fca752652204e26b95cb5725e9fe63` | `fix(sync): unify key policy and preserve rejected ops` |
+| 2 | `ae02bee16efa9d3a94d3194fab4ee55db5bbdf93` | `fix(watchparty): durabiliser les commandes et la synchronisation` |
+| 3 | `b35ab4dfba6552473b8093b372d4b05f4d2a4cc0` | `fix(sync): isoler les ecritures par proprietaire et fiabiliser les clients` |
+| 4 | `14270bc5658605d4a2cea0e5285be2c8bff8a372` | `docs(sync): plan de remédiation des 30 constats` |
+| 5 | `737fc5e3b44dcfe76287c9bfe606b729b8e7d07e` | `fix(watchparty): rendre la persistance et l'arbitrage serveur durables` |
+| 6 | `7847fe2e54be137e72688bd0ad3a1fbc24e7737e` | `fix(watchparty): préserver les intentions client et fiabiliser la dédup Pro` |
+| 7 | `4e007dab89d2ce5fbc1ad534f387c682dec6a622` | `fix(sync): isoler les outboxes par propriétaire et sécuriser Wrapped` |
+| 8 | `4ffc1bec4ea9f6d057456e28b94a01aa0a3e8b53` | `fix(mobile): synchroniser le bridge GM et le userscript embarqué` |
+| 9 | `c0d44315195b3bf99efa364f76c3babd6daf38c1` | `docs(sync): rapport de livraison de la remédiation` |
+
+Les commits 4 à 9 couvrent respectivement le plan de remédiation, le serveur WatchParty, le client WatchParty, la synchronisation/profils/Wrapped/VIP, le mobile/WebView/userscript/TV et le rapport de livraison.
+
+Le présent rapport est complété par un dernier commit documentaire dédié aux réserves de formatage et d’inventaire.
+
+## Tests réellement exécutés
+
+Baseline avant remédiation : WatchParty **69/69**, lot sync/mobile/Wrapped/VIP **43/43**. Après remédiation :
+
+| Commande | Résultat |
+| --- | --- |
+| `node --test API/watchpartyAPI/__tests__/watchpartySocket.test.mjs tests/watchparty*.test.mjs` | **104/104** |
+| `node --test tests/syncOutboxReplay.test.mjs tests/syncProfileIsolation.test.mjs tests/syncPolicyContract.test.mjs tests/wrappedSessionReliability.test.mjs tests/wrappedTracker.test.ts tests/historyProfileScope.test.mjs tests/vipCacheReliability.test.mjs tests/mobileExtractionPrefs.test.mjs tests/userscriptSyncAlignment.test.mjs tests/syncOwnerMigration.test.mjs tests/wrappedDeferredOwnership.test.mjs tests/mobileGmBridge.test.mjs API/Mainapi/utils/__tests__/syncPolicyPartial.test.js API/Mainapi/routes/__tests__/syncPerformance.test.js` | **96/96** |
+| `node --test app/tests/*.mjs` | **160 tests, 158 réussis, 2 échecs préexistants** |
+| `npx tsc --noEmit --incremental false -p tsconfig.app.json` | 233 erreurs préexistantes dans 63 fichiers ; **0 erreur nouvelle** dans les fichiers modifiés, sauf `WatchPartyPage.tsx:595` (`TS6133`, préexistant) |
+| `npx tsc --noEmit -p tsconfig.json` | réussi (conteneur `files: []`, non probant pour le frontend) |
+| `node --check` sur `watchparty.js`, `routes/sync.js`, `utils/syncPolicy.js` | réussi |
+| `node app/scripts/build-userscript.js --check` | réussi, userscript 245,7 Ko |
+| `git diff --check` sur le worktree | propre |
+| `git diff --check 02483248..HEAD` | anomalie de formatage constatée lors du contrôle final : ligne blanche superflue en fin de `tests/watchpartyDurability.test.mjs` ; corrigée par le commit documentaire final |
+
+Les 2 échecs `app/tests` préexistants concernent des helpers absents de `HLSPlayer.tsx` et `app/node_modules/react-native-webview/src/WebViewShared.tsx` manquant dans l’environnement. Aucun E2E navigateur n’a été relancé pendant cette remédiation ; aucun artefact E2E nouveau n’est donc présenté comme réussi.
+
+## État des 30 constats
+
+| # | État | Note |
+| --- | --- | --- |
+| 1 | Corrigé | `fsync` fichier puis `rename` puis `syncDirectory` ; rotation atomique ; orphelins `.processed` purgés. |
+| 2 | Corrigé | `journalSeq` monotone, replay logique ; `ts` uniquement diagnostic. Limite legacy documentée. |
+| 3 | Corrigé pour la lecture, partiel pour le social | Timers, média, votes, countdown journalisés ; chat/visibilité/rôles restent volatils après crash brutal. |
+| 4 | Corrigé | File sérialisée par room, `SUPERSEDED`, `media:change` invalide synchronement le seek en vol. |
+| 5 | Corrigé | Verrou `wx` + PID, refus d’un second processus, mode mono-instance documenté. |
+| 6 | Corrigé | `0700`/`0600`, tokens hashés, liste blanche du journal sans URL/IP/token imbriqués. |
+| 7 | Corrigé | Append fsyncé comme point de commit ; `PERSISTENCE_FAILED` sur échec d’append ; heartbeat `durable:false`. |
+| 8 | Corrigé | Aucune écriture journal pour les heartbeats ; ACK distingus par `durable`. |
+| 9 | Corrigé | Migration d’hôte explicite, garde post-`await` sur les 7 handlers de contrôle, kick avec révocation. |
+| 10 | Corrigé | Rotation `.processed.<pid>.<uuid>` et nettoyage au démarrage. |
+| 11 | Corrigé | Clients legacy sans ACK/seq : serveur attribue la séquence et renvoie l’état corrigé. |
+| 12 | Corrigé | `Number.isSafeInteger`, fenêtre de séquence, dédup prototype-safe. |
+| 13 | Corrigé | `commandId` stable, retry `STALE_SEQUENCE` corrélé et one-shot, TTL 5 s. |
+| 14 | Corrigé | Intentions utilisateur mises en file pendant la fenêtre distante et rejouées si la cible n’est pas atteinte. |
+| 15 | Corrigé | Aucun `seq: 0` émis quand la séquence est inconnue ; réception legacy tolérée. |
+| 16 | Corrigé | ACK réconcilie `room.playbackState` avec garde de fraîcheur `seq`/`updatedAt`. |
+| 17 | Corrigé | Dédup Pro conditionnée à `seq`/`mediaEpoch`/`commandId`/`serverNow` ; repli WASM→JS conservé. |
+| 18 | Corrigé | Outbox `v:2` scopée ; migration legacy one-shot puis suppression de la copie historique. |
+| 19 | Corrigé | Regroupement par `__owner` dans tous les chemins de flush, y compris les lots mixtes. |
+| 20 | Corrigé | Drain persistant avant mutation d’auth via `authDrainRef`, testé sans injection locale. |
+| 21 | Corrigé | Propriétaire capturé à l’écriture, persistance autorisée même si le token change en vol. |
+| 22 | Corrigé | Rejets permanents centralisés ; `createdAt` stable, `lastAttemptAt` rafraîchi, TTL 7 jours et cap. |
+| 23 | Corrigé | Identité Wrapped capturée au cumul ; file différée TTL/cap/dédup ; 401 retryable, 403 permanent. |
+| 24 | Corrigé | `is_vip` reste `serverManaged` ; code historique conservé avec marqueur additif et doc du contrat. |
+| 25 | Corrigé | TTL appliqué avant le `continue` pour les anciennes outboxes sans `userId`. |
+| 26 | Corrigé | `movix:gm-value-changed` exécuté par le userscript, configuration mise à jour sans reload. |
+| 27 | Corrigé | Refs WebView enregistrées au montage ; snapshot natif injecté au document-start et abonné aux changements. |
+| 28 | Corrigé | `GM_deleteValue` nettoie cache, `localStorage`, snapshot natif, carte native et AsyncStorage. |
+| 29 | Corrigé | AsyncStorage source de vérité, écriture confirmée avant push, normalisation et reset fiables. |
+| 30 | Corrigé | Alignement TV et userscript renforcé ; `--check` distingue absence (`2`), dérive (`1`), conformité (`0`). |
+
+## Fichiers modifiés
+
+Inventaire complet des **57 fichiers** concernés entre `02483248` et HEAD :
+
+- **Racine et documentation** : `.gitignore`, `SYNC_RELIABILITY_REMEDIATION_PLAN.md`, `SYNC_RELIABILITY_REMEDIATION_REPORT.md`, `SYNC_RELIABILITY_TEST_PLAN.md`.
+- **API principale et contrat de clés** : `API/Mainapi/README.md`, `API/Mainapi/routes/__tests__/syncHistoryMirror.test.js`, `API/Mainapi/routes/__tests__/syncPerformance.test.js`, `API/Mainapi/routes/sync.js`, `API/Mainapi/utils/__tests__/syncPolicyPartial.test.js`, `API/Mainapi/utils/syncPolicy.js`, `shared/syncKeys.json`.
+- **WatchParty serveur** : `API/watchpartyAPI/README.md`, `API/watchpartyAPI/__tests__/watchpartySocket.test.mjs`, `API/watchpartyAPI/watchparty.js`, `tests/watchpartyDurability.test.mjs`.
+- **WatchParty client** : `src/pages/WatchPartyPage.tsx`, `src/workers/watchpartySync.worker.ts`, `src/utils/watchparty.ts`, `tests/watchpartyClientIntent.test.mjs`, `tests/watchpartyClientReliability.test.mjs`, `tests/watchpartySyncProEngine.test.mjs`, `tests/watchpartySyncReliability.test.mjs`, `tests/watchpartyReliability.test.mjs`.
+- **Sync, profils, historique, Wrapped et VIP** : `src/App.tsx`, `src/context/ProfileContext.tsx`, `src/utils/syncStorage.ts`, `src/utils/wrappedTrackerCore.ts`, `src/hooks/useWrappedTracker.ts`, `src/pages/WrappedPage.tsx`, `src/services/historyService.ts`, `src/utils/profileIsolation.ts`, `src/utils/vipUtils.ts`, `src/utils/wrappedSession.ts`, `tests/historyProfileScope.test.mjs`, `tests/historyService.test.ts`, `tests/syncOutboxReplay.test.mjs`, `tests/syncOwnerMigration.test.mjs`, `tests/syncPolicyContract.test.mjs`, `tests/syncProfileIsolation.test.mjs`, `tests/vipCacheReliability.test.mjs`, `tests/wrappedDeferredOwnership.test.mjs`, `tests/wrappedSessionReliability.test.mjs`, `tests/wrappedTracker.test.ts`.
+- **Mobile, WebView, userscript et configuration** : `app/README.md`, `app/scripts/build-userscript.js`, `app/src/components/WebViewBrowser.tsx`, `app/src/injection/bridge-runtime.ts`, `app/src/screens/SettingsScreen.tsx`, `app/src/services/bridge.ts`, `src/utils/resetAllSettings.ts`, `userscript/README.md`, `userscript/movix.user.js`, `tests/mobileExtractionPrefs.test.mjs`, `tests/mobileGmBridge.test.mjs`, `tests/userscriptSyncAlignment.test.mjs`, `tsconfig.app.json`.
+- **E2E navigateur** : `tests/syncReliability.browser.mjs`.
+
+`app/src/injection/userscript-source.ts` est généré via `node app/scripts/build-userscript.js` et reste gitignoré ; il n’est donc pas versionné et n’apparaît pas dans cet inventaire.
+
+## Régression et décisions d’architecture
+
+- Aucune régression fonctionnelle détectée dans les suites exécutées ; les échecs et erreurs TypeScript restants sont préexistants et explicitement identifiés.
+- WatchParty reste **mono-instance** : un verrou local refuse deux processus partageant `WATCHPARTY_CACHE_DIR`. Aucun Redis, MySQL, Durable Object ni adaptateur Socket.IO distribué n’a été introduit.
+- Le snapshot est construit depuis une copie `committedRooms` publiée uniquement après append fsyncé : une mutation spéculative ou rejetée ne peut pas être persistée.
+- L’autorité de lecture et de VIP reste côté serveur. Le client ne peut pas écrire `is_vip` ; le code historique `INVALID_SYNC_KEY` est conservé pour les anciens clients.
+- Chaque opération d’outbox porte son propriétaire capturé à l’écriture ; aucun lot n’est réattribué au token ou au profil courant.
+- AsyncStorage est la source de vérité des préférences natives ; la WebView reçoit une copie normalisée après confirmation de l’écriture.
+- La copie TV du userscript reste épinglée en `1.7.3` ; la source embarquée dans l’app est `1.7.9`. Cet écart est volontaire et vérifié par les tests d’alignement.
+
+## Limites et risques restants
+
+- **Multi-instance** : non pris en charge par conception. Deux processus sur le même cache sont refusés ; aucune fédération n’est fournie.
+- Les mutations sociales/administratives (chat, visibilité, rôles, limites) ne sont pas journalisées et restent volatiles après crash brutal.
+- Les journaux legacy sans `journalSeq` filtrent encore par `ts > savedAt` ; ces journaux sont purgés juste après migration. Limite documentée dans `API/watchpartyAPI/README.md`.
+- Les retries de compaction sont intra-processus ; si le disque reste en erreur, le journal grossit jusqu’à une compaction réussie.
+- Les secondes Wrapped dont l’identité d’origine n’est plus authentifiable restent en file différée jusqu’à expiration (7 jours) ; aucun rattachement automatique à un autre compte n’est effectué.
+- Un `403` Wrapped est traité comme un refus permanent : si le serveur le renvoie pendant une fenêtre d’hydratation, ces secondes ne sont pas récupérées.
+- La portée `access_code` (globale par appareil ou par profil) reste une décision produit non tranchée ici ; la clé reste synchronisable par profil.
+- Le verrou de rejeu d’outbox repose sur `localStorage` : il couvre les onglets concurrents, pas une infrastructure distribuée.
+- Le fichier généré `app/src/injection/userscript-source.ts` étant gitignoré, un checkout propre doit exécuter `node app/scripts/build-userscript.js` avant le build ; `--check` détecte absence ou dérive.
+- L’en-tête « Auto-generated by userscript/build-userscript.mjs » de `userscript/movix.user.js` est obsolète : ce générateur n’existe pas dans le checkout. Le fichier versionné est la source de référence, comme précisé dans `userscript/README.md`.
+- Aucune validation visuelle navigateur n’a été effectuée pendant cette remédiation ; une passe E2E ciblée reste recommandée avant publication, avec artefacts reproductibles.
+
+## Commandes de relance
+
+```bash
+node --test API/watchpartyAPI/__tests__/watchpartySocket.test.mjs tests/watchparty*.test.mjs
+node --test tests/syncOutboxReplay.test.mjs tests/syncProfileIsolation.test.mjs tests/syncPolicyContract.test.mjs tests/wrappedSessionReliability.test.mjs tests/wrappedTracker.test.ts tests/historyProfileScope.test.mjs tests/vipCacheReliability.test.mjs tests/mobileExtractionPrefs.test.mjs tests/userscriptSyncAlignment.test.mjs tests/syncOwnerMigration.test.mjs tests/wrappedDeferredOwnership.test.mjs tests/mobileGmBridge.test.mjs API/Mainapi/utils/__tests__/syncPolicyPartial.test.js API/Mainapi/routes/__tests__/syncPerformance.test.js
+npx tsc --noEmit --incremental false -p tsconfig.app.json
+node app/scripts/build-userscript.js --check
+git diff --check
+git diff --check 02483248..HEAD
+```
+
+Après le commit documentaire final, ces deux contrôles `git diff --check` sont propres.

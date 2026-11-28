@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sourceEffect, sourceFunction } from './helpers/sourceFunction.mjs';
+import { sourceEffect, sourceFunction, sourceNamedFunction } from './helpers/sourceFunction.mjs';
 
 // Ces scénarios couvrent les courses et les états de connexion que les E2E
 // Chromium ne reproduisent pas : reconnexion, retour en arrière-plan, commandes
@@ -51,9 +51,23 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     socketRef: { current: null },
     authoritativePlaybackRef: { current: null },
     resyncRequestedRef: { current: false },
+    playbackIntentsRef: { current: [] },
+    stateRequestedForRetryRef: { current: false },
+    retryRequestRef: { current: null },
+    applyingRemoteRef: { current: false },
+    remoteSuppressionUntilRef: { current: 0 },
+    remoteCommandTimeoutRef: { current: null },
+    canControlRef: { current: true },
+    videoRef: { current: null },
+    vidriftPlaybackRef: { current: { currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 } },
   };
   const workerMessages = [];
   refs.syncWorkerRef.current = { postMessage: message => workerMessages.push(message) };
+  const resetPlaybackEngine = () => {
+    refs.pendingPlaybackRef.current = null;
+    refs.authoritativePlaybackRef.current = null;
+    refs.syncWorkerRef.current.postMessage({ type: 'reset' });
+  };
   const documentListeners = [];
   const fakeDocument = {
     visibilityState: 'hidden',
@@ -90,6 +104,7 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     setSyncStatus: noop,
     setSyncEngine: noop,
     applyRemotePlayback: snapshot => state.applied.push(snapshot),
+    resetPlaybackEngine,
     window: fakeWindow,
     document: fakeDocument,
   };
@@ -304,6 +319,7 @@ function suppressionFixture() {
   const applyingRemoteRef = { current: false };
   const remoteCommandTimeoutRef = { current: null };
   const remoteSuppressionUntilRef = { current: 0 };
+  const playbackIntentsRef = { current: [] };
   const emits = [];
   const video = {
     paused: true,
@@ -317,6 +333,7 @@ function suppressionFixture() {
     applyingRemoteRef,
     remoteCommandTimeoutRef,
     remoteSuppressionUntilRef,
+    playbackIntentsRef,
     window: fakeWindow,
     roomRef: { current: { media: { playbackType: 'video' } } },
     vidriftFrameRef: { current: null },
@@ -334,7 +351,19 @@ function suppressionFixture() {
     isHost: true,
     lastHeartbeatRef: { current: 0 },
     performance: { now: () => now },
+    canControlRef: { current: true },
   };
+  const playbackHelpers = {
+    playbackStateMatches: sourceNamedFunction(PAGE, 'playbackStateMatches'),
+    readLocalPlaybackState: sourceNamedFunction(PAGE, 'readLocalPlaybackState'),
+    emitPlaybackUpdate: sourceNamedFunction(PAGE, 'emitPlaybackUpdate'),
+    queuePlaybackIntent: sourceNamedFunction(PAGE, 'queuePlaybackIntent'),
+    desiredPlaybackTarget: sourceNamedFunction(PAGE, 'desiredPlaybackTarget'),
+  };
+  playbackHelpers.flushQueuedPlaybackIntents = sourceNamedFunction(
+    PAGE, 'flushQueuedPlaybackIntents', playbackHelpers
+  );
+  Object.assign(bindings, playbackHelpers);
 
   const advance = (ms) => {
     now += ms;
@@ -376,6 +405,11 @@ test('une commande tardive ne raccourcit pas la fenêtre de suppression des év�
     const { suppressedCount, finalCount } = await fixture.run();
     assert.equal(suppressedCount, 0, 'un événement reçu pendant la commande distante ne doit pas être renvoyé au serveur');
     assert.equal(finalCount, suppressedCount + 1, 'la fenêtre doit se terminer et autoriser de nouveau les commandes locales');
+    const updates = fixture.emits.filter(([event]) => event === 'playback:update');
+    assert.equal(updates.length, 1);
+    assert.equal(typeof updates[0][1].commandId, 'string');
+    assert.ok(updates[0][1].commandId.length > 0);
+    assert.equal(updates[0][1].seq, 1, 'les commandes locales portent une séquence monotone');
   } finally {
     fixture.restore();
   }

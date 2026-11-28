@@ -97,6 +97,11 @@ export interface PlaybackState {
   position: number;
   updatedAt: number;
   updatedBy: string | null;
+  /** Numéro monotone attribué par le serveur, utilisé pour arbitrer les commandes. */
+  seq?: number;
+  /** Incrémenté à chaque changement de média : annule les commandes de l'ancien média. */
+  mediaEpoch?: number;
+  commandId?: string;
 }
 
 export type SyncMode = 'classic' | 'pro';
@@ -124,6 +129,21 @@ export interface ScheduledPlaybackEvent {
   scheduledAt: number;
   serverNow: number;
   updatedBy: string | null;
+  seq?: number;
+  mediaEpoch?: number;
+}
+
+export interface PlaybackAck {
+  commandId: string | null;
+  seq: number;
+  accepted: boolean;
+  code: string | null;
+  reason: SyncAction | 'media-changed' | null;
+  mediaEpoch: number;
+  state: PlaybackState;
+  // Le serveur distingue les accusés durablement journalisés des heartbeats
+  // transitoires. Le champ reste optionnel pour les anciens serveurs.
+  durable?: boolean;
 }
 
 /**

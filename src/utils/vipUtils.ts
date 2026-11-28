@@ -14,10 +14,24 @@ const MAIN_API = import.meta.env.VITE_MAIN_API;
 // Intervalle de vérification : toutes les 10 minutes
 const VIP_CHECK_INTERVAL = 10 * 60 * 1000;
 
-// Cache local pour éviter de spammer le serveur
-let lastCheckTime = 0;
-let lastCheckResult: boolean | null = null;
-let checkInProgress: Promise<boolean> | null = null;
+// Cache local pour éviter de spammer le serveur. Il est indexé par clé
+// d'accès : réutiliser le résultat d'une clé pour une autre peut accorder un
+// VIP révoqué (ou refuser une clé valide) après un simple changement de code.
+interface VipCacheEntry {
+  time: number;
+  result: boolean;
+}
+
+const vipCache = new Map<string, VipCacheEntry>();
+const inFlightChecks = new Map<string, Promise<boolean>>();
+
+function rememberCheck(accessKey: string, result: boolean): void {
+  vipCache.set(accessKey, { time: Date.now(), result });
+}
+
+function cachedCheck(accessKey: string): VipCacheEntry | undefined {
+  return vipCache.get(accessKey);
+}
 
 /**
  * Récupère la clé d'accès stockée dans localStorage
@@ -48,23 +62,26 @@ export async function checkVipStatus(force = false): Promise<boolean> {
     return false;
   }
 
-  // Vérifier le cache (sauf si force)
+  // Vérifier le cache de cette clé uniquement (sauf si force)
   const now = Date.now();
-  if (!force && lastCheckResult !== null && (now - lastCheckTime < VIP_CHECK_INTERVAL)) {
-    return lastCheckResult;
+  const cached = cachedCheck(accessKey);
+  if (!force && cached && (now - cached.time < VIP_CHECK_INTERVAL)) {
+    return cached.result;
   }
 
-  // Éviter les vérifications simultanées
-  if (checkInProgress) {
-    return checkInProgress;
+  // Éviter les vérifications simultanées pour LA MÊME clé. Une clé différente
+  // doit démarrer sa propre vérification, même si une autre est en vol.
+  const inFlight = inFlightChecks.get(accessKey);
+  if (inFlight) {
+    return inFlight;
   }
 
-  checkInProgress = _performCheck(accessKey);
+  const check = _performCheck(accessKey);
+  inFlightChecks.set(accessKey, check);
   try {
-    const result = await checkInProgress;
-    return result;
+    return await check;
   } finally {
-    checkInProgress = null;
+    if (inFlightChecks.get(accessKey) === check) inFlightChecks.delete(accessKey);
   }
 }
 
@@ -88,9 +105,8 @@ async function _performCheck(accessKey: string): Promise<boolean> {
 
     const data = await response.json();
 
-    const previousCheckResult = lastCheckResult;
-    lastCheckTime = Date.now();
-    lastCheckResult = data.vip === true;
+    const previousCheckResult = cachedCheck(accessKey)?.result ?? null;
+    rememberCheck(accessKey, data.vip === true);
 
     if (data.vip) {
       let changed = localStorage.getItem('is_vip') !== 'true';
@@ -135,15 +151,17 @@ async function _performCheck(accessKey: string): Promise<boolean> {
  * Révoque le statut VIP local
  */
 export function revokeVipStatus(): void {
+  let revokedKey: string | null = null;
   try {
+    revokedKey = localStorage.getItem('access_code');
     localStorage.removeItem('is_vip');
     localStorage.removeItem('access_code');
     localStorage.removeItem('access_code_expires');
   } catch {
     // Le résultat serveur reste connu même si le stockage est inaccessible.
   }
-  lastCheckResult = false;
-  lastCheckTime = Date.now();
+  // La clé révoquée ne doit pas redevenir valide par simple retour de cache.
+  if (revokedKey) rememberCheck(revokedKey, false);
 
   // Notifier les autres onglets et composants
   window.dispatchEvent(new Event('storage'));
@@ -162,9 +180,11 @@ export function isUserVip(): boolean {
   const localVip = readLocalStorage('is_vip') === 'true';
 
   if (localVip) {
-    // Lancer une vérification serveur en arrière-plan (non bloquante)
-    const now = Date.now();
-    if (now - lastCheckTime > VIP_CHECK_INTERVAL) {
+    // Lancer une vérification serveur en arrière-plan (non bloquante) pour la
+    // clé courante uniquement.
+    const accessKey = getAccessKey();
+    const cached = accessKey ? cachedCheck(accessKey) : undefined;
+    if (!cached || Date.now() - cached.time > VIP_CHECK_INTERVAL) {
       checkVipStatus().catch(() => { /* ignore */ });
     }
   }

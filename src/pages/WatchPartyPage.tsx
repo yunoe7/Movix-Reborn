@@ -9,7 +9,7 @@ import {
   LockKeyhole, MessageCircle, Pause, Play, Plus, RefreshCw, Send, Settings2,
   ShieldCheck, SkipBack, SkipForward, Users, Volume2, VolumeX, Wifi, X,
 } from 'lucide-react';
-import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackState, type ScheduledPlaybackEvent, type SyncProbeResult } from '../utils/watchparty';
+import { clearRoomToken, getRoomToken, storeRoomToken, type PlaybackAck, type PlaybackState, type ScheduledPlaybackEvent, type SyncAction, type SyncProbeResult } from '../utils/watchparty';
 import { isIpadSafari } from '../utils/deviceDetection';
 import {
   getVidRiftTargetOrigin,
@@ -100,7 +100,7 @@ type Room = {
 type ControlRequest = { participantId: string; nickname: string; requestedAt?: number };
 
 type PlaybackSnapshot = PlaybackState & {
-  reason?: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended';
+  reason?: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended' | 'media-changed';
 };
 
 type TmdbMedia = {
@@ -196,6 +196,168 @@ function formatChatTime(timestamp: number) {
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+type PlaybackTarget = { isPlaying: boolean; position: number };
+
+type TrackedPlaybackIntent = {
+  reason: SyncAction;
+  commandId: string;
+  token: string | null;
+  retries: number;
+  awaitingState: boolean;
+  createdAt: number;
+  sentAt?: number;
+  freshSeq?: number;
+  target?: PlaybackTarget;
+  awaitingSince?: number;
+  retryRequestId?: string;
+};
+
+type RetryRequest = {
+  id: string;
+  rejectedSeq: number;
+  rejectedUpdatedAt: number;
+  sentAt: number;
+};
+
+type LocalPlaybackState = { isPlaying: boolean; position: number; playbackRate: number };
+
+// Une intention n'est rejouée que si le lecteur diverge toujours de la cible
+// voulue au moment du clic : la tolérance historique de 0,8 s évite de confondre
+// la lecture normale avec un vrai seek.
+function playbackStateMatches(
+  expected: Pick<PlaybackSnapshot, 'isPlaying' | 'position'> | null,
+  local: LocalPlaybackState | null
+): boolean {
+  if (!expected || !local) return false;
+  return local.isPlaying === expected.isPlaying
+    && Math.abs(local.position - Number(expected.position)) <= 0.8;
+}
+
+function readLocalPlaybackState(
+  roomRef: { current: Room | null },
+  videoRef: { current: HTMLVideoElement | null },
+  vidriftPlaybackRef: { current: { currentTime: number; paused: boolean; updatedAt: number; playbackRate: number } }
+): LocalPlaybackState | null {
+  if (roomRef.current?.media.playbackType === 'vidrift') {
+    const snapshot = vidriftPlaybackRef.current;
+    const elapsed = !snapshot.paused && snapshot.updatedAt > 0
+      ? Math.max(0, performance.now() - snapshot.updatedAt) / 1000
+      : 0;
+    return {
+      isPlaying: !snapshot.paused,
+      position: Math.max(0, snapshot.currentTime + elapsed * snapshot.playbackRate),
+      playbackRate: snapshot.playbackRate
+    };
+  }
+  const video = videoRef.current;
+  if (!video) return null;
+  return {
+    isPlaying: !video.paused,
+    position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+    playbackRate: video.playbackRate
+  };
+}
+
+function desiredPlaybackTarget(reason: SyncAction, local: LocalPlaybackState): PlaybackTarget {
+  if (reason === 'play') return { isPlaying: true, position: local.position };
+  if (reason === 'pause' || reason === 'ended') return { isPlaying: false, position: local.position };
+  return { isPlaying: local.isPlaying, position: local.position };
+}
+
+function queuePlaybackIntent(
+  intentsRef: { current: TrackedPlaybackIntent[] },
+  intent: TrackedPlaybackIntent
+): boolean {
+  const alreadyQueued = intentsRef.current.some(queued => queued.commandId === intent.commandId
+    || (queued.reason === intent.reason && queued.token === intent.token && queued.sentAt === undefined));
+  if (alreadyQueued) return false;
+  intentsRef.current = [...intentsRef.current, intent];
+  return true;
+}
+
+// Le seq est une estimation au moment de l'envoi : la ref autoritaire n'est jamais
+// pré-incrémentée. Un `STALE_SEQUENCE` est réparé avec le seq de l'état serveur,
+// sans changer l'identifiant logique de l'intention.
+function emitPlaybackUpdate(
+  socket: Socket,
+  intent: TrackedPlaybackIntent,
+  authoritativeRef: { current: PlaybackSnapshot | null },
+  intentsRef: { current: TrackedPlaybackIntent[] },
+  localState: LocalPlaybackState
+): void {
+  const authoritativeSeq = Number(authoritativeRef.current?.seq);
+  const optimisticSeq = Number.isSafeInteger(authoritativeSeq) && authoritativeSeq > 0 ? authoritativeSeq + 1 : 1;
+  const freshSeq = Number(intent.freshSeq);
+  const seq = Number.isSafeInteger(freshSeq) && freshSeq > 0 ? freshSeq : optimisticSeq;
+  const cutoff = Date.now() - 5000;
+  intentsRef.current = [
+    ...intentsRef.current.filter(entry => entry.createdAt > cutoff
+      && !(entry.awaitingState && (entry.awaitingSince ?? entry.createdAt) <= cutoff)
+      && entry.commandId !== intent.commandId),
+    { ...intent, sentAt: Date.now() }
+  ];
+  socket.emit('playback:update', {
+    isPlaying: localState.isPlaying,
+    position: localState.position,
+    reason: intent.reason,
+    commandId: intent.commandId,
+    seq
+  });
+}
+
+function flushQueuedPlaybackIntents({
+  intentsRef,
+  socketRef,
+  authoritativeRef,
+  roomRef,
+  videoRef,
+  vidriftPlaybackRef,
+  canControlRef,
+}: {
+  intentsRef: { current: TrackedPlaybackIntent[] };
+  socketRef: { current: Socket | null };
+  authoritativeRef: { current: PlaybackSnapshot | null };
+  roomRef: { current: Room | null };
+  videoRef: { current: HTMLVideoElement | null };
+  vidriftPlaybackRef: { current: { currentTime: number; paused: boolean; updatedAt: number; playbackRate: number } };
+  canControlRef: { current: boolean };
+}): void {
+  const socket = socketRef.current;
+  if (!socket?.connected || !canControlRef.current) return;
+  const localState = readLocalPlaybackState(roomRef, videoRef, vidriftPlaybackRef);
+  if (!localState) return;
+  const queued = intentsRef.current;
+  // Les intentions en attente d'un nouveau seq restent en file : seules les
+  // intentions prêtes sont rejouées à la fin de la fenêtre distante.
+  intentsRef.current = queued.filter(intent => intent.awaitingState);
+  for (const intent of queued) {
+    if (intent.awaitingState) continue;
+    // Un nouvel état autoritaire arrivé entre-temps rend l'intention obsolète.
+    // La cible voulue par l'utilisateur prime sur l'état autoritaire : un
+    // retour à l'état serveur pendant la fenêtre ne doit pas effacer un clic.
+    const targetReached = intent.target
+      ? playbackStateMatches(intent.target, localState)
+      : playbackStateMatches(authoritativeRef.current, localState);
+    if (targetReached) continue;
+    emitPlaybackUpdate(socket, intent, authoritativeRef, intentsRef, localState);
+  }
+}
+
+// `playback:getState` ne renvoie pas d'identifiant de demande : la corrélation
+// repose sur l'identité du snapshot rejeté. Le heartbeat diffusé en parallèle
+// est plus récent mais ne doit jamais consommer le retry unique ; une réponse
+// getState peut au contraire renvoyer exactement le snapshot rejeté, avec son
+// `reason: heartbeat` hérité du dernier état serveur.
+function isRetryResponseFresh(state: PlaybackSnapshot, request: RetryRequest): boolean {
+  const seq = Number(state?.seq);
+  const updatedAt = Number(state?.updatedAt);
+  if (!Number.isSafeInteger(seq)) return false;
+  if (seq === request.rejectedSeq && Number.isFinite(updatedAt) && updatedAt === request.rejectedUpdatedAt) return true;
+  if (state?.reason === 'heartbeat') return false;
+  return seq > request.rejectedSeq
+    || (seq === request.rejectedSeq && Number.isFinite(updatedAt) && updatedAt > request.rejectedUpdatedAt);
+}
+
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${WATCHPARTY_API}${path}`, {
     ...init,
@@ -261,7 +423,7 @@ const WatchPartyPage: React.FC = () => {
   const [syncEngine, setSyncEngine] = useState<'js' | 'wasm'>('js');
   // État léger uniquement destiné à l'interface ; la source de vérité de la
   // lecture reste le lecteur vidéo et les refs de synchronisation existantes.
-  const [playerUi, setPlayerUi] = useState({ currentTime: 0, duration: 0, paused: true });
+  const [playerUi, setPlayerUi] = useState({ currentTime: 0, duration: 0, paused: true, isBuffering: false });
   const [publicQuery, setPublicQuery] = useState('');
   const [publicTypeFilter, setPublicTypeFilter] = useState<'all' | 'movie' | 'tv' | 'anime'>('all');
   const [publicSort, setPublicSort] = useState<'recent' | 'popular'>('recent');
@@ -282,6 +444,15 @@ const WatchPartyPage: React.FC = () => {
   const vidriftPlaybackRef = useRef({ currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 });
   const hlsRef = useRef<Hls | null>(null);
   const applyingRemoteRef = useRef(false);
+  // Miroir synchrone de `canControl` : le timer de suppression est créé avant
+  // que ce droit soit calculé dans le rendu, une closure simple serait périmée.
+  const canControlRef = useRef(false);
+  // L'origine de la dernière application distante : un token et l'état attendu
+  // permettent de distinguer un événement vidéo généré par cette application
+  // d'une intention utilisateur réelle survenue pendant la fenêtre.
+  const playbackIntentsRef = useRef<TrackedPlaybackIntent[]>([]);
+  const stateRequestedForRetryRef = useRef(false);
+  const retryRequestRef = useRef<RetryRequest | null>(null);
   const lastHeartbeatRef = useRef(0);
   const pendingPlaybackRef = useRef<PlaybackSnapshot | null>(null);
   const authoritativePlaybackRef = useRef<PlaybackSnapshot | null>(null);
@@ -292,13 +463,51 @@ const WatchPartyPage: React.FC = () => {
   const vidRiftActivationTimerRef = useRef<number | null>(null);
   const hasCustomLocalVolumeRef = useRef(false);
   const remoteCommandTimeoutRef = useRef<number | null>(null);
-  const remoteSuppressionUntilRef = useRef(0);
+  const remoteSuppressionUntilRef = useRef(0) as React.MutableRefObject<number> & {
+    expectedState?: PlaybackSnapshot | null;
+  };
   const syncWorkerRef = useRef<Worker | null>(null);
   const syncTickTimerRef = useRef<number | null>(null);
   const clockOffsetRef = useRef(0);
   const clockOffsetSamplesRef = useRef<Array<{ offsetMs: number; roundTripMs: number }>>([]);
   const pendingClockProbesRef = useRef(new Map<string, number>());
   const clockProbeSequenceRef = useRef(0);
+
+  // Un changement de média (ou une annulation serveur) rend toutes les actions
+  // programmées et les positions interpolées invalides : le moteur Pro repart
+  // de zéro avant de recevoir le nouvel état autoritaire.
+  const resetPlaybackEngine = useCallback(() => {
+    pendingPlaybackRef.current = null;
+    authoritativePlaybackRef.current = null;
+    playbackIntentsRef.current = [];
+    stateRequestedForRetryRef.current = false;
+    retryRequestRef.current = null;
+    applyingRemoteRef.current = false;
+    remoteSuppressionUntilRef.current = 0;
+    remoteSuppressionUntilRef.expectedState = undefined;
+    if (remoteCommandTimeoutRef.current !== null) {
+      window.clearTimeout(remoteCommandTimeoutRef.current);
+      remoteCommandTimeoutRef.current = null;
+    }
+    vidriftPlaybackRef.current = { currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 };
+    const worker = syncWorkerRef.current;
+    if (worker) {
+      worker.postMessage({ type: 'reset' });
+      worker.postMessage({ type: 'set-mode', mode: roomRef.current?.syncMode || 'classic' });
+      worker.postMessage({
+        type: 'master-state',
+        state: {
+          isPlaying: false,
+          position: 0,
+          updatedAt: Date.now(),
+          updatedBy: 'system',
+          seq: 0,
+          mediaEpoch: roomRef.current?.playbackState?.mediaEpoch || 1,
+          reason: 'media-changed'
+        } satisfies PlaybackSnapshot
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!routeCode) return;
@@ -594,16 +803,27 @@ const WatchPartyPage: React.FC = () => {
   // Une commande distante et un snapshot peuvent arriver pendant la même
   // fenêtre : la plus longue doit gagner, sinon un événement local tardif est
   // rebroadcast et peut faire osciller la lecture.
-  const suppressRemotePlaybackEvents = useCallback((durationMs: number) => {
+  const suppressRemotePlaybackEvents = useCallback((durationMs: number, expectedState?: PlaybackSnapshot | null) => {
     const now = Date.now();
     const until = Math.max(remoteSuppressionUntilRef.current, now + durationMs);
     remoteSuppressionUntilRef.current = until;
+    remoteSuppressionUntilRef.expectedState = expectedState ?? authoritativePlaybackRef.current;
     applyingRemoteRef.current = true;
     if (remoteCommandTimeoutRef.current !== null) window.clearTimeout(remoteCommandTimeoutRef.current);
     remoteCommandTimeoutRef.current = window.setTimeout(() => {
+      flushQueuedPlaybackIntents({
+        intentsRef: playbackIntentsRef,
+        socketRef,
+        authoritativeRef: authoritativePlaybackRef,
+        roomRef,
+        videoRef,
+        vidriftPlaybackRef,
+        canControlRef
+      });
       applyingRemoteRef.current = false;
       remoteCommandTimeoutRef.current = null;
       remoteSuppressionUntilRef.current = 0;
+      remoteSuppressionUntilRef.expectedState = undefined;
     }, Math.max(0, until - now));
   }, []);
 
@@ -621,7 +841,7 @@ const WatchPartyPage: React.FC = () => {
         pendingPlaybackRef.current = state;
         return;
       }
-      suppressRemotePlaybackEvents(1200);
+      suppressRemotePlaybackEvents(1200, state);
       if (Number.isFinite(targetPosition) && Math.abs(vidriftPlaybackRef.current.currentTime - targetPosition) > 0.8) {
         postToVidRift(frame, { type: 'vidrift:resume', currentTime: targetPosition });
       }
@@ -646,7 +866,7 @@ const WatchPartyPage: React.FC = () => {
       pendingPlaybackRef.current = state;
       return;
     }
-    suppressRemotePlaybackEvents(250);
+    suppressRemotePlaybackEvents(250, state);
     if (Number.isFinite(targetPosition) && Math.abs(video.currentTime - targetPosition) > 0.8) {
       video.currentTime = targetPosition;
     }
@@ -699,6 +919,9 @@ const WatchPartyPage: React.FC = () => {
       const current = roomRef.current ?? room;
       if (!current) return;
       const next = updater(current);
+      // Un ACK déjà réconcilié ne doit pas provoquer de nouveau rendu : c'est
+      // la principale source de boucles de feedback avec les états serveur.
+      if (next === current) return;
       roomRef.current = next;
       setRoom(next);
     };
@@ -827,6 +1050,31 @@ const WatchPartyPage: React.FC = () => {
           clockOffsetRef.current = bestSamples[Math.floor(bestSamples.length / 2)] ?? 0;
         });
         const handleAuthoritativePlayback = (state: PlaybackSnapshot, isRoomSnapshot = false) => {
+          const cutoff = Date.now() - 5000;
+          playbackIntentsRef.current = playbackIntentsRef.current.filter(intent => (
+            !intent.awaitingState || (intent.awaitingSince ?? intent.createdAt) > cutoff
+          ));
+          const retry = retryRequestRef.current;
+          if (isRoomSnapshot && retry && isRetryResponseFresh(state, retry)) {
+            retryRequestRef.current = null;
+            stateRequestedForRetryRef.current = false;
+            const waiting = playbackIntentsRef.current.filter(intent => intent.awaitingState
+              && (!intent.retryRequestId || intent.retryRequestId === retry.id));
+            playbackIntentsRef.current = playbackIntentsRef.current.filter(intent => !waiting.includes(intent));
+            const localState = readLocalPlaybackState(roomRef, videoRef, vidriftPlaybackRef);
+            if (localState) {
+              for (const intent of waiting) {
+                intent.awaitingState = false;
+                intent.awaitingSince = undefined;
+                intent.freshSeq = Number(state.seq) + 1;
+                emitPlaybackUpdate(socket, intent, authoritativePlaybackRef, playbackIntentsRef, localState);
+              }
+            }
+          }
+          if (!playbackIntentsRef.current.some(intent => intent.awaitingState)) {
+            retryRequestRef.current = null;
+            stateRequestedForRetryRef.current = false;
+          }
           authoritativePlaybackRef.current = state;
           const activeSocketId = socket.id;
           const activeIsHost = Boolean(activeSocketId && roomRef.current?.hostId === activeSocketId);
@@ -854,6 +1102,101 @@ const WatchPartyPage: React.FC = () => {
         };
         socket.on('room:playback', (state: PlaybackSnapshot) => handleAuthoritativePlayback(state, true));
         socket.on('playback:state', (state: PlaybackSnapshot) => handleAuthoritativePlayback(state, false));
+        socket.on('playback:ack', (ack: PlaybackAck) => {
+          if (!ack) return;
+          const tracked = playbackIntentsRef.current.find(intent => intent.commandId === ack.commandId);
+          const currentState = authoritativePlaybackRef.current || roomRef.current?.playbackState || null;
+          const ackSeq = Number(ack.state?.seq ?? ack.seq);
+          const ackUpdatedAt = Number(ack.state?.updatedAt);
+          const currentSeq = Number(currentState?.seq);
+          const currentUpdatedAt = Number(currentState?.updatedAt);
+          const ackSeqValid = Number.isSafeInteger(ackSeq);
+          const currentSeqValid = Number.isSafeInteger(currentSeq);
+          const timeIsFresh = !Number.isFinite(currentUpdatedAt) || ackUpdatedAt >= currentUpdatedAt;
+          // Un ACK tardif ne doit jamais rétrograder un état déjà reçu. L'ACK
+          // d'intention reste traité même quand son snapshot est écarté.
+          const canApplyState = Boolean(ack.state) && (
+            !currentState || !currentSeqValid || !ackSeqValid
+              ? timeIsFresh
+              : ackSeq > currentSeq || (ackSeq === currentSeq && timeIsFresh)
+          );
+          if (canApplyState) {
+            const reconciled: PlaybackSnapshot = {
+              ...ack.state,
+              reason: ack.reason === 'media-changed' || ack.reason == null ? undefined : ack.reason
+            };
+            authoritativePlaybackRef.current = reconciled;
+            updateRoom((current) => {
+              const previous = current?.playbackState;
+              if (previous?.seq === reconciled.seq
+                && previous?.updatedAt === reconciled.updatedAt
+                && previous?.commandId === reconciled.commandId
+                && previous?.isPlaying === reconciled.isPlaying
+                && previous?.position === reconciled.position
+                && previous?.reason === reconciled.reason) return current;
+              return { ...current, playbackState: reconciled };
+            });
+          } else if (!ack.state && typeof ack.seq === 'number' && (!currentSeqValid || ack.seq > currentSeq)) {
+            authoritativePlaybackRef.current = {
+              ...(authoritativePlaybackRef.current || { isPlaying: false, position: 0, updatedAt: Date.now(), updatedBy: null }),
+              seq: ack.seq
+            };
+          }
+          if (!tracked) return;
+          const forgetIntent = () => {
+            playbackIntentsRef.current = playbackIntentsRef.current.filter(intent => intent.commandId !== tracked.commandId);
+            if (!playbackIntentsRef.current.some(intent => intent.awaitingState)) {
+              retryRequestRef.current = null;
+              stateRequestedForRetryRef.current = false;
+            }
+          };
+          // Un doublon réseau signifie que la première commande a été acceptée :
+          // la file ne doit pas la réémettre une seconde fois.
+          if (ack.accepted === true || ack.code === 'DUPLICATE_COMMAND') {
+            forgetIntent();
+            return;
+          }
+          // One-shot : un second STALE_SEQUENCE clôt uniquement cette intention.
+          // Les autres changements utilisateur restent dans la file.
+          if (ack.code !== 'STALE_SEQUENCE' || tracked.retries >= 1) {
+            forgetIntent();
+            return;
+          }
+          const requestId = globalThis.crypto?.randomUUID?.()
+            || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          tracked.retries = 1;
+          tracked.awaitingState = true;
+          tracked.awaitingSince = Date.now();
+          tracked.retryRequestId = requestId;
+          retryRequestRef.current = {
+            id: requestId,
+            rejectedSeq: ackSeqValid ? ackSeq : Number(ack.seq) || 0,
+            rejectedUpdatedAt: Number.isFinite(ackUpdatedAt) ? ackUpdatedAt : Date.now(),
+            sentAt: Date.now()
+          };
+          stateRequestedForRetryRef.current = true;
+          socket.emit('playback:getState', { requestId });
+        });
+        socket.on('playback:buffering', (payload: {
+          participantId?: string;
+          isBuffering?: boolean;
+          position?: number;
+          seq?: number;
+          mediaEpoch?: number;
+        }) => {
+          if (!payload || payload.participantId === socket.id) return;
+          const bufferedSeq = Number(payload.seq);
+          const authoritative = authoritativePlaybackRef.current;
+          // Un signal legacy sans seq reste acceptable : seul un seq connu et
+          // plus ancien que l'état autoritaire est ignoré.
+          if (Number.isSafeInteger(bufferedSeq) && authoritative && bufferedSeq < (Number(authoritative.seq) || 0)) return;
+          setPlayerUi(previous => previous.isBuffering === Boolean(payload.isBuffering)
+            ? previous
+            : { ...previous, isBuffering: Boolean(payload.isBuffering) });
+        });
+        socket.on('playback:scheduleCancelled', (payload: { mediaEpoch?: number; reason?: string }) => {
+          if (payload?.reason === 'media-changed') resetPlaybackEngine();
+        });
         socket.on('playback:schedule', (schedule: ScheduledPlaybackEvent) => {
           if (roomRef.current?.syncMode === 'pro' && syncWorkerRef.current) {
             syncWorkerRef.current.postMessage({ type: 'schedule', event: schedule });
@@ -871,8 +1214,9 @@ const WatchPartyPage: React.FC = () => {
         });
         socket.on('media:updated', (media: Media) => {
           updateRoom(current => ({ ...current, media, pauseTimer: null, pauseVote: null }));
-          // La position reçue avant le changement concernait l'ancien média.
-          pendingPlaybackRef.current = null;
+          // La position reçue avant le changement concernait l'ancien média :
+          // ni le snapshot local, ni la file Pro ne doivent survivre.
+          resetPlaybackEngine();
           setPauseTimer(null);
           setPauseVote(null);
         });
@@ -926,7 +1270,7 @@ const WatchPartyPage: React.FC = () => {
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
-  }, [roomId, navigate, applyRemotePlayback]);
+  }, [roomId, navigate, applyRemotePlayback, resetPlaybackEngine]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -976,6 +1320,7 @@ const WatchPartyPage: React.FC = () => {
   const isHost = Boolean(selfId && room?.hostId === selfId);
   const isCoHost = Boolean(selfId && room?.coHosts?.includes(selfId));
   const canControl = isHost || isCoHost || room?.controlMode === 'democratic';
+  canControlRef.current = canControl;
   const hasPendingControlRequest = Boolean(selfId && controlRequests.some(request => request.participantId === selfId));
   const allParticipantsReady = participants.length > 1 && participants.every(person => readyState[person.id] === true);
   const countdownSeconds = countdownTarget === null
@@ -986,7 +1331,25 @@ const WatchPartyPage: React.FC = () => {
     action: 'play' | 'pause' | 'seek' | 'setPlaybackRate' | 'resetPlaybackRate';
     value?: number;
   }) => {
-    suppressRemotePlaybackEvents(1300);
+    const currentState = authoritativePlaybackRef.current;
+    const expectedState: PlaybackSnapshot = command.action === 'seek'
+      ? {
+        isPlaying: currentState?.isPlaying === true,
+        position: Number.isFinite(command.value) ? Number(command.value) : currentState?.position ?? 0,
+        updatedAt: Date.now(),
+        updatedBy: 'system'
+      }
+      : command.action === 'play' || command.action === 'pause'
+        ? {
+          isPlaying: command.action === 'play',
+          position: currentState?.position ?? 0,
+          updatedAt: Date.now(),
+          updatedBy: 'system'
+        }
+        : currentState || {
+          isPlaying: false, position: 0, updatedAt: Date.now(), updatedBy: 'system'
+        };
+    suppressRemotePlaybackEvents(1300, expectedState);
 
     const isVidRift = roomRef.current?.media.playbackType === 'vidrift';
     const frame = vidriftFrameRef.current;
@@ -1046,6 +1409,10 @@ const WatchPartyPage: React.FC = () => {
       }
       applyingRemoteRef.current = false;
       remoteSuppressionUntilRef.current = 0;
+      remoteSuppressionUntilRef.expectedState = undefined;
+      playbackIntentsRef.current = [];
+      stateRequestedForRetryRef.current = false;
+      retryRequestRef.current = null;
       if (syncWorkerRef.current === worker) syncWorkerRef.current = null;
     };
   }, [roomId, room?.id]);
@@ -1120,36 +1487,63 @@ const WatchPartyPage: React.FC = () => {
     if (!canControl && !vidRiftActivationOpen) vidriftFrameRef.current?.blur();
   }, [canControl, vidRiftActivationOpen]);
 
-  const sendPlayback = useCallback((reason: 'play' | 'pause' | 'seek' | 'heartbeat' | 'ended') => {
+  const sendPlayback = useCallback((reason: SyncAction, options?: { userInitiated?: boolean }) => {
     const socket = socketRef.current;
-    if (!socket?.connected || !canControl || applyingRemoteRef.current) return;
+    if (!socket?.connected || !canControl) return;
     // Co-hosts and democratic viewers may issue controls, but only the room
     // host is the periodic clock source. Otherwise each viewer's heartbeat
     // competes with the others and makes the shared timeline oscillate.
     if (reason === 'heartbeat' && !isHost) return;
     if (reason === 'heartbeat') lastHeartbeatRef.current = Date.now();
+
+    const localState = readLocalPlaybackState(roomRef, videoRef, vidriftPlaybackRef);
+    if (!localState) return;
+    // Comme avant la refonte des intentions, l'horodatage VidRift est avancé
+    // avant l'émission pour que le prochain heartbeat parte de la bonne position.
     if (roomRef.current?.media.playbackType === 'vidrift') {
-      const snapshot = vidriftPlaybackRef.current;
-      const now = performance.now();
-      const elapsed = !snapshot.paused && snapshot.updatedAt > 0
-        ? Math.max(0, now - snapshot.updatedAt) / 1000
-        : 0;
-      const position = Math.max(0, snapshot.currentTime + elapsed * snapshot.playbackRate);
-      vidriftPlaybackRef.current = { ...snapshot, currentTime: position, updatedAt: now };
-      socket.emit('playback:update', {
-        isPlaying: !snapshot.paused,
-        position,
+      vidriftPlaybackRef.current = {
+        ...vidriftPlaybackRef.current,
+        currentTime: localState.position,
+        playbackRate: localState.playbackRate,
+        updatedAt: performance.now()
+      };
+    }
+
+    // La fenêtre distante est définie par son échéance, pas par un simple
+    // drapeau : un timer retardé ne doit pas transformer une intention
+    // utilisateur en événement distant.
+    const remoteActive = remoteSuppressionUntilRef.current > Date.now();
+    const target = desiredPlaybackTarget(reason, localState);
+    if (remoteActive) {
+      applyingRemoteRef.current = true;
+      if (reason === 'heartbeat') return;
+      const expectedState = remoteSuppressionUntilRef.expectedState ?? authoritativePlaybackRef.current;
+      if (!options?.userInitiated && playbackStateMatches(expectedState, localState)) return;
+      queuePlaybackIntent(playbackIntentsRef, {
         reason,
+        commandId: globalThis.crypto?.randomUUID?.()
+          || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        token: null,
+        retries: 0,
+        awaitingState: false,
+        createdAt: Date.now(),
+        target
       });
       return;
     }
-    const video = videoRef.current;
-    if (!video) return;
-    socket.emit('playback:update', {
-      isPlaying: !video.paused,
-      position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+
+    applyingRemoteRef.current = false;
+    const intent: TrackedPlaybackIntent = {
       reason,
-    });
+      commandId: globalThis.crypto?.randomUUID?.()
+        || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      token: null,
+      retries: 0,
+      awaitingState: false,
+      createdAt: Date.now(),
+      target
+    };
+    emitPlaybackUpdate(socket, intent, authoritativePlaybackRef, playbackIntentsRef, localState);
   }, [canControl, isHost]);
 
   useEffect(() => {
@@ -1162,6 +1556,7 @@ const WatchPartyPage: React.FC = () => {
     const video = event.currentTarget;
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     setPlayerUi(previous => ({
+      ...previous,
       currentTime: Number.isFinite(video.currentTime) ? video.currentTime : previous.currentTime,
       duration: previous.duration === duration ? previous.duration : duration,
       paused: video.paused
@@ -1311,8 +1706,8 @@ const WatchPartyPage: React.FC = () => {
           return;
         }
 
-        if (!applyingRemoteRef.current && canControl && (pauseChanged || positionChanged)) {
-          sendPlayback(pauseChanged ? (nextPaused ? 'pause' : 'play') : 'seek');
+        if (canControl && (pauseChanged || positionChanged)) {
+          sendPlayback(pauseChanged ? (nextPaused ? 'pause' : 'play') : 'seek', { userInitiated: true });
         }
         return;
       }
@@ -1351,8 +1746,8 @@ const WatchPartyPage: React.FC = () => {
         // Remote commands update the ref before being posted into the iframe.
         // Only relay an actual local transition, even if VidRift acknowledges
         // it after the short command-suppression window has elapsed.
-        if (wasPaused !== vidriftPlaybackRef.current.paused && !applyingRemoteRef.current && canControl) {
-          sendPlayback(data.type === 'vidrift:paused' ? 'pause' : 'play');
+        if (wasPaused !== vidriftPlaybackRef.current.paused && canControl) {
+          sendPlayback(data.type === 'vidrift:paused' ? 'pause' : 'play', { userInitiated: true });
         }
         return;
       }
@@ -1368,7 +1763,7 @@ const WatchPartyPage: React.FC = () => {
           if (authoritative) void applyRemotePlayback(authoritative);
           return;
         }
-        if (!wasPaused && !applyingRemoteRef.current && canControl) sendPlayback('ended');
+        if (!wasPaused && canControl) sendPlayback('ended', { userInitiated: true });
         return;
       }
 
@@ -1518,16 +1913,46 @@ const WatchPartyPage: React.FC = () => {
                       onPlay={() => {
                         setRequiresUserGesture(false);
                         setPlayerUi(previous => ({ ...previous, paused: false }));
-                        sendPlayback('play');
+                        sendPlayback('play', { userInitiated: true });
                       }}
-                      onPause={() => {
+                      onPause={event => {
                         setPlayerUi(previous => ({ ...previous, paused: true }));
-                        sendPlayback('pause');
+                        // `ended` est déjà annoncé séparément : ne pas doubler
+                        // la fin de lecture avec une commande `pause`.
+                        if (!event.currentTarget.ended) sendPlayback('pause', { userInitiated: true });
                       }}
                       onSeeked={event => {
                         const video = event.currentTarget;
                         setPlayerUi(previous => ({ ...previous, currentTime: video.currentTime }));
-                        sendPlayback('seek');
+                        sendPlayback('seek', { userInitiated: true });
+                      }}
+                      onEnded={() => {
+                        setPlayerUi(previous => ({ ...previous, paused: true }));
+                        sendPlayback('ended', { userInitiated: true });
+                      }}
+                      onWaiting={event => {
+                        const video = event.currentTarget;
+                        const socket = socketRef.current;
+                        if (!socket?.connected) return;
+                        const seq = Number(authoritativePlaybackRef.current?.seq);
+                        socket.emit('playback:buffering', {
+                          isBuffering: true,
+                          position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+                          ...(Number.isSafeInteger(seq) && seq > 0 ? { seq } : {}),
+                          mediaEpoch: Number(authoritativePlaybackRef.current?.mediaEpoch) || 1
+                        });
+                      }}
+                      onPlaying={event => {
+                        const video = event.currentTarget;
+                        const socket = socketRef.current;
+                        if (!socket?.connected) return;
+                        const seq = Number(authoritativePlaybackRef.current?.seq);
+                        socket.emit('playback:buffering', {
+                          isBuffering: false,
+                          position: Number.isFinite(video.currentTime) ? video.currentTime : 0,
+                          ...(Number.isSafeInteger(seq) && seq > 0 ? { seq } : {}),
+                          mediaEpoch: Number(authoritativePlaybackRef.current?.mediaEpoch) || 1
+                        });
                       }}
                       onDurationChange={event => {
                         const duration = event.currentTarget.duration;

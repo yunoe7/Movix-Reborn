@@ -1,100 +1,98 @@
-const SYNCABLE_EXACT_KEYS = new Set([
-  'access_code',
-  'access_code_expires',
-  'adWarningAccepted',
-  'anti_spoiler',
-  'continueWatching',
-  'custom_lists',
-  'episodeReleaseAlerts',
-  'favorite_collections',
-  'favorite_movie',
-  'favorites_tv',
-  'live_tv_favorite_channels',
-  'live_tv_favorite_iptv_categories',
-  'miniPlayerPosition',
-  'miniPlayerVolume',
-  'movixCalendarEntries',
-  'movix_intro_enabled',
-  'movix_intro_seen',
-  'privacy_data_collection',
-  'recentEmojis',
-  'screensaver_enabled',
-  'screensaver_mode',
-  'screensaver_timeout',
-  'shared_list_favorites',
-  'snow_enabled',
-  'subtitleStyle',
-  'support_popup_seen',
-  'user_language',
-  'is_vip',
-  'watched_movie',
-  'watched_tv',
-  'watchPartyNickname',
-]);
+import syncKeys from '../../shared/syncKeys.json';
 
-const SYNCABLE_PREFIXES = [
-  'favorite_',
-  'favorites_',
-  'miniPlayer',
-  'movix_intro_',
-  'player',
-  'progress_',
-  'screensaver_',
-  'settings_',
-  'watchlist_',
-  'watched_',
-];
+// Contrat unique partagé avec l'API Main. Toute divergence de allowlist
+// provoquait soit un rejet global du lot, soit une clé jamais synchronisée.
+// `is_vip` est absente : le statut VIP dérive de `access_code` vérifié côté
+// serveur et ne doit pas être écrit par le navigateur.
+const SYNCABLE_EXACT_KEYS = new Set<string>(syncKeys.exact);
+const SYNCABLE_PREFIXES: string[] = syncKeys.prefixes;
+export const SERVER_MANAGED_SYNC_KEYS: readonly string[] = syncKeys.serverManaged;
 
 // Persistent outbox of pending sync ops. Survives refresh so a user write that
 // didn't reach the server before unload (Firefox keepalive flake, network
 // hiccup, browser crash) is replayed on next boot before loadProfileData wipes
 // localStorage. See ProfileContext.replayOutboxIfAny.
+//
+// History: v1 used the single global key below, which could mix two profiles
+// of the same account. v2 writes one key per captured owner and keeps the
+// global key only for a one-shot migration of legacy data.
 export const SYNC_OUTBOX_STORAGE_KEY = '__movix_sync_outbox';
+export const SYNC_OUTBOX_FORMAT_VERSION = 2;
+export const SYNC_OUTBOX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+export const MAX_SYNC_OUTBOX_OPS = 10000;
+export const SYNC_OUTBOX_REPLAY_LOCK_KEY = '__movix_sync_outbox_replay_lock';
+export const SYNC_OUTBOX_REPLAY_LOCK_TTL_MS = 30_000;
 
-const BLOCKED_SYNC_KEYS = new Set([
-  SYNC_OUTBOX_STORAGE_KEY,
-  'access_token',
-  'auth',
-  'auth_method',
-  'auth_token',
-  'avatar_url',
-  'bip39_auth',
-  'clear',
-  'discord_auth',
-  'discord_last_check',
-  'discord_rate_limit',
-  'discord_token',
-  'discord_user',
-  'episodeAlertsLastCheck',
-  'google_auth',
-  'google_token',
-  'google_user',
-  'guest_uuid',
-  'is_admin',
-  'lastCommentTime',
-  'lastReplyTime',
-  'movix_pending_auth_action',
-  'removeItem',
-  'resolved_user_id',
-  'resolved_user_type',
-  'selectedProfile',
-  'selected_profile',
-  'selected_profile_id',
-  'session_id',
-  'setItem',
-  'user_id',
-  'user_name',
-  'user_type',
-]);
+// Source unique de vérité pour le tri des refus `rejected` renvoyés par
+// `/api/sync`. Les anciennes copies dans App.tsx et ProfileContext.tsx
+// pouvaient diverger : un 401 traité comme permanent perdait une écriture,
+// un code de politique traité comme temporaire bloquait l'outbox indéfiniment.
+// Les getters sont des fonctions pures afin que les tests lisent exactement
+// les listes de production sans introspection de texte.
+function getPermanentSyncRejectionCodes(): ReadonlySet<string> {
+  return new Set([
+    'INVALID_SYNC_KEY', 'INVALID_OP', 'INVALID_OPS', 'INVALID_SET_VALUE',
+    'INVALID_SYNC_OP', 'INVALID_VALUE_TYPE', 'INVALID_NUMBER',
+    'INVALID_DELTA', 'INVALID_NESTED_KEY', 'VALUE_TOO_DEEP',
+    'VALUE_TOO_LARGE', 'DELTA_TOO_LARGE', 'TOO_MANY_OPS',
+    'TOO_MANY_KEYS', 'PROFILE_QUOTA_EXCEEDED', 'SERVER_MANAGED_KEY_REJECTED'
+  ]);
+}
+
+function getRetryableSyncStatusCodes(): ReadonlySet<number> {
+  return new Set([401, 403, 404, 408, 429]);
+}
+
+/** Un refus de politique est permanent ; un 401/403 reste rejouable. */
+function isPermanentSyncRejection(
+  status?: number,
+  code?: string,
+  message?: string
+): boolean {
+  const retryableStatuses = getRetryableSyncStatusCodes();
+  if (typeof status === 'number') {
+    if (retryableStatuses.has(status) || status >= 500) return false;
+  }
+  const normalizedCode = (typeof code === 'string' && code)
+    ? code
+    : (String(message || '').match(/[A-Z][A-Z0-9_]{3,}/)?.[0] || '');
+  if (getPermanentSyncRejectionCodes().has(normalizedCode)) return true;
+  return typeof status === 'number' && status >= 400 && status < 500;
+}
+
+function isRetryableSyncRejection(item: {
+  status?: unknown;
+  code?: unknown;
+  message?: unknown;
+} | null | undefined): boolean {
+  const status = Number(item?.status);
+  const retryableStatuses = getRetryableSyncStatusCodes();
+  if (retryableStatuses.has(status) || status >= 500) return true;
+  const code = typeof item?.code === 'string' && item.code
+    ? item.code
+    : (String(item?.message || '').match(/[A-Z][A-Z0-9_]{3,}/)?.[0] || '');
+  if (getPermanentSyncRejectionCodes().has(code)) return false;
+  return !(Number.isInteger(status) && status >= 400 && status < 500);
+}
+
+export {
+  getPermanentSyncRejectionCodes,
+  getRetryableSyncStatusCodes,
+  isPermanentSyncRejection,
+  isRetryableSyncRejection
+};
+
+const BLOCKED_SYNC_KEYS = new Set<string>(syncKeys.blocked);
 
 const PROFILE_LOAD_PRESERVED_KEYS = new Set([
   SYNC_OUTBOX_STORAGE_KEY,
   // VIP credential/entitlement keys are server-authoritative (verified via
-  // /api/check-vip + refreshVipState), like is_admin. They stay syncable for
-  // cross-device propagation but MUST NOT be wiped during the profile-load
-  // wipe-and-restore: the transient removeItem('is_vip') fired a native
-  // cross-tab `storage` event that flipped VIPs to non-VIP for a tick and
-  // re-triggered the ad popup on open watch tabs. See AdFreePopupContext.
+  // /api/check-vip + refreshVipState). `access_code` and its expiry are
+  // still synced so a known device can verify entitlement immediately;
+  // `is_vip` is a local cache only and MUST NOT be wiped during the profile
+  // load: the transient removeItem('is_vip') fired a native cross-tab
+  // `storage` event that flipped VIPs to non-VIP for a tick and re-triggered
+  // the ad popup on open watch tabs. See AdFreePopupContext.
   'access_code',
   'access_code_expires',
   'access_token',

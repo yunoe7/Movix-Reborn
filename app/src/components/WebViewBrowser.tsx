@@ -20,10 +20,15 @@ import {
 } from '../services/networkJournal';
 import {
   clearBridgeCapabilities,
+  getGmStorageSnapshot,
   handleBridgeMessage,
+  hydrateGmStorageFromAsyncStorage,
   refreshCastShimStatus,
+  registerGmWebViewRef,
   startCastShimEventForwarding,
   startPictureInPictureEventForwarding,
+  subscribeGmStorageChanges,
+  unregisterGmWebViewRef,
 } from '../services/bridge';
 import { setLocalPlaybackAwake } from '../services/playbackAwake';
 import {
@@ -84,18 +89,26 @@ const BASE_INJECTION_OPTIONS = {
   mediaProxyScheme: Platform.OS === 'ios' ? 'movix-media' : null,
 } as const;
 
-// Construit une fois par état de capture, pas à chaque rendu : le script
-// injecté est volumineux, et son contenu ne dépend que de ce booléen.
-const INJECTED_JS_BY_JOURNAL_STATE = new Map<boolean, string>();
+// Construit une fois par état de capture et par snapshot natif, pas à chaque
+// rendu : le script injecté est volumineux.
+const INJECTED_JS_BY_JOURNAL_STATE = new Map<string, string>();
 
-function injectedJavaScriptFor(journalConsoleEnabled: boolean): string {
-  const cached = INJECTED_JS_BY_JOURNAL_STATE.get(journalConsoleEnabled);
+function injectedJavaScriptFor(
+  journalConsoleEnabled: boolean,
+  nativeGmStorage: Record<string, unknown>,
+  nativeStorageReady = true,
+): string {
+  const cacheKey = `${journalConsoleEnabled}:${nativeStorageReady}:${JSON.stringify(nativeGmStorage)}`;
+  const cached = INJECTED_JS_BY_JOURNAL_STATE.get(cacheKey);
   if (cached !== undefined) return cached;
-  const built = buildInjectedJavaScript({
+  // Ce snapshot doit précéder le runtime : GM_getValue le consulte avant le
+  // premier message GM, donc les réglages du redémarrage sont déjà visibles.
+  const snapshot = `window.__MOVIX_NATIVE_GM_STORAGE__ = ${JSON.stringify(nativeGmStorage)};`;
+  const built = `${snapshot}\n${buildInjectedJavaScript({
     ...BASE_INJECTION_OPTIONS,
     journalConsoleEnabled,
-  });
-  INJECTED_JS_BY_JOURNAL_STATE.set(journalConsoleEnabled, built);
+  })}`;
+  INJECTED_JS_BY_JOURNAL_STATE.set(cacheKey, built);
   return built;
 }
 
@@ -125,12 +138,32 @@ const WebViewBrowser = forwardRef<WebViewBrowserRef, WebViewBrowserProps>(
     const webViewRef = useRef<WebView>(null);
     const topLevelUrlRef = useRef(url);
     const navigationGenerationRef = useRef(0);
+    const [nativeStorageReady, setNativeStorageReady] = useState(false);
+    const [gmStorageSnapshot, setGmStorageSnapshot] = useState<Record<string, unknown>>(
+      () => (typeof getGmStorageSnapshot === 'function' ? getGmStorageSnapshot() : {}),
+    );
 
     React.useEffect(() => {
       topLevelUrlRef.current = url;
     }, [url]);
 
+    useEffect(() => {
+      if (typeof subscribeGmStorageChanges !== 'function') return undefined;
+      return subscribeGmStorageChanges(snapshot => setGmStorageSnapshot(snapshot));
+    }, []);
+
     React.useEffect(() => {
+      let active = true;
+      void hydrateGmStorageFromAsyncStorage().finally(() => {
+        if (active) setNativeStorageReady(true);
+      });
+      return () => {
+        active = false;
+      };
+    }, []);
+
+    useEffect(() => {
+      registerGmWebViewRef(webViewRef);
       const stopCastStatusForwarding = startCastShimEventForwarding(webViewRef);
       const stopPictureInPictureForwarding = startPictureInPictureEventForwarding(
         webViewRef,
@@ -140,6 +173,7 @@ const WebViewBrowser = forwardRef<WebViewBrowserRef, WebViewBrowserProps>(
         },
       );
       return () => {
+        unregisterGmWebViewRef(webViewRef);
         clearBridgeCapabilities(webViewRef);
         stopCastStatusForwarding();
         stopPictureInPictureForwarding();
@@ -238,14 +272,16 @@ const WebViewBrowser = forwardRef<WebViewBrowserRef, WebViewBrowserProps>(
     // Le renvoi de la console est armé dans le script injecté : il faut donc le
     // reconstruire quand la capture change. La bascule ne prend effet qu'au
     // chargement suivant de la page, `injectedJavaScriptBeforeContentLoaded`
-    // n'étant relu qu'à la navigation.
+    // n'étant relu qu'à la navigation. Le script dépend aussi de la fin de la
+    // restauration AsyncStorage et du snapshot abonné aux poussées natives :
+    // le document-start ne doit jamais rester figé sur une valeur périmée.
     const [journalConsole, setJournalConsole] = useState(
       isNetworkJournalEnabled,
     );
     useEffect(() => subscribeNetworkJournal(setJournalConsole), []);
     const injectedJS = useMemo(
-      () => injectedJavaScriptFor(journalConsole),
-      [journalConsole],
+      () => injectedJavaScriptFor(journalConsole, gmStorageSnapshot, nativeStorageReady),
+      [journalConsole, nativeStorageReady, gmStorageSnapshot],
     );
 
     // Sur iOS, laisser WKWebView annoncer la version réelle de WebKit et de

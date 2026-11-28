@@ -5662,6 +5662,49 @@
   };
   let extractionPrefs = DEFAULT_EXTRACTION_PREFS;
 
+  // BEGIN NATIVE GM VALUE CHANGE
+  // Poussée native (réglages de l'app mobile) : GM_getValue est mis à jour par
+  // le runtime, mais cette variable en mémoire doit aussi suivre, sinon
+  // l'extraction continuerait avec l'ancienne politique jusqu'au reload.
+  function normalizeExtractionPrefsFromNative(value) {
+    const normalized = {
+      version: 1,
+      m3u8: { ...DEFAULT_EXTRACTION_PREFS.m3u8 },
+      livetv: { ...DEFAULT_EXTRACTION_PREFS.livetv },
+    };
+    if (!value || typeof value !== "object") return normalized;
+    const incomingM3u8 =
+      value.m3u8 && typeof value.m3u8 === "object" ? value.m3u8 : {};
+    const incomingLivetv =
+      value.livetv && typeof value.livetv === "object" ? value.livetv : {};
+    for (const key of Object.keys(normalized.m3u8)) {
+      if (typeof incomingM3u8[key] === "boolean") {
+        normalized.m3u8[key] = incomingM3u8[key];
+      }
+    }
+    for (const key of Object.keys(normalized.livetv)) {
+      if (typeof incomingLivetv[key] === "boolean") {
+        normalized.livetv[key] = incomingLivetv[key];
+      }
+    }
+    return normalized;
+  }
+
+  async function handleNativeGmValueChange(event) {
+    const detail = event && event.detail;
+    if (!detail || detail.key !== "movix_extraction_prefs") return;
+    if (detail.value === null || detail.value === undefined) {
+      extractionPrefs = normalizeExtractionPrefsFromNative(null);
+      await gmDeleteValueCompat("movix_extraction_prefs");
+      return;
+    }
+    extractionPrefs = normalizeExtractionPrefsFromNative(detail.value);
+    await gmSetValueCompat("movix_extraction_prefs", extractionPrefs);
+  }
+
+  pageWindow.addEventListener("movix:gm-value-changed", handleNativeGmValueChange);
+  // END NATIVE GM VALUE CHANGE
+
   // Extension enabled state
   let extensionEnabled = true;
 
@@ -5712,7 +5755,7 @@
       }
     }
     const storedPrefs = await gmGetValueCompat("movix_extraction_prefs", null);
-    if (storedPrefs) extractionPrefs = storedPrefs;
+    if (storedPrefs) extractionPrefs = normalizeExtractionPrefsFromNative(storedPrefs);
   })();
 
   // Initial setup

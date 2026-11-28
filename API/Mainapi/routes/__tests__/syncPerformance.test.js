@@ -53,7 +53,7 @@ async function fixture(t, profile = { user_language: 'fr' }) {
     module, exports: module.exports, __dirname: path.join(dir, 'routes'),
     require: request => request in stubs ? stubs[request] : localRequire(request),
     Buffer, structuredClone, setInterval, clearInterval, setTimeout, clearTimeout,
-    process: { on() {} }, console: { log() {}, warn() {}, error() {} },
+    process: { on() {}, env: {} }, console: { log() {}, warn() {}, error() {} },
   }, { filename });
   const router = module.exports;
   async function request(ops, { userType = 'oauth', userId = 'user', profileId = 'profile-one', auth = { userType: 'oauth', userId: 'user' } } = {}) {
@@ -159,10 +159,14 @@ test('un autre profil, compte ou type d’authentification ne peut pas être mod
   assert.equal(f.counts().writes, 0);
 });
 
-test('les clés interdites et les valeurs trop grandes sont toujours refusées', async t => {
+test('les clés interdites et les valeurs trop grandes sont rapportées sans écriture', async t => {
   const f = await fixture(t);
-  assert.equal((await f.request([{ op: 'set', key: 'auth', value: 'bad' }])).statusCode, 400);
-  assert.equal((await f.request([{ op: 'set', key: 'user_language', value: 'x'.repeat(policy.SYNC_LIMITS.maxStringValueBytes + 1) }])).statusCode, 413);
+  const blocked = await f.request([{ op: 'set', key: 'auth', value: 'bad' }]);
+  assert.equal(blocked.statusCode, 200);
+  assert.equal(blocked.body.rejected[0].code, 'INVALID_SYNC_KEY');
+  const oversized = await f.request([{ op: 'set', key: 'user_language', value: 'x'.repeat(policy.SYNC_LIMITS.maxStringValueBytes + 1) }]);
+  assert.equal(oversized.statusCode, 200);
+  assert.equal(oversized.body.rejected[0].code, 'VALUE_TOO_LARGE');
   assert.equal(f.counts().writes, 0);
 });
 

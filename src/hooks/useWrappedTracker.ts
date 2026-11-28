@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { getResolvedUserId } from '../utils/accountAuth';
-import { createWrappedTracker, type WrappedTracker } from '../utils/wrappedTrackerCore';
+import { getResolvedAccountContext, getResolvedUserId } from '../utils/accountAuth';
+import { readWrappedSession } from '../utils/wrappedSession';
+import { createWrappedTracker, type WrappedIdentity, type WrappedTracker } from '../utils/wrappedTrackerCore';
 
 const MAIN_API = import.meta.env.VITE_MAIN_API;
 
@@ -61,8 +62,7 @@ export function useWrappedTracker(options: UseWrappedTrackerOptions) {
     // The JWT 'sub' claim is set from OAuth provider IDs (Google/Discord), so we must prioritize those
     const getUserInfo = useCallback(() => {
         try {
-            const authToken = localStorage.getItem('auth_token');
-            const profileId = localStorage.getItem('selected_profile_id');
+            const session = readWrappedSession();
             let userId: string | null = getResolvedUserId();
 
             // Priority 5 (last resort): VIP Guest UUID
@@ -70,17 +70,45 @@ export function useWrappedTracker(options: UseWrappedTrackerOptions) {
                 userId = localStorage.getItem('guest_uuid');
             }
 
-            return { authToken, profileId, userId };
+            return { authToken: session.token, profileId: session.profileId, userId };
         } catch {
             // Firefox peut fermer le stockage avant le dernier tick (NS_ERROR_ABORT).
             return { authToken: null, profileId: null, userId: null };
         }
     }, []);
 
-    // Envoie le temps d'une cible. `false` = à retenter (réseau, 429, 5xx) ;
-    // sans compte ou sur un refus définitif (4xx), le temps est abandonné.
-    const sendToApi = useCallback(async (target: TrackerTarget, seconds: number) => {
+    // L'identité est lue au moment du cumul, jamais au retry : un logout ou
+    // un changement de profil ne peut pas créditer les secondes à un autre
+    // compte. Le token doit encore correspondre pour qu'un retry soit tenté.
+    const resolveIdentity = useCallback(() => {
         const { authToken, profileId, userId } = getUserInfo();
+        if (!authToken || !userId) return null;
+        let userType: string | null = null;
+        try { userType = getResolvedAccountContext().userType ?? null; } catch { /* noop */ }
+        return { userType, userId, profileId, token: authToken };
+    }, [getUserInfo]);
+
+    const isIdentityAuthenticatable = useCallback((identity: WrappedIdentity | null) => {
+        if (!identity?.token || !identity.userId) return false;
+        const current = resolveIdentity();
+        if (!current?.token || current.token !== identity.token || current.userId !== identity.userId) return false;
+        if (identity.profileId && current.profileId && identity.profileId !== current.profileId) return false;
+        return true;
+    }, [resolveIdentity]);
+
+    // Envoie le temps d'une cible avec l'identité capturée à l'accumulation.
+    // `false` = à retenter (réseau, 401 avec identité encore valable, 429, 5xx) ;
+    // sans identité authentifiable, le cœur Wrapped garde les secondes dans sa
+    // file isolée jusqu'à expiration.
+    const sendToApi = useCallback(async (
+        target: TrackerTarget,
+        seconds: number,
+        capturedIdentity?: WrappedIdentity | null
+    ) => {
+        const current = getUserInfo();
+        const authToken = capturedIdentity?.token ?? current.authToken;
+        const userId = capturedIdentity?.userId ?? current.userId;
+        const profileId = capturedIdentity?.profileId ?? current.profileId;
         if (!authToken || !userId) return true;
 
         const now = new Date();
@@ -116,7 +144,24 @@ export function useWrappedTracker(options: UseWrappedTrackerOptions) {
                 body: JSON.stringify(payload),
                 keepalive: true,
             });
-            return response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429);
+            // Un 401 n'invalide pas la session : si l'identité capturée peut
+            // encore être authentifiée, le temps reste en file différée pour un
+            // retry. Un 403 d'appartenance reste un refus permanent acquitté.
+            if (response.status === 403) return true;
+            // Comparaison en ligne : elle ne dépend que de getUserInfo(), déjà
+            // fourni au callback, et reste donc lisible par les tests qui
+            // isolent l'envoi du reste du hook.
+            const capturedToken = capturedIdentity?.token;
+            if (response.status === 401 && capturedToken && capturedIdentity?.userId) {
+                const current = getUserInfo();
+                const stillAuthentifiable = current.authToken === capturedToken
+                    && current.userId === capturedIdentity.userId
+                    && (!capturedIdentity.profileId || !current.profileId || capturedIdentity.profileId === current.profileId);
+                if (stillAuthentifiable) return false;
+            }
+            return response.ok || (
+                response.status >= 400 && response.status < 500 && response.status !== 429
+            );
         } catch {
             // Silent fail — wrapped tracking is non-critical
             return false;
@@ -128,6 +173,9 @@ export function useWrappedTracker(options: UseWrappedTrackerOptions) {
         trackerRef.current = createWrappedTracker<TrackerTarget>({
             now: Date.now,
             collectionEnabled: isDataCollectionEnabled,
+            identity: resolveIdentity,
+            isIdentityAuthenticatable,
+            storage: localStorage,
             send: sendToApi,
         });
     }
