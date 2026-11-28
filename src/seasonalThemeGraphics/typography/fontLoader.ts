@@ -8,11 +8,10 @@ import {
 /**
  * Chargement différé des seules polices sélectionnées par une publication.
  *
- * `inter` est déjà servi localement au démarrage par `main.tsx` : le moteur ne
- * génère aucun `FontFace` supplémentaire pour lui. Les autres familles sont
- * chargées une seule fois via l'API `FontFace`, puis réutilisées lors des
- * changements de route. Une promesse rejetée reste en cache : un réseau en
- * échec ne provoque pas une boucle de requêtes.
+ * Inter est déjà servi localement au démarrage. Les autres familles partagent
+ * un cache navigateur. Après un échec, un nouvel essai est autorisé après un
+ * délai borné : cela évite à la fois les échecs permanents et les boucles de
+ * requêtes lors des rafraîchissements périodiques du resolver.
  */
 
 export type SeasonalFontStatus = 'idle' | 'loading' | 'loaded' | 'failed';
@@ -31,6 +30,8 @@ const MISSING_ENVIRONMENT: SeasonalFontEnvironment = {
   createFontFace: () => ({ family: '', load: () => Promise.reject(new Error('FontFace indisponible')) }),
   addFontFace: () => undefined,
 };
+
+const RETRY_DELAY_MS = 60_000;
 
 export function createBrowserFontEnvironment(): SeasonalFontEnvironment | null {
   if (typeof document === 'undefined' || typeof FontFace === 'undefined' || !document.fonts) return null;
@@ -62,6 +63,7 @@ export function getBrowserSeasonalFontLoader(): SeasonalFontLoader {
 export function createSeasonalFontLoader(environment: SeasonalFontEnvironment): SeasonalFontLoader {
   const cache = new Map<string, Promise<boolean>>();
   const states = new Map<string, SeasonalFontStatus>();
+  const retryAfter = new Map<string, number>();
 
   const load = (fontKey: string, weight: number): Promise<boolean> => {
     if (!isSeasonalFontKey(fontKey)) return Promise.resolve(false);
@@ -69,14 +71,13 @@ export function createSeasonalFontLoader(environment: SeasonalFontEnvironment): 
     const key = `${fontKey}:${weight}`;
     const cached = cache.get(key);
     if (cached) return cached;
+    if ((retryAfter.get(key) ?? 0) > Date.now()) return Promise.resolve(false);
 
-    const sources = fontSourcesFor(fontKey as SeasonalFontKey, weight);
-    const source = sources[0];
+    const source = fontSourcesFor(fontKey as SeasonalFontKey, weight)[0];
     if (!source) {
       states.set(fontKey, 'failed');
-      const failed = Promise.resolve(false);
-      cache.set(key, failed);
-      return failed;
+      retryAfter.set(key, Number.POSITIVE_INFINITY);
+      return Promise.resolve(false);
     }
 
     states.set(fontKey, 'loading');
@@ -91,9 +92,12 @@ export function createSeasonalFontLoader(environment: SeasonalFontEnvironment): 
         await face.load();
         environment.addFontFace(face);
         states.set(fontKey, 'loaded');
+        retryAfter.delete(key);
         return true;
       } catch {
         states.set(fontKey, 'failed');
+        retryAfter.set(key, Date.now() + RETRY_DELAY_MS);
+        cache.delete(key);
         return false;
       }
     })();
