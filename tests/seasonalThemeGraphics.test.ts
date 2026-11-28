@@ -221,6 +221,25 @@ test('les budgets sont mesurés : 42 desktop, réduction mobile, zéro TV/reduce
   );
 });
 
+test('une erreur de rendu ne désarme pas définitivement la boucle RAF', () => {
+  let scheduled: ((time: number) => void) | null = null;
+  let requests = 0;
+  let now = 0;
+  const scheduler = performance.createFrameScheduler({
+    requestFrame: (callback) => { requests += 1; scheduled = callback; return requests; },
+    cancelFrame: () => { scheduled = null; },
+    now: () => now,
+  }, () => {
+    throw new Error('canvas context lost');
+  });
+
+  scheduler.start();
+  assert.throws(() => scheduled?.(16), /canvas context lost/);
+  assert.equal(requests, 2, 'la frame suivante doit être planifiée dans finally');
+  assert.equal(scheduler.isRunning(), true);
+  scheduler.stop();
+});
+
 test('la boucle se suspend quand la page est masquée et libère ses ressources', () => {
   let scheduled: ((time: number) => void) | null = null;
   let cancelled = 0;
