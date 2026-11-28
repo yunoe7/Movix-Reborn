@@ -108,7 +108,11 @@ Code : `routes/history.js`, `utils/historyStore.js` (rangée « Reprendre »), `
 
 `is_vip` est une vérité calculée côté serveur (`serverManaged` dans `API/Mainapi/shared/syncKeys.json`) : le client ne peut ni l'écrire ni le synchroniser. Un envoi de cette clé est refusé avec le code historique `INVALID_SYNC_KEY`, `serverManagedRejected: true` et un message explicite. La réponse inclut en plus `serverManagedRejected: ["is_vip"]` pour que les clients récents puissent distinguer un refus de politique d'une erreur temporaire. Les erreurs réseau, `401/403/404/408/429` et `5xx` restent rejouables par l'outbox ; les `4xx` de politique sont abandonnées.
 
-Le fichier `API/Mainapi/shared/syncKeys.json` est la source canonique unique, partagée par `utils/syncPolicy.js` et `src/utils/syncStorage.ts`. Il est situé dans le root directory Railway de la Main API ; le build Docker du frontend le réinclut explicitement via `.dockerignore`. Le test `API/Mainapi/utils/__tests__/syncPolicyDeployContext.test.js` vérifie que la politique se charge sans accéder à un fichier hors de `API/Mainapi`.
+Le fichier `API/Mainapi/shared/syncKeys.json` est la source canonique unique, partagée par `utils/syncPolicy.js` et `src/utils/syncStorage.ts`. Aucune copie indépendante n'est maintenue.
+
+Dans le service Railway de la Main API, le root directory est `/API/Mainapi`. Le contrat y est donc chargé depuis `/app/shared/syncKeys.json`, à l'intérieur du root directory, via `require('../shared/syncKeys.json')`. Cette résolution ne dépend pas du `.dockerignore` situé à la racine du dépôt.
+
+Le build Docker du frontend part, lui, de la racine du dépôt. Comme `src/utils/syncStorage.ts` importe le contrat canonique, `.dockerignore` réinclut uniquement les répertoires parents nécessaires et `API/Mainapi/shared/syncKeys.json` ; le reste de `API/` reste exclu. Le test `API/Mainapi/utils/__tests__/syncPolicyModuleResolution.test.js` vérifie la résolution relative du module et l'unicité du contrat. Il ne valide ni Railpack ni le contexte Docker réel.
 
 Routes sous `/api/history`, pour les comptes connectés (OAuth ou BIP39) :
 

@@ -1,3 +1,7 @@
+// Ce test vérifie uniquement la résolution relative de `syncPolicy.js` et
+// l'unicité du contrat de synchronisation. Il construit lui-même les deux
+// fichiers nécessaires : il ne valide ni Railpack, ni le contexte de build
+// Docker, ni la présence réelle du JSON dans un artefact déployé.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
@@ -10,9 +14,9 @@ const repoRoot = resolve(apiRoot, '..', '..');
 const policyPath = join(apiRoot, 'utils', 'syncPolicy.js');
 const contractPath = join(apiRoot, 'shared', 'syncKeys.json');
 
-// Reproduit le root directory Railway `/API/Mainapi` : seuls les fichiers de
-// l'API sont présents, sans le reste du dépôt. Aucun réseau ni base de données.
-function isolatedDeployTree() {
+// Isole uniquement `syncPolicy.js` et son contrat, sans le reste du dépôt.
+// Aucun réseau ni base de données.
+function isolatedModuleTree() {
   const dir = mkdtempSync(join(tmpdir(), 'movix-mainapi-'));
   mkdirSync(join(dir, 'utils'), { recursive: true });
   mkdirSync(join(dir, 'shared'), { recursive: true });
@@ -21,8 +25,8 @@ function isolatedDeployTree() {
   return dir;
 }
 
-test('la politique se charge depuis un contexte ne contenant que API/Mainapi', () => {
-  const dir = isolatedDeployTree();
+test('la politique charge son contrat avec un chemin interne à API/Mainapi', () => {
+  const dir = isolatedModuleTree();
   try {
     const script = `
       const policy = require('./utils/syncPolicy.js');
@@ -53,7 +57,7 @@ test('la politique se charge depuis un contexte ne contenant que API/Mainapi', (
   }
 });
 
-test('le contrat reste unique et aucune import ne sort de API/Mainapi', () => {
+test('le contrat reste unique et aucun import ne sort de API/Mainapi', () => {
   const contract = JSON.parse(readFileSync(contractPath, 'utf8'));
   assert.equal(contract.exact.length, 31);
   assert.equal(contract.prefixes.length, 10);
@@ -73,7 +77,19 @@ test('le contrat reste unique et aucune import ne sort de API/Mainapi', () => {
   assert.doesNotMatch(frontendSource, /\.\.\/\.\.\/shared\/syncKeys\.json/);
 
   const dockerignore = readFileSync(join(repoRoot, '.dockerignore'), 'utf8');
-  assert.match(dockerignore, /!API\/Mainapi\/shared\/syncKeys\.json/);
+  const dockerignoreLines = dockerignore.split(/\r?\n/).map((line) => line.trim());
+  for (const rule of [
+    'API/*',
+    '!API/Mainapi/',
+    'API/Mainapi/*',
+    '!API/Mainapi/shared/',
+    'API/Mainapi/shared/*',
+    '!API/Mainapi/shared/syncKeys.json',
+  ]) {
+    assert.ok(dockerignoreLines.includes(rule), `règle Docker manquante: ${rule}`);
+  }
+  assert.equal(dockerignoreLines.includes('API'), false);
+  assert.equal(dockerignoreLines.includes('!API/'), false);
 
   assert.equal(existsSync(join(repoRoot, 'shared', 'syncKeys.json')), false);
 });
