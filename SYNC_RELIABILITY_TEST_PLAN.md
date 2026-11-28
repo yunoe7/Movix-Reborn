@@ -102,3 +102,57 @@ Résultat : typecheck réussi ; **69/69 tests WatchParty réussis**, dont 5 nouv
 - Redis est présent dans `API/Mainapi` pour verrous et limitations, mais aucun adaptateur Socket.IO distribué n'est installé dans `API/watchpartyAPI`.
 - Aucun Durable Object ni service externe n'est configuré pour WatchParty.
 - En conséquence, le correctif local garantit la durabilité sur une instance et documente explicitement que la cohérence multi-instance reste non implémentée. Aucun test ne doit prétendre valider un scénario multi-instance réel.
+
+## Lot comptes, profils, historique, Wrapped, VIP et plateformes corrigé
+
+Tous les tests ci-dessous ont été écrits et vus rouges avant correction, puis relancés en vert.
+
+- Propriétaire capturé à l'écriture dans `src/App.tsx` (`pendingDiffs`, `progressOpsMapRef`, `enqueueGeneralOp`) : un changement de profil ou de compte avant le `pagehide` ne réattribue plus une écriture au profil courant. Le `flush` partitionne les opérations par propriétaire, écrit des outboxes séparées (`__movix_sync_outbox:<type>:<userId>:<profileId>`) et ne POSTe que les groupes du compte authentifié.
+- `handleAuthChanged` draine les écritures en attente avant de refermer le gate ; le nettoyage d'isolation de `ProfileContext` passe par `runProfileIsolationWipe()` (`src/utils/profileIsolation.ts`) et ne génère aucun `remove` synchronisé.
+- `replayOutboxIfAny` parcourt les outboxes scopées, exige le triplet complet `userType`/`userId`/`profileId`, ignore les files incomplètes et conserve l'outbox sur un refus d'appartenance (403/404 profil) au lieu de la détruire.
+- `historyService` et `readWrappedSession` (`src/utils/wrappedSession.ts`) lisent la sélection account-scopée ; la clé globale `selected_profile_id` n'est plus utilisée quand un compte est résolu. Le tracker Wrapped n'acquitte pas un 403 d'appartenance et retente les secondes dont la cible a changé pendant un envoi (`src/utils/wrappedTrackerCore.ts`).
+- Le cache VIP (`src/utils/vipUtils.ts`) est indexé par `access_code`, y compris les promesses en vol : changer de clé force une nouvelle vérification serveur et ne rejoue pas le verdict de l'ancienne clé.
+- Les préférences d'extraction native sont poussées dans la WebView (`pushGmValueToWebViews`) et lues par `GM_getValue` depuis le snapshot natif : plus de redémarrage nécessaire. La copie du userscript embarquée dans l'app TV reste volontairement épinglée en `1.7.3` (commit `24770213`) ; l'invariant vérifié est la parité des handlers `SET_EXTRACTION_PREFS`/`DEFAULT_EXTRACTION_PREFS` et la présence du correctif `gk`, pas l'égalité des versions.
+
+Tests isolés réellement exécutés après correction :
+
+```powershell
+node --test tests/syncOutboxReplay.test.mjs tests/syncProfileIsolation.test.mjs
+node --test tests/wrappedSessionReliability.test.mjs tests/wrappedTracker.test.ts tests/historyProfileScope.test.mjs tests/historyService.test.ts
+node --test tests/mobileExtractionPrefs.test.mjs tests/vipCacheReliability.test.mjs tests/userscriptSyncAlignment.test.mjs
+npx tsc --noEmit -p tsconfig.json
+```
+
+Résultats : **13/13** (outbox/isolation : `syncOutboxReplay` 6/6 et `syncProfileIsolation` 7/7), **5/5** (session Wrapped), **12/12** (tracker Wrapped), **2/2** (profil historique), **38/38** (`historyService.test.ts`), **2/2** (préférences mobiles), **3/3** (cache VIP), **3/3** (alignement userscript TV), typecheck racine réussi. La suite large (`906` tests Node du dépôt plus les tests WatchParty et sync API) donne **885 réussis / 21 échecs préexistants** dans des modules non touchés (hlsCasting, playerCrashRegression, pushNotificationDomain, rememberLastPlayer, safeEmbedUrl, storageCrashRegression, subtitlePreferences, subtitleProviders, subtitleTranslate, tvRouteScope, tvScope). Aucune de ces zones n'a été modifiée par ce lot.
+
+## E2E navigateur avec artefact reproductible
+
+Commande de relance (prérequis : Chrome, `playwright-core` installé localement sans modifier `package.json`, Vite) :
+
+```powershell
+node tests/syncReliability.browser.mjs
+```
+
+Le script construit le vrai bundle SPA avec `VITE_MAIN_API` local, sert une API factice et pilote Chrome. Données factices : compte `oauth` `user-e2e`, profils `profile-a`/`profile-b`, clés VIP `KEY-VALID`/`KEY-INVALID`. Aucun secret n'est écrit dans le rapport (en-têtes et jetons rognés). Artefacts par défaut dans `<workspace>/../movix-artifacts/sync-reliability` (ou `SYNC_E2E_ARTIFACT_DIR`) : `report.json`, `trace.zip`, `build.log`, captures `01-owner-flush.png`, `02-vip-key-change.png`, `final.png`.
+
+Résultats attendus et observés :
+
+- `GET /api/history/continue` porte `profileId=profile-a` (sélection account-scopée) → observé sur les deux requêtes.
+- `POST /api/sync` après changement du profil courant en `profile-b` porte `profileId=profile-a` pour `favorite_movies`, et l'outbox scopée `...:profile-a` est conservée → observé.
+- Aucune opération `is_vip` n'est envoyée au serveur → observé.
+- La vérification VIP passe de `KEY-VALID` à `KEY-INVALID` et révoque `is_vip` → observé ; des requêtes `GET /api/check-vip` portant successivement les deux en-têtes distincts.
+- Aucune exception JavaScript de page → `pageErrors=[]` ; les erreurs console restantes proviennent des appels TMDB externes non stubés par la fixture.
+
+## Contrôles statiques complémentaires
+
+- `npx tsc --noEmit -p tsconfig.json` : réussi.
+- ESLint ciblé sur tous les fichiers modifiés et nouveaux, comparé aux mêmes fichiers lus dans `HEAD` via `eslint --stdin --stdin-filename` : **aucune erreur ni aucun avertissement supplémentaire** (`+0 / +0`). Les erreurs `no-explicit-any` ajoutées puis corrigées concernaient un paramètre de callback dans `src/App.tsx` et la valeur poussée dans `app/src/services/bridge.ts` (désormais `unknown`).
+- `npx tsc --noEmit -p app/tsconfig.json` : 53 lignes d'erreurs restantes, toutes dans des zones préexistantes (modules React Native absents de ce checkout et `any` implicites historiques). Les trois erreurs temporairement introduites dans `SettingsScreen.tsx` et `bridge.ts` ont été corrigées et ne figurent plus dans la sortie. La racine ne dépend pas de ces types pour le bundle web.
+- `node app/scripts/build-userscript.js --check` : échec sur une dérive préexistante entre `userscript/movix.user.js` et `app/src/injection/userscript-source.ts`. Les deux fichiers sont inchangés dans ce lot ; aucune régénération sans rapport n'a été effectuée.
+
+## Risques et limites documentés
+
+- `access_code` reste une clé synchronisable dans le contrat actuel : le modèle produit (clé globale par appareil ou clé par profil) n'a pas été tranché. Ce lot ne modifie pas ce choix et ne retire pas `is_vip` pendant l'hydratation.
+- La cohérence WatchParty multi-instance reste non implémentée (aucun adaptateur Socket.IO distribué autorisé).
+- La copie TV du userscript n'est pas régénérée : seule la parité des comportements liés à la synchronisation est garantie ; les correctifs d'extraction propres à `1.7.9` ne sont pas reportés.
+- Le module `playwright-core` est une dépendance locale d'exécution du script E2E, volontairement absente de `package.json` et du lockfile.

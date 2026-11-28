@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { getResolvedUserId } from '../utils/accountAuth';
+import { readWrappedSession } from '../utils/wrappedSession';
 import { createWrappedTracker, type WrappedTracker } from '../utils/wrappedTrackerCore';
 
 const MAIN_API = import.meta.env.VITE_MAIN_API;
@@ -61,8 +62,7 @@ export function useWrappedTracker(options: UseWrappedTrackerOptions) {
     // The JWT 'sub' claim is set from OAuth provider IDs (Google/Discord), so we must prioritize those
     const getUserInfo = useCallback(() => {
         try {
-            const authToken = localStorage.getItem('auth_token');
-            const profileId = localStorage.getItem('selected_profile_id');
+            const session = readWrappedSession();
             let userId: string | null = getResolvedUserId();
 
             // Priority 5 (last resort): VIP Guest UUID
@@ -70,7 +70,7 @@ export function useWrappedTracker(options: UseWrappedTrackerOptions) {
                 userId = localStorage.getItem('guest_uuid');
             }
 
-            return { authToken, profileId, userId };
+            return { authToken: session.token, profileId: session.profileId, userId };
         } catch {
             // Firefox peut fermer le stockage avant le dernier tick (NS_ERROR_ABORT).
             return { authToken: null, profileId: null, userId: null };
@@ -116,7 +116,15 @@ export function useWrappedTracker(options: UseWrappedTrackerOptions) {
                 body: JSON.stringify(payload),
                 keepalive: true,
             });
-            return response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429);
+            // Un 403 sur `/api/wrapped/track` signifie généralement que la
+            // sélection de profil a changé pendant l'hydratation. Acquitter ces
+            // secondes les perdrait définitivement : on les garde pour le tick
+            // suivant, où la session sera résolue à nouveau.
+            const ownershipRejected = response.status === 403;
+            return response.ok || (
+                response.status >= 400 && response.status < 500
+                && response.status !== 429 && !ownershipRejected
+            );
         } catch {
             // Silent fail — wrapped tracking is non-critical
             return false;

@@ -25,6 +25,7 @@ import {
   loadNetworkJournalPreference,
   setNetworkJournalEnabled,
 } from '../services/networkJournal';
+import { pushGmValueToWebViews } from '../services/bridge';
 
 const { DnsModule } = NativeModules;
 
@@ -160,11 +161,13 @@ export default function SettingsScreen() {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.version === 1 && parsed.m3u8 && parsed.livetv) {
           const defaults = buildDefaultExtractionPrefs();
-          setExtractionPrefs({
+          const restored: ExtractionPrefs = {
             version: 1,
             m3u8: { ...defaults.m3u8, ...parsed.m3u8 },
             livetv: { ...defaults.livetv, ...parsed.livetv },
-          });
+          };
+          setExtractionPrefs(restored);
+          pushGmValueToWebViews('movix_extraction_prefs', restored);
         }
       } catch {
         // corrupted — keep defaults
@@ -174,6 +177,9 @@ export default function SettingsScreen() {
 
   const updateExtractionPrefs = useCallback((next: ExtractionPrefs) => {
     setExtractionPrefs(next);
+    // La WebView lit les préférences via GM_getValue : la valeur doit être
+    // visible immédiatement, sans redémarrage ni rechargement du userscript.
+    pushGmValueToWebViews('movix_extraction_prefs', next);
     AsyncStorage.setItem('movix_extraction_prefs', JSON.stringify(next));
   }, []);
 

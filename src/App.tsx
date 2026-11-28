@@ -50,6 +50,7 @@ import { startVipVerification } from './utils/vipUtils';
 import { readLocalStorage, readSessionStorage } from './utils/browserStorage';
 import { getResolvedAccountContext } from './utils/accountAuth';
 import { isSyncableStorageKey, SYNC_OUTBOX_STORAGE_KEY } from './utils/syncStorage';
+import { isProfileIsolationWipeActive } from './utils/profileIsolation';
 import { isWrappedTestRoute } from './utils/wrappedExperiment';
 import i18n, { detectInitialLanguage } from './i18n';
 import { useTranslation } from 'react-i18next';
@@ -529,6 +530,30 @@ const renderRouteEntry = (entry: RouteEntry) => {
   return <Route key={entry.path} path={entry.path} element={element} />;
 };
 
+type SyncOwner = { type: string; id?: string; profileId: string };
+
+const sameSyncAccount = (a: SyncOwner | null, b: SyncOwner | null): boolean => (
+  Boolean(a && b && a.type === b.type && (a.id || null) === (b.id || null))
+);
+
+const sameSyncOwner = (a: SyncOwner | null, b: SyncOwner | null): boolean => (
+  sameSyncAccount(a, b) && Boolean(a && b && a.profileId === b.profileId)
+);
+
+const opOwner = (op: unknown): SyncOwner | null => {
+  const owner = (op as { __owner?: SyncOwner } | null)?.__owner;
+  return owner && typeof owner.profileId === 'string' ? owner : null;
+};
+
+const stripOpOwner = (op: Record<string, unknown>): Record<string, unknown> => {
+  const { __owner, ...clean } = op;
+  return clean;
+};
+
+const outboxKeyForOwner = (owner: SyncOwner): string => (
+  `${SYNC_OUTBOX_STORAGE_KEY}:${owner.type}:${encodeURIComponent(owner.id || '')}:${encodeURIComponent(owner.profileId)}`
+);
+
 // PersistenceManager component to sync localStorage with backend (disabled for guests and VIP)
 const PersistenceManager = () => {
   const [isInitialSyncDone, setIsInitialSyncDone] = useState<boolean>(false);
@@ -609,6 +634,13 @@ const PersistenceManager = () => {
     };
 
     const handleAuthChanged = () => {
+      // Drain les écritures déjà en file AVANT de refermer le gate : leurs
+      // propriétaires ont été capturés à l'écriture et doivent rejoindre leur
+      // outbox, pas le nouveau compte. Le nettoyage ProfileContext est lui
+      // silencieux grâce à runProfileIsolationWipe.
+      flushPendingOpsSync();
+      generalOpsRef.current = [];
+      progressOpsMapRef.current.clear();
       // Re-arm the sync gate while ProfileContext.loadProfiles reloads the new
       // account's profiles + data. Without this, the ~100-500ms window before
       // the delayed loadProfiles fires lets setItem writes leak to the new
@@ -735,14 +767,21 @@ const PersistenceManager = () => {
 
       try {
         if (localStorage.getItem('auth_token') !== authTokenValue) return;
-        if (!ownerCapturedAtEnqueue) {
-          const currentUser = getUserInfo();
-          if (currentUser.type !== owner.type
-            || currentUser.id !== owner.id
-            || currentUser.profileId !== owner.profileId) return;
-        }
+        const currentUser = getUserInfo();
+        if (!ownerCapturedAtEnqueue && !sameSyncOwner(owner, {
+          type: currentUser.type,
+          id: currentUser.id || undefined,
+          profileId: currentUser.profileId || ''
+        })) return;
 
-        const existingRaw = localStorage.getItem(SYNC_OUTBOX_STORAGE_KEY);
+        const ownerKey = outboxKeyForOwner(owner);
+        const legacyKey = sameSyncAccount(owner, {
+          type: currentUser.type,
+          id: currentUser.id || undefined,
+          profileId: currentUser.profileId || ''
+        }) ? SYNC_OUTBOX_STORAGE_KEY : null;
+        const existingRaw = localStorage.getItem(ownerKey)
+          || (legacyKey ? localStorage.getItem(legacyKey) : null);
         let mergedOps: any[] = [];
         if (existingRaw) {
           const existing = JSON.parse(existingRaw);
@@ -761,25 +800,34 @@ const PersistenceManager = () => {
         }
 
         const MAX_OUTBOX_OPS = 10000;
-        localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, JSON.stringify({
+        const payload = JSON.stringify({
           userType: owner.type,
           profileId: owner.profileId,
           userId: owner.id || undefined,
           ops: [...mergedOps, ...validFailedOps].slice(-MAX_OUTBOX_OPS),
           ts: Date.now()
-        }));
+        });
+        localStorage.setItem(ownerKey, payload);
+        if (legacyKey) localStorage.setItem(legacyKey, payload);
         console.warn('[sync] failed operations saved for replay on next profile load');
       } catch (persistError) {
         console.error('[sync] could not persist failed operations for retry', persistError);
       }
     };
 
-    const enqueueGeneralOp = (op: any) => {
+    const captureOwner = (): SyncOwner | null => {
+      const snapshot = getUserInfo();
+      return snapshot.type && snapshot.profileId
+        ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
+        : null;
+    };
+
+    const enqueueGeneralOp = (op: any, capturedOwner?: SyncOwner | null) => {
       // Skip sync during profile data loading (but allow on watch routes)
       if (isProfileDataLoadingRef.current) { syncDiag.skipGateEnqueue++; return; }
 
-      const snapshot = getUserInfo();
-      const owner = snapshot.type && snapshot.profileId
+      const snapshot = capturedOwner === undefined ? getUserInfo() : capturedOwner;
+      const owner = snapshot && snapshot.type && snapshot.profileId
         ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
         : null;
       generalOpsRef.current.push(owner ? { ...op, __owner: owner } : op);
@@ -922,11 +970,14 @@ const PersistenceManager = () => {
       if (isProfileDataLoadingRef.current) return;
 
       const snapshot = getUserInfo();
-      const owner = snapshot.type && snapshot.profileId
+      const currentOwner = snapshot.type && snapshot.profileId
         ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
         : null;
       const ops: any[] = [];
       for (const [key, deltaOrValue] of progressOpsMapRef.current.entries()) {
+        // L'écriture a capturé son propriétaire : une hydratation de profil
+        // survenue depuis ne doit pas réattribuer sa progression.
+        const owner = deltaOrValue?.owner || currentOwner;
         // deltaOrValue is { set: {...}, remove: [...] }
         const delta = deltaOrValue?.delta;
         if (delta && (Object.keys(delta.set || {}).length || (delta.remove || []).length)) {
@@ -1107,7 +1158,7 @@ const PersistenceManager = () => {
       return null;
     };
 
-    const processSet = (key: string, oldVal: string | null, newVal: string) => {
+    const processSet = (key: string, oldVal: string | null, newVal: string, capturedOwner?: SyncOwner | null) => {
       if (suppressSyncRef.current) { syncDiag.skipSuppress++; return; }
       if (!isSyncableStorageKey(key)) { syncDiag.skipNotSyncable++; return; }
       if (oldVal === newVal) { syncDiag.skipNoop++; return; }
@@ -1115,11 +1166,15 @@ const PersistenceManager = () => {
       if ((window as any).__forceClearInProgress) { syncDiag.skipForceClear++; return; }
       // Skip sync during profile data loading (but allow on watch routes)
       if (isProfileDataLoadingRef.current) { syncDiag.skipGateSet++; syncDiag.lastSkippedKey = key; return; }
+      const snapshot = capturedOwner === undefined ? getUserInfo() : capturedOwner;
+      const owner = snapshot && snapshot.type && snapshot.profileId
+        ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
+        : null;
       if (isProgressKey(key)) {
         // Accumulate latest patch for progress keys
         const delta = computeObjectPatch(oldVal, newVal);
         if (delta) {
-          const existing = progressOpsMapRef.current.get(key) || { delta: { set: {}, remove: [] as string[] } };
+          const existing = progressOpsMapRef.current.get(key) || { delta: { set: {}, remove: [] as string[] }, owner };
           const newSet = delta.set || {};
           const newRemove = Array.isArray(delta.remove) ? delta.remove : [];
           // Newer ops in this delta win over earlier merged ops queued for
@@ -1136,10 +1191,11 @@ const PersistenceManager = () => {
             delete existing.delta.set[entryKey];
           }
           existing.delta.remove = Array.from(new Set([...existing.delta.remove, ...newRemove]));
+          existing.owner = existing.owner || owner;
           progressOpsMapRef.current.set(key, existing);
         } else {
           // If cannot diff, fallback to set
-          progressOpsMapRef.current.set(key, { value: newVal });
+          progressOpsMapRef.current.set(key, { value: newVal, owner });
         }
         return;
       }
@@ -1147,27 +1203,31 @@ const PersistenceManager = () => {
       // Try array diff first
       const arrayOps = computeArrayDiffOps(key, oldVal, newVal);
       if (arrayOps && arrayOps.length) {
-        arrayOps.forEach(enqueueGeneralOp);
+        arrayOps.forEach((op) => enqueueGeneralOp(op, owner));
         return;
       }
 
       // Try object patch with generic nested array support
       const delta = computeObjectPatch(oldVal, newVal);
       if (delta) {
-        enqueueGeneralOp({ op: 'objPatch', key, delta });
+        enqueueGeneralOp({ op: 'objPatch', key, delta }, owner);
       } else {
-        enqueueGeneralOp({ op: 'set', key, value: newVal });
+        enqueueGeneralOp({ op: 'set', key, value: newVal }, owner);
       }
     };
 
-    const processRemove = (key: string) => {
+    const processRemove = (key: string, capturedOwner?: SyncOwner | null) => {
       if (suppressSyncRef.current) { syncDiag.skipSuppress++; return; }
       if (!isSyncableStorageKey(key)) { syncDiag.skipNotSyncable++; return; }
       // Vérifier si un clear forcé est en cours (erreur 401)
       if ((window as any).__forceClearInProgress) { syncDiag.skipForceClear++; return; }
       // Skip sync during profile data loading (but allow on watch routes)
       if (isProfileDataLoadingRef.current) { syncDiag.skipGateRemove++; syncDiag.lastSkippedKey = key; return; }
-      enqueueGeneralOp({ op: 'remove', key });
+      const snapshot = capturedOwner === undefined ? getUserInfo() : capturedOwner;
+      const owner = snapshot && snapshot.type && snapshot.profileId
+        ? { type: snapshot.type, id: snapshot.id || undefined, profileId: snapshot.profileId }
+        : null;
+      enqueueGeneralOp({ op: 'remove', key }, owner);
       if (isProgressKey(key)) {
         progressOpsMapRef.current.delete(key);
       }
@@ -1176,7 +1236,7 @@ const PersistenceManager = () => {
     // Microtask diff queue: defer JSON.parse + computeArrayDiffOps + computeObjectPatch
     // off the synchronous setItem/removeItem path. Writes still hit localStorage
     // synchronously; only the diff/sync work is batched into a microtask drain.
-    const pendingDiffs: Array<{ key: string; oldVal: string | null; newVal: string | null }> = [];
+    const pendingDiffs: Array<{ key: string; oldVal: string | null; newVal: string | null; owner?: SyncOwner | null }> = [];
     let diffQueueScheduled = false;
     const scheduleDiffDrain = () => {
       if (diffQueueScheduled) return;
@@ -1187,9 +1247,9 @@ const PersistenceManager = () => {
         syncDiag.diffsDrained += batch.length;
         for (const entry of batch) {
           if (entry.newVal === null) {
-            processRemove(entry.key);
+            processRemove(entry.key, entry.owner);
           } else {
-            processSet(entry.key, entry.oldVal, entry.newVal);
+            processSet(entry.key, entry.oldVal, entry.newVal, entry.owner);
           }
         }
       });
@@ -1317,8 +1377,8 @@ const PersistenceManager = () => {
       try { channel?.postMessage({ key, value }); } catch { /* noop */ }
 
       // Defer JSON-diff cost off the synchronous write path.
-      if (!isProfileDataLoadingRef.current) {
-        pendingDiffs.push({ key, oldVal, newVal: value });
+      if (!isProfileDataLoadingRef.current && !isProfileIsolationWipeActive()) {
+        pendingDiffs.push({ key, oldVal, newVal: value, owner: isSyncableStorageKey(key) ? captureOwner() : undefined });
         syncDiag.diffsQueued++;
         scheduleDiffDrain();
       } else {
@@ -1339,8 +1399,8 @@ const PersistenceManager = () => {
       try { channel?.postMessage({ key, value: null }); } catch { /* noop */ }
 
       // Defer downstream sync work into the microtask drain.
-      if (!isProfileDataLoadingRef.current) {
-        pendingDiffs.push({ key, oldVal, newVal: null });
+      if (!isProfileDataLoadingRef.current && !isProfileIsolationWipeActive()) {
+        pendingDiffs.push({ key, oldVal, newVal: null, owner: isSyncableStorageKey(key) ? captureOwner() : undefined });
         syncDiag.diffsQueued++;
         scheduleDiffDrain();
       } else {
@@ -1365,9 +1425,9 @@ const PersistenceManager = () => {
       }
 
       // Vérifier si un clear forcé est en cours (erreur 401)
-      if (!(window as any).__forceClearInProgress && !isProfileDataLoadingRef.current) {
+      if (!(window as any).__forceClearInProgress && !isProfileDataLoadingRef.current && !isProfileIsolationWipeActive()) {
         for (const entry of cleared) {
-          pendingDiffs.push({ key: entry.key, oldVal: entry.oldVal, newVal: null });
+          pendingDiffs.push({ key: entry.key, oldVal: entry.oldVal, newVal: null, owner: isSyncableStorageKey(entry.key) ? captureOwner() : undefined });
         }
         if (cleared.length) scheduleDiffDrain();
       }
@@ -1420,9 +1480,9 @@ const PersistenceManager = () => {
         const batch = pendingDiffs.splice(0);
         for (const entry of batch) {
           if (entry.newVal === null) {
-            processRemove(entry.key);
+            processRemove(entry.key, entry.owner);
           } else {
-            processSet(entry.key, entry.oldVal, entry.newVal);
+            processSet(entry.key, entry.oldVal, entry.newVal, entry.owner);
           }
         }
       }
@@ -1431,21 +1491,35 @@ const PersistenceManager = () => {
         clearTimeout(generalFlushTimeoutRef.current);
         generalFlushTimeoutRef.current = null;
       }
-      const pending: Array<Record<string, unknown>> = [];
+      const currentOwner: SyncOwner = {
+        type: userInfo.type,
+        id: userInfo.id || undefined,
+        profileId: userInfo.profileId
+      };
+      const groups = new Map<string, { owner: SyncOwner; ops: Record<string, unknown>[] }>();
+      const addToGroup = (op: Record<string, unknown>, explicitOwner?: SyncOwner | null) => {
+        const owner = explicitOwner || opOwner(op) || currentOwner;
+        const key = `${owner.type}|${owner.id || ''}|${owner.profileId}`;
+        const group = groups.get(key) || { owner, ops: [] };
+        group.ops.push(stripOpOwner(op));
+        groups.set(key, group);
+      };
+
       if (generalOpsRef.current.length) {
-        pending.push(...generalOpsRef.current);
+        for (const op of generalOpsRef.current) addToGroup(op);
         generalOpsRef.current = [];
       }
       for (const [key, deltaOrValue] of progressOpsMapRef.current.entries()) {
+        const owner = deltaOrValue?.owner || currentOwner;
         const delta = deltaOrValue?.delta;
         if (delta && (Object.keys(delta.set || {}).length || (delta.remove || []).length)) {
-          pending.push({ op: 'objPatch', key, delta });
+          addToGroup({ op: 'objPatch', key, delta }, owner);
         } else if (deltaOrValue && typeof deltaOrValue.value === 'string') {
-          pending.push({ op: 'set', key, value: deltaOrValue.value });
+          addToGroup({ op: 'set', key, value: deltaOrValue.value }, owner);
         }
       }
       progressOpsMapRef.current.clear();
-      if (!pending.length) return;
+      if (groups.size === 0) return;
 
       // Persist a recovery outbox to localStorage BEFORE the keepalive fetch.
       // fetch keepalive is best-effort: on Firefox the Authorization header
@@ -1455,95 +1529,99 @@ const PersistenceManager = () => {
       // restore stale backend state — losing the user's write. ProfileContext
       // .replayOutboxIfAny reads this on boot and POSTs before the wipe runs.
       //
-      // We MERGE with any existing outbox for the same user/profile rather
-      // than overwriting. Without merge, a chain of partial failures (replay
-      // 5xx → next-session writes → next unload) would silently drop the
-      // older un-replayed ops every cycle. A hard cap on op count prevents
-      // unbounded growth across many failed cycles; oldest ops are dropped
-      // first since newer ops reflect later state and ops are idempotent.
-      // Drop ops whose keys are no longer in the syncable allowlist. Legacy
-      // outboxes may carry keys removed for security (e.g. `is_vip` per audit
-      // P0); leaving them in causes the next replay to 400 → permanent drop
-      // of the entire outbox, including the legitimate ops we just merged.
+      // Chaque groupe est rangé sous la clé de son propriétaire capturé. Un
+      // changement de profil (ou de compte) survenu avant le pagehide ne peut
+      // ainsi pas réattribuer des écritures locales au profil courant. La clé
+      // historique n'est mise à jour que pour le compte courant, dont le token
+      // autorise bien les deux profils.
       const isValidSyncOp = (op: unknown): op is Record<string, unknown> & { key: string } => {
         if (!op || typeof op !== 'object') return false;
         const candidateKey = (op as { key?: unknown }).key;
         return typeof candidateKey === 'string' && isSyncableStorageKey(candidateKey);
       };
 
-      try {
-        const MAX_OUTBOX_OPS = 10000;
-        let mergedOps: Array<Record<string, unknown>> = pending;
+      for (const { owner, ops } of groups.values()) {
+        const accountMatches = sameSyncAccount(owner, currentOwner);
         try {
-          const existingRaw = localStorage.getItem(SYNC_OUTBOX_STORAGE_KEY);
-          if (existingRaw) {
-            const parsed = JSON.parse(existingRaw) as {
-              userType?: string;
-              profileId?: string;
-              ops?: unknown;
-            } | null;
-            if (parsed
-                && parsed.userType === userInfo.type
-                && parsed.profileId === userInfo.profileId
-                && Array.isArray(parsed.ops)
-                && parsed.ops.length > 0) {
-              const existingOps = (parsed.ops as unknown[]).filter(isValidSyncOp);
-              mergedOps = [
-                ...existingOps,
-                ...pending
-              ];
+          const MAX_OUTBOX_OPS = 10000;
+          const ownerKey = outboxKeyForOwner(owner);
+          let mergedOps: Array<Record<string, unknown>> = ops;
+          try {
+            const existingRaw = localStorage.getItem(ownerKey)
+              || (accountMatches ? localStorage.getItem(SYNC_OUTBOX_STORAGE_KEY) : null);
+            if (existingRaw) {
+              const parsed = JSON.parse(existingRaw) as {
+                userType?: string;
+                profileId?: string;
+                userId?: string;
+                ops?: unknown;
+              } | null;
+              if (parsed
+                  && parsed.userType === owner.type
+                  && parsed.profileId === owner.profileId
+                  && (parsed.userId || null) === (owner.id || null)
+                  && Array.isArray(parsed.ops)
+                  && parsed.ops.length > 0) {
+                mergedOps = [
+                  ...(parsed.ops as unknown[]).filter(isValidSyncOp),
+                  ...ops
+                ];
+              }
             }
+          } catch { /* noop */ }
+
+          mergedOps = mergedOps.filter(isValidSyncOp);
+          if (mergedOps.length > MAX_OUTBOX_OPS) {
+            mergedOps = mergedOps.slice(mergedOps.length - MAX_OUTBOX_OPS);
           }
-        } catch { /* noop */ }
+          if (mergedOps.length === 0) {
+            try { localStorage.removeItem(ownerKey); } catch { /* noop */ }
+            continue;
+          }
 
-        mergedOps = mergedOps.filter(isValidSyncOp);
-
-        if (mergedOps.length > MAX_OUTBOX_OPS) {
-          mergedOps = mergedOps.slice(mergedOps.length - MAX_OUTBOX_OPS);
+          const payload = JSON.stringify({
+            userType: owner.type,
+            profileId: owner.profileId,
+            userId: owner.id || undefined,
+            ops: mergedOps,
+            ts: Date.now()
+          });
+          localStorage.setItem(ownerKey, payload);
+          if (accountMatches) localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, payload);
+        } catch (outboxErr) {
+          // Quota exceeded or other write error — proceed with keepalive anyway.
+          console.warn('[outbox] failed to persist outbox at unload:', outboxErr);
         }
 
-        if (mergedOps.length === 0) {
-          try { localStorage.removeItem(SYNC_OUTBOX_STORAGE_KEY); } catch { /* noop */ }
-          return;
+        // Le token courant n'autorise que son propre compte : une file appartenant
+        // à un autre compte reste uniquement dans son outbox, pour son prochain
+        // démarrage. Deux profils du même compte peuvent être envoyés directement.
+        if (!accountMatches) continue;
+        try {
+          for (let index = 0; index < ops.length; index += MAX_SYNC_OPS_PER_REQUEST) {
+            const batch = ops.slice(index, index + MAX_SYNC_OPS_PER_REQUEST);
+            const syncPayload: Record<string, unknown> = {
+              userType: owner.type,
+              profileId: owner.profileId,
+              ops: batch
+            };
+            if (owner.id) syncPayload.userId = owner.id;
+
+            fetch(`${API_BASE_URL}/api/sync`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`
+              },
+              body: JSON.stringify(syncPayload),
+              keepalive: true,
+              credentials: 'omit'
+            }).catch(() => undefined);
+          }
+        } catch {
+          // fire and forget on unload
+          void 0;
         }
-
-        const outboxPayload = {
-          userType: userInfo.type,
-          profileId: userInfo.profileId,
-          userId: userInfo.id || undefined,
-          ops: mergedOps,
-          ts: Date.now()
-        };
-        localStorage.setItem(SYNC_OUTBOX_STORAGE_KEY, JSON.stringify(outboxPayload));
-      } catch (outboxErr) {
-        // Quota exceeded or other write error — proceed with keepalive anyway.
-        console.warn('[outbox] failed to persist outbox at unload:', outboxErr);
-      }
-
-      try {
-        for (let index = 0; index < pending.length; index += MAX_SYNC_OPS_PER_REQUEST) {
-          const batch = pending.slice(index, index + MAX_SYNC_OPS_PER_REQUEST);
-          const syncPayload: Record<string, unknown> = {
-            userType: userInfo.type,
-            profileId: userInfo.profileId,
-            ops: batch
-          };
-          if (userInfo.id) syncPayload.userId = userInfo.id;
-
-          fetch(`${API_BASE_URL}/api/sync`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${authToken}`
-            },
-            body: JSON.stringify(syncPayload),
-            keepalive: true,
-            credentials: 'omit'
-          }).catch(() => undefined);
-        }
-      } catch {
-        // fire and forget on unload
-        void 0;
       }
     };
 

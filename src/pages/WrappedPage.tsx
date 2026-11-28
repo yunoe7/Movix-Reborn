@@ -6,18 +6,15 @@ import { useProfile } from '@/context/ProfileContext';
 import { fetchWrappedData, type WrappedResponse } from '@/services/wrappedService';
 import type { WrappedSession, WrappedVersion } from '@/types/wrapped';
 import { formatWrappedDuration } from '@/utils/wrappedPresentation';
+import { readWrappedSession } from '@/utils/wrappedSession';
 import { defaultWrappedYear, getWrappedExperiment } from '@/utils/wrappedExperiment';
 import WrappedRenderer, { WrappedLoading } from '@/components/wrapped/WrappedRenderer';
 
 const WrappedTestPreview = lazy(() => import('@/components/wrapped/WrappedTestPreview'));
 
-function readSession(): WrappedSession {
+function readSession(fallbackProfileId: string | null = null): WrappedSession {
     try {
-        return {
-            token: localStorage.getItem('auth_token'),
-            profileId: localStorage.getItem('selected_profile_id'),
-            collectionEnabled: localStorage.getItem('privacy_data_collection') !== 'false',
-        };
+        return readWrappedSession(localStorage, fallbackProfileId);
     } catch {
         return { token: null, profileId: null, collectionEnabled: false };
     }
@@ -94,7 +91,7 @@ function WrappedLivePage({ version }: { version: WrappedVersion }) {
     const { year: yearParam } = useParams<{ year?: string }>();
     const navigate = useNavigate();
     const { currentProfile, isLoading: profileLoading } = useProfile();
-    const [session, setSession] = useState(readSession);
+    const [session, setSession] = useState(() => readSession(currentProfile?.id || null));
     const currentYear = new Date().getFullYear();
     const year = yearParam ? Number(yearParam) : defaultWrappedYear();
     const onClose = useCallback(() => {
@@ -104,7 +101,7 @@ function WrappedLivePage({ version }: { version: WrappedVersion }) {
 
     useEffect(() => {
         const refresh = () => {
-            const next = readSession();
+            const next = readSession(currentProfile?.id || null);
             setSession(previous => previous.token === next.token && previous.profileId === next.profileId && previous.collectionEnabled === next.collectionEnabled ? previous : next);
         };
         const events = ['storage', 'auth-changed', 'authStateChanged', 'sync_storage_updated', 'focus'];

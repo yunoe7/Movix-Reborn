@@ -45,9 +45,44 @@ export function createWrappedTracker<Target>(deps: WrappedTrackerDeps<Target>): 
     let pending = 0;
     // Début de la tranche en cours ; null tant que rien ne doit être compté.
     let since: number | null = null;
-    let sending = false;
+    let inFlight = 0;
+    let retrying = false;
+    // Un envoi raté alors que la cible a changé ne peut pas être crédité à la
+    // nouvelle cible, mais le jeter perdrait l'activité réelle de l'utilisateur.
+    const deferred: Array<{ target: Target; seconds: number }> = [];
 
     const counting = () => active && visible && target !== null;
+
+    function defer(target: Target, seconds: number): void {
+        const whole = Math.floor(seconds);
+        if (whole < 1) return;
+        deferred.push({ target, seconds: Math.min(WRAPPED_MAX_SECONDS_PER_SEND, whole) });
+    }
+
+    async function deliver(target: Target, seconds: number): Promise<boolean> {
+        inFlight += 1;
+        try {
+            return await deps.send(target, seconds);
+        } catch {
+            return false;
+        } finally {
+            inFlight -= 1;
+        }
+    }
+
+    async function retryDeferred(): Promise<void> {
+        if (retrying || inFlight > 0 || deferred.length === 0) return;
+        retrying = true;
+        try {
+            const batch = deferred.splice(0, deferred.length);
+            for (const entry of batch) {
+                const delivered = await deliver(entry.target, entry.seconds);
+                if (!delivered) deferred.push(entry);
+            }
+        } finally {
+            retrying = false;
+        }
+    }
 
     // Verse la tranche écoulée dans le cumul, puis repart de maintenant.
     function harvest() {
@@ -68,24 +103,28 @@ export function createWrappedTracker<Target>(deps: WrappedTrackerDeps<Target>): 
 
     async function flush(minSeconds: number): Promise<boolean> {
         harvest();
-        if (sending || target === null || pending < minSeconds) return false;
+        if (inFlight > 0 || target === null || pending < minSeconds) return false;
         const seconds = Math.floor(pending);
         if (seconds < 1) return false;
         const sentTarget = target;
         pending -= seconds;
-        sending = true;
-        let delivered = false;
-        try {
-            delivered = await deps.send(sentTarget, seconds);
-        } catch {
-            delivered = false;
-        }
-        sending = false;
-        // La cible a pu changer pendant l'envoi : ce temps ne lui appartient pas.
-        if (!delivered && target === sentTarget) {
-            pending = Math.min(WRAPPED_MAX_SECONDS_PER_SEND, pending + seconds);
+        const delivered = await deliver(sentTarget, seconds);
+        if (!delivered) {
+            if (target === sentTarget) {
+                pending = Math.min(WRAPPED_MAX_SECONDS_PER_SEND, pending + seconds);
+            } else {
+                // La cible a pu changer pendant l'envoi : ces secondes
+                // appartiennent à l'ancienne cible et seront retentées à part.
+                defer(sentTarget, seconds);
+            }
         }
         return !delivered;
+    }
+
+    async function drain(): Promise<boolean> {
+        await retryDeferred();
+        const failed = await flush(WRAPPED_MIN_SECONDS_TO_SEND);
+        return failed || deferred.length > 0;
     }
 
     return {
@@ -97,7 +136,10 @@ export function createWrappedTracker<Target>(deps: WrappedTrackerDeps<Target>): 
             pending = 0;
             since = counting() && deps.collectionEnabled() ? deps.now() : null;
             if (previous !== null && seconds >= 1) {
-                void deps.send(previous, seconds).catch(() => false);
+                const sentTarget = previous;
+                void deliver(sentTarget, seconds).then((delivered) => {
+                    if (!delivered) defer(sentTarget, seconds);
+                });
             }
         },
         setActive(next) {
@@ -112,10 +154,10 @@ export function createWrappedTracker<Target>(deps: WrappedTrackerDeps<Target>): 
             visible = next;
             since = counting() && deps.collectionEnabled() ? deps.now() : null;
             // Onglet masqué : il peut ne jamais revenir, on envoie ce qu'on a.
-            if (!next) void flush(WRAPPED_MIN_SECONDS_TO_SEND);
+            if (!next) void drain();
         },
         tick() {
-            return flush(WRAPPED_MIN_SECONDS_TO_SEND);
+            return drain();
         },
         pendingSeconds() {
             return pending;

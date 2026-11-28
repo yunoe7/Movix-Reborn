@@ -1223,6 +1223,27 @@ interface BridgeResponse {
 
 const storage = new Map<string, any>();
 
+// WebViews ayant ouvert le pont GM. Les réglages natifs peuvent ainsi pousser
+// une valeur dans la WebView déjà montée sans attendre un reload (les
+// préférences d'extraction du userscript en dépendent).
+const gmWebViewRefs = new Set<RefObject<WebView | null>>();
+
+export function pushGmValueToWebViews(key: string, value: unknown): void {
+  storage.set(key, value);
+  const script = `
+    (function() {
+      try {
+        if (window.__MOVIX_SET_NATIVE_GM_VALUE__) {
+          window.__MOVIX_SET_NATIVE_GM_VALUE__(${JSON.stringify(key)}, ${JSON.stringify(value)});
+        }
+      } catch (e) {}
+    })();
+  `;
+  for (const ref of gmWebViewRefs) {
+    try { ref.current?.injectJavaScript(script); } catch { /* WebView démontée */ }
+  }
+}
+
 function parseResponseHeaders(headers: Headers): Record<string, string> {
   const result: Record<string, string> = {};
   headers.forEach((value: string, key: string) => {
@@ -1615,6 +1636,7 @@ export async function handleBridgeMessage(
   webViewRef: RefObject<WebView | null>,
   context?: BridgeMessageContext,
 ) {
+  gmWebViewRefs.add(webViewRef);
   let parsed: unknown;
   try {
     parsed = JSON.parse(data);

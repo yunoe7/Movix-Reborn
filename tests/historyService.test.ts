@@ -33,6 +33,7 @@ function loadService(storage: Record<string, string>, response: Answer = { statu
   new Function('exports', 'require', 'localStorage', js)(exports, (name: string) => {
     if (name === 'axios') return axios;
     if (name === '../config/runtime') return { MAIN_API: 'https://api.test' };
+    if (name === '../utils/accountAuth') return { getResolvedAccountContext: () => ({ userType: null, userId: null }) };
     throw new Error(`module inattendu : ${name}`);
   }, localStorage);
   return { service: exports as Service, calls };
