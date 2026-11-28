@@ -85,7 +85,9 @@ export class SeasonalGraphicsEngine {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private controller: AbortController | null = null;
   private generation = 0;
+  private typographyGeneration = 0;
   private appliedTypographyRevision: number | null = null;
+  private pendingTypographyRevision: number | null = null;
   private destroyed = false;
   private started = false;
   private hidden = false;
@@ -163,8 +165,7 @@ export class SeasonalGraphicsEngine {
 
     if (!active) {
       delete root.dataset.seasonalComponents;
-      this.typography.clear();
-      this.appliedTypographyRevision = null;
+      this.cancelTypography();
       this.setState({
         ...this.state,
         ready: true,
@@ -207,10 +208,7 @@ export class SeasonalGraphicsEngine {
 
     if (particle && !this.hidden) this.scheduler.start();
 
-    if (this.appliedTypographyRevision !== snapshot.revision) {
-      this.appliedTypographyRevision = snapshot.revision;
-      void this.typography.apply(snapshot.typography);
-    }
+    this.requestTypography(snapshot.revision, snapshot.typography);
 
     this.setState({
       ...this.state,
@@ -224,6 +222,30 @@ export class SeasonalGraphicsEngine {
       families,
       particles: particle?.count ?? 0,
     });
+  }
+
+  /**
+   * La révision n'est enregistrée qu'après le chargement effectif des polices :
+   * un échec reste réessayable et une application concurrente plus récente gagne.
+   * Aucun effet graphique n'est touché ici : les deux moteurs restent indépendants.
+   */
+  private requestTypography(revision: number | null, raw: unknown): void {
+    if (revision === null) return;
+    if (this.appliedTypographyRevision === revision || this.pendingTypographyRevision === revision) return;
+    const generation = ++this.typographyGeneration;
+    this.pendingTypographyRevision = revision;
+    void this.typography.apply(raw).then((applied) => {
+      if (this.destroyed || generation !== this.typographyGeneration) return;
+      this.pendingTypographyRevision = null;
+      if (applied) this.appliedTypographyRevision = revision;
+    });
+  }
+
+  private cancelTypography(): void {
+    this.typographyGeneration += 1;
+    this.pendingTypographyRevision = null;
+    this.appliedTypographyRevision = null;
+    this.typography.clear();
   }
 
   private setState(next: SeasonalGraphicsState): void {
@@ -273,8 +295,8 @@ export class SeasonalGraphicsEngine {
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('online', this.onFocus);
     this.clearVisuals();
+    this.cancelTypography();
     this.typography.destroy();
-    this.appliedTypographyRevision = null;
     delete document.documentElement.dataset.seasonalGraphics;
     delete document.documentElement.dataset.seasonalComponents;
     this.setState({ ...EMPTY_STATE, platform: this.platform, reason: 'idle' });

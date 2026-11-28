@@ -6,7 +6,7 @@ import { resolveSeasonalTheme } from '../services/seasonalThemeAdminService';
 import type { SeasonalResolver } from './loader';
 import { SeasonalGraphicsEngine, type SeasonalGraphicsState } from './engine';
 import { detectPlatform } from './platform';
-import { resolveSeasonalRouteMode } from './routes';
+import { resolveSeasonalDecorMode } from '../routing/seasonalScope';
 import { IDLE_GRAPHICS_STATE, SeasonalGraphicsContext } from './context';
 import './seasonalGraphics.css';
 
@@ -39,7 +39,7 @@ export interface SeasonalGraphicsProviderProps {
 export const SeasonalGraphicsProvider = ({ children, resolve = resolveSeasonalTheme }: SeasonalGraphicsProviderProps) => {
   const { pathname } = useLocation();
   const { effectivePrefs, systemReducedMotion } = useLightMode();
-  const mode = useMemo(() => resolveSeasonalRouteMode(pathname), [pathname]);
+  const mode = useMemo(() => resolveSeasonalDecorMode(pathname), [pathname]);
   const [state, setState] = useState<SeasonalGraphicsState>(IDLE_STATE);
   const rootRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);

@@ -21,9 +21,10 @@ import { readLocalStorage, writeLocalStorage } from '@/utils/browserStorage';
 export const HALLOWEEN_THEME_STORAGE_KEY = 'settings_halloween_theme';
 export const HALLOWEEN_THEME_CLASS = 'halloween-theme';
 /**
- * Posé dès que le réglage est activé, y compris sur les lecteurs où la
- * classe ci-dessus est retirée (pour ne pas teinter le contour des vidéos).
- * Sert à ce qui doit rester habillé là aussi, comme la popup pub.
+ * Posé dès que le réglage est activé sur une route autorisée par la politique
+ * LOT 5. Il sert à ce qui doit rester habillé, comme la popup pub. Sur les
+ * routes exclues (lecteurs, WatchParty, auth, paiement, admin), ni cette
+ * marque, ni la classe de palette ne sont posées.
  */
 export const HALLOWEEN_ENABLED_ATTR = 'data-halloween-enabled';
 const HALLOWEEN_THEME_EVENT = 'movix:halloween-theme-changed';

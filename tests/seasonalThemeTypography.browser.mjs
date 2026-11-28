@@ -309,8 +309,10 @@ await runScenario({
       fontLink: legacyState.fontLink,
       fontRequests: legacyExcluded.requests.filter(isFontRequest).map(fontPath),
     });
-    assert.equal(legacyState.halloweenEnabled, true);
-    assert.ok(legacyState.htmlClass.includes('halloween-theme'));
+    // LOT 5 : la politique d'exclusion s'applique aussi aux marqueurs des
+    // ambiances historiques, avant même le chargement de la police.
+    assert.equal(legacyState.halloweenEnabled, false);
+    assert.equal(legacyState.htmlClass.includes('halloween-theme'), false);
     assert.equal(legacyState.fontLink, null);
     assert.deepEqual(legacyExcluded.requests.filter(isFontRequest), []);
     assert.deepEqual(legacyExcluded.errors, []);
@@ -318,7 +320,7 @@ await runScenario({
     await legacyExcluded.browser.close();
   }
   report.pass('TYPO-03B', 'Ambiance Halloween absente des routes exclues',
-    'thème actif mais aucune police chargée sur auth et paiement', { excludedLegacyRoutes });
+    'aucun marqueur, classe ni police sur auth et paiement', { excludedLegacyRoutes });
 
   // ─── Moteur public : configuration publiée uniquement ─────────────────────
   const published = await createTypographyFixture(report, {

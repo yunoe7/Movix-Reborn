@@ -2,6 +2,7 @@ import { useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useLightMode } from '@/context/LightModeContext';
+import { resolveSeasonalDecorMode } from '@/routing/seasonalScope';
 import { CHRISTMAS_ENABLED_ATTR, CHRISTMAS_THEME_CLASS, useChristmasTheme } from '@/hooks/useChristmasTheme';
 import { MagicParticles } from '@/components/ui/MagicParticles';
 import './christmas-atmosphere.css';
@@ -12,18 +13,21 @@ export const ChristmasAtmosphere = ({ suspended }: { suspended: boolean }) => {
   const enabled = useChristmasTheme();
   const { isLightMode } = useLightMode();
   const { pathname } = useLocation();
-  const active = enabled && !suspended && !isLightMode;
+  // Même politique que le moteur LOT 4A/4B : aucune palette ni particule sur
+  // une route exclue, même si le réglage local est activé.
+  const routeAllowed = resolveSeasonalDecorMode(pathname) !== 'none';
+  const active = enabled && !suspended && !isLightMode && routeAllowed;
 
   useLayoutEffect(() => {
     const root = document.documentElement;
     root.classList.toggle(CHRISTMAS_THEME_CLASS, active);
-    if (enabled) root.setAttribute(CHRISTMAS_ENABLED_ATTR, '');
+    if (active) root.setAttribute(CHRISTMAS_ENABLED_ATTR, '');
     else root.removeAttribute(CHRISTMAS_ENABLED_ATTR);
     return () => {
       root.classList.remove(CHRISTMAS_THEME_CLASS);
       root.removeAttribute(CHRISTMAS_ENABLED_ATTR);
     };
-  }, [active, enabled]);
+  }, [active, enabled, routeAllowed]);
 
   if (!active) return null;
   const isDetail = /^\/(movie|tv)\//.test(pathname);

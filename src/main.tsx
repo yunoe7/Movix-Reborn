@@ -23,6 +23,7 @@ import './styles/light-mode.css'
 import './styles/halloween.css'
 import { HALLOWEEN_ENABLED_ATTR, HALLOWEEN_THEME_CLASS, readHalloweenTheme } from './hooks/useHalloweenTheme'
 import { CHRISTMAS_ENABLED_ATTR, CHRISTMAS_THEME_CLASS, readChristmasTheme } from './hooks/useChristmasTheme'
+import { resolveSeasonalDecorMode } from './routing/seasonalScope'
 import { initErrorTracking } from './utils/errorTracking'
 import { initFlexGapSupport } from './utils/flexGapSupport'
 import { installResizeObserverFallback } from './utils/resizeObserverFallback'
@@ -181,18 +182,21 @@ if (safeLocalStorageGetItem('square_corners_enabled') === '1') {
   document.documentElement.classList.add('square-corners');
 }
 
+// La politique d'exclusion LOT 5 est évaluée avant React : aucune classe ni
+// marqueur résiduel n'est posé sur une route sensible, même pendant le premier
+// rendu. Le chargement de la police est, lui, déclenché par HalloweenAtmosphere.
+const legacyDecorAllowed = resolveSeasonalDecorMode(window.location.pathname) !== 'none';
+
 // Thème Halloween : même principe, contre un flash de rouge au chargement
-// (réglage choisi, ou octobre par défaut). La classe est posée avant le premier
-// rendu, mais le chargement de la police locale est désormais déclenché par
-// HalloweenAtmosphere uniquement sur une route autorisée : aucun WOFF2 n'est
-// demandé sur les lecteurs, WatchParty, l'admin ou l'authentification.
-if (readHalloweenTheme()) {
+// (réglage choisi, ou octobre par défaut), sur route autorisée seulement.
+if (legacyDecorAllowed && readHalloweenTheme()) {
   document.documentElement.classList.add(HALLOWEEN_THEME_CLASS);
   document.documentElement.setAttribute(HALLOWEEN_ENABLED_ATTR, '');
 }
 
-// Thème de Noël : activation avant le premier rendu pour éviter un flash.
-if (readChristmasTheme()) {
+// Thème de Noël : activation avant le premier rendu pour éviter un flash,
+// avec la même politique d'exclusion.
+if (legacyDecorAllowed && readChristmasTheme()) {
   document.documentElement.classList.add(CHRISTMAS_THEME_CLASS);
   document.documentElement.setAttribute(CHRISTMAS_ENABLED_ATTR, '');
 }

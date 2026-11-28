@@ -46,7 +46,7 @@ await runScenario({
   assert.equal(state.htmlClass.includes('halloween-theme'), false);
   assert.equal(atmosphereCount, 0);
 
-  report.fail('PLAYER-02', 'Attribut Halloween conservé sur lecteur', 'aucun marqueur de thème dans le lecteur', state.halloweenEnabled, 'Le commentaire de useHalloweenTheme.ts pose volontairement data-halloween-enabled pour la popup pub.', 'high');
+  report.fail('PLAYER-02', 'Attribut Halloween conservé sur lecteur', 'aucun marqueur de thème dans le lecteur', state.halloweenEnabled, 'Divergence historique conservée : le scénario exigeait encore le marqueur pour la popup pub ; LOT 5 le retire désormais sur les routes exclues.', 'high');
 
   const pumpkinCount = await player.page.locator('#player-pumpkin').count();
   const hlsSource = await readRepoFile('src/components/HLSPlayer.tsx');

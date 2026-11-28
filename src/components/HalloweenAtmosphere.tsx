@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, type ComponentType } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useLightMode } from '@/context/LightModeContext';
-import { resolveSeasonalRouteMode } from '@/seasonalThemeGraphics/routes';
+import { resolveSeasonalDecorMode } from '@/routing/seasonalScope';
 import { HALLOWEEN_ENABLED_ATTR, HALLOWEEN_THEME_CLASS, useHalloweenTheme } from '@/hooks/useHalloweenTheme';
 import { loadHalloweenTheme } from '@/utils/halloweenThemeAssets';
 import type { HalloweenPageKind } from './halloween/HalloweenDecor';
@@ -36,25 +36,27 @@ export const HalloweenAtmosphere = ({ suspended }: { suspended: boolean }) => {
   const enabled = useHalloweenTheme();
   const { isLightMode } = useLightMode();
   const { pathname } = useLocation();
-  const active = enabled && !suspended;
-  // Les exclusions LOT 4A s'appliquent aussi à l'ambiance historique : un
-  // thème Halloween activé globalement ne doit pas charger Creepster sur une
-  // route exclue (auth, paiement, admin, lecteur, profil…).
-  const routeAllowed = resolveSeasonalRouteMode(pathname) !== 'none';
+  // La politique LOT 5 est appliquée avant tout rendu : sur une route exclue,
+  // ni palette, ni décor, ni police, ni marqueur résiduel. `suspended` garde
+  // son comportement historique sur les routes autorisées (popup pub comprise).
+  const routeAllowed = resolveSeasonalDecorMode(pathname) !== 'none';
+  const active = enabled && !suspended && routeAllowed;
 
   useLayoutEffect(() => {
     const root = document.documentElement;
     root.classList.toggle(HALLOWEEN_THEME_CLASS, active);
-    // Réglage activé, même sur les lecteurs : la popup pub s'y habille aussi.
-    if (enabled) root.setAttribute(HALLOWEEN_ENABLED_ATTR, '');
+    if (enabled && routeAllowed) root.setAttribute(HALLOWEEN_ENABLED_ATTR, '');
     else root.removeAttribute(HALLOWEEN_ENABLED_ATTR);
-  }, [active, enabled]);
+    return () => {
+      root.classList.remove(HALLOWEEN_THEME_CLASS);
+      root.removeAttribute(HALLOWEEN_ENABLED_ATTR);
+    };
+  }, [active, enabled, routeAllowed]);
 
   useEffect(() => {
-    // La police n'est chargée que si l'ambiance est réellement affichée :
-    // jamais sur une route exclue ni quand une publication LOT 4 prend l'autorité.
-    if (active && routeAllowed) loadHalloweenTheme();
-  }, [active, routeAllowed]);
+    // La police n'est chargée que si l'ambiance est réellement affichée.
+    if (active) loadHalloweenTheme();
+  }, [active]);
 
   // Le mode léger garde les couleurs et l'habillage, mais pas le décor :
   // plusieurs couches plein écran coûtent trop cher aux petits appareils.
