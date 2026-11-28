@@ -391,6 +391,8 @@ app.use('/api', require('./routes/monetization').router);
 app.use('/api', require('./routes/referral').router);
 // Promos du grand carrousel : /api/hero-promos*, /api/admin/hero-promos*.
 app.use('/api', require('./routes/heroPromos').router);
+// Configuration décorative saisonnière : /api/seasonal-theme*, /api/admin/seasonal-theme*.
+app.use('/api', require('./routes/seasonalTheme').router);
 // Passerelle VIP vers proxiesembed : le frontend n'appelle plus le service
 // d'extraction en direct, il passe par ici avec sa clé VIP (cf. routes/mediaExtract.js).
 app.use('/api/media', require('./routes/mediaExtract'));
@@ -417,6 +419,7 @@ const {
   importLegacyRedisStats
 } = require('./utils/monetizationStats');
 const { ensureTableGroup } = require('./db/runtimeEnsure');
+const { createSeasonalThemeService } = require('./services/seasonalThemeConfig');
 const { restoreMissingVipAccessKeys } = require('./utils/vipAccessKeyRecovery');
 
 const appReady = (async () => {
@@ -657,6 +660,17 @@ const appReady = (async () => {
         console.log('Hero promo tables initialized successfully');
       } catch (error) {
         console.error('Hero promo tables init error:', error?.message || error);
+      }
+
+      // Décoratif saisonnier (idempotent) : tables add-only et ligne de
+      // réglages désactivée par défaut. Une panne n'empêche pas le démarrage :
+      // les routes servent alors la configuration sûre en mémoire.
+      try {
+        await ensureTableGroup(pool, 'seasonalTheme');
+        await createSeasonalThemeService({ pool }).initialize();
+        console.log('Seasonal theme tables initialized successfully');
+      } catch (error) {
+        console.error('Seasonal theme tables init error:', error?.message || error);
       }
     });
   } catch (error) {

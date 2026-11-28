@@ -8,6 +8,7 @@ const { historyTables } = require('./history');
 const { monetizationTables } = require('./monetization');
 const { referralTables } = require('./referral');
 const { heroPromoTables } = require('./heroPromo');
+const { seasonalThemeTables } = require('./seasonalTheme');
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -20,7 +21,7 @@ function deepFreeze(value) {
 }
 
 const schema = Object.freeze(
-  [...coreTables, ...communityTables, ...oauthTables, ...vipTables, ...wrappedTables, ...historyTables, ...monetizationTables, ...referralTables, ...heroPromoTables]
+  [...coreTables, ...communityTables, ...oauthTables, ...vipTables, ...wrappedTables, ...historyTables, ...monetizationTables, ...referralTables, ...heroPromoTables, ...seasonalThemeTables]
     .map((table) => deepFreeze({ ...table })),
 );
 function getTable(name) { return schema.find((table) => table.name === name) || null; }

@@ -1,0 +1,243 @@
+{
+  "version": 1,
+  "description": "Catalogue fermé du moteur décoratif saisonnier (LOT 1). Toute valeur absente de ce fichier est rejetée par la validation serveur.",
+  "families": [
+    "screenDecor",
+    "background",
+    "components",
+    "lights",
+    "particles",
+    "typography"
+  ],
+  "platforms": [
+    "mobile",
+    "desktop",
+    "tablet",
+    "tv"
+  ],
+  "capabilities": [
+    "lightMode",
+    "reducedMotion",
+    "tvStaticEffects"
+  ],
+  "typographyCategories": [
+    "pageTitle",
+    "sectionTitle",
+    "categoryTitle"
+  ],
+  "fonts": [
+    {
+      "key": "inter",
+      "family": "Inter",
+      "weights": [400, 500, 600, 700, 800, 900],
+      "license": "OFL-1.1"
+    },
+    {
+      "key": "creepster",
+      "family": "Creepster",
+      "weights": [400],
+      "license": "OFL-1.1"
+    },
+    {
+      "key": "archivo-black",
+      "family": "Archivo Black",
+      "weights": [400],
+      "license": "OFL-1.1"
+    }
+  ],
+  "effects": [
+    "none",
+    "glow",
+    "frost"
+  ],
+  "themes": [
+    {
+      "id": "halloween-2026",
+      "aliases": ["halloween"],
+      "priority": 10
+    },
+    {
+      "id": "christmas-2026",
+      "aliases": ["christmas"],
+      "priority": 20
+    }
+  ],
+  "decorations": [
+    {
+      "id": "halloween.screenDecor",
+      "themeId": "halloween-2026",
+      "family": "screenDecor",
+      "priority": 10,
+      "conflictsWith": ["christmas.screenDecor"],
+      "allowedPlatforms": ["mobile", "desktop", "tablet"],
+      "allowedCapabilities": ["lightMode", "reducedMotion"],
+      "supportsEffects": false,
+      "optionKeys": ["opacity", "density"]
+    },
+    {
+      "id": "halloween.background",
+      "themeId": "halloween-2026",
+      "family": "background",
+      "priority": 10,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": false,
+      "optionKeys": ["assetPath"]
+    },
+    {
+      "id": "halloween.background.fog",
+      "themeId": "halloween-2026",
+      "family": "background",
+      "priority": 11,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": false,
+      "optionKeys": ["opacity", "density"]
+    },
+    {
+      "id": "halloween.components",
+      "themeId": "halloween-2026",
+      "family": "components",
+      "priority": 10,
+      "conflictsWith": ["christmas.components"],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": false,
+      "optionKeys": ["assetPath"]
+    },
+    {
+      "id": "halloween.lights",
+      "themeId": "halloween-2026",
+      "family": "lights",
+      "priority": 10,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet"],
+      "allowedCapabilities": ["lightMode", "reducedMotion"],
+      "supportsEffects": false,
+      "optionKeys": ["intensity"]
+    },
+    {
+      "id": "halloween.lights.candles",
+      "themeId": "halloween-2026",
+      "family": "lights",
+      "priority": 11,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet"],
+      "allowedCapabilities": ["lightMode", "reducedMotion"],
+      "supportsEffects": false,
+      "optionKeys": ["intensity"]
+    },
+    {
+      "id": "halloween.particles",
+      "themeId": "halloween-2026",
+      "family": "particles",
+      "priority": 10,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet"],
+      "allowedCapabilities": ["lightMode", "reducedMotion"],
+      "supportsEffects": false,
+      "optionKeys": ["density", "maxParticles"]
+    },
+    {
+      "id": "halloween.typography",
+      "themeId": "halloween-2026",
+      "family": "typography",
+      "priority": 10,
+      "conflictsWith": ["christmas.typography"],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": true,
+      "optionKeys": []
+    },
+    {
+      "id": "christmas.screenDecor",
+      "themeId": "christmas-2026",
+      "family": "screenDecor",
+      "priority": 20,
+      "conflictsWith": ["halloween.screenDecor"],
+      "allowedPlatforms": ["mobile", "desktop", "tablet"],
+      "allowedCapabilities": ["lightMode", "reducedMotion"],
+      "supportsEffects": false,
+      "optionKeys": ["opacity", "density"]
+    },
+    {
+      "id": "christmas.background",
+      "themeId": "christmas-2026",
+      "family": "background",
+      "priority": 20,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": false,
+      "optionKeys": ["assetPath"]
+    },
+    {
+      "id": "christmas.background.snow",
+      "themeId": "christmas-2026",
+      "family": "background",
+      "priority": 21,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": false,
+      "optionKeys": ["opacity", "density"]
+    },
+    {
+      "id": "christmas.components",
+      "themeId": "christmas-2026",
+      "family": "components",
+      "priority": 20,
+      "conflictsWith": ["halloween.components"],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": false,
+      "optionKeys": ["assetPath"]
+    },
+    {
+      "id": "christmas.lights",
+      "themeId": "christmas-2026",
+      "family": "lights",
+      "priority": 20,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet"],
+      "allowedCapabilities": ["lightMode", "reducedMotion"],
+      "supportsEffects": false,
+      "optionKeys": ["intensity"]
+    },
+    {
+      "id": "christmas.particles",
+      "themeId": "christmas-2026",
+      "family": "particles",
+      "priority": 20,
+      "conflictsWith": [],
+      "allowedPlatforms": ["mobile", "desktop", "tablet"],
+      "allowedCapabilities": ["lightMode", "reducedMotion"],
+      "supportsEffects": false,
+      "optionKeys": ["density", "maxParticles"]
+    },
+    {
+      "id": "christmas.typography",
+      "themeId": "christmas-2026",
+      "family": "typography",
+      "priority": 20,
+      "conflictsWith": ["halloween.typography"],
+      "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
+      "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
+      "supportsEffects": true,
+      "optionKeys": []
+    }
+  ],
+  "assetPolicy": {
+    "prefix": "/assets/seasonal-theme/",
+    "pattern": "^/assets/seasonal-theme/[a-z0-9][a-z0-9._/-]{0,180}$",
+    "maxBytes": 5242880
+  },
+  "limits": {
+    "priorityMin": 0,
+    "priorityMax": 100,
+    "maxWindowsPerTheme": 8,
+    "maxOptionValueLength": 120
+  }
+}
