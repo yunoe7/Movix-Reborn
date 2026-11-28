@@ -67,8 +67,13 @@ export function createFrameScheduler(
       const delta = Math.max(0, Math.min(MAX_FRAME_DELTA_MS, time - last));
       last = time;
       frames += 1;
-      onFrame(delta);
-      schedule();
+      // Une exception de rendu ne doit pas tuer définitivement la boucle RAF.
+      // L'erreur reste visible dans la console, mais la prochaine frame est planifiée.
+      try {
+        onFrame(delta);
+      } finally {
+        schedule();
+      }
     });
   };
 
