@@ -137,6 +137,7 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import AdminDashboard from ${JSON.stringify(path.join(repo, 'src', 'components', 'AdminDashboard').replace(/\\/g, '/'))};
 import AdminPage from ${JSON.stringify(path.join(repo, 'src', 'pages', 'AdminPage').replace(/\\/g, '/'))};
+import { LightModeProvider } from ${JSON.stringify(path.join(repo, 'src', 'context', 'LightModeContext').replace(/\\/g, '/'))};
 
 function LocationProbe() {
   const location = useLocation();
@@ -156,23 +157,25 @@ const initialEntry = section
   : '/admin';
 
 createRoot(document.getElementById('root')).render(
-  gateMode ? (
-    <MemoryRouter initialEntries={['/admin']}>
-      <LocationProbe />
-      <Routes>
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/" element={<HomeProbe />} />
-      </Routes>
-    </MemoryRouter>
-  ) : (
-    <MemoryRouter initialEntries={[initialEntry]}>
-      <LocationProbe />
-      <Routes>
-        <Route path="/admin" element={<AdminDashboard role={role} />} />
-        <Route path="/" element={<HomeProbe />} />
-      </Routes>
-    </MemoryRouter>
-  )
+  <LightModeProvider>
+    {gateMode ? (
+      <MemoryRouter initialEntries={['/admin']}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/" element={<HomeProbe />} />
+        </Routes>
+      </MemoryRouter>
+    ) : (
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <LocationProbe />
+        <Routes>
+          <Route path="/admin" element={<AdminDashboard role={role} />} />
+          <Route path="/" element={<HomeProbe />} />
+        </Routes>
+      </MemoryRouter>
+    )}
+  </LightModeProvider>
 );
 `;
 
@@ -233,7 +236,8 @@ await execFileAsync(process.execPath, [
 ]);
 const tailwindCss = await readFile(path.join(work, 'tailwind.css'), 'utf8');
 const adminCss = await readFile(path.join(adminDir, 'admin-console.css'), 'utf8');
-await writeFile(path.join(work, 'app.css'), `${tailwindCss}\n${adminCss}\n`);
+const decorCss = await readFile(path.join(repo, 'src', 'components', 'adminDecor', 'adminDecor.css'), 'utf8');
+await writeFile(path.join(work, 'app.css'), `${tailwindCss}\n${adminCss}\n${decorCss}\n`);
 await writeFile(
   path.join(work, 'index.html'),
   '<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/app.css"></head><body><div id="root"></div><script type="module" src="/app.js"></script></body></html>',
@@ -311,6 +315,55 @@ const adminResponses = {
   'invalid-role': { success: true, admin: { userId: 'u-6', userType: 'local', adminId: 6, role: 'viewer' } },
 };
 
+const seasonalThemeConfig = {
+  version: 1,
+  revision: 4,
+  emergencyDisable: false,
+  updatedAt: '2026-10-27T10:00:00.000Z',
+  updatedBy: 'staff-42',
+  themes: [{
+    id: 'halloween-2026',
+    enabled: true,
+    priority: 10,
+    windows: [{ start: '2026-10-20', end: '2026-11-05', timezone: 'Europe/Paris' }],
+    platforms: { mobile: true, desktop: true, tablet: true, tv: true },
+    capabilities: { lightMode: true, reducedMotion: true, tvStaticEffects: true },
+    decorations: [{
+      id: 'halloween.background',
+      family: 'background',
+      enabled: true,
+      priority: 10,
+      conflictsWith: [],
+      requires: [],
+      platforms: { mobile: true, desktop: true, tablet: true, tv: true },
+      capabilities: { lightMode: true, reducedMotion: true, tvStaticEffects: true },
+      options: {},
+      typography: {},
+    }],
+  }],
+  typography: {
+    pageTitle: { enabled: false, fontKey: 'inter', weight: 400, effect: 'none' },
+    sectionTitle: { enabled: false, fontKey: 'inter', weight: 400, effect: 'none' },
+    categoryTitle: { enabled: false, fontKey: 'inter', weight: 400, effect: 'none' },
+  },
+};
+
+const seasonalThemeResponses = {
+  '/api/admin/seasonal-theme': { success: true, config: seasonalThemeConfig },
+  '/api/admin/seasonal-theme/status': {
+    success: true,
+    status: { failClosed: false, subscribed: true, localRevision: 4, emergency: false, channel: 'seasonal-theme:changes' },
+  },
+  '/api/admin/seasonal-theme/history': {
+    success: true,
+    history: [{ id: 1, config: seasonalThemeConfig, changedBy: 'staff-42', reason: 'campagne Halloween', changedAt: '2026-10-27T10:00:00.000Z' }],
+  },
+  '/api/admin/seasonal-theme/audit': {
+    success: true,
+    audit: [{ id: 1, adminId: 'staff-42', adminAuthType: 'staff', action: 'publish', target: 'seasonal-theme', details: { revision: 4 }, createdAt: '2026-10-27T10:00:00.000Z' }],
+  },
+};
+
 const apiRequests = [];
 const corsHeaders = {
   'access-control-allow-origin': '*',
@@ -370,6 +423,17 @@ async function routeFixture(route) {
       status: payload ? 200 : 401,
       headers: corsHeaders,
       json: payload ?? { success: false, error: 'fixture denied' },
+    });
+    return;
+  }
+
+  if (url.pathname.startsWith('/api/admin/seasonal-theme')) {
+    apiRequests.push({ path: url.pathname, token, authorization });
+    const payload = seasonalThemeResponses[url.pathname];
+    await route.fulfill({
+      status: payload ? 200 : 404,
+      headers: corsHeaders,
+      json: payload ?? { success: false },
     });
     return;
   }
@@ -594,25 +658,17 @@ try {
   await withScenario('decor-admin', { token: 'valid-admin', role: 'admin' }, async (page) => {
     await page.locator('[data-testid="admin-nav-decor"]').click();
     await page.locator('[data-testid="admin-decor"]').waitFor();
+    await page.locator('[data-testid="admin-decor-stat-themes"]').waitFor();
     const text = await page.locator('[data-testid="admin-decor"]').innerText();
-    assert.ok(text.includes('Catégorie en préparation'), 'decor: état honnête de préparation');
-    assert.ok(text.includes('April Fools'), 'decor: séparation explicite avec April Fools');
-    assert.equal(
-      await page.locator('[data-testid="admin-decor"] button').count(),
-      0,
-      'decor: aucun bouton ni action simulée',
-    );
-    const decorIconUrls = await iconMaskUrls(page.locator('[data-testid="admin-decor"] .admin-quick-action > span:first-child'));
-    assert.equal(decorIconUrls.length, 5, 'decor: cinq familles avec icône');
-    assert.equal(new Set(decorIconUrls).size, 5, 'decor: icônes distinctes par famille');
-    for (const expected of ['clapperboard', 'sparkles', 'image', 'color-palette', 'gallery']) {
-      assert.ok(decorIconUrls.some((url) => url.includes(`/${expected}.png`)), `decor: icône ${expected} présente`);
-    }
-    const decorStateIcon = await iconMaskUrls(page.locator('[data-testid="admin-decor"] [data-state="info"] .admin-state-icon > span'));
-    assert.match(decorStateIcon[0] || '', /\/info\.png/, 'decor: état de préparation utilise l’icône Info');
+    assert.match(text, /console déc?oratif/i, 'decor: vraie section mountée');
+    assert.ok(text.includes('Tableau de bord décoratif'), 'decor: tableau de bord réel');
+    assert.ok(text.includes('Canal de publication'), 'decor: état du canal issu du statut');
+    assert.equal(await page.locator('.admin-decor-tab').count(), 6, 'decor: six sections fonctionnelles');
+    assert.ok(await page.locator('[data-testid="admin-decor"] button').count() > 0, 'decor: actions réelles présentes');
+    assert.equal(await page.locator('form').count(), 0, 'decor: aucun formulaire natif non contrôlé');
     const screenshot = screenshotName('decor-admin');
     await page.screenshot({ path: path.join(artifactDir, screenshot), fullPage: true });
-    return { screenshot, fakeActions: 0, decorIcons: decorIconUrls.length };
+    return { screenshot, tabs: 6, fakeActions: 0 };
   });
 
   await withScenario('diagnostics-admin', { token: 'valid-admin', role: 'admin' }, async (page) => {
@@ -774,6 +830,7 @@ const staticChecks = {
     'src/components/StreamingLinksManager.tsx',
     'src/components/VipKeysManager.tsx',
     'src/components/admin/AdminDecorPlaceholder.tsx',
+    'src/components/adminDecor/AdminDecor.tsx',
     'src/components/admin/AdminDiagnostics.tsx',
   ].map(async (file) => !/window\.confirm\s*\(|(?<!await )confirm\s*\(/.test(
     await readFile(path.join(repo, file), 'utf8'),
@@ -795,6 +852,7 @@ const staticChecks = {
     'src/components/vipDonation/DonationMethodIcons.tsx',
     'src/components/adminVipDonations/DonationSettingsSections.tsx',
     'src/components/admin/AdminDecorPlaceholder.tsx',
+    'src/components/adminDecor/AdminDecor.tsx',
     'src/components/admin/AdminDiagnostics.tsx',
   ].map(async (file) => {
     const source = await readFile(path.join(repo, file), 'utf8');
