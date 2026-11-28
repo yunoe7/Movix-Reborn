@@ -67,7 +67,8 @@ export async function getUserNotificationsWithApiData(page: number = 1, limit: n
 
     const response = await axios.get(`${API_URL}/api/comments/notifications`, {
       params: { page, limit, profileId },
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000
     });
 
     const apiNotifications: ApiNotification[] = response.data.notifications || [];
@@ -142,7 +143,8 @@ export async function getUserNotifications(page: number = 1, limit: number = 20)
 
     const response = await axios.get(`${API_URL}/api/comments/notifications`, {
       params: { page, limit, profileId },
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000
     });
 
     const apiNotifications: ApiNotification[] = response.data.notifications || [];
@@ -158,27 +160,49 @@ export async function getUserNotifications(page: number = 1, limit: number = 20)
   }
 }
 
+// Le badge du header interroge toutes les 30 s : une requête lente ne doit
+// pas s'empiler sur les ticks suivants. Les appelants partagent donc la même
+// promesse tant qu'elle est en vol — mais uniquement pour le même compte et
+// le même profil, sinon un changement de profil afficherait le compte précédent.
+let unreadCountInFlight: { key: string; promise: Promise<number> } | null = null;
+
 /**
  * Récupère le nombre de notifications non lues
  */
 export async function getUnreadNotificationsCount(): Promise<number> {
-  try {
-    const token = getAuthToken();
-    const profileId = getCurrentProfileId();
+  const token = getAuthToken();
+  const profileId = getCurrentProfileId();
+  const key = `${token || ''}:${profileId || ''}`;
 
-    if (!token || !profileId) {
+  if (unreadCountInFlight?.key === key) return unreadCountInFlight.promise;
+
+  const request = (async () => {
+    try {
+      if (!token || !profileId) {
+        return 0;
+      }
+
+      const response = await axios.get(`${API_URL}/api/comments/notifications/unread-count`, {
+        params: { profileId },
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000
+      });
+
+      return Number(response.data?.count || 0);
+    } catch (error) {
+      console.error('Error getting unread notifications count:', error);
       return 0;
     }
+  })();
 
-    const response = await axios.get(`${API_URL}/api/comments/notifications/unread-count`, {
-      params: { profileId },
-      headers: { Authorization: `Bearer ${token}` }
-    });
+  unreadCountInFlight = { key, promise: request };
 
-    return Number(response.data?.count || 0);
-  } catch (error) {
-    console.error('Error getting unread notifications count:', error);
-    return 0;
+  try {
+    return await request;
+  } finally {
+    // Une requête plus ancienne ne doit pas effacer la dédup d'un profil
+    // devenu courant pendant son vol.
+    if (unreadCountInFlight?.promise === request) unreadCountInFlight = null;
   }
 }
 
@@ -190,7 +214,8 @@ export async function getNotificationsDisabled(): Promise<boolean> {
     const token = getAuthToken();
     if (!token) return false;
     const response = await axios.get(`${API_URL}/api/comments/notifications/preferences`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000
     });
     return response.data?.notificationsDisabled ?? false;
   } catch {

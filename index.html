@@ -56,9 +56,9 @@
         <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
         <link rel="dns-prefetch" href="//www.googletagmanager.com" />
         <link rel="preconnect" href="https://www.googletagmanager.com" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <!-- Inter est déjà servi localement par @fontsource/inter (400 à 900)
+             depuis src/main.tsx. L'ancienne feuille Google Fonts doublait le
+             téléchargement et bloquait le premier rendu sur un CDN tiers. -->
 
         <!-- Bootstrap Icons : la feuille jsdelivr a été retirée du <head>.
              Elle bloquait le premier rendu de TOUTES les pages (DNS + TLS vers
@@ -394,15 +394,13 @@
         <div id="root"></div>
 
         <script>
-            // Cache-bust the Cast SDK URL on every page load so a stale SDK never
-            // sticks around in the browser/SW cache (defensive — gstatic already
-            // sets sane Cache-Control, but cinepulse does this too).
+            // gstatic publie déjà des en-têtes de cache adaptés au SDK Cast.
+            // L'ancien `cb=Date.now()` empêchait toute réutilisation HTTP et
+            // rechargeait le script complet à chaque navigation/page load.
             (function loadCastSender() {
                 var s = document.createElement("script");
                 s.type = "text/javascript";
-                s.src =
-                    "https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1&cb=" +
-                    Date.now();
+                s.src = "https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1";
                 document.body.appendChild(s);
             })();
         </script>

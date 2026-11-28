@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sourceFunction } from './helpers/sourceFunction.mjs';
+import { sourceFunction, sourceNamedFunction } from './helpers/sourceFunction.mjs';
 
 const PAGE = 'src/App.tsx';
+const SYNC_STORAGE = 'src/utils/syncStorage.ts';
+const buildSyncBatches = sourceNamedFunction(SYNC_STORAGE, 'buildSyncBatches');
 const OWNER_A = { type: 'oauth', id: 'user-1', profileId: 'profile-a' };
 const OWNER_B = { type: 'oauth', id: 'user-1', profileId: 'profile-b' };
 
@@ -61,6 +63,8 @@ function flushFixture({ currentOwner = OWNER_B, generalOps = [], progressOps = [
     MAX_SYNC_OUTBOX_OPS: 10000,
     localStorage: storage,
     MAX_SYNC_OPS_PER_REQUEST: 100,
+    MAX_SYNC_BYTES_PER_REQUEST: 4 * 1024 * 1024,
+    buildSyncBatches,
     API_BASE_URL: 'https://api.test',
     fetch: async (url, init) => { fetches.push({ url, init }); return { ok: true }; },
     console: { warn() {}, error() {}, log() {} }

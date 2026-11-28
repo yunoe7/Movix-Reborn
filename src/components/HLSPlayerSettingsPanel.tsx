@@ -327,10 +327,6 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
     setVisibleResultCount(60);
   }, [externalTracks, preferredSubtitleLang]);
 
-  // ===== Milestone 3 — sort hoster lists by user priority =====
-  // Re-render when priority prefs change (e.g. user reorders in Settings).
-  const [, setPrefsVersion] = useState(0);
-
   // ===== Milestone 4 — pinned source / hoster ids for PinButton UI =====
   // Ces états reflètent en live l'état épinglé dans les prefs et se mettent
   // à jour via `subscribeToPriorityChanges` (custom event + storage cross-onglets).
@@ -345,7 +341,6 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
   );
 
   useEffect(() => subscribeToPriorityChanges((p) => {
-    setPrefsVersion((v) => v + 1);
     setPinnedSourceId(p.categories.moviesTv.pinnedSource?.id ?? null);
     setPinnedHosterId(p.categories[category].pinnedHoster?.id ?? null);
   }), [category]);
@@ -437,8 +432,8 @@ const HLSPlayerSettingsPanel = (props: HLSPlayerSettingsPanelProps) => {
   // quand l'utilisateur clique pin (le clic met à jour les prefs et l'indicateur
   // `#1`, mais l'ordre affiché reste stable jusqu'au prochain refresh / changement
   // de la source list). Évite le "ça recharge" perçu lors du pin.
-  // Deps volontairement limitées à la référence de la liste : prefsVersion N'EST PAS
-  // dans les deps pour préserver la stabilité.
+  // Deps volontairement limitées à la référence de la liste : les prefs de
+  // priorité ne sont pas dans les deps pour préserver la stabilité visuelle.
   const sortedDarkinoMemo = useMemo(
     () => enrichAndSort(darkinoSources ?? [], 'darkino'),
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import i18n from '../i18n';
 import { predefinedAvatars } from '../data/avatars';
 import {
+  buildSyncBatches,
   getSyncableLocalStorageEntries,
   hasSyncableLocalStorageData,
   isPermanentSyncRejection,
@@ -221,6 +222,11 @@ async function replayOutboxIfAny(): Promise<void> {
       }));
     } catch { /* stockage indisponible : on tente quand même le rejeu */ }
 
+    // Le serveur plafonne à 200 opérations et 5 MiB par requête. L'ancien
+    // rejeu envoyait jusqu'à 10 000 ops d'un coup : le 413 `TOO_MANY_OPS`
+    // était classé permanent et l'outbox entière était supprimée.
+    const replayBatches = buildSyncBatches(validOps, 100, 4 * 1024 * 1024);
+    const retryableRejected = new Set<unknown>();
     let lockHeld = true;
     try {
       try {
@@ -229,26 +235,30 @@ async function replayOutboxIfAny(): Promise<void> {
       } catch { lockHeld = false; }
       if (!lockHeld) continue;
 
-      const response = await axios.post(`${API_URL}/api/sync`, {
-        userType: payload.userType,
-        profileId: payload.profileId,
-        userId: payload.userId,
-        ops: validOps
-      }, {
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
+      let batchOffset = 0;
+      for (const batch of replayBatches) {
+        const response = await axios.post(`${API_URL}/api/sync`, {
+          userType: payload.userType,
+          profileId: payload.profileId,
+          userId: payload.userId,
+          ops: batch
+        }, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
 
-      // Un rejet permanent (politique serveur) est évincé ; un rejet
-      // temporaire reste dans l'outbox du même propriétaire. createdAt ne
-      // bouge jamais, seul lastAttemptAt est rafraîchi.
-      const rejected = Array.isArray(response?.data?.rejected) ? response.data.rejected : [];
-      const retryableRejected = new Set<unknown>();
-      for (const item of rejected) {
-        const opIndex = Number(item?.index);
-        if (!Number.isInteger(opIndex) || opIndex < 0 || opIndex >= validOps.length) continue;
-        if (!isPermanentSyncRejection(item?.status, item?.code, item?.message)) {
-          retryableRejected.add(validOps[opIndex]);
+        // Un rejet permanent (politique serveur) est évincé ; un rejet
+        // temporaire reste dans l'outbox du même propriétaire. createdAt ne
+        // bouge jamais, seul lastAttemptAt est rafraîchi.
+        const rejected = Array.isArray(response?.data?.rejected) ? response.data.rejected : [];
+        for (const item of rejected) {
+          const opIndex = Number(item?.index);
+          const globalIndex = batchOffset + opIndex;
+          if (!Number.isInteger(opIndex) || opIndex < 0 || opIndex >= batch.length) continue;
+          if (!isPermanentSyncRejection(item?.status, item?.code, item?.message)) {
+            retryableRejected.add(validOps[globalIndex]);
+          }
         }
+        batchOffset += batch.length;
       }
       const remainingOps = payload.ops.filter((op) => retryableRejected.has(op));
       if (remainingOps.length > 0) {
@@ -274,7 +284,10 @@ async function replayOutboxIfAny(): Promise<void> {
         console.warn('[outbox] skipping replay — profile is not owned by current account');
         continue;
       }
-      if (isPermanentSyncRejection(status, code, errMsg)) {
+      // Un 413 peut venir de la taille du lot, pas d'une opération invalide.
+      // Le conserver permet un nouveau rejeu avec un découpage plus fin au
+      // lieu de détruire durablement la file locale.
+      if (status !== 413 && isPermanentSyncRejection(status, code, errMsg)) {
         try { localStorage.removeItem(effectiveKey); } catch { /* noop */ }
         const legacyKey = legacyToDelete.get(effectiveKey);
         if (legacyKey) {

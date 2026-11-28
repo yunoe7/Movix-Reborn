@@ -37,6 +37,7 @@ const outboxKey = (owner) => `${OUTBOX_KEY}:${owner.type}:${owner.id || ''}:${ow
 const getPermanentSyncRejectionCodes = sourceNamedFunction(SYNC_STORAGE, 'getPermanentSyncRejectionCodes');
 const getRetryableSyncStatusCodes = sourceNamedFunction(SYNC_STORAGE, 'getRetryableSyncStatusCodes');
 const sharedPolicyBindings = { getPermanentSyncRejectionCodes, getRetryableSyncStatusCodes };
+const buildSyncBatches = sourceNamedFunction(SYNC_STORAGE, 'buildSyncBatches');
 const isRetryableSyncRejection = sourceNamedFunction(SYNC_STORAGE, 'isRetryableSyncRejection', sharedPolicyBindings);
 const isPermanentSyncRejection = sourceNamedFunction(SYNC_STORAGE, 'isPermanentSyncRejection', sharedPolicyBindings);
 const opOwner = (op) => (op && typeof op === 'object' && op.__owner && typeof op.__owner.profileId === 'string' ? op.__owner : null);
@@ -98,6 +99,8 @@ function appFixture({
     axios,
     location: { pathname: '/home' },
     MAX_SYNC_OPS_PER_REQUEST: 100,
+    MAX_SYNC_BYTES_PER_REQUEST: 4 * 1024 * 1024,
+    buildSyncBatches,
     groupOpsByOwner,
     opOwner,
     sameSyncAccount,
@@ -141,6 +144,8 @@ function appFixture({
     outboxKeyForOwner: outboxKey,
     SYNC_OUTBOX_FORMAT_VERSION: FORMAT_VERSION,
     MAX_SYNC_OPS_PER_REQUEST: 100,
+    MAX_SYNC_BYTES_PER_REQUEST: 4 * 1024 * 1024,
+    buildSyncBatches,
     API_BASE_URL: 'https://api.test',
     fetch: async (url, init) => { calls.fetches.push({ url, init }); return fetchImpl(url, init); },
     console: quietConsole
@@ -191,6 +196,7 @@ function replayFixture({
     SYNC_OUTBOX_REPLAY_LOCK_KEY: LOCK_KEY,
     SYNC_OUTBOX_REPLAY_LOCK_TTL_MS: LOCK_TTL_MS,
     MAX_SYNC_OUTBOX_OPS: MAX_OPS,
+    buildSyncBatches,
     isSyncOutboxPayload,
     syncOutboxScopedKey,
     getSyncOutboxCreatedAt,
@@ -549,7 +555,9 @@ test('TTL et cap : une file âgée est évincée même si lastAttemptAt est réc
 
   const stored = JSON.parse(capped.localStorage.getItem(outboxKey(OWNER_A)));
   assert.equal(stored.ops.length, MAX_OPS);
-  assert.equal(capped.calls[0].payload.ops.length, MAX_OPS);
+  // La file reste bornée à 10 000 ops, mais elle est maintenant envoyée par
+  // lots de 100 pour respecter la limite serveur de 200 ops/requête.
+  assert.equal(capped.calls[0].payload.ops.length, 100);
 });
 
 test('ancienne outbox sans userId : TTL appliqué avant migration versionnée, sans attribution au compte courant', async () => {

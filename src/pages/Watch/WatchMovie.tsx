@@ -16,7 +16,7 @@ import { runExtractionPass } from '../../utils/runExtractionPass';
 import { sortHostersByPriority, hosterKeyOf } from '../../utils/sourceAutoSelect';
 
 
-import { getSourcePriorityPrefs, subscribeToPriorityChanges } from '../../utils/sourcePriorityPrefs';
+import { getSourcePriorityPrefs } from '../../utils/sourcePriorityPrefs';
 import { detectHoster } from '../../utils/hosterRegistry';
 import { setLastPlayer } from '../../utils/lastPlayerPref';
 import { encodeId, getTmdbId } from '../../utils/idEncoder';
@@ -414,11 +414,9 @@ const WatchMovie: React.FC = () => {
   const [purstreamSources, setPurstreamSources] = useState<{ url: string; label: string }[]>([]);
   const canUseBravo = isUserVip() || isExtensionAvailable();
 
-  // Bump à chaque changement de prefs de priorité pour re-trier les sortedX.
-  const [prefsVersion, setPrefsVersion] = useState<number>(0);
-  useEffect(() => {
-    return subscribeToPriorityChanges(() => setPrefsVersion((v) => v + 1));
-  }, []);
+  // Anciennement, un `prefsVersion` write-only forçait un rendu de toute la
+  // page Watch sans être consommé par les `useMemo` de tri (délibérément
+  // limités à la liste source). On supprime ce rendu inutile.
 
   // Listes triées par priorité hoster utilisateur (avec override par top-level).
   // On annote chaque source avec son `type` détecté via `detectHoster` puis on

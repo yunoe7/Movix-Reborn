@@ -1824,7 +1824,10 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   const [showNextMovie, setShowNextMovie] = useState(false);
   const [showNextMovieOverlay, setShowNextMovieOverlay] = useState(false);
   const [hasIgnored, setHasIgnored] = useState(false);
-  const [, setTimeRemaining] = useState<number>(0);
+  // Le temps restant n'était qu'un état write-only : chaque `timeupdate`
+  // planifiait un rendu complet du lecteur sans effet visuel. Les rendus utiles
+  // de la barre de progression restent assurés par setCurrentTime/setDuration.
+  const lastTimeUpdateSaveRef = useRef(0);
   const [showPlayAnimation] = useState(false);
   const [showPauseAnimation] = useState(false);
   const [showForwardAnimation, setShowForwardAnimation] = useState(false);
@@ -7712,12 +7715,17 @@ const HLSPlayer = forwardRef<HLSPlayerRef, HLSPlayerProps>(({
   const handleTimeUpdate = (e: any) => {
     const player = e.target;
     const remaining = player.duration - player.currentTime;
-    setTimeRemaining(remaining);
 
-    // Sauvegarder la progression si on est au-delà de 30 secondes
-    // et à plus de 30 secondes de la fin
+    // Écrire localStorage et diff sync à chaque `timeupdate` (~4 Hz) coûtait
+    // cher sur mobile/TV. L'intervalle 10 s et les sauvegardes finales sur
+    // pause/unload conservent la précision de reprise ; on garde ici un point
+    // intermédiaire toutes les 5 s pour limiter la perte en cas de crash.
     if (player.currentTime > 30 && remaining > 30) {
-      saveProgress();
+      const now = Date.now();
+      if (now - lastTimeUpdateSaveRef.current >= 5000) {
+        lastTimeUpdateSaveRef.current = now;
+        saveProgress();
+      }
     }
 
     // Afficher le film suivant ou l'épisode suivant selon le seuil configuré.
