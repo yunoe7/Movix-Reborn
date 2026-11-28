@@ -420,6 +420,7 @@ const {
 } = require('./utils/monetizationStats');
 const { ensureTableGroup } = require('./db/runtimeEnsure');
 const { createSeasonalThemeService } = require('./services/seasonalThemeConfig');
+const { startSeasonalThemeSync, attach } = require('./services/seasonalThemeRuntime');
 const { restoreMissingVipAccessKeys } = require('./utils/vipAccessKeyRecovery');
 
 const appReady = (async () => {
@@ -671,6 +672,16 @@ const appReady = (async () => {
         console.log('Seasonal theme tables initialized successfully');
       } catch (error) {
         console.error('Seasonal theme tables init error:', error?.message || error);
+      }
+
+      // Bus de publication : opérationnel immédiatement après l'initialisation
+      // des tables. Si Redis est indisponible, le runtime reste monté et sert
+      // une configuration désactivée (fail-closed) au lieu d'une valeur figée.
+      try {
+        await startSeasonalThemeSync();
+        attach(app);
+      } catch (error) {
+        console.error('Seasonal theme sync init error:', error?.message || error);
       }
     });
   } catch (error) {

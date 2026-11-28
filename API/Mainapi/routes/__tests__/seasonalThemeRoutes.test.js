@@ -121,7 +121,7 @@ function loadRouter({ pool, admin = true } = {}) {
   return { router: sandboxModule.exports.router, state };
 }
 
-async function callRoute(router, method, routePath, { body = {}, query = {} } = {}) {
+async function callRoute(router, method, routePath, { body = {}, query = {}, sync = null } = {}) {
   const layer = router.stack.find((entry) => (
     entry.route?.path === routePath && entry.route.methods[method]
   ));
@@ -134,6 +134,7 @@ async function callRoute(router, method, routePath, { body = {}, query = {} } = 
     headers: {},
     ip: '203.0.113.7',
     get: () => '',
+    app: { locals: { seasonalThemeSync: sync } },
   };
   const res = {
     statusCode: 200,
@@ -247,4 +248,133 @@ test('les lectures admin ne consomment pas le quota de mutations', async () => {
     assert.equal(res.body.success, true, routePath);
   }
   assert.deepEqual(state.limiterCalls, []);
+});
+
+function createFakeSync(overrides = {}, { publishedConfig } = {}) {
+  const calls = [];
+  const sync = {
+    calls,
+    async getPublished() { calls.push(['getPublished']); return publishedConfig || serviceModule.buildDefaultConfig(); },
+    async getResolved(context) {
+      calls.push(['getResolved', context]);
+      return {
+        emergencyDisable: false,
+        revision: 1,
+        decorations: [],
+        families: {},
+        typography: {},
+      };
+    },
+    async publish(patch, actor, reason, options) {
+      calls.push(['publish', patch, actor, reason, options]);
+      return serviceModule.buildDefaultConfig();
+    },
+    async setEmergencyDisable(enabled, actor, reason, options) {
+      calls.push(['setEmergencyDisable', enabled, actor, reason, options]);
+      return serviceModule.buildDefaultConfig();
+    },
+    async disableDecoration(id, actor, reason, options) {
+      calls.push(['disableDecoration', id, actor, reason, options]);
+      return serviceModule.buildDefaultConfig();
+    },
+    async invalidateCache(actor, reason, options) {
+      calls.push(['invalidateCache', actor, reason, options]);
+      return { success: true, revision: 1 };
+    },
+    getStatus() { return { failClosed: false, subscribed: true, emergency: false }; },
+  };
+  return { sync: { ...sync, ...overrides }, calls };
+}
+
+test('la route publique utilise la vue synchronisée fail-closed quand elle est montée', async () => {
+  const { router } = await readyRouter({ admin: false });
+  const disabled = serviceModule.buildDefaultConfig();
+  disabled.emergencyDisable = true;
+  const { sync, calls } = createFakeSync({}, { publishedConfig: disabled });
+  const res = await callRoute(router, 'get', '/seasonal-theme', { sync });
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.config.emergencyDisable, true);
+  assert.deepEqual(calls, [['getPublished']]);
+});
+
+test('la publication transmet la révision attendue et l’identité admin authentifiée', async () => {
+  const { router } = await readyRouter();
+  const { sync, calls } = createFakeSync();
+  const res = await callRoute(router, 'put', '/admin/seasonal-theme', {
+    sync,
+    body: { patch: { emergencyDisable: true }, reason: 'test', expectedRevision: 7 },
+  });
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls[0][0], 'publish');
+  assert.equal(calls[0][1].emergencyDisable, true);
+  assert.equal(calls[0][2].userId, 'admin-42');
+  assert.equal(calls[0][2].adminId, 'staff-42');
+  assert.equal(calls[0][3], 'test');
+  assert.equal(calls[0][4].expectedRevision, 7);
+});
+
+test('la résolution publique valide plateforme et capacités avant de résoudre', async () => {
+  const { router } = await readyRouter({ admin: false });
+  const { sync, calls } = createFakeSync();
+  const bad = await callRoute(router, 'get', '/seasonal-theme/resolve', {
+    sync,
+    query: { platform: 'unknown' },
+  });
+  assert.equal(bad.statusCode, 400);
+  assert.equal(bad.body.code, 'UNKNOWN_PLATFORM');
+
+  const invalidDate = await callRoute(router, 'get', '/seasonal-theme/resolve', {
+    sync,
+    query: { at: 'pas-une-date' },
+  });
+  assert.equal(invalidDate.statusCode, 400);
+  assert.equal(invalidDate.body.code, 'INVALID_DATE');
+
+  const ok = await callRoute(router, 'get', '/seasonal-theme/resolve', {
+    sync,
+    query: { platform: 'tv', capabilities: 'tvStaticEffects', at: '2026-10-28T12:00:00.000Z' },
+  });
+  assert.equal(ok.statusCode, 200);
+  assert.equal(calls[0][0], 'getResolved');
+  assert.equal(calls[0][1].platform, 'tv');
+  assert.deepEqual(Array.from(calls[0][1].capabilities), ['tvStaticEffects']);
+  assert.equal(calls[0][1].now, '2026-10-28T12:00:00.000Z');
+});
+
+test('la désactivation ciblée et l’invalidation du cache restent réservées aux admins', async () => {
+  const { router } = await readyRouter({ admin: false });
+  const { sync } = createFakeSync();
+  for (const routePath of ['/admin/seasonal-theme/decorations/disable', '/admin/seasonal-theme/cache/invalidate']) {
+    const res = await callRoute(router, 'post', routePath, { sync, body: { decorationId: 'halloween.background' } });
+    assert.equal(res.statusCode, 403, routePath);
+  }
+
+  const adminRouter = (await readyRouter()).router;
+  const disabled = await callRoute(adminRouter, 'post', '/admin/seasonal-theme/decorations/disable', {
+    sync,
+    body: { decorationId: 'halloween.background', expectedRevision: 2 },
+  });
+  assert.equal(disabled.statusCode, 200);
+  const invalidated = await callRoute(adminRouter, 'post', '/admin/seasonal-theme/cache/invalidate', {
+    sync,
+    body: { reason: 'reconciliation' },
+  });
+  assert.equal(invalidated.statusCode, 200);
+  assert.deepEqual(invalidated.body.invalidation, { success: true, revision: 1 });
+});
+
+test('une erreur de synchronisation est traduite en conflit ou indisponibilité', async () => {
+  const { router } = await readyRouter();
+  const error = Object.assign(new Error('arrêt actif'), {
+    name: 'SeasonalThemeSyncError',
+    code: 'EMERGENCY_ACTIVE',
+    detail: 'un arrêt d’urgence est actif',
+  });
+  const { sync } = createFakeSync({ publish: async () => { throw error; } });
+  const res = await callRoute(router, 'put', '/admin/seasonal-theme', {
+    sync,
+    body: { patch: { emergencyDisable: false } },
+  });
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, 'EMERGENCY_ACTIVE');
 });
