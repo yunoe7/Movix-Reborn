@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { sourceEffect, sourceFunction } from './helpers/sourceFunction.mjs';
+import { sourceEffect, sourceFunction, sourceNamedFunction } from './helpers/sourceFunction.mjs';
 
 // Ces scénarios couvrent les courses et les états de connexion que les E2E
 // Chromium ne reproduisent pas : reconnexion, retour en arrière-plan, commandes
@@ -51,6 +51,15 @@ function roomFixture({ host = false, syncMode = 'classic' } = {}) {
     socketRef: { current: null },
     authoritativePlaybackRef: { current: null },
     resyncRequestedRef: { current: false },
+    playbackIntentsRef: { current: [] },
+    stateRequestedForRetryRef: { current: false },
+    retryRequestRef: { current: null },
+    applyingRemoteRef: { current: false },
+    remoteSuppressionUntilRef: { current: 0 },
+    remoteCommandTimeoutRef: { current: null },
+    canControlRef: { current: true },
+    videoRef: { current: null },
+    vidriftPlaybackRef: { current: { currentTime: 0, paused: true, updatedAt: 0, playbackRate: 1 } },
   };
   const workerMessages = [];
   refs.syncWorkerRef.current = { postMessage: message => workerMessages.push(message) };
@@ -310,6 +319,7 @@ function suppressionFixture() {
   const applyingRemoteRef = { current: false };
   const remoteCommandTimeoutRef = { current: null };
   const remoteSuppressionUntilRef = { current: 0 };
+  const playbackIntentsRef = { current: [] };
   const emits = [];
   const video = {
     paused: true,
@@ -323,6 +333,7 @@ function suppressionFixture() {
     applyingRemoteRef,
     remoteCommandTimeoutRef,
     remoteSuppressionUntilRef,
+    playbackIntentsRef,
     window: fakeWindow,
     roomRef: { current: { media: { playbackType: 'video' } } },
     vidriftFrameRef: { current: null },
@@ -340,7 +351,19 @@ function suppressionFixture() {
     isHost: true,
     lastHeartbeatRef: { current: 0 },
     performance: { now: () => now },
+    canControlRef: { current: true },
   };
+  const playbackHelpers = {
+    playbackStateMatches: sourceNamedFunction(PAGE, 'playbackStateMatches'),
+    readLocalPlaybackState: sourceNamedFunction(PAGE, 'readLocalPlaybackState'),
+    emitPlaybackUpdate: sourceNamedFunction(PAGE, 'emitPlaybackUpdate'),
+    queuePlaybackIntent: sourceNamedFunction(PAGE, 'queuePlaybackIntent'),
+    desiredPlaybackTarget: sourceNamedFunction(PAGE, 'desiredPlaybackTarget'),
+  };
+  playbackHelpers.flushQueuedPlaybackIntents = sourceNamedFunction(
+    PAGE, 'flushQueuedPlaybackIntents', playbackHelpers
+  );
+  Object.assign(bindings, playbackHelpers);
 
   const advance = (ms) => {
     now += ms;

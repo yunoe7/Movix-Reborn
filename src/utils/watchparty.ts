@@ -141,6 +141,9 @@ export interface PlaybackAck {
   reason: SyncAction | 'media-changed' | null;
   mediaEpoch: number;
   state: PlaybackState;
+  // Le serveur distingue les accusés durablement journalisés des heartbeats
+  // transitoires. Le champ reste optionnel pour les anciens serveurs.
+  durable?: boolean;
 }
 
 /**

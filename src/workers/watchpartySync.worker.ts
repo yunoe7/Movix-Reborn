@@ -219,22 +219,36 @@ const handleSchedule = (event: ScheduledPlaybackEvent) => {
 
   const eventEpoch = Number(event.mediaEpoch) || 0;
   const masterEpoch = Number(masterState?.mediaEpoch) || 0;
-  const eventSeq = Number(event.seq) || 0;
   // Après un `media:change`, une commande différée appartenant encore à l'ancien
   // média ne doit jamais s'exécuter sur le nouveau lecteur.
   if (eventEpoch && masterEpoch && eventEpoch < masterEpoch) return;
 
   // Socket.IO peut rediffuser le même snapshot après une reconnexion : ne pas
-  // exécuter deux fois la même action explicite. La séquence et l'époque font
-  // partie de l'identité d'une commande.
-  const alreadyQueued = pendingSchedules.some(pending => (
-    pending.event.scheduledAt === event.scheduledAt
-    && pending.event.action === event.action
-    && pending.event.position === event.position
-    && pending.event.updatedBy === event.updatedBy
-    && Number(pending.event.seq) === eventSeq
-    && Number(pending.event.mediaEpoch) === eventEpoch
-  ));
+  // exécuter deux fois la même action explicite. La dédup forte n'est autorisée
+  // que si le serveur fournit une vraie séquence et une vraie époque. En legacy,
+  // un commandId explicite ou un horodatage serveur exploitable identifie un
+  // snapshot ; sans aucune de ces clés, mieux vaut ne pas dédupliquer deux
+  // actions distinctes de contenu identique.
+  const scheduleIdentity = (candidate: ScheduledPlaybackEvent): string | null => {
+    const seq = Number(candidate.seq) || 0;
+    const epoch = Number(candidate.mediaEpoch) || 0;
+    const actionIdentity = [
+      candidate.scheduledAt,
+      candidate.action,
+      candidate.position,
+      candidate.updatedBy
+    ].join('|');
+    if (seq > 0 && epoch > 0) return `strong:${seq}:${epoch}:${actionIdentity}`;
+    const commandId = (candidate as ScheduledPlaybackEvent & { commandId?: string }).commandId;
+    if (commandId) return `command:${commandId}`;
+    const serverNow = Number(candidate.serverNow);
+    if (Number.isFinite(serverNow) && serverNow > 0) return `legacy:${serverNow}:${actionIdentity}`;
+    return null;
+  };
+  const identity = scheduleIdentity(event);
+  const alreadyQueued = identity !== null && pendingSchedules.some(
+    pending => scheduleIdentity(pending.event) === identity
+  );
   if (alreadyQueued) return;
 
   pendingSchedules.push({
