@@ -596,9 +596,14 @@ function createSeasonalThemeService(options = {}) {
 
   async function getHistory({ limit = 20 } = {}) {
     assertInteger(limit, 1, 100, 'limit');
+    // mysql2 sérialise les nombres JS comme paramètres numériques génériques.
+    // Sur le serveur MySQL de production, le paramètre préparé de LIMIT provoque
+    // ER_WRONG_ARGUMENTS (mysqld_stmt_execute). limit est strictement validé
+    // comme entier borné avant interpolation : aucune entrée utilisateur brute
+    // ne peut atteindre la chaîne SQL.
     const [rows] = await pool.execute(
-      'SELECT id, settings_json, changed_by, change_reason, created_at FROM seasonal_theme_settings_history WHERE settings_id = ? ORDER BY id DESC LIMIT ?',
-      [SETTINGS_ID, limit],
+      `SELECT id, settings_json, changed_by, change_reason, created_at FROM seasonal_theme_settings_history WHERE settings_id = ? ORDER BY id DESC LIMIT ${limit}`,
+      [SETTINGS_ID],
     );
     return rows.map((row) => ({
       id: row.id,
@@ -611,9 +616,10 @@ function createSeasonalThemeService(options = {}) {
 
   async function getAuditLog({ limit = 50 } = {}) {
     assertInteger(limit, 1, 100, 'limit');
+    // Même contournement sûr que getHistory() : LIMIT est interpolé
+    // uniquement après assertInteger(1..100), jamais depuis une chaîne brute.
     const [rows] = await pool.execute(
-      'SELECT id, admin_id, admin_auth_type, action, target, details_json, created_at FROM seasonal_theme_audit_log ORDER BY id DESC LIMIT ?',
-      [limit],
+      `SELECT id, admin_id, admin_auth_type, action, target, details_json, created_at FROM seasonal_theme_audit_log ORDER BY id DESC LIMIT ${limit}`,
     );
     return rows.map((row) => ({
       id: row.id,

@@ -91,7 +91,8 @@ function createFakePool({ row = null } = {}) {
         return [state.row ? [state.row] : [], []];
       }
       if (/FROM seasonal_theme_settings_history/i.test(sql)) {
-        const limit = params[1];
+        const limit = Number(sql.match(/\bLIMIT (\d+)$/i)?.[1]);
+        assert.deepEqual(params, [1]);
         const rows = state.history.slice(0, limit).map((entry) => ({
           id: entry.id,
           settings_json: entry.settings_json,
@@ -102,7 +103,8 @@ function createFakePool({ row = null } = {}) {
         return [rows, []];
       }
       if (/FROM seasonal_theme_audit_log/i.test(sql)) {
-        const limit = params[0];
+        const limit = Number(sql.match(/\bLIMIT (\d+)$/i)?.[1]);
+        assert.deepEqual(params, []);
         const rows = state.audit.slice(0, limit).map((entry) => ({
           id: entry.id,
           admin_id: entry.admin_id,
@@ -304,6 +306,39 @@ test('historique et audit attribuent la mutation à l’administrateur', async (
   const audit = await service.getAuditLog({ limit: 5 });
   assert.equal(history[0].config.emergencyDisable, true);
   assert.equal(audit[0].adminId, 'staff-42');
+});
+
+test('historique et audit gèrent les listes vides, les limites et les paramètres SQL', async () => {
+  const { pool, state } = createFakePool();
+  const service = createSeasonalThemeService({ pool });
+
+  assert.deepEqual(await service.getHistory(), []);
+  assert.deepEqual(await service.getAuditLog(), []);
+  const emptyQueries = state.queries.slice(-2);
+  assert.match(emptyQueries[0].sql, /LIMIT 20$/);
+  assert.deepEqual(emptyQueries[0].params, [1]);
+  assert.match(emptyQueries[1].sql, /LIMIT 50$/);
+  assert.deepEqual(emptyQueries[1].params, []);
+
+  await assertRejectedCode(service.getHistory({ limit: 0 }), 'INVALID_NUMBER');
+  await assertRejectedCode(service.getHistory({ limit: 101 }), 'INVALID_NUMBER');
+  await assertRejectedCode(service.getAuditLog({ limit: 0 }), 'INVALID_NUMBER');
+  await assertRejectedCode(service.getAuditLog({ limit: 101 }), 'INVALID_NUMBER');
+
+  await service.setEmergencyDisable(true, ADMIN, 'test historique');
+  const history = await service.getHistory({ limit: 1 });
+  const audit = await service.getAuditLog({ limit: 1 });
+  assert.equal(history.length, 1);
+  assert.equal(history[0].config.emergencyDisable, true);
+  assert.equal(audit.length, 1);
+  assert.equal(audit[0].adminId, 'staff-42');
+
+  const historyQuery = state.queries.findLast((entry) => /FROM seasonal_theme_settings_history/.test(entry.sql));
+  const auditQuery = state.queries.findLast((entry) => /FROM seasonal_theme_audit_log/.test(entry.sql));
+  assert.match(historyQuery.sql, /LIMIT 1$/);
+  assert.deepEqual(historyQuery.params, [1]);
+  assert.match(auditQuery.sql, /LIMIT 1$/);
+  assert.deepEqual(auditQuery.params, []);
 });
 
 test('une configuration stockée corrompue retombe sur les valeurs par défaut', () => {
