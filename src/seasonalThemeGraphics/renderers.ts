@@ -115,6 +115,10 @@ export function createParticleRenderer(
       const next = sizeParticleCanvas(canvas, platform);
       if (!next) {
         particles = [];
+        // Libère immédiatement le backing store précédent si le viewport
+        // dépasse le budget mémoire autorisé après un redimensionnement.
+        canvas.width = 0;
+        canvas.height = 0;
         return;
       }
       const scaleX = next.width / size.width;
@@ -149,6 +153,9 @@ export function createParticleRenderer(
       destroyed = true;
       particles = [];
       context.clearRect(0, 0, canvas.width, canvas.height);
+      // Remettre les dimensions à zéro libère le backing store du canvas.
+      canvas.width = 0;
+      canvas.height = 0;
     },
   };
 }

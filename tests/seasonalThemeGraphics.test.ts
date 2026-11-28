@@ -94,6 +94,8 @@ test('aucune asset hors catalogue ne peut être chargée', () => {
   assert.equal(registry.isAllowedSeasonalAsset('/assets/seasonal-theme/halloween/fog.webp'), '/assets/seasonal-theme/halloween/fog.webp');
   for (const value of [
     '/assets/seasonal-theme/../secret.png',
+    '/assets/seasonal-theme/halloween/../../secret.png',
+    '/assets/seasonal-theme/halloween//fog.webp',
     'https://cdn.test/assets/seasonal-theme/fog.webp',
     '/assets/autre/fog.webp',
     '/assets/seasonal-theme/A.png',
@@ -217,6 +219,25 @@ test('les budgets sont mesurés : 42 desktop, réduction mobile, zéro TV/reduce
     performance.canAllocateCanvas([], performance.canvasBytes(1920, 1080, 1)),
     true,
   );
+});
+
+test('une erreur de rendu ne désarme pas définitivement la boucle RAF', () => {
+  let scheduled: ((time: number) => void) | null = null;
+  let requests = 0;
+  let now = 0;
+  const scheduler = performance.createFrameScheduler({
+    requestFrame: (callback) => { requests += 1; scheduled = callback; return requests; },
+    cancelFrame: () => { scheduled = null; },
+    now: () => now,
+  }, () => {
+    throw new Error('canvas context lost');
+  });
+
+  scheduler.start();
+  assert.throws(() => scheduled?.(16), /canvas context lost/);
+  assert.equal(requests, 2, 'la frame suivante doit être planifiée dans finally');
+  assert.equal(scheduler.isRunning(), true);
+  scheduler.stop();
 });
 
 test('la boucle se suspend quand la page est masquée et libère ses ressources', () => {
