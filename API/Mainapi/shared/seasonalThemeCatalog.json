@@ -124,6 +124,7 @@
       "family": "lights",
       "priority": 11,
       "conflictsWith": [],
+      "requires": ["halloween.background"],
       "allowedPlatforms": ["mobile", "desktop", "tablet"],
       "allowedCapabilities": ["lightMode", "reducedMotion"],
       "supportsEffects": false,
@@ -149,7 +150,12 @@
       "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
       "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
       "supportsEffects": true,
-      "optionKeys": []
+      "optionKeys": [],
+      "typography": {
+        "pageTitle": { "fontKey": "creepster", "weight": 400, "effect": "glow" },
+        "sectionTitle": { "fontKey": "creepster", "weight": 400, "effect": "none" },
+        "categoryTitle": { "fontKey": "inter", "weight": 700, "effect": "none" }
+      }
     },
     {
       "id": "christmas.screenDecor",
@@ -179,6 +185,7 @@
       "family": "background",
       "priority": 21,
       "conflictsWith": [],
+      "requires": ["christmas.background"],
       "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
       "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
       "supportsEffects": false,
@@ -219,14 +226,19 @@
     },
     {
       "id": "christmas.typography",
-      "themeId": "christmas-2026",
       "family": "typography",
+      "themeId": "christmas-2026",
       "priority": 20,
       "conflictsWith": ["halloween.typography"],
       "allowedPlatforms": ["mobile", "desktop", "tablet", "tv"],
       "allowedCapabilities": ["lightMode", "reducedMotion", "tvStaticEffects"],
       "supportsEffects": true,
-      "optionKeys": []
+      "optionKeys": [],
+      "typography": {
+        "pageTitle": { "fontKey": "archivo-black", "weight": 400, "effect": "frost" },
+        "sectionTitle": { "fontKey": "archivo-black", "weight": 400, "effect": "none" },
+        "categoryTitle": { "fontKey": "inter", "weight": 700, "effect": "none" }
+      }
     }
   ],
   "assetPolicy": {

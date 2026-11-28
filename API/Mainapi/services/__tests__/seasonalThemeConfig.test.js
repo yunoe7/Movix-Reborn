@@ -7,6 +7,7 @@ const {
   SEASONAL_THEME_CATALOG,
   buildDefaultConfig,
   createSeasonalThemeService,
+  mergeConfig,
   parseStoredConfig,
   validateConfig,
 } = require('../seasonalThemeConfig');
@@ -311,4 +312,52 @@ test('une configuration stockée corrompue retombe sur les valeurs par défaut',
   const partial = parseStoredConfig({ version: 1, emergencyDisable: true });
   assert.equal(partial.emergencyDisable, true);
   assert.equal(partial.themes.every((theme) => theme.enabled === false), true);
+});
+
+test('la typographie d’une décoration reste un catalogue fermé', () => {
+  assert.throws(
+    () => mergeConfig(buildDefaultConfig(), {
+      themes: [{
+        id: 'halloween-2026',
+        decorations: [{
+          id: 'halloween.typography',
+          typography: { pageTitle: { fontKey: 'inconnue' } },
+        }],
+      }],
+    }),
+    (error) => error.code === 'UNKNOWN_FONT',
+  );
+  assert.throws(
+    () => mergeConfig(buildDefaultConfig(), {
+      themes: [{
+        id: 'halloween-2026',
+        decorations: [{
+          id: 'halloween.typography',
+          typography: { categoryTitle: { effect: 'glow' } },
+        }],
+      }],
+    }),
+    (error) => error.code === 'EFFECT_SCOPE',
+  );
+});
+
+test('un prérequis inconnu est rejeté', () => {
+  assert.throws(
+    () => validateConfig(mergeConfig(buildDefaultConfig(), {
+      themes: [{
+        id: 'halloween-2026',
+        decorations: [{ id: 'halloween.lights.candles', requires: ['inconnu.background'] }],
+      }],
+    })),
+    (error) => error.code === 'UNKNOWN_DECORATION',
+  );
+});
+
+test('une préférence utilisateur historique ne peut pas modifier la configuration publiée', () => {
+  for (const key of ['settings_halloween_theme', 'settings_christmas_theme', 'snow_enabled', 'theme']) {
+    assert.throws(
+      () => mergeConfig(buildDefaultConfig(), { [key]: true }),
+      (error) => error.code === 'UNKNOWN_KEY',
+    );
+  }
 });

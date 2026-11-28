@@ -147,9 +147,48 @@ function buildFlagMap(all, enabled) {
   return Object.fromEntries(all.map((key) => [key, enabled.includes(key)]));
 }
 
+function validateTypographyMap(value, where, cat, { partial = false } = {}) {
+  assertAllowedKeys(value, cat.typographyCategories, where);
+  const fontsByKey = new Map(cat.fonts.map((font) => [font.key, font]));
+  for (const [category, entry] of Object.entries(value)) {
+    const target = `${where}.${category}`;
+    assertPlainObject(entry, target);
+    assertAllowedKeys(entry, ['enabled', 'fontKey', 'weight', 'effect'], target);
+    if (!partial || 'enabled' in entry) assertBoolean(entry.enabled, `${target}.enabled`);
+    if (!partial || 'fontKey' in entry) {
+      assertNoMarkup(entry.fontKey, `${target}.fontKey`);
+      assertId(entry.fontKey, `${target}.fontKey`);
+      if (!fontsByKey.has(entry.fontKey)) fail('UNKNOWN_FONT', `${target}.fontKey inconnu ${entry.fontKey}`);
+    }
+    if (!partial || 'weight' in entry) {
+      const font = fontsByKey.get(entry.fontKey);
+      if (!font || !font.weights.includes(entry.weight)) {
+        fail('INVALID_WEIGHT', `${target}.weight non disponible pour ${entry.fontKey}`);
+      }
+    }
+    if (!partial || 'effect' in entry) {
+      if (!cat.effects.includes(entry.effect)) fail('UNKNOWN_EFFECT', `${target}.effet inconnu ${entry.effect}`);
+      if (category === 'categoryTitle' && entry.effect !== 'none') {
+        fail('EFFECT_SCOPE', `${target} n’accepte que l’effet none`);
+      }
+    }
+  }
+}
+
+function mergeTypographyMap(current, patch, where, cat) {
+  validateTypographyMap(patch, where, cat, { partial: true });
+  const next = { ...current };
+  for (const [category, entry] of Object.entries(patch)) {
+    next[category] = { ...(next[category] || {}), ...entry };
+  }
+  validateTypographyMap(next, where, cat);
+  return next;
+}
+
 function buildDefaultConfig(cat = DEFAULT_CATALOG) {
   return {
     version: cat.version,
+    revision: 0,
     emergencyDisable: false,
     themes: cat.themes.map((theme) => ({
       id: theme.id,
@@ -166,9 +205,18 @@ function buildDefaultConfig(cat = DEFAULT_CATALOG) {
           enabled: false,
           priority: decoration.priority,
           conflictsWith: [...decoration.conflictsWith],
+          requires: [...(decoration.requires || [])],
           platforms: buildFlagMap(cat.platforms, decoration.allowedPlatforms),
           capabilities: buildFlagMap(cat.capabilities, decoration.allowedCapabilities),
           options: {},
+          typography: decoration.typography
+            ? Object.fromEntries(cat.typographyCategories.map((category) => [category, {
+              enabled: true,
+              fontKey: decoration.typography[category].fontKey,
+              weight: decoration.typography[category].weight,
+              effect: decoration.typography[category].effect || 'none',
+            }]))
+            : {},
         })),
     })),
     typography: Object.fromEntries(cat.typographyCategories.map((category) => [
@@ -182,8 +230,11 @@ function buildDefaultConfig(cat = DEFAULT_CATALOG) {
 
 function validateConfig(config, cat = DEFAULT_CATALOG) {
   assertPlainObject(config, 'config');
-  assertAllowedKeys(config, ['version', 'emergencyDisable', 'themes', 'typography', 'updatedAt', 'updatedBy'], 'config');
+  assertAllowedKeys(config, ['version', 'revision', 'emergencyDisable', 'themes', 'typography', 'updatedAt', 'updatedBy'], 'config');
   if (config.version !== cat.version) fail('VERSION_MISMATCH', `version attendue ${cat.version}`);
+  if (!Number.isInteger(config.revision) || config.revision < 0 || config.revision > 1_000_000_000) {
+    fail('INVALID_REVISION', 'config.revision doit être un entier positif');
+  }
   assertBoolean(config.emergencyDisable, 'config.emergencyDisable');
   assertSafeLabel(config.updatedBy, 'config.updatedBy');
   if (config.updatedAt !== null
@@ -219,7 +270,7 @@ function validateConfig(config, cat = DEFAULT_CATALOG) {
     const seenDecorations = new Set();
     for (const decoration of theme.decorations) {
       assertPlainObject(decoration, 'decoration');
-      assertAllowedKeys(decoration, ['id', 'family', 'enabled', 'priority', 'conflictsWith', 'platforms', 'capabilities', 'options'], 'decoration');
+      assertAllowedKeys(decoration, ['id', 'family', 'enabled', 'priority', 'conflictsWith', 'requires', 'platforms', 'capabilities', 'options', 'typography'], 'decoration');
       assertId(decoration.id, 'decoration.id');
       const known = knownDecorations.get(decoration.id);
       if (!known || known.themeId !== theme.id) fail('UNKNOWN_DECORATION', `décoration inconnue ${decoration.id}`);
@@ -237,6 +288,17 @@ function validateConfig(config, cat = DEFAULT_CATALOG) {
           fail('UNKNOWN_DECORATION', `${where}.conflictsWith contient ${conflict}`);
         }
       }
+      if (!Array.isArray(decoration.requires)) fail('INVALID_REQUIRES', `${where}.requires doit être une liste`);
+      for (const required of decoration.requires) {
+        assertId(required, `${where}.requires[]`);
+        if (!knownDecorations.has(required) || required === decoration.id) {
+          fail('UNKNOWN_DECORATION', `${where}.requires contient ${required}`);
+        }
+      }
+      if (known.family !== 'typography' && Object.keys(decoration.typography).length > 0) {
+        fail('EFFECT_SCOPE', `${where}.typography n’est autorisé que pour la famille typography`);
+      }
+      validateTypographyMap(decoration.typography, `${where}.typography`, cat);
       validateFlagMap(decoration.platforms, cat.platforms, cat.platforms, `${where}.platforms`);
       validateFlagMap(decoration.capabilities, cat.capabilities, cat.capabilities, `${where}.capabilities`);
       validateOptions(decoration.options, known, `${where}.options`, cat);
@@ -298,7 +360,7 @@ function mergeDecorations(current, patch, cat) {
   const known = new Map(cat.decorations.map((item) => [item.id, item]));
   for (const entry of patch) {
     assertPlainObject(entry, 'patch.decoration');
-    assertAllowedKeys(entry, ['id', 'family', 'enabled', 'priority', 'conflictsWith', 'platforms', 'capabilities', 'options'], 'patch.decoration');
+    assertAllowedKeys(entry, ['id', 'family', 'enabled', 'priority', 'conflictsWith', 'requires', 'platforms', 'capabilities', 'options', 'typography'], 'patch.decoration');
     assertId(entry.id, 'patch.decoration.id');
     if (!byId.has(entry.id) || !known.has(entry.id)) fail('UNKNOWN_DECORATION', `décoration inconnue ${entry.id}`);
     const target = byId.get(entry.id);
@@ -315,6 +377,14 @@ function mergeDecorations(current, patch, cat) {
       if (!Array.isArray(entry.conflictsWith)) fail('INVALID_CONFLICTS', `${where}.conflictsWith doit être une liste`);
       for (const conflict of entry.conflictsWith) assertId(conflict, `${where}.conflictsWith[]`);
       target.conflictsWith = [...entry.conflictsWith];
+    }
+    if ('requires' in entry) {
+      if (!Array.isArray(entry.requires)) fail('INVALID_REQUIRES', `${where}.requires doit être une liste`);
+      for (const required of entry.requires) assertId(required, `${where}.requires[]`);
+      target.requires = [...entry.requires];
+    }
+    if ('typography' in entry) {
+      target.typography = mergeTypographyMap(target.typography, entry.typography, `${where}.typography`, cat);
     }
     if ('platforms' in entry) target.platforms = mergeFlagMap(target.platforms, entry.platforms, cat.platforms, `${where}.platforms`);
     if ('capabilities' in entry) target.capabilities = mergeFlagMap(target.capabilities, entry.capabilities, cat.capabilities, `${where}.capabilities`);
@@ -386,7 +456,7 @@ function mergeConfig(current, patch, cat = DEFAULT_CATALOG) {
     if (key === 'emergencyDisable') { assertBoolean(value, 'patch.emergencyDisable'); next.emergencyDisable = value; }
     else if (key === 'themes') mergeThemes(next.themes, value, cat);
     else if (key === 'typography') mergeTypography(next.typography, value, cat);
-    else if (key === 'updatedAt' || key === 'updatedBy' || key === 'version') continue;
+    else if (key === 'updatedAt' || key === 'updatedBy' || key === 'version' || key === 'revision') continue;
     else fail('UNKNOWN_KEY', `patch.${key} n’est pas modifiable`);
   }
   return next;
@@ -402,6 +472,7 @@ function parseStoredConfig(raw, cat = DEFAULT_CATALOG) {
   if (!isPlainObject(stored)) return buildDefaultConfig(cat);
   try {
     const restored = mergeConfig(buildDefaultConfig(cat), stored, cat);
+    restored.revision = Number.isInteger(stored.revision) ? stored.revision : 0;
     restored.updatedAt = stored.updatedAt ?? null;
     restored.updatedBy = stored.updatedBy ?? null;
     return validateConfig(restored, cat);
@@ -458,6 +529,7 @@ function createSeasonalThemeService(options = {}) {
   async function persist(config, actor, action, reason, target) {
     const details = JSON.stringify({
       reason: String(reason || '').slice(0, 120),
+      revision: config.revision,
       emergencyDisable: config.emergencyDisable,
       themes: config.themes.map((theme) => ({ id: theme.id, enabled: theme.enabled })),
     });
@@ -486,16 +558,35 @@ function createSeasonalThemeService(options = {}) {
     }
   }
 
-  async function updateConfig(patch, actor, reason) {
-    assertNoMarkup(reason, 'reason');
-    const current = await getConfig();
+  /** Construit la prochaine révision sans toucher à la source de vérité. */
+  function buildUpdatedConfig(current, patch, actor) {
     const next = mergeConfig(current, patch, cat);
+    next.revision = (Number.isInteger(current.revision) ? current.revision : 0) + 1;
     next.updatedAt = now().toISOString();
     next.updatedBy = safeActorLabel(actor);
     validateConfig(next, cat);
-    await persist(next, actor, 'settings.update', reason, 'seasonal_theme_settings:1');
-    if (logger?.info) logger.info('[SeasonalTheme] configuration mise à jour', { by: next.updatedBy });
     return next;
+  }
+
+  /** Persiste une révision déjà construite et validée (utilisé par la synchro). */
+  async function applyConfig(next, actor, reason, action = 'settings.update') {
+    assertNoMarkup(reason, 'reason');
+    validateConfig(next, cat);
+    await persist(next, actor, action, reason, 'seasonal_theme_settings:1');
+    if (logger?.info) {
+      logger.info('[SeasonalTheme] configuration mise à jour', { by: next.updatedBy || safeActorLabel(actor) });
+    }
+    return next;
+  }
+
+  async function updateConfig(patch, actor, reason, options = {}) {
+    assertNoMarkup(reason, 'reason');
+    const current = await getConfig();
+    if (options.expectedRevision !== undefined && options.expectedRevision !== current.revision) {
+      fail('REVISION_CONFLICT', `révision attendue ${options.expectedRevision}, révision courante ${current.revision}`);
+    }
+    const next = buildUpdatedConfig(current, patch, actor);
+    return applyConfig(next, actor, reason, options.action || 'settings.update');
   }
 
   async function setEmergencyDisable(enabled, actor, reason) {
@@ -540,6 +631,8 @@ function createSeasonalThemeService(options = {}) {
     getConfig,
     updateConfig,
     setEmergencyDisable,
+    buildUpdatedConfig,
+    applyConfig,
     getHistory,
     getAuditLog,
     catalog: cat,
