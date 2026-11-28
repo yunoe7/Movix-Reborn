@@ -172,19 +172,35 @@ test('le chargeur ne demande que la police sélectionnée et met la promesse en 
   assert.equal(loader.status('creepster'), 'loaded');
 });
 
-test('un échec de chargement expose un repli sans requêter à nouveau', async () => {
+test('un échec de police est amorti puis réessayable après le délai de sécurité', async () => {
   let calls = 0;
-  const loader = fontLoader.createSeasonalFontLoader({
-    createFontFace: () => {
-      calls += 1;
-      return { load: async () => { throw new Error('réseau indisponible'); } };
-    },
-    addFontFace: () => undefined,
-  });
-  assert.equal(await loader.load('archivo-black', 400), false);
-  assert.equal(await loader.load('archivo-black', 400), false);
-  assert.equal(calls, 1);
-  assert.equal(loader.status('archivo-black'), 'failed');
+  let now = 1_000_000;
+  const originalNow = Date.now;
+  Date.now = () => now;
+  try {
+    const loader = fontLoader.createSeasonalFontLoader({
+      createFontFace: () => {
+        calls += 1;
+        return {
+          load: async () => {
+            if (calls === 1) throw new Error('réseau indisponible');
+            return undefined;
+          },
+        };
+      },
+      addFontFace: () => undefined,
+    });
+    assert.equal(await loader.load('archivo-black', 400), false);
+    assert.equal(await loader.load('archivo-black', 400), false);
+    assert.equal(calls, 1, 'pas de boucle de requêtes pendant le délai de sécurité');
+    assert.equal(loader.status('archivo-black'), 'failed');
+    now += 60_001;
+    assert.equal(await loader.load('archivo-black', 400), true);
+    assert.equal(calls, 2, 'un nouvel essai est possible après le délai');
+    assert.equal(loader.status('archivo-black'), 'loaded');
+  } finally {
+    Date.now = originalNow;
+  }
 });
 
 // ─── Application et restauration ───────────────────────────────────────────
