@@ -798,3 +798,102 @@ test('un vote en cours oublie le votant parti et réduit le dénominateur', asyn
   assert.equal(update.yesVotes, 0);
   assert.equal(update.noVotes, 0);
 });
+
+test('un client sans seq reçoit l’état corrigé et l’origine est diffusée', async (t) => {
+  const { room, socket: host } = await connectHost(t);
+  const { socket: member } = await connectMember(t, room);
+
+  const ackPromise = waitForEvent(host, 'playback:ack');
+  const correctedPromise = waitForPredicate(
+    host,
+    'playback:state',
+    (state) => state.position === 17 && state.commandId === 'cmd-legacy',
+    'l’état corrigé renvoyé à l’émetteur sans ACK'
+  );
+  const broadcastPromise = waitForPredicate(
+    member,
+    'playback:state',
+    (state) => state.position === 17,
+    'la commande legacy chez l’invité'
+  );
+  host.emit('playback:update', {
+    commandId: 'cmd-legacy', isPlaying: true, position: 17, reason: 'seek'
+  });
+
+  const [ack, corrected, broadcast] = await Promise.all([ackPromise, correctedPromise, broadcastPromise]);
+  assert.equal(ack.accepted, true);
+  assert.ok(Number.isSafeInteger(ack.seq) && ack.seq >= 1, 'le serveur doit attribuer une séquence sûre');
+  assert.equal(corrected.seq, ack.seq);
+  assert.equal(corrected.commandId, 'cmd-legacy');
+  assert.equal(broadcast.originCommandId, 'cmd-legacy', 'les broadcasts portent l’origine de la commande');
+});
+
+test('les séquences hors fenêtre sont rejetées et __proto__ reste un identifiant normal', async (t) => {
+  const { room, socket: host } = await connectHost(t);
+
+  for (const seq of [Number.MAX_SAFE_INTEGER, -1, '4']) {
+    const ackPromise = waitForEvent(host, 'playback:ack');
+    host.emit('playback:update', {
+      commandId: `seq-${String(seq)}`, seq, isPlaying: true, position: 1, reason: 'seek'
+    });
+    const ack = await ackPromise;
+    assert.equal(ack.accepted, false, `la séquence ${String(seq)} doit être refusée`);
+    assert.equal(ack.code, 'INVALID_SEQUENCE');
+  }
+
+  const firstAck = waitForEvent(host, 'playback:ack');
+  host.emit('playback:update', {
+    commandId: '__proto__', seq: 1, isPlaying: true, position: 10, reason: 'seek'
+  });
+  assert.equal((await firstAck).accepted, true, '__proto__ doit être accepté une première fois');
+
+  const duplicateAck = waitForEvent(host, 'playback:ack');
+  host.emit('playback:update', {
+    commandId: '__proto__', seq: 2, isPlaying: true, position: 20, reason: 'seek'
+  });
+  const duplicate = await duplicateAck;
+  assert.equal(duplicate.accepted, false);
+  assert.equal(duplicate.code, 'DUPLICATE_COMMAND');
+
+  const state = await requestPlaybackState(host);
+  assert.equal(state.position, 10);
+});
+
+test('deux sockets avec le token hôte migrent explicitement le rôle sans double hôte', async (t) => {
+  const { room, socket: first, ctx } = await connectHost(t);
+  const { socket: member } = await connectMember(t, room);
+
+  const second = openSocket(room.roomId, room.hostToken, room.nickname);
+  ctx.socket = second;
+  trackSocket(t, second);
+
+  const [transferred, participants, info] = await Promise.all([
+    waitForPredicate(
+      first,
+      'host:transferred',
+      (event) => event.hostId === second.id && event.previousHostId === first.id,
+      'la migration explicite du rôle hôte'
+    ),
+    waitForPredicate(
+      second,
+      'room:participants',
+      (list) => list.length === 3 && list.some((person) => person.id === second.id && person.isHost),
+      'la liste après migration'
+    ),
+    waitForPredicate(second, 'room:info', (state) => state.hostId === second.id, 'le hostId migré')
+  ]);
+
+  assert.equal(transferred.previousHostId, first.id);
+  assert.equal(participants.filter((person) => person.isHost).length, 1);
+  assert.equal(participants.find((person) => person.id === first.id)?.isHost, false);
+  assert.equal(info.participants.filter((person) => person.isHost).length, 1);
+  assert.equal(member.connected, true);
+
+  const oldHostAck = waitForEvent(first, 'playback:ack');
+  first.emit('playback:update', {
+    commandId: 'old-host-command', seq: 1, isPlaying: true, position: 99, reason: 'seek'
+  });
+  const refused = await oldHostAck;
+  assert.equal(refused.accepted, false);
+  assert.equal(refused.code, 'NOT_AUTHORIZED');
+});
