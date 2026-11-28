@@ -758,7 +758,7 @@ const EmblaCarousel: React.FC<EmblaCarouselProps> = ({
     <div className="mb-4 content-row-container -mx-3 md:-mx-4 group/carousel" style={{ position: 'relative' }}>
         <div className="flex justify-between items-center mb-2 px-4 md:px-6 relative">
           <div className={`flex items-center gap-3 ${headerExtra ? 'flex-wrap gap-y-2' : ''}`}>
-            {title && <h2 className="section-title">{title}</h2>}
+            {title && <h2 data-seasonal-typography="sectionTitle" className="section-title">{title}</h2>}
             {onViewAll && (
               <button
                 onClick={onViewAll}

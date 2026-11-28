@@ -91,7 +91,7 @@ const EmblaCarouselGenres: React.FC<EmblaCarouselGenresProps> = ({ title, items 
     <div className="w-full relative">
       {title && (
         <div className="flex justify-between items-center mb-2 px-4 md:px-6 relative z-10">
-          <h2 className="section-title">{title}</h2>
+          <h2 data-seasonal-typography="sectionTitle" className="section-title">{title}</h2>
         </div>
       )}
       <div className="relative w-full">

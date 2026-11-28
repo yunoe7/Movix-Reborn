@@ -509,7 +509,7 @@ const ProviderCategoryRow: React.FC<ProviderCategoryRowProps> = React.memo(({
   const categoryHeader = useMemo(
     () => (
       <div className="category-header">
-        <span>{category.title}</span>
+        <span data-seasonal-typography="categoryTitle">{category.title}</span>
         {showSeeAll && (
           <Link
             to={seeAllLink}

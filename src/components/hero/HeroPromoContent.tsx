@@ -144,7 +144,10 @@ export const HeroPromoContent: React.FC<HeroPromoContentProps> = ({ promo, isAct
                       decoding="async"
                     />
                   ) : (
-                    <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold leading-tight line-clamp-2">
+                    <h1
+                      data-seasonal-typography={preview ? undefined : 'pageTitle'}
+                      className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold leading-tight line-clamp-2"
+                    >
                       <ShinyText
                         text={texts.title}
                         speed={4}

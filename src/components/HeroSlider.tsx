@@ -460,7 +460,7 @@ const HeroSliderInner: React.FC<HeroSliderInnerProps> = ({ items, promos }) => {
                           decoding="async"
                         />
                       ) : (
-                        <h1 className="hero-cinematic-title text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold leading-tight line-clamp-2 tracking-tight">
+                        <h1 data-seasonal-typography="pageTitle" className="hero-cinematic-title text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold leading-tight line-clamp-2 tracking-tight">
                           <ShinyText
                             text={item.title || item.name || ''}
                             speed={4}
